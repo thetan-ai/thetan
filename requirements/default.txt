@@ -1,0 +1,6 @@
+# List required packages in this file, one per line.
+numpy>=1.7.1
+scipy>=0.9
+cython>=0.25.1
+nibabel>=2.3.0
+dipy>=0.14.0
