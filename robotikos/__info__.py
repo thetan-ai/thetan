@@ -1,6 +1,6 @@
-""" This file contains defines parameters for skepsi that we use to fill
-settings in setup.py, the skepsi top-level docstring, and for building the
-docs.  In setup.py in particular, we exec this file, so it cannot import skepsi
+""" This file contains defines parameters for robotikos that we use to fill
+settings in setup.py, the robotikos top-level docstring, and for building the
+docs.  In setup.py in particular, we exec this file, so it cannot import robotikos
 """
 
 from ._version import get_versions
@@ -15,25 +15,21 @@ CLASSIFIERS = [
     'Operating System :: OS Independent',
     ]
 
-description = 'Robotics: Python package for artificial cognitive architectures'
+description = 'Robotikos: Python package for artificial robotic brains'
 
 # Note: this long_description is actually a copy/paste from the top-level
 # README.txt, so that it shows up nicely on PyPI.  So please remember to edit
 # it only in one place and sync it correctly.
 long_description = """========================================================
-Skepsi: Python package for advanced artificial intelligence
+Robotikos: Python package for advanced A.I. architectures
 ========================================================
-Skepsi combine Reinforcement Learning, Machine Learning and computionnal
-anatony technique to create a unique environment to ease your research on
-this area.
+Fast and smart algorithms to make machines think better than humans.
 """
 
 # versions
 CYTHON_MIN_VERSION = '0.25.1'
 NUMPY_MIN_VERSION = '1.7.1'
 SCIPY_MIN_VERSION = '0.9'
-NIBABEL_MIN_VERSION = '2.3.0'
-DIPY_MIN_VERSION = '0.14.0'
 PYTEST_MIN_VERSION = '3.0'
 
 __packagename__ = 'robotikos'
