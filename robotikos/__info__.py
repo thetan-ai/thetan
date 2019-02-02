@@ -15,7 +15,7 @@ CLASSIFIERS = [
     'Operating System :: OS Independent',
     ]
 
-description = 'Skepsi: Python package for advanced artificial intelligence'
+description = 'Robotics: Python package for artificial cognitive architectures'
 
 # Note: this long_description is actually a copy/paste from the top-level
 # README.txt, so that it shows up nicely on PyPI.  So please remember to edit
@@ -24,7 +24,7 @@ long_description = """========================================================
 Skepsi: Python package for advanced artificial intelligence
 ========================================================
 Skepsi combine Reinforcement Learning, Machine Learning and computionnal
-anatony technique to create a unique environment to ease your research on 
+anatony technique to create a unique environment to ease your research on
 this area.
 """
 
@@ -36,16 +36,16 @@ NIBABEL_MIN_VERSION = '2.3.0'
 DIPY_MIN_VERSION = '0.14.0'
 PYTEST_MIN_VERSION = '3.0'
 
-__packagename__ = 'skepsi'
-__author__ = __maintainer__ = 'Garyfallidis Research Group (GRG) developers'
+__packagename__ = 'robotikos'
+__author__ = __maintainer__ = 'Eleftherios Garyfallidis'
 __email__ = 'garyfallidis@gmail.com'
-__license__ = 'BSD (3-clause)'
+__license__ = 'Commercial'
 __status__ = 'Pre-Alpha'
 __description__ = description
 __longdesc__ = long_description
-__url__ = 'https://gitlab.com/grg_edge/skepsi.git'
+__url__ = 'https://gitlab.com/Garyfallidis/Robotikos.git'
 
-DOWNLOAD_URL = ('https://gitlab.com/grg_edge/skepsi/{name}/archives/{ver}.tar.gz'.format(
+DOWNLOAD_URL = ('https://gitlab.com/Garyfallidis/Robotikos/{name}/archives/{ver}.tar.gz'.format(
     name=__packagename__, ver=__version__))
 PLATFORMS = 'OS Independent'
 MAJOR = __version__.split('.')[0]
@@ -54,14 +54,12 @@ MICRO = __version__.replace('-', '.').split('.')[2]
 ISRELEASE = (len(__version__.replace('-', '.').split('.')) == 3
              or 'post' in __version__.replace('-', '.').split('.')[-1])
 VERSION = __version__
-PROVIDES = ['skepsi']
+PROVIDES = ['robotikos']
 REQUIRES = [
     'cython>=%s' % CYTHON_MIN_VERSION,
     'numpy>=%s' % NUMPY_MIN_VERSION,
     'scipy>=%s' % SCIPY_MIN_VERSION,
-    'nibabel>=%s' % NIBABEL_MIN_VERSION,
-    'dipy>=%s' % DIPY_MIN_VERSION,
-    'pytest>=%s' % PYTEST_MIN_VERSION,
+    'pytest>=%s' % PYTEST_MIN_VERSION
 ]
 
 SETUP_REQUIRES = ['setuptools>=27.0']
