@@ -1,6 +1,7 @@
 """ This file contains defines parameters for robotikos that we use to fill
 settings in setup.py, the robotikos top-level docstring, and for building the
-docs.  In setup.py in particular, we exec this file, so it cannot import robotikos
+docs.  In setup.py in particular, we exec this file, so it cannot
+import robotikos.
 """
 
 from ._version import get_versions

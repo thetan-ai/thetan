@@ -1,22 +1,7 @@
-.. image:: https://img.shields.io/travis/garyfallidis/skepsi.svg
-        :target: https://travis-ci.org/garyfallidis/skepsi
 
-.. image:: https://img.shields.io/pypi/v/skepsi.svg
-        :target: https://pypi.python.org/pypi/skepsi
+ROBOTIKOS
+=========
 
-
-SKEPSI 
-=======
-
-
-SKEPSI is a python package for advanced artificial intelligence
-
-- **Website and Documentation:** Coming soon..
-- **Mailing list:** None
-- **Official source code repo:** https://gitlab.com/grg_edge/skepsi.git
-- **Download releases:** https://pypi.org/project/skepsi/
-- **Issue tracker:** https://gitlab.com/grg_edge/skepsi/issues
-- **Free software:** 3-clause BSD license
 
 Installation
 ============
@@ -27,14 +12,14 @@ Installation
 
 .. code-block::
 
-    pip install skepsi
+    pip install robotikos
 
 2. from source
 ~~~~~~~~~~~~~~
 
 **Step 1.** Get the latest source by cloning this repo::
 
-    git clone https://gitlab.com/grg_edge/skepsi.git
+    git clone https://gitlab.com/Garyfallidis/robotikos.git
 
 **Step 2.** Install requirements::
 

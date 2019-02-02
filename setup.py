@@ -134,12 +134,6 @@ SetupDependency('numpy', info.NUMPY_MIN_VERSION,
 SetupDependency('scipy', info.SCIPY_MIN_VERSION,
                 req_type='install_requires',
                 heavy=True).check_fill(extra_setuptools_args)
-SetupDependency('nibabel', info.NIBABEL_MIN_VERSION,
-                req_type='install_requires',
-                heavy=False).check_fill(extra_setuptools_args)
-SetupDependency('dipy', info.DIPY_MIN_VERSION,
-                req_type='install_requires',
-                heavy=False).check_fill(extra_setuptools_args)
 
 cmdclass = dict(
     build_py=pybuilder,
