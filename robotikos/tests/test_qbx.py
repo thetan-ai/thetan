@@ -3,10 +3,10 @@ import numpy as np
 from numpy.testing import (assert_array_equal, assert_equal, assert_raises,
                            run_module_suite)
 
-from dipy.segment.clustering import QuickBundlesX, QuickBundles, qbx_and_merge
-from dipy.segment.featurespeed import ResampleFeature
-from dipy.segment.metric import AveragePointwiseEuclideanMetric
-from dipy.segment.metric import MinimumAverageDirectFlipMetric
+from robotikos.segment.clustering import QuickBundlesX, QuickBundles, qbx_and_merge
+from robotikos.segment.featurespeed import ResampleFeature
+from robotikos.segment.metric import AveragePointwiseEuclideanMetric
+from robotikos.segment.metric import MinimumAverageDirectFlipMetric
 from dipy.tracking.streamline import set_number_of_points
 from dipy.tracking.streamline import Streamlines
 

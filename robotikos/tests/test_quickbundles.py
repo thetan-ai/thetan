@@ -7,11 +7,11 @@ from numpy.testing import assert_array_equal, run_module_suite
 from dipy.testing.memory import get_type_refcount
 from dipy.testing import assert_arrays_equal
 
-from dipy.segment.clustering import QuickBundles
+from robotikos.segment.clustering import QuickBundles
 
-import dipy.segment.metric as dipymetric
-from dipy.segment.clustering_algorithms import quickbundles
-import dipy.tracking.streamline as streamline_utils
+import robotikos.segment.metric as robotikosmetric
+from robotikos.segment.clustering_algorithms import quickbundles
+import robotikos.tracking.streamline as streamline_utils
 
 
 dtype = "float32"
@@ -27,7 +27,7 @@ clusters_truth = [[0, 1], [2, 4], [3]]
 
 def test_quickbundles_empty_data():
     threshold = 10
-    metric = dipymetric.SumPointwiseEuclideanMetric()
+    metric = robotikosmetric.SumPointwiseEuclideanMetric()
     clusters = quickbundles([], metric, threshold)
     assert_equal(len(clusters), 0)
     assert_equal(len(clusters.centroids), 0)
@@ -45,7 +45,7 @@ def test_quickbundles_wrong_metric():
 def test_quickbundles_shape_uncompatibility():
     # QuickBundles' old default metric (AveragePointwiseEuclideanMetric,
     #  aka MDF) requires that all streamlines have the same number of points.
-    metric = dipymetric.AveragePointwiseEuclideanMetric()
+    metric = robotikosmetric.AveragePointwiseEuclideanMetric()
     qb = QuickBundles(threshold=20., metric=metric)
     assert_raises(ValueError, qb.cluster, data)
 
@@ -55,8 +55,8 @@ def test_quickbundles_shape_uncompatibility():
     qb = QuickBundles(threshold=20.)
     clusters1 = qb.cluster(data)
 
-    feature = dipymetric.ResampleFeature(nb_points=18)
-    metric = dipymetric.AveragePointwiseEuclideanMetric(feature)
+    feature = robotikosmetric.ResampleFeature(nb_points=18)
+    metric = robotikosmetric.AveragePointwiseEuclideanMetric(feature)
     qb = QuickBundles(threshold=20., metric=metric)
     clusters2 = qb.cluster(data)
 
@@ -90,7 +90,7 @@ def test_quickbundles_2D():
     # Theorically using a threshold above the following value will not
     # produce expected results.
     threshold = np.sqrt(2*(10**2))-np.sqrt(2)
-    metric = dipymetric.SumPointwiseEuclideanMetric()
+    metric = robotikosmetric.SumPointwiseEuclideanMetric()
     ordering = np.arange(len(data))
     for i in range(100):
         rng.shuffle(ordering)
@@ -151,7 +151,7 @@ def test_quickbundles_streamlines():
 
 def test_quickbundles_with_python_metric():
 
-    class MDFpy(dipymetric.Metric):
+    class MDFpy(robotikosmetric.Metric):
         def are_compatible(self, shape1, shape2):
             return shape1 == shape2
 
@@ -184,7 +184,7 @@ def test_quickbundles_with_python_metric():
 
 
 def test_quickbundles_with_not_order_invariant_metric():
-    metric = dipymetric.AveragePointwiseEuclideanMetric()
+    metric = robotikosmetric.AveragePointwiseEuclideanMetric()
     qb = QuickBundles(threshold=np.inf, metric=metric)
 
     streamline = np.arange(10*3, dtype=dtype).reshape((-1, 3))

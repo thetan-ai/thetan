@@ -3,9 +3,9 @@ import numpy as np
 import itertools
 import copy
 
-from dipy.segment.clustering import Cluster, ClusterCentroid
-from dipy.segment.clustering import ClusterMap, ClusterMapCentroid
-from dipy.segment.clustering import Clustering
+from robotikos.segment.clustering import Cluster, ClusterCentroid
+from robotikos.segment.clustering import ClusterMap, ClusterMapCentroid
+from robotikos.segment.clustering import Clustering
 
 from nose.tools import assert_equal, assert_true, assert_false
 from numpy.testing import assert_array_equal, assert_raises, run_module_suite

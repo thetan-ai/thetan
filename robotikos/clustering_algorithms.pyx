@@ -1,14 +1,14 @@
 # distutils: language = c
 # cython: wraparound=False, cdivision=True, boundscheck=False, initializedcheck=False
 
-from dipy.utils.six.moves import xrange
+# from dipy.utils.six.moves import xrange
 import itertools
 import numpy as np
 cimport numpy as cnp
 from cythonutils cimport Data2D, Shape
 from metricspeed cimport Metric
 from clusteringspeed cimport ClustersCentroid, Centroid, QuickBundlesX #, Shape
-from dipy.segment.clustering import ClusterMapCentroid, ClusterCentroid
+from robotikos.segment.clustering import ClusterMapCentroid, ClusterCentroid
 
 cdef extern from "stdlib.h" nogil:
     ctypedef unsigned long size_t

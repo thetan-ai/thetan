@@ -1,4 +1,4 @@
-from dipy.segment.featurespeed import (Feature,
+from robotikos.segment.featurespeed import (Feature,
                                        IdentityFeature,
                                        ResampleFeature,
                                        CenterOfMassFeature,
@@ -6,14 +6,14 @@ from dipy.segment.featurespeed import (Feature,
                                        ArcLengthFeature,
                                        VectorOfEndpointsFeature)
 
-from dipy.segment.metricspeed import (Metric,
+from robotikos.segment.metricspeed import (Metric,
                                       SumPointwiseEuclideanMetric,
                                       AveragePointwiseEuclideanMetric,
                                       MinimumAverageDirectFlipMetric,
                                       CosineMetric,
                                       CrossCorrelationMetric)
 
-from dipy.segment.metricspeed import (dist,
+from robotikos.segment.metricspeed import (dist,
                                       distance_matrix)
 
 # Creates aliases
