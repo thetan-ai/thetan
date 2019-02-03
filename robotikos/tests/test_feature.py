@@ -1,7 +1,7 @@
 import sys
 import numpy as np
-import robotikos.segment.metric as robotikosmetric
-from robotikos.segment.featurespeed import extract
+import robotikos.metric as robotikosmetric
+from robotikos.featurespeed import extract
 
 from nose.tools import assert_true, assert_false, assert_equal
 from numpy.testing import (assert_array_equal, assert_array_almost_equal,

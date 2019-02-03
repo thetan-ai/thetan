@@ -8,7 +8,7 @@ cimport numpy as cnp
 from cythonutils cimport Data2D, Shape
 from metricspeed cimport Metric
 from clusteringspeed cimport ClustersCentroid, Centroid, QuickBundlesX #, Shape
-from robotikos.segment.clustering import ClusterMapCentroid, ClusterCentroid
+from robotikos.clustering import ClusterMapCentroid, ClusterCentroid
 
 cdef extern from "stdlib.h" nogil:
     ctypedef unsigned long size_t

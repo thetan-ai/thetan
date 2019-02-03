@@ -1,7 +1,7 @@
 import nibabel as nib
 from nose.tools import assert_equal
 from dipy.data import get_data
-from robotikos.segment.quickbundles import QuickBundles
+from robotikos.quickbundles import QuickBundles
 
 
 def test_qbundles():

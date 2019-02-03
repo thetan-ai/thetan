@@ -7,10 +7,10 @@ from numpy.testing import assert_array_equal, run_module_suite
 from dipy.testing.memory import get_type_refcount
 from dipy.testing import assert_arrays_equal
 
-from robotikos.segment.clustering import QuickBundles
+from robotikos.clustering import QuickBundles
 
-import robotikos.segment.metric as robotikosmetric
-from robotikos.segment.clustering_algorithms import quickbundles
+import robotikos.metric as robotikosmetric
+from robotikos.clustering_algorithms import quickbundles
 import robotikos.tracking.streamline as streamline_utils
 
 

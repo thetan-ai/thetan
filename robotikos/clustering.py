@@ -3,10 +3,10 @@ import numpy as np
 from time import time
 from abc import ABCMeta, abstractmethod
 
-from robotikos.segment.metric import Metric
-from robotikos.segment.metric import ResampleFeature
-from robotikos.segment.metric import AveragePointwiseEuclideanMetric
-from robotikos.segment.metric import MinimumAverageDirectFlipMetric
+from robotikos.metric import Metric
+from robotikos.metric import ResampleFeature
+from robotikos.metric import AveragePointwiseEuclideanMetric
+from robotikos.metric import MinimumAverageDirectFlipMetric
 from dipy.tracking.streamline import set_number_of_points, nbytes
 
 
@@ -438,7 +438,7 @@ class QuickBundles(Clustering):
 
     Examples
     --------
-    >>> from robotikos.segment.clustering import QuickBundles
+    >>> from robotikos.clustering import QuickBundles
     >>> from dipy.data import get_data
     >>> from nibabel import trackvis as tv
     >>> streams, hdr = tv.read(get_data('fornix'))
@@ -453,8 +453,8 @@ class QuickBundles(Clustering):
     [61, 191, 47, 1]
     >>> # Resampling streamlines differently is done explicitly as follows.
     >>> # Note this has an impact on the speed and the accuracy (tradeoff).
-    >>> from robotikos.segment.metric import ResampleFeature
-    >>> from robotikos.segment.metric import AveragePointwiseEuclideanMetric
+    >>> from robotikos.metric import ResampleFeature
+    >>> from robotikos.metric import AveragePointwiseEuclideanMetric
     >>> feature = ResampleFeature(nb_points=2)
     >>> metric = AveragePointwiseEuclideanMetric(feature)
     >>> qb = QuickBundles(threshold=10., metric=metric)
@@ -505,7 +505,7 @@ class QuickBundles(Clustering):
         `ClusterMapCentroid` object
             Result of the clustering.
         """
-        from robotikos.segment.clustering_algorithms import quickbundles
+        from robotikos.clustering_algorithms import quickbundles
         cluster_map = quickbundles(streamlines, self.metric,
                                    threshold=self.threshold,
                                    max_nb_clusters=self.max_nb_clusters,
@@ -573,7 +573,7 @@ class QuickBundlesX(Clustering):
         `TreeClusterMap` object
             Result of the clustering.
         """
-        from robotikos.segment.clustering_algorithms import quickbundlesx
+        from robotikos.clustering_algorithms import quickbundlesx
         tree = quickbundlesx(streamlines, self.metric,
                              thresholds=self.thresholds,
                              ordering=ordering)

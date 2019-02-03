@@ -5,8 +5,8 @@ cimport cython
 import numpy as np
 cimport numpy as cnp
 
-from robotikos.segment.clustering import ClusterCentroid, ClusterMapCentroid
-from robotikos.segment.clustering import TreeCluster, TreeClusterMap
+from robotikos.clustering import ClusterCentroid, ClusterMapCentroid
+from robotikos.clustering import TreeCluster, TreeClusterMap
 
 
 from libc.math cimport fabs

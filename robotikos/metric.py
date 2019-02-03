@@ -1,4 +1,4 @@
-from robotikos.segment.featurespeed import (Feature,
+from robotikos.featurespeed import (Feature,
                                        IdentityFeature,
                                        ResampleFeature,
                                        CenterOfMassFeature,
@@ -6,14 +6,14 @@ from robotikos.segment.featurespeed import (Feature,
                                        ArcLengthFeature,
                                        VectorOfEndpointsFeature)
 
-from robotikos.segment.metricspeed import (Metric,
+from robotikos.metricspeed import (Metric,
                                       SumPointwiseEuclideanMetric,
                                       AveragePointwiseEuclideanMetric,
                                       MinimumAverageDirectFlipMetric,
                                       CosineMetric,
                                       CrossCorrelationMetric)
 
-from robotikos.segment.metricspeed import (dist,
+from robotikos.metricspeed import (dist,
                                       distance_matrix)
 
 # Creates aliases

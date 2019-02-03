@@ -4,9 +4,9 @@ from dipy.tracking.distances import local_skeleton_clustering
 from dipy.tracking.distances import bundles_distances_mdf
 from warnings import warn
 
-deprecation_msg = ("Class 'robotikos.segment.quickbundles.QuickBundles' is"
+deprecation_msg = ("Class 'robotikos.quickbundles.QuickBundles' is"
                    " deprecated, instead use module "
-                   " 'robotikos.segment.clustering.QuickBundles'.")
+                   " 'robotikos.clustering.QuickBundles'.")
 warn(DeprecationWarning(deprecation_msg))
 
 
