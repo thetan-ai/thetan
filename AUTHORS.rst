@@ -5,9 +5,9 @@ Credits
 Maintainer
 ----------
 
-* Garyfallidis Research Group <garyfallidis@gmail.com>
+* Eleftherios Garyfallidis <garyfallidis@gmail.com>
 
 Contributors
 ------------
 
-None yet. Why not be the first? See: CONTRIBUTING.rst
+None yet. See: CONTRIBUTING.rst
