@@ -83,7 +83,8 @@ for modulename, other_sources, language in (
         ('robotikos.featurespeed', [], 'c'),
         ('robotikos.metricspeed', [], 'c'),
         ('robotikos.clusteringspeed', [], 'c'),
-        ('robotikos.clustering_algorithms', [], 'c')):
+        ('robotikos.clustering_algorithms', [], 'c'),
+        ('robotikos.streamlinespeed', [], 'c')):
     pyx_src = pjoin(*modulename.split('.')) + '.pyx'
     EXTS.append(Extension(modulename, [pyx_src] + other_sources,
                           language=language,

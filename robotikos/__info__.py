@@ -44,6 +44,9 @@ __url__ = 'https://gitlab.com/Garyfallidis/Robotikos.git'
 
 DOWNLOAD_URL = ('https://gitlab.com/Garyfallidis/Robotikos/{name}/archives/{ver}.tar.gz'.format(
     name=__packagename__, ver=__version__))
+
+__version__ = '0.1.0'
+
 PLATFORMS = 'OS Independent'
 MAJOR = __version__.split('.')[0]
 MINOR = __version__.split('.')[1]
