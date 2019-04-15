@@ -338,6 +338,44 @@ cdef class CrossCorrelationMetric(CythonMetric):
         #return acos(cos_theta) / PI  # Normalized cosine distance
 
 
+cdef class SumSquaredDiffMetric(CythonMetric):
+    r""" Computes the cross correlation distance between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    """
+    def __init__(SumSquaredDiffMetric self, Feature feature):
+        super(SumSquaredDiffMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(SumSquaredDiffMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int d, D = features1.shape[1]
+            double sqr_norm_features1 = 0.0, sqr_norm_features2 = 0.0
+            double cc = 0.0
+            double dot_product = 0.0
+
+        for d in range(D):
+            dot_product += features1[0, d] * features2[0, d]
+            sqr_norm_features1 += features1[0, d] * features1[0, d]
+            sqr_norm_features2 += features2[0, d] * features2[0, d]
+
+        if sqr_norm_features1 == 0.:
+            if sqr_norm_features2 == 0.:
+                return 0.
+            else:
+                return 1.
+
+        cc = dot_product / (sqrt(sqr_norm_features1) * sqrt(sqr_norm_features2))
+
+        return 1 - fabs(cc)
+        # Make sure it's in [-1, 1], i.e. within domain of arccosine
+        #cos_theta = min(cos_theta, 1.)
+        #cos_theta = max(cos_theta, -1.)
+        #return acos(cos_theta) / PI  # Normalized cosine distance
+
+
+
 cpdef distance_matrix(Metric metric, data1, data2=None):
     """ Computes the distance matrix between two lists of sequential data.
 

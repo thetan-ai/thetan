@@ -50,10 +50,12 @@ def vectors_3d():
         my_data_2 = 10 * np.random.normal(size=(1000, 3)) + np.array([250, 0, 0])
         my_data_3 = 10 * np.random.normal(size=(1000, 3)) - np.array([250, 0, 0])
 
+    step = 0
+
     if sampling == 'uniform':
         my_data_1 = 200 * np.random.rand(1000, 3)
-        my_data_2 = 200 * np.random.rand(1000, 3) + np.array([200, 0, 0])
-        my_data_3 = 200 * np.random.rand(1000, 3) - np.array([200, 0, 0])
+        my_data_2 = 200 * np.random.rand(1000, 3) + np.array([200 + step, 0, 0])
+        my_data_3 = 200 * np.random.rand(1000, 3) - np.array([200 + step, 0, 0])
 
     my_data = np.concatenate((my_data_1, my_data_2, my_data_3))
     my_data = np.ascontiguousarray(my_data)
@@ -154,54 +156,29 @@ def images_3d():
 
     data_orig, affine = load_nifti(fname)
 
-    from pylab import figure, imshow, show, plot
+    from pylab import figure, imshow, show, plot, title
 
     if interactive:
         figure()
+        title('T1 orig')
         imshow(data_orig[..., 50], cmap='gray')
+        #show()
 
     p98 = np.percentile(data_orig, 98)
-    data = np.interp(data_orig, (0, p98), (1, 100))
-    data = np.round(data).astype(np.int64)
+    data_orig = data_orig.astype('f8')
+    data = np.interp(data_orig, (0, p98), (0, 1.))
 
     # save_nifti('discrete.nii.gz', data, affine)
 
     if interactive:
         figure()
+        title('T1 0-1')
         imshow(data[..., 50], cmap='gray')
+        # show()
 
     I, J, K = data.shape
 
-    patch_radius = 1
-
-    class PatchFeature(Feature):
-        """ Computes the arc length of a streamline. """
-        def __init__(self):
-            # The arc length stays the same even if the streamline is reversed.
-            super(PatchFeature, self).__init__(is_order_invariant=True)
-
-        def extract(self, streamline): # patch
-            """ Extracts features from `streamline`. """
-            # This is patch
-            return streamline.astype('f4')
-
-    class CCMetric(Metric):
-        def __init__(self, ord=2):
-            super(CCMetric, self).__init__(feature=PatchFeature())
-            self.ord = ord
-
-        def dist(self, v1, v2):
-           vec1 = v1.ravel()
-           nvec1 = np.linalg.norm(vec1, ord=self.ord)
-           vec2 = v2.ravel()
-           nvec2 = np.linalg.norm(vec2, ord=self.ord)
-           if nvec1 < 0.0001:
-               return 1
-           if nvec2 < 0.0001:
-               return 1
-
-           return 1 - np.abs(np.dot(vec1, vec2) / (nvec1 * nvec2))
-
+    patch_radius = 3
 
     class DataSequence:
         def __init__(self, indices):
@@ -214,38 +191,29 @@ def images_3d():
             patch = data[x - patch_radius: x + patch_radius + 1,
                          y - patch_radius: y + patch_radius + 1,
                          z - patch_radius: z + patch_radius + 1]
-            return patch.ravel()[None, :].astype('f4')
+            p = patch.ravel()[None, :].astype('f4')
+            p = np.ascontiguousarray(p)
+            return p
 
         def __len__(self):
             # return patch_radius * 2 + 1
             return len(self.indices)
 
-    small_data = False
+    small_data = True
 
     if small_data:
-        data = data[:, :, 49:52]
+        data = data[:, :, 50 - patch_radius:50 + patch_radius + 1]
 
     internal_indices = []
 
     X, Y, Z = data.shape
 
-    """
-    check_boundaries_shape = tuple(np.array(data.shape) - 2)
-
-    for idx in np.ndindex(*check_boundaries_shape):
-        x, y, z = idx
-        new_idx = (x + 1, y + 1, z + 1)
-        index.append(new_idx)
-
-    indices = np.array(index)
-    """
-
     for idx in np.ndindex(*data.shape):
 
         x, y, z = idx
-        if x > 0 and x < X - 1:
-            if y > 0 and y < Y - 1:
-                if z > 0 and z < Z - 1:
+        if x >= patch_radius and x < X - patch_radius:
+            if y >= patch_radius and y < Y - patch_radius:
+                if z >= patch_radius and z < Z - patch_radius:
                     internal_indices.append(idx)
 
     internal_indices = np.array(internal_indices)
@@ -256,19 +224,22 @@ def images_3d():
         shuffled_indices = np.random.randint(0, len(internal_indices),
                                              size=internal_indices.shape[0])
         internal_indices = internal_indices[shuffled_indices]
+
     internal_indices = np.ascontiguousarray(internal_indices)
 
-    metric = CrossCorrelationMetric(feature=IdentityFeature())
+    # metric = CrossCorrelationMetric(feature=IdentityFeature())
+
+    metric = EuclideanMetric(feature=IdentityFeature())
 
     ds = DataSequence(internal_indices)
 
     print('Size of ds', len(ds))
 
-
     # ds_list = [ds[cnt] for cnt in range(len(indices))]
 
     # Below 0.3 group together
-    thresholds = [0.1]
+    # thresholds = [0.1]
+    thresholds = [4.]
 
     qbx = QuickBundlesX(thresholds, metric=metric)
 
@@ -291,16 +262,19 @@ def images_3d():
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
 
+    if not small_data:
+        save_nifti('final3.nii.gz', final, affine)
 
-#    if interactive:
-#        figure()
-#        imshow(final[...,1])
+    if small_data:
+        figure()
+        title('Grouped')
+        imshow(final[..., patch_radius])
+        show()
 
-    save_nifti('final3.nii.gz', final, affine)
+    1/0
 
-    # 1/0
 
 if __name__ == '__main__':
 
-    # vectors_3d()
-    images_3d()
+    vectors_3d()
+    # images_3d()

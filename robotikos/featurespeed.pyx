@@ -5,7 +5,7 @@ import numpy as np
 cimport numpy as cnp
 
 from cythonutils cimport shape_from_memview
-from dipy.tracking.streamlinespeed cimport c_set_number_of_points, c_length
+from robotikos.streamlinespeed cimport c_set_number_of_points, c_length
 
 
 cdef class Feature(object):
