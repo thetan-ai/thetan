@@ -128,6 +128,7 @@ cdef CentroidNode* create_empty_node(Shape centroid_shape, float threshold) nogi
 cdef class QuickBundlesX(object):
 
     def __init__(self, features_shape, levels_thresholds, Metric metric):
+        
         # print('Start of QBX Init')
         self.metric = metric
         # print('features shape ', features_shape)
@@ -171,7 +172,9 @@ cdef class QuickBundlesX(object):
         # print('dims ',  self.features_shape.dims)
 
         self.current_streamline.features = create_memview_2d(self.features_shape.size, self.features_shape.dims)
-        self.current_streamline.features_flip = create_memview_2d(self.features_shape.size, self.features_shape.dims)
+        
+        self.current_streamline.features_flip = create_memview_2d(self.features_shape.size,
+                                                                  self.features_shape.dims)
         # print('End of QBX Init')
 
     def __dealloc__(self):

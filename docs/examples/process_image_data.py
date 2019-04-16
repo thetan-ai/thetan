@@ -146,7 +146,8 @@ def ncc(v1, v2, z=False, absolute=True, ord=2):
 
 def images_3d():
 
-    dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
+    # dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
+    dname = '/home/elef/Data/ds031/sub-01/ses-106/anat/'
     fname = dname + 'sub-01_ses-106_T1w.nii.gz'
     # fname = dname + 'sub-01_ses-106_T2w.nii.gz'
 
@@ -191,9 +192,16 @@ def images_3d():
             patch = data[x - patch_radius: x + patch_radius + 1,
                          y - patch_radius: y + patch_radius + 1,
                          z - patch_radius: z + patch_radius + 1]
-            p = patch.ravel()[None, :].astype('f4')
-            p = np.ascontiguousarray(p)
-            return p
+            # p = patch.ravel()[None, :].astype('f4')
+            
+            # p = np.ascontiguousarray(p)
+            
+            p = patch.ravel()
+            expand = np.zeros((len(p), 3))
+            expand[:, 0] = p
+            expand[:, 1] = p
+            expand[:, 2] = p
+            return np.ascontiguousarray(expand)
 
         def __len__(self):
             # return patch_radius * 2 + 1
@@ -229,7 +237,13 @@ def images_3d():
 
     # metric = CrossCorrelationMetric(feature=IdentityFeature())
 
-    metric = EuclideanMetric(feature=IdentityFeature())
+    feature = IdentityFeature()
+
+    feature.is_order_invariant = True
+
+    print(feature.is_order_invariant)
+
+    metric = EuclideanMetric(feature=feature)
 
     ds = DataSequence(internal_indices)
 
@@ -268,7 +282,7 @@ def images_3d():
     if small_data:
         figure()
         title('Grouped')
-        imshow(final[..., patch_radius])
+        imshow(final[..., patch_radius], cmap='jet')
         show()
 
     1/0
@@ -276,5 +290,5 @@ def images_3d():
 
 if __name__ == '__main__':
 
-    vectors_3d()
-    # images_3d()
+    # vectors_3d()
+    images_3d()
