@@ -223,6 +223,8 @@ cdef class QuickBundlesX(object):
         cdef cnp.npy_intp n, d
 
         if streamline_infos.use_flip:
+            with gil:
+                print('flip true')
             element = streamline_infos.features_flip[0]
 
         # Update centroid

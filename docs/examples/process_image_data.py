@@ -1,3 +1,5 @@
+#%%
+
 import numpy as np
 from robotikos.clustering import QuickBundlesX
 from robotikos.metric import IdentityFeature, Feature
@@ -9,14 +11,7 @@ from robotikos.metric import Metric
 from time import time
 
 
-#    horizon(tractograms=[], images=[data],
-#            cluster=False, cluster_thr=15,
-#            random_colors=False,
-#            length_lt=10, length_gt=100,
-#            clusters_lt=5000, clusters_gt=10000,
-#            world_coords=True, interactive=True)
-
-
+#%%
 def vectors_3d():
 
     data = [np.random.rand(1, 3),
@@ -126,7 +121,7 @@ def vectors_3d():
         clusters = tree.get_clusters(1)
         print(len(clusters))
 
-
+#%%
 def ncc(v1, v2, z=False, absolute=True, ord=2):
 
     vec1 = v1.ravel()
@@ -157,6 +152,12 @@ def images_3d():
 
     data_orig, affine = load_nifti(fname)
 
+    sim = False
+
+    if sim:
+        data_orig = np.zeros(data_orig.shape, dtype='f8')
+        data_orig[50-10 : 50 + 10, 50 - 10 : 50 + 10, 50 - 10 : 50 + 10] = 255
+
     from pylab import figure, imshow, show, plot, title
 
     if interactive:
@@ -167,7 +168,11 @@ def images_3d():
 
     p98 = np.percentile(data_orig, 98)
     data_orig = data_orig.astype('f8')
+    
     data = np.interp(data_orig, (0, p98), (0, 1.))
+    
+    if sim:
+        data = np.interp(data_orig, (0, 255), (0, 1.))
 
     # save_nifti('discrete.nii.gz', data, affine)
 
@@ -179,7 +184,7 @@ def images_3d():
 
     I, J, K = data.shape
 
-    patch_radius = 3
+    patch_radius = 1
 
     class DataSequence:
         def __init__(self, indices):
@@ -192,8 +197,8 @@ def images_3d():
             patch = data[x - patch_radius: x + patch_radius + 1,
                          y - patch_radius: y + patch_radius + 1,
                          z - patch_radius: z + patch_radius + 1]
-            # p = patch.ravel()[None, :].astype('f4')
             
+            # p = patch.ravel()[None, :].astype('f4')
             # p = np.ascontiguousarray(p)
             
             p = patch.ravel()
@@ -207,13 +212,12 @@ def images_3d():
             # return patch_radius * 2 + 1
             return len(self.indices)
 
-    small_data = True
+    small_data = False
 
     if small_data:
-        data = data[:, :, 50 - patch_radius:50 + patch_radius + 1]
+        data = data[:, :, 50 - patch_radius: 50 + patch_radius + 1]
 
     internal_indices = []
-
     X, Y, Z = data.shape
 
     for idx in np.ndindex(*data.shape):
@@ -229,19 +233,21 @@ def images_3d():
     shuffling = True
 
     if shuffling:
-        shuffled_indices = np.random.randint(0, len(internal_indices),
-                                             size=internal_indices.shape[0])
-        internal_indices = internal_indices[shuffled_indices]
+        np.random.shuffle(internal_indices)
 
     internal_indices = np.ascontiguousarray(internal_indices)
 
     # metric = CrossCorrelationMetric(feature=IdentityFeature())
+
+    from dipy.segment.featurespeed import IdentityFeature
 
     feature = IdentityFeature()
 
     feature.is_order_invariant = True
 
     print(feature.is_order_invariant)
+
+    from dipy.segment.metric import EuclideanMetric
 
     metric = EuclideanMetric(feature=feature)
 
@@ -252,29 +258,38 @@ def images_3d():
     # ds_list = [ds[cnt] for cnt in range(len(indices))]
 
     # Below 0.3 group together
-    # thresholds = [0.1]
-    thresholds = [4.]
+    thresholds = [20.] #10 GGOOOD # 20 Goood 3 clusters
 
-    qbx = QuickBundlesX(thresholds, metric=metric)
+    if sim:
+        thresholds = [0.2]
+
+    from dipy.segment.clustering import QuickBundles
+
+    # qbx = QuickBundlesX(thresholds, metric=metric)
+    qb = QuickBundles(threshold=thresholds[0], metric=metric)
 
     t1 = time()
     print('Started clustering')
-    tree = qbx.cluster(ds)
+    # tree = qbx.cluster(ds)
+    clusters = qb.cluster(ds)
     print('Finished clustering')
     t2 = time()
     print('Duration %.3f' % (t2 - t1,))
-    clusters = tree.get_clusters(1)
+    # clusters = tree.get_clusters(1)    
     print('Number of clusters %d' % (len(clusters),))
 
     no_clusters = len(clusters)
     # cluster_colors = np.random.rand(no_clusters, 3)
-    cluster_colors = np.arange(0, no_clusters)
 
-    final = np.zeros(data.shape)
+
+    cluster_colors = np.arange(1, no_clusters+1)
+
+    final = np.zeros(data.shape) - 1
 
     for cluster_id, cluster in enumerate(clusters):
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
+    
 
     if not small_data:
         save_nifti('final3.nii.gz', final, affine)
@@ -284,9 +299,29 @@ def images_3d():
         title('Grouped')
         imshow(final[..., patch_radius], cmap='jet')
         show()
-
+    
+        '''
+        horizon(tractograms=[], images=[(data, np.eye(4))],
+                cluster=False, cluster_thr=15,
+                random_colors=False,
+                length_lt=10, length_gt=100,
+                clusters_lt=5000, clusters_gt=10000,
+                world_coords=True, interactive=True)
+        '''
+    
+        horizon(tractograms=[], images=[(final, np.eye(4))],
+                cluster=False, cluster_thr=15,
+                random_colors=False,
+                length_lt=10, length_gt=100,
+                clusters_lt=5000, clusters_gt=10000,
+                world_coords=True, interactive=True)
+        
+    for i in range(50, 60):
+        figure()
+        imshow(final[:, :, i], cmap='jet')
+    show()
     1/0
-
+    test = 0
 
 if __name__ == '__main__':
 
