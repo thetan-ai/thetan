@@ -1,4 +1,4 @@
-#%%
+
 
 import numpy as np
 from robotikos.clustering import QuickBundlesX
@@ -11,7 +11,7 @@ from robotikos.metric import Metric
 from time import time
 
 
-#%%
+
 def vectors_3d():
 
     data = [np.random.rand(1, 3),
@@ -121,7 +121,6 @@ def vectors_3d():
         clusters = tree.get_clusters(1)
         print(len(clusters))
 
-#%%
 def ncc(v1, v2, z=False, absolute=True, ord=2):
 
     vec1 = v1.ravel()
@@ -139,21 +138,34 @@ def ncc(v1, v2, z=False, absolute=True, ord=2):
     return np.dot(vec1, vec2) / (nvec1 * nvec2)
 
 
-def images_3d():
+def images_3d(run_id):
 
-    # dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
-    dname = '/home/elef/Data/ds031/sub-01/ses-106/anat/'
+    dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
+    # dname = '/home/elef/Data/ds031/sub-01/ses-106/anat/'
     fname = dname + 'sub-01_ses-106_T1w.nii.gz'
     # fname = dname + 'sub-01_ses-106_T2w.nii.gz'
 
     interactive = True
+    sim = False
+    magnitude = False
+    punch = False
+    histo = True
+    shuffling = True
+    small_data = False
+    sobel_support = False
+    patch_radius = 5
+
+    # thresholds = [20.]  # for standard 10 GOOOD # 20 Goood 3 clusters
+    # thresholds = [250.]  # for sobel
+    thresholds = [2.] # [3.4] # for histogram
+
+    # if sim:
+    #    thresholds = [0.2]
 
     print(fname)
 
     data_orig, affine = load_nifti(fname)
-
-    sim = False
-
+    
     if sim:
         data_orig = np.zeros(data_orig.shape, dtype='f8')
         data_orig[50-10 : 50 + 10, 50 - 10 : 50 + 10, 50 - 10 : 50 + 10] = 255
@@ -166,11 +178,27 @@ def images_3d():
         imshow(data_orig[..., 50], cmap='gray')
         #show()
 
+    if magnitude:
+        from scipy import ndimage
+        data_orig = ndimage.gaussian_gradient_magnitude(data_orig, sigma=5)
+        save_nifti('magnitude.nii.gz', data_orig, affine)
+
     p98 = np.percentile(data_orig, 98)
     data_orig = data_orig.astype('f8')
-    
+        
     data = np.interp(data_orig, (0, p98), (0, 1.))
     
+    if sobel_support:
+        from scipy import ndimage
+        sx = ndimage.sobel(data, axis=0, mode='constant')
+        sy = ndimage.sobel(data, axis=1, mode='constant')
+        sz = ndimage.sobel(data, axis=2, mode='constant')
+        data = np.sqrt(sx**2 + sy**2 + sz**2)
+        # data = np.interp(data, (0, p98), (0, 1.))
+    
+    save_nifti('interpolated.nii.gz', data, affine)
+
+
     if sim:
         data = np.interp(data_orig, (0, 255), (0, 1.))
 
@@ -184,24 +212,33 @@ def images_3d():
 
     I, J, K = data.shape
 
-    patch_radius = 1
+    
 
     class DataSequence:
-        def __init__(self, indices):
+        def __init__(self, data, indices, histo=False):
 
             self.indices = indices
+            self.histo = histo
+            self.data = data
 
         def __getitem__(self, i):
 
+            if i % 10000 == 0:
+                print(i)
+
             x, y, z = self.indices[i]
-            patch = data[x - patch_radius: x + patch_radius + 1,
-                         y - patch_radius: y + patch_radius + 1,
-                         z - patch_radius: z + patch_radius + 1]
+            patch = self.data[x - patch_radius: x + patch_radius + 1,
+                              y - patch_radius: y + patch_radius + 1,
+                              z - patch_radius: z + patch_radius + 1]
             
             # p = patch.ravel()[None, :].astype('f4')
             # p = np.ascontiguousarray(p)
             
             p = patch.ravel()
+            if self.histo:
+                b = np.histogram(p, bins=10, range=(0, 1))
+                p = b[0].astype('f8') / len(p)
+
             expand = np.zeros((len(p), 3))
             expand[:, 0] = p
             expand[:, 1] = p
@@ -209,11 +246,9 @@ def images_3d():
             return np.ascontiguousarray(expand)
 
         def __len__(self):
-            # return patch_radius * 2 + 1
             return len(self.indices)
 
-    small_data = False
-
+    
     if small_data:
         data = data[:, :, 50 - patch_radius: 50 + patch_radius + 1]
 
@@ -229,9 +264,7 @@ def images_3d():
                     internal_indices.append(idx)
 
     internal_indices = np.array(internal_indices)
-
-    shuffling = True
-
+    
     if shuffling:
         np.random.shuffle(internal_indices)
 
@@ -249,24 +282,25 @@ def images_3d():
 
     from dipy.segment.metric import EuclideanMetric
 
-    metric = EuclideanMetric(feature=feature)
+    metric = EuclideanMetric(feature=feature) # This is actually the sum Eucl.
 
-    ds = DataSequence(internal_indices)
+    ds = DataSequence(data, internal_indices, histo=histo)
 
     print('Size of ds', len(ds))
 
     # ds_list = [ds[cnt] for cnt in range(len(indices))]
 
     # Below 0.3 group together
-    thresholds = [20.] #10 GGOOOD # 20 Goood 3 clusters
-
-    if sim:
-        thresholds = [0.2]
+    
 
     from dipy.segment.clustering import QuickBundles
 
     # qbx = QuickBundlesX(thresholds, metric=metric)
     qb = QuickBundles(threshold=thresholds[0], metric=metric)
+
+    # from pdb import set_trace
+    # set_trace()
+
 
     t1 = time()
     print('Started clustering')
@@ -275,14 +309,13 @@ def images_3d():
     print('Finished clustering')
     t2 = time()
     print('Duration %.3f' % (t2 - t1,))
-    # clusters = tree.get_clusters(1)    
+    # clusters = tree.get_clusters(1)
     print('Number of clusters %d' % (len(clusters),))
 
     no_clusters = len(clusters)
     # cluster_colors = np.random.rand(no_clusters, 3)
 
-
-    cluster_colors = np.arange(1, no_clusters+1)
+    cluster_colors = np.arange(1, no_clusters + 1)
 
     final = np.zeros(data.shape) - 1
 
@@ -290,40 +323,66 @@ def images_3d():
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
     
-
     if not small_data:
-        save_nifti('final3.nii.gz', final, affine)
+        save_nifti('final_' + str(run_id) + '_' + str(thresholds[0]) + '_' + str(sobel_support) + '_' + str(patch_radius) + '_' + str(histo) + '.nii.gz', final, affine)
 
     if small_data:
         figure()
         title('Grouped')
         imshow(final[..., patch_radius], cmap='jet')
         show()
-    
-        '''
-        horizon(tractograms=[], images=[(data, np.eye(4))],
-                cluster=False, cluster_thr=15,
-                random_colors=False,
-                length_lt=10, length_gt=100,
-                clusters_lt=5000, clusters_gt=10000,
-                world_coords=True, interactive=True)
-        '''
-    
+        """
         horizon(tractograms=[], images=[(final, np.eye(4))],
                 cluster=False, cluster_thr=15,
                 random_colors=False,
                 length_lt=10, length_gt=100,
                 clusters_lt=5000, clusters_gt=10000,
                 world_coords=True, interactive=True)
+        """
+    # from pdb import set_trace
+    # set_trace()
+
+
+
+
+    if punch:
+        csizes = []
+        for c in clusters:
+            csizes.append(len(c))
         
-    for i in range(50, 60):
-        figure()
-        imshow(final[:, :, i], cmap='jet')
-    show()
-    1/0
-    test = 0
+        asort = np.argsort(csizes)
+        punch_value = asort[-1]
+        print('punch value ', punch_value)
+        new_data = data.copy()
+        new_data[final == punch_value + 1] = 0
+
+        from pdb import set_trace
+        set_trace()
+        save_nifti('new_data_punched.nii.gz', new_data, affine)
+        from dipy.segment.mask import median_otsu
+
+        from scipy import ndimage
+        # structure = ndimage.generate_binary_structure(3, 1)
+        binary = new_data.copy()
+        binary[binary > 0] = 1
+        binary[binary < 0] = 0
+
+        structure2 = np.ones((5, 5, 5))
+
+        # label, num_features = ndimage.label(binary, structure=structure)
+        # print(num_features)
+        opening = ndimage.binary_opening(binary, structure2)
+
+        # masked_data, mask = median_otsu(new_data)
+        # save_nifti('masked_data.nii.gz', masked_data, affine)
+        # save_nifti('generated_mask.nii.gz', mask.astype('uint8'), affine)
+        save_nifti('opening.nii.gz', opening.astype('uint16'), affine)
+
+
 
 if __name__ == '__main__':
 
     # vectors_3d()
-    images_3d()
+    repeat_times = 2
+    for i in range(1, repeat_times):
+        images_3d(i)
