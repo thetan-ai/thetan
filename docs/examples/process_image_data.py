@@ -9,7 +9,91 @@ from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.app import horizon
 from robotikos.metric import Metric
 from time import time
+from fury import actor, window, ui
+from sklearn import cluster, datasets, mixture
+from sklearn.neighbors import kneighbors_graph
+from sklearn.preprocessing import StandardScaler
+from itertools import cycle, islice
 
+
+def vectors_2d():
+
+    np.random.seed(0)
+
+    # ============
+    # Generate datasets. We choose the size big enough to see the scalability
+    # of the algorithms, but not too big to avoid too long running times
+    # ============
+    n_samples = 1500
+    noisy_circles = datasets.make_circles(n_samples=n_samples, factor=.5,
+                                        noise=.05)
+    noisy_moons = datasets.make_moons(n_samples=n_samples, noise=.05)
+    blobs = datasets.make_blobs(n_samples=n_samples, random_state=8)
+    no_structure = np.random.rand(n_samples, 2), None
+
+    # Anisotropicly distributed data
+    random_state = 170
+    X, y = datasets.make_blobs(n_samples=n_samples, random_state=random_state)
+    transformation = [[0.6, -0.6], [-0.4, 0.8]]
+    X_aniso = np.dot(X, transformation)
+    aniso = (X_aniso, y)
+
+    # blobs with varied variances
+    varied = datasets.make_blobs(n_samples=n_samples,
+                                cluster_std=[1.0, 2.5, 0.5],
+                                random_state=random_state)
+
+    plot_num = 1
+
+    default_base = {'quantile': .3,
+                    'eps': .3,
+                    'damping': .9,
+                    'preference': -200,
+                    'n_neighbors': 10,
+                    'n_clusters': 3,
+                    'min_samples': 20,
+                    'xi': 0.05,
+                    'min_cluster_size': 0.1}
+
+    datasets = [
+        (noisy_circles, {'damping': .77, 'preference': -240,
+                        'quantile': .2, 'n_clusters': 2,
+                        'min_samples': 20, 'xi': 0.25}),
+        (noisy_moons, {'damping': .75, 'preference': -220, 'n_clusters': 2}),
+        (varied, {'eps': .18, 'n_neighbors': 2,
+                'min_samples': 5, 'xi': 0.035, 'min_cluster_size': .2}),
+        (aniso, {'eps': .15, 'n_neighbors': 2,
+                'min_samples': 20, 'xi': 0.1, 'min_cluster_size': .2}),
+        (blobs, {}),
+        (no_structure, {})]
+
+    for i_dataset, (dataset, algo_params) in enumerate(datasets):
+        # update parameters with dataset-specific values
+        params = default_base.copy()
+        params.update(algo_params)
+
+        X, y = dataset
+        from pdb import set_trace
+        set_trace()
+
+
+
+    scene = window.Renderer()
+    spheres = actor.sphere(centers=my_data, colors=np.ones((len(my_data), 3)))
+    scene.add(spheres)
+    window.show(scene)
+
+    new_colors = np.zeros((len(my_data), 3))
+    no_clusters = len(clusters)
+    cluster_colors = np.random.rand(no_clusters, 3)
+    for c, cluster in enumerate(clusters):
+        for ind in cluster.indices:
+            new_colors[ind] = cluster_colors[c]
+
+    scene = window.Renderer()
+    spheres = actor.sphere(centers=my_data, colors=new_colors)
+    scene.add(spheres)
+    window.show(scene)
 
 
 def vectors_3d():
@@ -138,26 +222,41 @@ def ncc(v1, v2, z=False, absolute=True, ord=2):
     return np.dot(vec1, vec2) / (nvec1 * nvec2)
 
 
-def images_3d(run_id):
+def images_3d(run_id, interactive=True, sim=False,
+              magnitude=False,
+              punch=False,
+              histo=True,
+              shuffling=True,
+              small_data=False,
+              sobel_support=False,
+              patch_radius=5,
+              thresholds=[2.],
+              padding=True):
 
-    dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
-    # dname = '/home/elef/Data/ds031/sub-01/ses-106/anat/'
+    # ----------------------------------------------------------------------------------  
+    # TODO show overlaps and play with threshold wich for histogram is currently at 2.0
+    # TODO show results with T2.
+    # TODO try with rounded patch not rectangular
+    # ----------------------------------------------------------------------------------
+    
+    # dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
+    dname = '/home/elef/Data/ds031/sub-01/ses-106/anat/'
     fname = dname + 'sub-01_ses-106_T1w.nii.gz'
     # fname = dname + 'sub-01_ses-106_T2w.nii.gz'
 
-    interactive = True
-    sim = False
-    magnitude = False
-    punch = False
-    histo = True
-    shuffling = True
-    small_data = False
-    sobel_support = False
-    patch_radius = 5
+    # interactive = True
+    # sim = False
+    # magnitude = False
+    # punch = False
+    # histo = True
+    # shuffling = True
+    # small_data = False
+    # sobel_support = False
+    # patch_radius = 5
 
     # thresholds = [20.]  # for standard 10 GOOOD # 20 Goood 3 clusters
     # thresholds = [250.]  # for sobel
-    thresholds = [2.] # [3.4] # for histogram
+    # thresholds = [2.] # [3.4] # for histogram
 
     # if sim:
     #    thresholds = [0.2]
@@ -178,6 +277,11 @@ def images_3d(run_id):
         imshow(data_orig[..., 50], cmap='gray')
         #show()
 
+    if padding:
+
+        data_orig = np.pad(data_orig, pad_width=patch_radius, mode='constant', constant_values=0)
+
+
     if magnitude:
         from scipy import ndimage
         data_orig = ndimage.gaussian_gradient_magnitude(data_orig, sigma=5)
@@ -187,6 +291,7 @@ def images_3d(run_id):
     data_orig = data_orig.astype('f8')
         
     data = np.interp(data_orig, (0, p98), (0, 1.))
+
     
     if sobel_support:
         from scipy import ndimage
@@ -223,8 +328,8 @@ def images_3d(run_id):
 
         def __getitem__(self, i):
 
-            if i % 10000 == 0:
-                print(i)
+            # if i % 10000 == 0:
+            #    print(i)
 
             x, y, z = self.indices[i]
             patch = self.data[x - patch_radius: x + patch_radius + 1,
@@ -301,7 +406,6 @@ def images_3d(run_id):
     # from pdb import set_trace
     # set_trace()
 
-
     t1 = time()
     print('Started clustering')
     # tree = qbx.cluster(ds)
@@ -323,8 +427,12 @@ def images_3d(run_id):
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
     
+    # unpad
+    final = final[patch_radius:-patch_radius, patch_radius:-patch_radius, patch_radius:-patch_radius]
+
+
     if not small_data:
-        save_nifti('final_' + str(run_id) + '_' + str(thresholds[0]) + '_' + str(sobel_support) + '_' + str(patch_radius) + '_' + str(histo) + '.nii.gz', final, affine)
+        save_nifti('new_final_' + str(run_id) + '_thr_' + str(thresholds[0]) + '_sob_' + str(sobel_support) + '_pr_' + str(patch_radius) + '_histo_' + str(histo) + '.nii.gz', final, affine)
 
     if small_data:
         figure()
@@ -341,9 +449,6 @@ def images_3d(run_id):
         """
     # from pdb import set_trace
     # set_trace()
-
-
-
 
     if punch:
         csizes = []
@@ -383,6 +488,15 @@ def images_3d(run_id):
 if __name__ == '__main__':
 
     # vectors_3d()
-    repeat_times = 2
-    for i in range(1, repeat_times):
-        images_3d(i)
+    # repeat_times = 2
+    # for i in range(1, repeat_times):
+    #    images_3d(i)
+
+    # 1/0
+    # for pr in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+    # for pr in [2, 3, 4, 6, 7, 9]:
+    for pr in [1, 5, 8, 10]:
+        print('Patch radius ', pr)
+        images_3d(1, histo=True, patch_radius=pr, thresholds=[2.0])
+    
+
