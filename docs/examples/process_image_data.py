@@ -1,7 +1,7 @@
 
 
 import numpy as np
-from robotikos.clustering import QuickBundlesX
+from robotikos.clustering import QuickBundlesX, ClusterMapCentroid, ClusterCentroid
 from robotikos.metric import IdentityFeature, Feature
 from robotikos.metric import AveragePointwiseEuclideanMetric, EuclideanMetric, SumPointwiseEuclideanMetric
 from robotikos.metric import CrossCorrelationMetric
@@ -10,14 +10,13 @@ from dipy.viz.app import horizon
 from robotikos.metric import Metric
 from time import time
 from fury import actor, window, ui
-from sklearn import cluster, datasets, mixture
-from sklearn.neighbors import kneighbors_graph
-from sklearn.preprocessing import StandardScaler
 from itertools import cycle, islice
 
 
-def vectors_2d():
-
+def sklearn_data():
+    from sklearn import cluster, datasets, mixture
+    from sklearn.neighbors import kneighbors_graph
+    from sklearn.preprocessing import StandardScaler
     np.random.seed(0)
 
     # ============
@@ -67,6 +66,8 @@ def vectors_2d():
         (blobs, {}),
         (no_structure, {})]
 
+    all_data = {}
+
     for i_dataset, (dataset, algo_params) in enumerate(datasets):
         # update parameters with dataset-specific values
         params = default_base.copy()
@@ -74,30 +75,17 @@ def vectors_2d():
 
         X, y = dataset
         from pdb import set_trace
-        set_trace()
+        # set_trace()
+        my_data = np.zeros((X.shape[0], 3))
+        my_data[:, :2] = X.copy()
+        print(my_data.shape)
+
+        all_data[i_dataset] = my_data
+
+    return all_data
 
 
-
-    scene = window.Renderer()
-    spheres = actor.sphere(centers=my_data, colors=np.ones((len(my_data), 3)))
-    scene.add(spheres)
-    window.show(scene)
-
-    new_colors = np.zeros((len(my_data), 3))
-    no_clusters = len(clusters)
-    cluster_colors = np.random.rand(no_clusters, 3)
-    for c, cluster in enumerate(clusters):
-        for ind in cluster.indices:
-            new_colors[ind] = cluster_colors[c]
-
-    scene = window.Renderer()
-    spheres = actor.sphere(centers=my_data, colors=new_colors)
-    scene.add(spheres)
-    window.show(scene)
-
-
-def vectors_3d():
-
+def simple_example_3d():
     data = [np.random.rand(1, 3),
             np.random.rand(1, 3),
             np.random.rand(1, 3)]
@@ -122,22 +110,33 @@ def vectors_3d():
 
     print(clusters)
 
-    sampling = 'uniform'
 
-    if sampling == 'normal':
-        my_data_1 = 10 * np.random.normal(size=(1000, 3))
-        my_data_2 = 10 * np.random.normal(size=(1000, 3)) + np.array([250, 0, 0])
-        my_data_3 = 10 * np.random.normal(size=(1000, 3)) - np.array([250, 0, 0])
+def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds=[250.], sph_radius=0.1,
+               fstealth=None, init_viz=False, shuffling=True, chain_maker=True):
+    """ skdata or ecubes """
 
-    step = 0
 
-    if sampling == 'uniform':
-        my_data_1 = 200 * np.random.rand(1000, 3)
-        my_data_2 = 200 * np.random.rand(1000, 3) + np.array([200 + step, 0, 0])
-        my_data_3 = 200 * np.random.rand(1000, 3) - np.array([200 + step, 0, 0])
 
-    my_data = np.concatenate((my_data_1, my_data_2, my_data_3))
-    my_data = np.ascontiguousarray(my_data)
+    if mode == 'ecubes':
+        if sampling == 'normal':
+            my_data_1 = 10 * np.random.normal(size=(1000, 3))
+            my_data_2 = 10 * np.random.normal(size=(1000, 3)) + np.array([250, 0, 0])
+            my_data_3 = 10 * np.random.normal(size=(1000, 3)) - np.array([250, 0, 0])
+
+        step = 0
+
+        if sampling == 'uniform':
+            my_data_1 = 200 * np.random.rand(1000, 3)
+            my_data_2 = 200 * np.random.rand(1000, 3) + np.array([200 + step, 0, 0])
+            my_data_3 = 200 * np.random.rand(1000, 3) - np.array([200 + step, 0, 0])
+
+        my_data = np.concatenate((my_data_1, my_data_2, my_data_3))
+        my_data = np.ascontiguousarray(my_data)
+
+    if mode == 'skdata':
+
+        all_data = sklearn_data()
+        my_data = all_data[skdata_id]
 
     print(my_data.shape)
 
@@ -156,21 +155,106 @@ def vectors_3d():
 
     vector_feature = IdentityFeature()
     metric = EuclideanMetric(feature=vector_feature)
-
-    thresholds = [250]
-    # thresholds = [125]
-
+    
     qbx = QuickBundlesX(thresholds=thresholds, metric=metric)
-    tree = qbx.cluster(dataseq)
+
+    internal_indices = np.arange(my_data.shape[0])
+    
+    if shuffling:
+        np.random.seed(run)
+        np.random.shuffle(internal_indices)
+
+    internal_indices = np.ascontiguousarray(internal_indices)
+    print(internal_indices)
+
+    tree = qbx.cluster(dataseq, ordering=internal_indices)
     clusters = tree.get_clusters(1)
     print(len(clusters))
 
-    from fury import actor, window, ui
 
-    scene = window.Renderer()
-    spheres = actor.sphere(centers=my_data, colors=np.ones((len(my_data), 3)))
-    scene.add(spheres)
-    window.show(scene)
+    if chain_maker:
+        # qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
+
+        print(' Chaining is starting ...')
+        """
+        qbx = QuickBundlesX(thresholds,
+                            metric=AveragePointwiseEuclideanMetric())
+
+        if verbose:
+            t1 = time()
+        qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
+
+        if verbose:
+            print(' Merging phase starting ...')
+
+        qbx_merge = QuickBundlesX([thresholds[-1]],
+                                metric=AveragePointwiseEuclideanMetric())
+
+        final_level = len(thresholds)
+        len_qbx_fl = len(qbx_clusters.get_clusters(final_level))
+        qbx_ordering_final = rng.choice(len_qbx_fl, len_qbx_fl, replace=False)
+
+        qbx_merged_cluster_map = qbx_merge.cluster(
+            qbx_clusters.get_clusters(final_level).centroids,
+            ordering=qbx_ordering_final).get_clusters(1)
+
+        qbx_cluster_map = qbx_clusters.get_clusters(final_level)
+
+        merged_cluster_map = ClusterMapCentroid()
+        for cluster in qbx_merged_cluster_map:
+            merged_cluster = ClusterCentroid(centroid=cluster.centroid)
+            for i in cluster.indices:
+                merged_cluster.indices.extend(qbx_cluster_map[i].indices)
+            merged_cluster_map.add_cluster(merged_cluster)
+
+        return merged_cluster_map
+        """
+
+        merged_cluster_map = ClusterMapCentroid()
+
+        chains = {}
+
+        for c, cluster in enumerate(clusters):
+            if c == 0:
+                chains[c] = [cluster.centroid]
+            
+            if c > 0:
+                for k in chains.copy():
+                    for oc in chains[k]:
+                        print(oc)
+                        if metric.dist(cluster.centroid, oc) < thresholds[0] * 1.:
+                            chains[k].append(cluster.centroid)
+                        else:
+                            chains[c] = [cluster.centroid]
+
+
+        from pdb import set_trace
+        set_trace()
+
+        """
+        merged_cluster = ClusterCentroid(centroid=cluster.centroid)
+        for i in cluster.indices:
+            merged_cluster.indices.extend(clusters[i].indices)
+        merged_cluster_map.add_cluster(merged_cluster)
+        """
+        merged_cluster_map.refdata = my_data
+        clusters = merged_cluster_map
+
+    from pdb import set_trace
+    set_trace()
+
+    
+
+
+
+
+    from fury import actor, window, ui
+    
+    if init_viz:
+        scene = window.Renderer()
+        spheres = actor.sphere(centers=my_data, colors=np.ones((len(my_data), 3)), radii=sph_radius)
+        scene.add(spheres)
+        window.show(scene)
 
     new_colors = np.zeros((len(my_data), 3))
     no_clusters = len(clusters)
@@ -180,10 +264,12 @@ def vectors_3d():
             new_colors[ind] = cluster_colors[c]
 
     scene = window.Renderer()
-    spheres = actor.sphere(centers=my_data, colors=new_colors)
+    spheres = actor.sphere(centers=my_data, colors=new_colors, radii=sph_radius)
     scene.add(spheres)
-    window.show(scene)
-
+    if fstealth is None:
+        window.show(scene)
+    else:
+        window.snapshot(scene, fstealth)
 
     switch_data_rep = False
 
@@ -220,6 +306,19 @@ def ncc(v1, v2, z=False, absolute=True, ord=2):
     if absolute:
         return np.abs(np.dot(vec1, vec2) / (nvec1 * nvec2))
     return np.dot(vec1, vec2) / (nvec1 * nvec2)
+
+
+
+def timeseries():
+
+    import pandas as pd 
+    import matplotlib.pyplot as plt 
+
+    dname = '/home/elef/Data/heart_rate'
+    dataset = pd.read_csv(dname + "data.csv") #Read data from CSV datafile 
+    #plt.title("Heart Rate Signal") #The title of our plot 
+    #plt.plot(dataset.hart) #Draw the plot object 
+    #plt.show() #Display the plot    
 
 
 def images_3d(run_id, interactive=True, sim=False,
@@ -487,16 +586,24 @@ def images_3d(run_id, interactive=True, sim=False,
 
 if __name__ == '__main__':
 
-    # vectors_3d()
-    # repeat_times = 2
-    # for i in range(1, repeat_times):
-    #    images_3d(i)
 
-    # 1/0
+    thr = 0.1
+    skdata_id = 0
+
+    for i in range(10):
+        fname = 'vec3d_run' + str(i) + '_id_' + str(skdata_id) + '_' + str(thr) + '.png'
+        print(fname)
+        vectors_3d(run=i, mode='skdata', skdata_id=skdata_id, thresholds=[thr], sph_radius=0.05, init_viz=False,
+                   fstealth=fname, shuffling=True, chain_maker=True)
+
+    # segment 3d images
+    """
     # for pr in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
     # for pr in [2, 3, 4, 6, 7, 9]:
     for pr in [1, 5, 8, 10]:
         print('Patch radius ', pr)
         images_3d(1, histo=True, patch_radius=pr, thresholds=[2.0])
-    
+    """
+
+
 
