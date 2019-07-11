@@ -212,24 +212,33 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         merged_cluster_map = ClusterMapCentroid()
 
-        chains = {}
-
+        # TODO I need a new structure where in one cluster I can have multiple centroids
+        
         for c, cluster in enumerate(clusters):
             if c == 0:
-                chains[c] = [cluster.centroid]
+                merged_cluster_map.add_cluster(cluster)
             
             if c > 0:
-                for k in chains.copy():
-                    for oc in chains[k]:
-                        print(oc)
-                        if metric.dist(cluster.centroid, oc) < thresholds[0] * 1.:
-                            chains[k].append(cluster.centroid)
+                while True:
+                        
+                    sz_mcp = len(merged_cluster_map)
+                    for oc in range(sz_mcp):
+                        # print(oc)
+                        centroid = merged_cluster_map[oc].centroid
+                        if metric.dist(cluster.centroid, centroid) < thresholds[0] * 1.3:
+                            # merged_cluster = ClusterCentroid(centroid=cluster.centroid)
+                            from pdb import set_trace
+                            # set_trace()
+                            #merged_cluster_map[oc].indices = np.concatenate(merged_cluster_map[oc].indices, cluster.indices) 
+                            pass
+                            merged_cluster_map.add_cluster(cluster)
                         else:
-                            chains[c] = [cluster.centroid]
+                            merged_cluster_map.add_cluster(cluster)
+                    break
 
 
-        from pdb import set_trace
-        set_trace()
+        # from pdb import set_trace
+        # set_trace()
 
         """
         merged_cluster = ClusterCentroid(centroid=cluster.centroid)
@@ -240,13 +249,8 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
         merged_cluster_map.refdata = my_data
         clusters = merged_cluster_map
 
-    from pdb import set_trace
-    set_trace()
-
-    
-
-
-
+    # from pdb import set_trace
+    # set_trace()
 
     from fury import actor, window, ui
     
@@ -320,6 +324,8 @@ def timeseries():
     #plt.plot(dataset.hart) #Draw the plot object 
     #plt.show() #Display the plot    
 
+def images_2d():
+    pass
 
 def images_3d(run_id, interactive=True, sim=False,
               magnitude=False,
