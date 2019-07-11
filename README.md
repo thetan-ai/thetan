@@ -1,2 +1,2 @@
-# Proprietary Software of Eleftherios Robotikos LLC.
+# Do not share without permission from Eleftherios Garyfallidis
 
