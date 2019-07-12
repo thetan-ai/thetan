@@ -13,6 +13,7 @@ from fury import actor, window, ui
 from itertools import cycle, islice
 
 
+
 def sklearn_data():
     from sklearn import cluster, datasets, mixture
     from sklearn.neighbors import kneighbors_graph
@@ -137,6 +138,8 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         all_data = sklearn_data()
         my_data = all_data[skdata_id]
+        # TODO: Attension only using a small dataset
+        my_data = my_data
 
     print(my_data.shape)
 
@@ -151,6 +154,7 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
         def __len__(self):
             return self.data.shape[0]
 
+    
     dataseq = DataSequence(my_data)
 
     vector_feature = IdentityFeature()
@@ -176,79 +180,96 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
         # qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
 
         print(' Chaining is starting ...')
-        """
-        qbx = QuickBundlesX(thresholds,
-                            metric=AveragePointwiseEuclideanMetric())
-
-        if verbose:
-            t1 = time()
-        qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
-
-        if verbose:
-            print(' Merging phase starting ...')
-
-        qbx_merge = QuickBundlesX([thresholds[-1]],
-                                metric=AveragePointwiseEuclideanMetric())
-
-        final_level = len(thresholds)
-        len_qbx_fl = len(qbx_clusters.get_clusters(final_level))
-        qbx_ordering_final = rng.choice(len_qbx_fl, len_qbx_fl, replace=False)
-
-        qbx_merged_cluster_map = qbx_merge.cluster(
-            qbx_clusters.get_clusters(final_level).centroids,
-            ordering=qbx_ordering_final).get_clusters(1)
-
-        qbx_cluster_map = qbx_clusters.get_clusters(final_level)
-
-        merged_cluster_map = ClusterMapCentroid()
-        for cluster in qbx_merged_cluster_map:
-            merged_cluster = ClusterCentroid(centroid=cluster.centroid)
-            for i in cluster.indices:
-                merged_cluster.indices.extend(qbx_cluster_map[i].indices)
-            merged_cluster_map.add_cluster(merged_cluster)
-
-        return merged_cluster_map
-        """
-
-        merged_cluster_map = ClusterMapCentroid()
-
-        # TODO I need a new structure where in one cluster I can have multiple centroids
-        
-        for c, cluster in enumerate(clusters):
-            if c == 0:
-                merged_cluster_map.add_cluster(cluster)
-            
-            if c > 0:
-                while True:
-                        
-                    sz_mcp = len(merged_cluster_map)
-                    for oc in range(sz_mcp):
-                        # print(oc)
-                        centroid = merged_cluster_map[oc].centroid
-                        if metric.dist(cluster.centroid, centroid) < thresholds[0] * 1.3:
-                            # merged_cluster = ClusterCentroid(centroid=cluster.centroid)
-                            from pdb import set_trace
-                            # set_trace()
-                            #merged_cluster_map[oc].indices = np.concatenate(merged_cluster_map[oc].indices, cluster.indices) 
-                            pass
-                            merged_cluster_map.add_cluster(cluster)
-                        else:
-                            merged_cluster_map.add_cluster(cluster)
-                    break
-
-
+        cluster_map = ClusterMapCentroid()
+      
+        current_cluster_id = 0        
+        visited = []
+        not_visited = list(range(len(clusters)))
+        #new_clusters = {}
+        #new_clusters[current_cluster_id] = 0
         # from pdb import set_trace
         # set_trace()
-
+        
         """
-        merged_cluster = ClusterCentroid(centroid=cluster.centroid)
-        for i in cluster.indices:
-            merged_cluster.indices.extend(clusters[i].indices)
-        merged_cluster_map.add_cluster(merged_cluster)
-        """
-        merged_cluster_map.refdata = my_data
-        clusters = merged_cluster_map
+        # Simple example to create the new clusters of clusters end merge them (extend)
+        expanding_cluster1 = ClusterCentroid(centroid=clusters[0].centroid)        
+        expanding_cluster1.indices.extend(clusters[0].indices)
+        expanding_cluster1.indices.extend(clusters[1].indices)
 
+        expanding_cluster2 = ClusterCentroid(centroid=clusters[3].centroid)
+        expanding_cluster2.indices.extend(clusters[3].indices)
+        expanding_cluster2.indices.extend(clusters[4].indices)
+
+        cluster_map.add_cluster(expanding_cluster1, expanding_cluster2)
+
+        from pdb import set_trace
+        set_trace()        
+        """
+        
+        def recursive_chaining(current_cluster_id, clusters, visited, not_visited, expanding_cluster=None, cluster_map=None):
+   
+            print('Recursive Chaining')
+            print(cluster_map)
+
+            if len(not_visited) == 0:
+                # print('All visited')
+                return
+
+            if expanding_cluster is None:
+                expanding_cluster = ClusterCentroid(centroid=clusters[0].centroid)             
+                expanding_cluster.indices.extend(clusters[current_cluster_id].indices)
+                # cluster_map.add_cluster(expanding_cluster)
+            else:
+                expanding_cluster.indices.extend(clusters[current_cluster_id].indices)
+
+            visited.append(current_cluster_id)
+            not_visited.remove(current_cluster_id)           
+            current_cluster = clusters[current_cluster_id]
+            dists = []
+
+            for c in not_visited:
+                
+                cluster = clusters[c]
+                d = metric.dist(current_cluster.centroid,
+                                cluster.centroid)
+
+                if d <= thresholds[0]:
+                    # print('Close')
+                    dists.append(c)
+                else:
+                    # print('Not close')
+                    pass
+            
+            if len(dists) == 0:
+
+                cluster_map.add_cluster(expanding_cluster)
+                
+                if len(not_visited) > 0:
+                    next_cluster_id = not_visited[0]
+                    recursive_chaining(next_cluster_id, clusters, visited,
+                                       not_visited, None, cluster_map)
+                else:
+                    return
+
+            else:
+                try:
+                    next_index = np.argmin(dists)
+                    next_cluster_id = not_visited[next_index]
+                except ValueError as e:
+                    print(e)
+                    from pdb import set_trace
+                    set_trace()
+                
+                recursive_chaining(next_cluster_id, clusters, visited, not_visited, expanding_cluster, cluster_map)
+            
+        recursive_chaining(current_cluster_id, clusters, visited, not_visited, None, cluster_map)
+        
+        cluster_map.refdata = my_data
+        clusters = cluster_map
+
+    print('Final cluster_map')
+    print(cluster_map)
+    
     # from pdb import set_trace
     # set_trace()
 
@@ -275,25 +296,8 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
     else:
         window.snapshot(scene, fstealth)
 
-    switch_data_rep = False
 
-    if switch_data_rep:
 
-        dataexp = my_data.copy()
-        dataexp.shape = (my_data.shape[0], 1, my_data.shape[1])
-
-        ''' alternative way
-        tmp = my_data[:, None, :]
-        tmp.flags
-        tmp = np.ascontiguousarray(tmp)
-        '''
-
-        indices = np.random.randint(0, dataexp.shape[0], size=dataexp.shape[0])
-
-        tree = qbx.cluster(dataexp,
-                           ordering=indices)
-        clusters = tree.get_clusters(1)
-        print(len(clusters))
 
 def ncc(v1, v2, z=False, absolute=True, ord=2):
 
@@ -311,18 +315,16 @@ def ncc(v1, v2, z=False, absolute=True, ord=2):
         return np.abs(np.dot(vec1, vec2) / (nvec1 * nvec2))
     return np.dot(vec1, vec2) / (nvec1 * nvec2)
 
-
-
 def timeseries():
 
     import pandas as pd 
     import matplotlib.pyplot as plt 
 
-    dname = '/home/elef/Data/heart_rate'
+    dname = '/home/elef/Data/heart_rate/'
     dataset = pd.read_csv(dname + "data.csv") #Read data from CSV datafile 
-    #plt.title("Heart Rate Signal") #The title of our plot 
-    #plt.plot(dataset.hart) #Draw the plot object 
-    #plt.show() #Display the plot    
+    plt.title("Heart Rate Signal") #The title of our plot 
+    plt.plot(dataset.hart) #Draw the plot object 
+    plt.show() #Display the plot    
 
 def images_2d():
     pass
@@ -592,15 +594,22 @@ def images_3d(run_id, interactive=True, sim=False,
 
 if __name__ == '__main__':
 
+    timeseries()
 
-    thr = 0.1
+    1/0
+    thr = .1
     skdata_id = 0
+    fstealth = None
+    chain_maker = True
 
-    for i in range(10):
-        fname = 'vec3d_run' + str(i) + '_id_' + str(skdata_id) + '_' + str(thr) + '.png'
+    for i in range(1):
+        if fstealth is not None:
+            fname = 'vec3d_run' + str(i) + '_id_' + str(skdata_id) + '_' + str(thr) + '.png'
+        else:
+            fname = None
         print(fname)
         vectors_3d(run=i, mode='skdata', skdata_id=skdata_id, thresholds=[thr], sph_radius=0.05, init_viz=False,
-                   fstealth=fname, shuffling=True, chain_maker=True)
+                   fstealth=fname, shuffling=True, chain_maker=chain_maker)
 
     # segment 3d images
     """

@@ -59,10 +59,16 @@ def get_pixel_coord_from_images(image, background=0, binarize=False,
 
 
 if __name__ == "__main__":
-    img = imageio.imread(r"C:\Users\skoudoro\Devel\scratches\clustering.png")
+
+    fname = r"C:\Users\skoudoro\Devel\scratches\clustering.png"
+    dname = '/home/elef/Devel/robotikos/docs/examples/'
+    fname = dname + 'pic_coords1.png'
+    img = imageio.imread(fname)
+
+        
     img = color.rgb2gray(img).astype(np.uint8)
     imshow(img)
-    pixels = get_pixel_coord_from_images(img, background=1, use_centroid=True)
+    pixels = get_pixel_coord_from_images(img, background=1, use_centroid=False, show_steps=True)
     # pixels = get_pixel_coord_from_images(img, background=1, binarize=True)
     # pixels = get_pixel_coord_from_images(img)
 
