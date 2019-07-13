@@ -59,7 +59,8 @@ def get_pixel_coord_from_images(image, background=0, binarize=False,
 
 
 def generate_circles(n_samples=10, inner_radius=60, outer_radius=15,
-                     density=150, size=(200, 200), labellize=False):
+                     density=150, size=(200, 200), labellize=False,
+                     return_coord=True):
     """Generate small circle on a bigger one.
 
     Parameters
@@ -90,6 +91,7 @@ def generate_circles(n_samples=10, inner_radius=60, outer_radius=15,
     """
     arr = np.zeros(size)
     label_value = 1
+    coord_list = []
     for theta in np.linspace(0, 2*np.pi, n_samples, endpoint=False):
         x = int(size[1]//2 + inner_radius * np.cos(theta))
         y = int(size[0]//2 + inner_radius * np.sin(theta))
@@ -99,10 +101,14 @@ def generate_circles(n_samples=10, inner_radius=60, outer_radius=15,
         for _ in range(density):
             r = outer_radius * np.sqrt(np.random.random())
             theta = np.random.random() * 2 * np.pi
-            x1 = int(x + r * np.cos(theta))
-            y1 = int(y + r * np.sin(theta))
-            arr[y1, x1] = label_value
+            x1 = x + r * np.cos(theta)
+            y1 = y + r * np.sin(theta)
+            if return_coord:
+                coord_list.append([y1, x1])
+            arr[int(y1), int(x1)] = label_value
 
+    if return_coord:
+        return arr, coord_list
     return arr
 
 
@@ -110,19 +116,19 @@ if __name__ == "__main__":
     TEST_GET_PIXEL_COORD = False
     TEST_GENERATE_CIRCLES = True
 
-    fname = r"C:\Users\skoudoro\Devel\scratches\clustering.png"
-    dname = '/home/elef/Devel/robotikos/docs/examples/'
-    fname = dname + 'pic_coords1.png'
-    img = imageio.imread(fname)
-
     # ------ Demo of get_pixel_coord_from_images -----------#
     if TEST_GET_PIXEL_COORD:
+        fname = r"C:\Users\skoudoro\Devel\scratches\clustering.png"
+        dname = '/home/elef/Devel/robotikos/docs/examples/'
+        fname = dname + 'pic_coords1.png'
+        img = imageio.imread(fname)
+
         img = color.rgb2gray(img).astype(np.uint8)
         imshow(img)
         pixels = get_pixel_coord_from_images(img, background=1,
                                              use_centroid=False,
                                              show_steps=True)
-        # pixels = get_pixel_coord_from_images(img, background=1,
+        # pixels = get_pixel_coord_from_images(img, backgr∏ound=1,
         #                                  binarize=True)
         # pixels = get_pixel_coord_from_images(img)
 
@@ -131,6 +137,7 @@ if __name__ == "__main__":
 
     # ------ Demo of create_cirles -----------#
     if TEST_GENERATE_CIRCLES:
-        arr = generate_circles()
+        arr, coord = generate_circles()
+        print(len(coord))
         plt.imshow(arr)
         plt.show()
