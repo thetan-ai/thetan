@@ -139,7 +139,19 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
         all_data = sklearn_data()
         my_data = all_data[skdata_id]
         # TODO: Attension only using a small dataset
-        my_data = my_data
+        my_data = my_data[:200]
+
+    if mode == 'packing':
+
+        from pix_coord import generate_circles
+        my_data = generate_circles(inner_radius=40) # Try 60.
+        my_data = np.asarray(my_data[1])
+        tmp = np.zeros((len(my_data), 3))
+        tmp[:, :2] = my_data
+        my_data = np.ascontiguousarray(tmp)
+
+        #from pdb import set_trace
+        #set_trace()
 
     print(my_data.shape)
 
@@ -153,7 +165,6 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         def __len__(self):
             return self.data.shape[0]
-
     
     dataseq = DataSequence(my_data)
 
@@ -175,7 +186,10 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
     clusters = tree.get_clusters(1)
     print(len(clusters))
 
+    print('Clusters before chaining')
+    print(clusters)
 
+    """ legacy needs more thinking
     if chain_maker:
         # qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
 
@@ -184,32 +198,24 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
       
         current_cluster_id = 0        
         visited = []
+        visited_labels = []
         not_visited = list(range(len(clusters)))
-        #new_clusters = {}
-        #new_clusters[current_cluster_id] = 0
+        
+        new_clusters = {}
+        new_clusters[current_cluster_id] = 0
         # from pdb import set_trace
         # set_trace()
-        
-        """
-        # Simple example to create the new clusters of clusters end merge them (extend)
-        expanding_cluster1 = ClusterCentroid(centroid=clusters[0].centroid)        
-        expanding_cluster1.indices.extend(clusters[0].indices)
-        expanding_cluster1.indices.extend(clusters[1].indices)
-
-        expanding_cluster2 = ClusterCentroid(centroid=clusters[3].centroid)
-        expanding_cluster2.indices.extend(clusters[3].indices)
-        expanding_cluster2.indices.extend(clusters[4].indices)
-
-        cluster_map.add_cluster(expanding_cluster1, expanding_cluster2)
-
-        from pdb import set_trace
-        set_trace()        
-        """
-        
+        global CNT
+        CNT = 0
+       
         def recursive_chaining(current_cluster_id, clusters, visited, not_visited, expanding_cluster=None, cluster_map=None):
    
-            print('Recursive Chaining')
-            print(cluster_map)
+            # print('Recursive Chaining')
+            # print(cluster_map)
+            global CNT
+            print(CNT)
+            print(expanding_cluster)
+            CNT += 1
 
             if len(not_visited) == 0:
                 # print('All visited')
@@ -241,8 +247,7 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
                     pass
             
             if len(dists) == 0:
-
-                cluster_map.add_cluster(expanding_cluster)
+                # cluster_map.add_cluster(expanding_cluster)
                 
                 if len(not_visited) > 0:
                     next_cluster_id = not_visited[0]
@@ -250,31 +255,36 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
                                        not_visited, None, cluster_map)
                 else:
                     return
-
+                
             else:
                 try:
                     next_index = np.argmin(dists)
                     next_cluster_id = not_visited[next_index]
+                    recursive_chaining(next_cluster_id, clusters, visited,
+                                       not_visited, expanding_cluster, cluster_map)
+                
                 except ValueError as e:
                     print(e)
                     from pdb import set_trace
                     set_trace()
                 
-                recursive_chaining(next_cluster_id, clusters, visited, not_visited, expanding_cluster, cluster_map)
+                
             
         recursive_chaining(current_cluster_id, clusters, visited, not_visited, None, cluster_map)
         
         cluster_map.refdata = my_data
         clusters = cluster_map
 
-    print('Final cluster_map')
-    print(cluster_map)
+    """
+    #print('Final cluster_map')
+    #print(cluster_map)
     
     # from pdb import set_trace
     # set_trace()
 
     from fury import actor, window, ui
     
+    init_viz = True
     if init_viz:
         scene = window.Renderer()
         spheres = actor.sphere(centers=my_data, colors=np.ones((len(my_data), 3)), radii=sph_radius)
@@ -295,9 +305,6 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
         window.show(scene)
     else:
         window.snapshot(scene, fstealth)
-
-
-
 
 def ncc(v1, v2, z=False, absolute=True, ord=2):
 
@@ -594,13 +601,15 @@ def images_3d(run_id, interactive=True, sim=False,
 
 if __name__ == '__main__':
 
-    timeseries()
-
-    1/0
-    thr = .1
+    thr = 25
     skdata_id = 0
     fstealth = None
-    chain_maker = True
+    chain_maker = False
+    vectors_3d(run=0, mode='packing', skdata_id=0, thresholds=[thr], sph_radius=1, init_viz=False,
+               fstealth=fstealth, shuffling=True, chain_maker=chain_maker)
+
+    1/0
+
 
     for i in range(1):
         if fstealth is not None:
