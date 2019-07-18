@@ -144,7 +144,7 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
     if mode == 'packing':
 
         from pix_coord import generate_circles
-        my_data = generate_circles(inner_radius=40) # Try 60.
+        my_data = generate_circles(inner_radius=40, outer_radius=15) # Try 60.
         my_data = np.asarray(my_data[1])
         tmp = np.zeros((len(my_data), 3))
         tmp[:, :2] = my_data
