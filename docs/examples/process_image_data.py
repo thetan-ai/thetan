@@ -604,6 +604,13 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
 
     dname = '/home/elef/Data/hubmap'
     fname = pjoin(dname, 'original.jpg')
+    # fname = pjoin(dname, '188130_web.jpg')
+    # fname = pjoin(dname, 'apptop1-10151.jpg')
+    # fname = pjoin(dname, 'autumn-landscape-photography-3-900x599.jpg')
+    # fname = pjoin(dname, 'forrest.jpg')
+    # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
+    # fname = pjoin(dname, 'tree_desert.jpg')
+
     shuffling = True
 
     data_orig = imread(fname)
@@ -736,11 +743,11 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
     # unpad
     # final = final[patch_radius:-patch_radius, patch_radius:-patch_radius]
 
-    final_actor = actor.texture(final)
+    final_actor = actor.texture((10 * final).astype('uint8'))
     final_actor.SetPosition(data.shape[0] + 50, 0, 0)
 
     final_actor2 = actor.texture((255 * (0.2 * final + 0.8 * data)).astype('uint8'))
-    final_actor2.SetPosition(2 * data.shape[0] + 2*50, 0, 0)
+    final_actor2.SetPosition(2 * data.shape[0] + 2 * 50, 0, 0)
 
     scene.add(final_actor)
     scene.add(final_actor2)
@@ -751,7 +758,9 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
 
 if __name__ == '__main__':
 
-    images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
+    # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
+    # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
+    images_2d(True, patch_radius=5, bin_size=5, thresholds=[30.])
 
     1/0
 
