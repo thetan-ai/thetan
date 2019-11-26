@@ -597,7 +597,7 @@ def images_3d(run_id, interactive=True, sim=False,
 
 
 
-def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
+def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
 
     from imageio import imread
     from os.path import join as pjoin
@@ -613,6 +613,12 @@ def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
 
     data = np.interp(data_orig, (0, p98), (0, 1.))
 
+    I, J, _ = data.shape
+    mI = I // 2
+    mJ = J // 2
+    w = 500
+    data = data[mI - w: mI + w, mJ - w: mJ + w]
+
     print('>> Interpolated')
 
     from fury import actor, window
@@ -621,9 +627,8 @@ def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
     scene.add(actor.texture((255 * data).astype('uint8')))
 
     if interactive:
-        window.show(scene)
 
-    I, J, K = data.shape
+        window.show(scene)
 
     class DataSequence2D:
         def __init__(self, data, indices, histo=False):
@@ -637,16 +642,24 @@ def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
             x, y = self.indices[i]
             patch = self.data[x - patch_radius: x + patch_radius + 1,
                               y - patch_radius: y + patch_radius + 1]
-            1/0
-            p = patch.ravel()
+            # 1/0
+            # p = patch.ravel()
+            p1 = patch[:, :, 0]
+            p2 = patch[:, :, 1]
+            p3 = patch[:, :, 2]
 
             if self.histo:
-                b = np.histogram(p, bins=bin_size, range=(0, 1))
-                p = b[0].astype('f8') / len(p)
+                b1 = np.histogram(p1.ravel(), bins=bin_size, range=(0, 1))
+                p1 = b1[0].astype('f8') / len(p1)
+                b2 = np.histogram(p2.ravel(), bins=bin_size, range=(0, 1))
+                p2 = b2[0].astype('f8') / len(p2)
+                b3 = np.histogram(p3.ravel(), bins=bin_size, range=(0, 1))
+                p3 = b3[0].astype('f8') / len(p3)
 
-            expand = np.zeros((len(p), 3))
-            expand[:, 0] = p
-            expand[:, 1] = p
+            expand = np.zeros((len(p1), 3))
+            expand[:, 0] = p1
+            expand[:, 1] = p2
+            expand[:, 2] = p3
             return np.ascontiguousarray(expand)
 
         def __len__(self):
@@ -682,7 +695,7 @@ def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
 
     from dipy.segment.metric import EuclideanMetric
 
-    metric = EuclideanMetric(feature=feature) # This is actually the sum Eucl.
+    metric = EuclideanMetric(feature=feature)  # This is actually the sum Eucl.
 
     ds = DataSequence2D(data, internal_indices, histo=True)
 
@@ -713,16 +726,24 @@ def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
 
     final = np.zeros(data.shape) - 1
 
+    final_indices = np.zeros(data.shape[:2], dtype=np.int64)
+
     for cluster_id, cluster in enumerate(clusters):
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
+            final_indices[tuple(internal_indices[idx_])] = cluster_id
 
     # unpad
-    final = final[patch_radius:-patch_radius, patch_radius:-patch_radius]
+    # final = final[patch_radius:-patch_radius, patch_radius:-patch_radius]
 
     final_actor = actor.texture(final)
-    final_actor.SetPosition(0, data.shape[0] + 500, 0)
+    final_actor.SetPosition(data.shape[0] + 50, 0, 0)
+
+    final_actor2 = actor.texture((255 * (0.2 * final + 0.8 * data)).astype('uint8'))
+    final_actor2.SetPosition(2 * data.shape[0] + 2*50, 0, 0)
+
     scene.add(final_actor)
+    scene.add(final_actor2)
     window.show(scene)
 
     1/0
@@ -730,7 +751,7 @@ def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
 
 if __name__ == '__main__':
 
-    images_2d()
+    images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
 
     1/0
 
@@ -738,7 +759,9 @@ if __name__ == '__main__':
     skdata_id = 0
     fstealth = None
     chain_maker = False
-    vectors_3d(run=0, mode='packing', skdata_id=0, thresholds=[thr], sph_radius=1, init_viz=False,
+    vectors_3d(run=0, mode='packing', skdata_id=0, thresholds=[thr],
+               sph_radius=1,
+               init_viz=False,
                fstealth=fstealth, shuffling=True, chain_maker=chain_maker)
 
     1/0
