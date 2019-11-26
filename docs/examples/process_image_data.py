@@ -13,7 +13,6 @@ from fury import actor, window, ui
 from itertools import cycle, islice
 
 
-
 def sklearn_data():
     from sklearn import cluster, datasets, mixture
     from sklearn.neighbors import kneighbors_graph
@@ -165,16 +164,16 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         def __len__(self):
             return self.data.shape[0]
-    
+
     dataseq = DataSequence(my_data)
 
     vector_feature = IdentityFeature()
     metric = EuclideanMetric(feature=vector_feature)
-    
+
     qbx = QuickBundlesX(thresholds=thresholds, metric=metric)
 
     internal_indices = np.arange(my_data.shape[0])
-    
+
     if shuffling:
         np.random.seed(run)
         np.random.shuffle(internal_indices)
@@ -195,21 +194,21 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         print(' Chaining is starting ...')
         cluster_map = ClusterMapCentroid()
-      
-        current_cluster_id = 0        
+
+        current_cluster_id = 0
         visited = []
         visited_labels = []
         not_visited = list(range(len(clusters)))
-        
+
         new_clusters = {}
         new_clusters[current_cluster_id] = 0
         # from pdb import set_trace
         # set_trace()
         global CNT
         CNT = 0
-       
+
         def recursive_chaining(current_cluster_id, clusters, visited, not_visited, expanding_cluster=None, cluster_map=None):
-   
+
             # print('Recursive Chaining')
             # print(cluster_map)
             global CNT
@@ -222,19 +221,19 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
                 return
 
             if expanding_cluster is None:
-                expanding_cluster = ClusterCentroid(centroid=clusters[0].centroid)             
+                expanding_cluster = ClusterCentroid(centroid=clusters[0].centroid)
                 expanding_cluster.indices.extend(clusters[current_cluster_id].indices)
                 # cluster_map.add_cluster(expanding_cluster)
             else:
                 expanding_cluster.indices.extend(clusters[current_cluster_id].indices)
 
             visited.append(current_cluster_id)
-            not_visited.remove(current_cluster_id)           
+            not_visited.remove(current_cluster_id)
             current_cluster = clusters[current_cluster_id]
             dists = []
 
             for c in not_visited:
-                
+
                 cluster = clusters[c]
                 d = metric.dist(current_cluster.centroid,
                                 cluster.centroid)
@@ -245,45 +244,45 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
                 else:
                     # print('Not close')
                     pass
-            
+
             if len(dists) == 0:
                 # cluster_map.add_cluster(expanding_cluster)
-                
+
                 if len(not_visited) > 0:
                     next_cluster_id = not_visited[0]
                     recursive_chaining(next_cluster_id, clusters, visited,
                                        not_visited, None, cluster_map)
                 else:
                     return
-                
+
             else:
                 try:
                     next_index = np.argmin(dists)
                     next_cluster_id = not_visited[next_index]
                     recursive_chaining(next_cluster_id, clusters, visited,
                                        not_visited, expanding_cluster, cluster_map)
-                
+
                 except ValueError as e:
                     print(e)
                     from pdb import set_trace
                     set_trace()
-                
-                
-            
+
+
+
         recursive_chaining(current_cluster_id, clusters, visited, not_visited, None, cluster_map)
-        
+
         cluster_map.refdata = my_data
         clusters = cluster_map
 
     """
     #print('Final cluster_map')
     #print(cluster_map)
-    
+
     # from pdb import set_trace
     # set_trace()
 
     from fury import actor, window, ui
-    
+
     init_viz = True
     if init_viz:
         scene = window.Renderer()
@@ -324,17 +323,16 @@ def ncc(v1, v2, z=False, absolute=True, ord=2):
 
 def timeseries():
 
-    import pandas as pd 
-    import matplotlib.pyplot as plt 
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
     dname = '/home/elef/Data/heart_rate/'
-    dataset = pd.read_csv(dname + "data.csv") #Read data from CSV datafile 
-    plt.title("Heart Rate Signal") #The title of our plot 
-    plt.plot(dataset.hart) #Draw the plot object 
-    plt.show() #Display the plot    
+    dataset = pd.read_csv(dname + "data.csv") #Read data from CSV datafile
+    plt.title("Heart Rate Signal") #The title of our plot
+    plt.plot(dataset.hart) #Draw the plot object
+    plt.show() #Display the plot
 
-def images_2d():
-    pass
+
 
 def images_3d(run_id, interactive=True, sim=False,
               magnitude=False,
@@ -347,12 +345,12 @@ def images_3d(run_id, interactive=True, sim=False,
               thresholds=[2.],
               padding=True):
 
-    # ----------------------------------------------------------------------------------  
+    # ----------------------------------------------------------------------------------
     # TODO show overlaps and play with threshold wich for histogram is currently at 2.0
     # TODO show results with T2.
     # TODO try with rounded patch not rectangular
     # ----------------------------------------------------------------------------------
-    
+
     # dname = 'C:/Users/elef/Data/ds031/sub-01/ses-106/anat/'
     dname = '/home/elef/Data/ds031/sub-01/ses-106/anat/'
     fname = dname + 'sub-01_ses-106_T1w.nii.gz'
@@ -378,7 +376,7 @@ def images_3d(run_id, interactive=True, sim=False,
     print(fname)
 
     data_orig, affine = load_nifti(fname)
-    
+
     if sim:
         data_orig = np.zeros(data_orig.shape, dtype='f8')
         data_orig[50-10 : 50 + 10, 50 - 10 : 50 + 10, 50 - 10 : 50 + 10] = 255
@@ -403,10 +401,10 @@ def images_3d(run_id, interactive=True, sim=False,
 
     p98 = np.percentile(data_orig, 98)
     data_orig = data_orig.astype('f8')
-        
+
     data = np.interp(data_orig, (0, p98), (0, 1.))
 
-    
+
     if sobel_support:
         from scipy import ndimage
         sx = ndimage.sobel(data, axis=0, mode='constant')
@@ -414,7 +412,7 @@ def images_3d(run_id, interactive=True, sim=False,
         sz = ndimage.sobel(data, axis=2, mode='constant')
         data = np.sqrt(sx**2 + sy**2 + sz**2)
         # data = np.interp(data, (0, p98), (0, 1.))
-    
+
     save_nifti('interpolated.nii.gz', data, affine)
 
 
@@ -431,7 +429,7 @@ def images_3d(run_id, interactive=True, sim=False,
 
     I, J, K = data.shape
 
-    
+
 
     class DataSequence:
         def __init__(self, data, indices, histo=False):
@@ -449,10 +447,10 @@ def images_3d(run_id, interactive=True, sim=False,
             patch = self.data[x - patch_radius: x + patch_radius + 1,
                               y - patch_radius: y + patch_radius + 1,
                               z - patch_radius: z + patch_radius + 1]
-            
+
             # p = patch.ravel()[None, :].astype('f4')
             # p = np.ascontiguousarray(p)
-            
+
             p = patch.ravel()
             if self.histo:
                 b = np.histogram(p, bins=10, range=(0, 1))
@@ -467,7 +465,7 @@ def images_3d(run_id, interactive=True, sim=False,
         def __len__(self):
             return len(self.indices)
 
-    
+
     if small_data:
         data = data[:, :, 50 - patch_radius: 50 + patch_radius + 1]
 
@@ -483,7 +481,7 @@ def images_3d(run_id, interactive=True, sim=False,
                     internal_indices.append(idx)
 
     internal_indices = np.array(internal_indices)
-    
+
     if shuffling:
         np.random.shuffle(internal_indices)
 
@@ -510,7 +508,7 @@ def images_3d(run_id, interactive=True, sim=False,
     # ds_list = [ds[cnt] for cnt in range(len(indices))]
 
     # Below 0.3 group together
-    
+
 
     from dipy.segment.clustering import QuickBundles
 
@@ -540,7 +538,7 @@ def images_3d(run_id, interactive=True, sim=False,
     for cluster_id, cluster in enumerate(clusters):
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
-    
+
     # unpad
     final = final[patch_radius:-patch_radius, patch_radius:-patch_radius, patch_radius:-patch_radius]
 
@@ -568,7 +566,7 @@ def images_3d(run_id, interactive=True, sim=False,
         csizes = []
         for c in clusters:
             csizes.append(len(c))
-        
+
         asort = np.argsort(csizes)
         punch_value = asort[-1]
         print('punch value ', punch_value)
@@ -599,7 +597,142 @@ def images_3d(run_id, interactive=True, sim=False,
 
 
 
+def images_2d(interactive=True, patch_radius=1, bin_size=10, thresholds=[2.]):
+
+    from imageio import imread
+    from os.path import join as pjoin
+
+    dname = '/home/elef/Data/hubmap'
+    fname = pjoin(dname, 'original.jpg')
+    shuffling = True
+
+    data_orig = imread(fname)
+
+    p98 = np.percentile(data_orig, 98)
+    data_orig = data_orig.astype('f8')
+
+    data = np.interp(data_orig, (0, p98), (0, 1.))
+
+    print('>> Interpolated')
+
+    from fury import actor, window
+
+    scene = window.Scene()
+    scene.add(actor.texture((255 * data).astype('uint8')))
+
+    if interactive:
+        window.show(scene)
+
+    I, J, K = data.shape
+
+    class DataSequence2D:
+        def __init__(self, data, indices, histo=False):
+
+            self.indices = indices
+            self.histo = histo
+            self.data = data
+
+        def __getitem__(self, i):
+
+            x, y = self.indices[i]
+            patch = self.data[x - patch_radius: x + patch_radius + 1,
+                              y - patch_radius: y + patch_radius + 1]
+            1/0
+            p = patch.ravel()
+
+            if self.histo:
+                b = np.histogram(p, bins=bin_size, range=(0, 1))
+                p = b[0].astype('f8') / len(p)
+
+            expand = np.zeros((len(p), 3))
+            expand[:, 0] = p
+            expand[:, 1] = p
+            return np.ascontiguousarray(expand)
+
+        def __len__(self):
+            return len(self.indices)
+
+    internal_indices = []
+    X, Y, _ = data.shape
+
+    for idx in np.ndindex(*data.shape[:2]):
+
+        x, y = idx
+        if x >= patch_radius and x < X - patch_radius:
+            if y >= patch_radius and y < Y - patch_radius:
+                internal_indices.append(idx)
+
+    internal_indices = np.array(internal_indices)
+
+    print('>> Internal indices')
+
+    if shuffling:
+        np.random.shuffle(internal_indices)
+
+    internal_indices = np.ascontiguousarray(internal_indices)
+
+    print('>> Shuffled indices')
+
+    from dipy.segment.featurespeed import IdentityFeature
+    feature = IdentityFeature()
+
+    feature.is_order_invariant = True
+
+    print(feature.is_order_invariant)
+
+    from dipy.segment.metric import EuclideanMetric
+
+    metric = EuclideanMetric(feature=feature) # This is actually the sum Eucl.
+
+    ds = DataSequence2D(data, internal_indices, histo=True)
+
+    print('>> Size of DataSequence2D', len(ds))
+
+    from dipy.segment.clustering import QuickBundles
+
+    # qbx = QuickBundlesX(thresholds, metric=metric)
+    qb = QuickBundles(threshold=thresholds[0], metric=metric)
+
+    # from pdb import set_trace
+    # set_trace()
+
+    t1 = time()
+    print('Started clustering')
+    # tree = qbx.cluster(ds)
+    clusters = qb.cluster(ds)
+    print('Finished clustering')
+    t2 = time()
+    print('Duration %.3f' % (t2 - t1,))
+    # clusters = tree.get_clusters(1)
+    print('Number of clusters %d' % (len(clusters),))
+
+    no_clusters = len(clusters)
+    # cluster_colors = np.random.rand(no_clusters, 3)
+
+    cluster_colors = np.arange(1, no_clusters + 1)
+
+    final = np.zeros(data.shape) - 1
+
+    for cluster_id, cluster in enumerate(clusters):
+        for idx_ in cluster.indices:
+            final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
+
+    # unpad
+    final = final[patch_radius:-patch_radius, patch_radius:-patch_radius]
+
+    final_actor = actor.texture(final)
+    final_actor.SetPosition(0, data.shape[0] + 500, 0)
+    scene.add(final_actor)
+    window.show(scene)
+
+    1/0
+
+
 if __name__ == '__main__':
+
+    images_2d()
+
+    1/0
 
     thr = 25
     skdata_id = 0
