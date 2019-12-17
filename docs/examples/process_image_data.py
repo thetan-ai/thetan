@@ -624,7 +624,21 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
         w = subimage_width
         data = data[mI - w: mI + w, mJ - w: mJ + w]
 
-    print('>> Interpolated')
+    print('data.shape', data.shape)
+
+    # Add padding
+    data_r = np.pad(data[..., 0], pad_width=patch_radius, mode='reflect')
+    data_g = np.pad(data[..., 1], pad_width=patch_radius, mode='reflect')
+    data_b = np.pad(data[..., 2], pad_width=patch_radius, mode='reflect')
+
+    data = np.zeros(data_r.shape + (3,))
+    data[..., 0] = data_r
+    data[..., 1] = data_g
+    data[..., 2] = data_b
+
+    print('data.shape after padding', data.shape)
+
+    print('>> Interpolated and padded')
 
     class DataSequence2D:
         def __init__(self, data, indices, histo=False):
@@ -728,6 +742,10 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
 
+    print('Removed extra padding')
+    final = final[patch_radius: -patch_radius, patch_radius: -patch_radius]
+    data = data[patch_radius: -patch_radius, patch_radius: -patch_radius]
+
     return final, data
 
 
@@ -753,8 +771,6 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
                                    bin_size=bin_size, thresholds=thresholds,
                                    subimage_width=subimage_width)
 
-    # unpad
-    # final = final[patch_radius:-patch_radius, patch_radius:-patch_radius]
 
     interactive = True
     print(final.shape, data.shape, data_orig.shape)
@@ -783,8 +799,8 @@ if __name__ == '__main__':
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
-    images_2d(True, patch_radius=5, bin_size=5, thresholds=[25.],
-              subimage_width=200)
+    images_2d(True, patch_radius=5, bin_size=5, thresholds=[35.],
+              subimage_width=400)
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
 
     """
