@@ -603,37 +603,25 @@ def images_3d(run_id, interactive=True, sim=False,
         save_nifti('opening.nii.gz', opening.astype('uint16'), affine)
 
 
-@profile
-def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
 
-    from imageio import imread
-    from os.path import join as pjoin
-
-    dname = '/home/elef/Data/hubmap'
-    fname = pjoin(dname, 'original.jpg')
-    # fname = pjoin(dname, '188130_web.jpg')
-    # fname = pjoin(dname, 'apptop1-10151.jpg')
-    # fname = pjoin(dname, 'autumn-landscape-photography-3-900x599.jpg')
-    # fname = pjoin(dname, 'forrest.jpg')
-    # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
-    # fname = pjoin(dname, 'tree_desert.jpg')
-
+def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
+                     subimage_width=None, lab_color=False):
     shuffling = True
-    midpart = True
-
-    data_orig = imread(fname)
 
     p98 = np.percentile(data_orig, 98)
     data_orig = data_orig.astype('f8')
+
+    # from skimage.color import rgb2lab
+    # data_orig = rgb2lab(data_orig)
 
     data = np.interp(data_orig, (0, p98), (0, 1.))
 
     I, J, _ = data.shape
 
-    if midpart:
+    if subimage_width is not None:
         mI = I // 2
         mJ = J // 2
-        w = 2000
+        w = subimage_width
         data = data[mI - w: mI + w, mJ - w: mJ + w]
 
     print('>> Interpolated')
@@ -645,7 +633,6 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
             self.histo = histo
             self.data = data
 
-        @profile
         def __getitem__(self, i):
 
             x, y = self.indices[i]
@@ -659,18 +646,17 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
             lp = len(p1)
 
             if self.histo:
-                b1 = histogram1d(p1.ravel(), bins=bin_size, range=(0, 1)) / lp
+                b1 = histogram1d(p1.ravel(), bins=bin_size, range=(0, 1))
+                p1 = b1 / lp
+                b2 = histogram1d(p2.ravel(), bins=bin_size, range=(0, 1))
+                p2 = b2 / lp
+                b3 = histogram1d(p3.ravel(), bins=bin_size, range=(0, 1))
+                p3 = b3 / lp
 
-                b2 = histogram1d(p2.ravel(), bins=bin_size, range=(0, 1)) / lp
-
-                b3 = histogram1d(p3.ravel(), bins=bin_size, range=(0, 1)) / lp
-            else:
-                b1, b2, b3 = p1, p2, p3
-
-            expand = np.zeros((len(b1), 3))
-            expand[:, 0] = b1
-            expand[:, 1] = b2
-            expand[:, 2] = b3
+            expand = np.empty((len(p1), 3))
+            expand[:, 0] = p1
+            expand[:, 1] = p2
+            expand[:, 2] = p3
             return np.ascontiguousarray(expand)
 
         def __len__(self):
@@ -733,7 +719,6 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
 
     no_clusters = len(clusters)
     # cluster_colors = np.random.rand(no_clusters, 3)
-
     # cluster_colors = np.arange(1, no_clusters + 1)
     cluster_colors = distinguishable_colormap(nb_colors=no_clusters)
 
@@ -743,10 +728,36 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.]):
         for idx_ in cluster.indices:
             final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
 
+    return final, data
+
+
+#@profile
+def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
+              subimage_width=None, lab_color=False):
+
+    from imageio import imread
+    from os.path import join as pjoin
+
+    dname = '/home/elef/Data/hubmap'
+    fname = pjoin(dname, 'original.jpg')
+    fname = pjoin(dname, '188130_web.jpg')
+    # fname = pjoin(dname, 'apptop1-10151.jpg')
+    # fname = pjoin(dname, 'autumn-landscape-photography-3-900x599.jpg')
+    # fname = pjoin(dname, 'forrest.jpg')
+    # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
+    # fname = pjoin(dname, 'tree_desert.jpg')
+
+    data_orig = imread(fname)
+
+    final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
+                                   bin_size=bin_size, thresholds=thresholds,
+                                   subimage_width=subimage_width)
+
     # unpad
     # final = final[patch_radius:-patch_radius, patch_radius:-patch_radius]
 
     interactive = True
+    print(final.shape, data.shape, data_orig.shape)
 
     if interactive:
 
@@ -772,7 +783,8 @@ if __name__ == '__main__':
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
-    images_2d(True, patch_radius=5, bin_size=5, thresholds=[25.])
+    images_2d(True, patch_radius=5, bin_size=5, thresholds=[25.],
+              subimage_width=200)
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
 
     """
