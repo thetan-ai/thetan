@@ -760,3 +760,55 @@ def qbx_and_merge(streamlines, thresholds,
         print(' Duration %0.3f sec. \n' % (time() - t1,))
 
     return merged_cluster_map
+
+
+class FastGroupingNode(Clustering):
+    r""" Clusters streamlines using Fast Grouping Node.
+
+    Parameters
+    ----------
+    thresholds : list of float
+        Thresholds to use for each clustering layer. A threshold represents the
+        maximum distance from a cluster for a streamline to be still considered
+        as part of it.
+    metric : str or `Metric` object (optional)
+        The distance metric to use when comparing two streamlines. By default,
+        the Minimum average Direct-Flip (MDF) distance [Garyfallidis12]_ is
+        used and streamlines are automatically resampled so they have 12
+        points.
+
+    """
+    def __init__(self, thresholds, metric):
+        self.thresholds = thresholds
+
+        if isinstance(metric, MinimumAverageDirectFlipMetric):
+            raise ValueError("Use AveragePointwiseEuclideanMetric instead")
+
+        if isinstance(metric, Metric):
+            self.metric = metric
+        else:
+            raise ValueError("Unknown metric: {0}".format(metric))
+
+    def cluster(self, streamlines, ordering=None):
+        """ Clusters `streamlines` into bundles.
+
+        Performs QuickbundleX using a predefined metric and thresholds.
+
+        Parameters
+        ----------
+        streamlines : list of 2D arrays
+            Each 2D array represents a sequence of 3D points (points, 3).
+        ordering : iterable of indices
+            Specifies the order in which data points will be clustered.
+
+        Returns
+        -------
+        `TreeClusterMap` object
+            Result of the clustering.
+        """
+        from robotikos.clustering_algorithms import quickbundlesx
+        tree = quickbundlesx(streamlines, self.metric,
+                             thresholds=self.thresholds,
+                             ordering=ordering)
+        tree.refdata = streamlines
+        return tree

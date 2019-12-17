@@ -93,3 +93,4 @@ cdef class QuickBundlesX(object):
     cdef void traverse_postorder(self, CentroidNode* node, void (*visit)(QuickBundlesX, CentroidNode*))
     cdef void _dealloc_node(self, CentroidNode* node)
     cdef object _build_tree_clustermap(self, CentroidNode* node)
+

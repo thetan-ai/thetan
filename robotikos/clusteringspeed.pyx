@@ -128,7 +128,9 @@ cdef CentroidNode* create_empty_node(Shape centroid_shape, float threshold) nogi
 cdef class QuickBundlesX(object):
 
     def __init__(self, features_shape, levels_thresholds, Metric metric):
-        
+        """ This is not QBX - it has to be renamed to FGN.
+        """
+
         # print('Start of QBX Init')
         self.metric = metric
         # print('features shape ', features_shape)
@@ -172,9 +174,10 @@ cdef class QuickBundlesX(object):
         # print('dims ',  self.features_shape.dims)
 
         self.current_streamline.features = create_memview_2d(self.features_shape.size, self.features_shape.dims)
-        
-        self.current_streamline.features_flip = create_memview_2d(self.features_shape.size,
-                                                                  self.features_shape.dims)
+
+        # TODO : completely remove
+        # self.current_streamline.features_flip = create_memview_2d(self.features_shape.size,
+        #                                                           self.features_shape.dims)
         # print('End of QBX Init')
 
     def __dealloc__(self):
@@ -222,10 +225,10 @@ cdef class QuickBundlesX(object):
         cdef int C = node.size
         cdef cnp.npy_intp n, d
 
-        if streamline_infos.use_flip:
-            with gil:
-                print('flip true')
-            element = streamline_infos.features_flip[0]
+        # if streamline_infos.use_flip:
+        #     with gil:
+        #         print('flip true')
+        #     element = streamline_infos.features_flip[0]
 
         # Update centroid
         cdef Data2D centroid = node.centroid[0]
@@ -245,7 +248,7 @@ cdef class QuickBundlesX(object):
 
     cdef void _insert_in(self, CentroidNode* node, StreamlineInfos* streamline_infos, int[:] path) nogil:
         cdef:
-            float dist, dist_flip
+            float dist
             cnp.npy_intp k
             NearestCluster nearest_cluster
 
@@ -256,7 +259,7 @@ cdef class QuickBundlesX(object):
 
         nearest_cluster.id = -1
         nearest_cluster.dist = BIGGEST_DOUBLE
-        nearest_cluster.flip = 0
+        # nearest_cluster.flip = 0
 
         for k in range(node.nb_children):
 
@@ -272,21 +275,22 @@ cdef class QuickBundlesX(object):
             if dist < nearest_cluster.dist:
                 nearest_cluster.dist = dist
                 nearest_cluster.id = k
-                nearest_cluster.flip = 0
+                # nearest_cluster.flip = 0
 
-            self.stats.stats_per_layer[node.level].nb_mdf_calls += 1
-            dist_flip = self.metric.c_dist(node.children[k].centroid[0], streamline_infos.features_flip[0])
+            # should be removed
+            # self.stats.stats_per_layer[node.level].nb_mdf_calls += 1
+            # dist_flip = self.metric.c_dist(node.children[k].centroid[0], streamline_infos.features_flip[0])
 
-            if dist_flip < nearest_cluster.dist:
-                nearest_cluster.dist = dist_flip
-                nearest_cluster.id = k
-                nearest_cluster.flip = 1
+            # if dist_flip < nearest_cluster.dist:
+            #     nearest_cluster.dist = dist_flip
+            #     nearest_cluster.id = k
+            #     nearest_cluster.flip = 1
 
         if nearest_cluster.dist > node.threshold:
             # No near cluster, create a new one.
             nearest_cluster.id = self._add_child(node)
 
-        streamline_infos.use_flip = nearest_cluster.flip
+        # streamline_infos.use_flip = nearest_cluster.flip
         path[node.level] = nearest_cluster.id
         self._insert_in(node.children[nearest_cluster.id], streamline_infos, path)
 
@@ -298,7 +302,7 @@ cdef class QuickBundlesX(object):
         # print('First feature extract done')
         # print('Datum', datum)
         # CAREFULL the line bellow was added recently.
-        self.metric.feature.c_extract(datum[::-1], self.current_streamline.features_flip[0])
+        # self.metric.feature.c_extract(datum[::-1], self.current_streamline.features_flip[0])
         # print('Datum_flipped', datum[::-1])
         # print('Second feature extract done')
         self.current_streamline.idx = datum_idx
