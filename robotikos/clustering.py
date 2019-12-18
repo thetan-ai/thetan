@@ -6,7 +6,6 @@ from abc import ABCMeta, abstractmethod
 from robotikos.metric import Metric
 from robotikos.metric import ResampleFeature
 from robotikos.metric import AveragePointwiseEuclideanMetric
-from robotikos.metric import MinimumAverageDirectFlipMetric
 from dipy.tracking.streamline import set_number_of_points, nbytes
 
 
@@ -413,174 +412,6 @@ class Clustering(object):
         raise NotImplementedError(msg)
 
 
-class QuickBundles(Clustering):
-    r""" Clusters streamlines using QuickBundles [Garyfallidis12]_.
-
-    Given a list of streamlines, the QuickBundles algorithm sequentially
-    assigns each streamline to its closest bundle in $\mathcal{O}(Nk)$ where
-    $N$ is the number of streamlines and $k$ is the final number of bundles.
-    If for a given streamline its closest bundle is farther than `threshold`,
-    a new bundle is created and the streamline is assigned to it except if the
-    number of bundles has already exceeded `max_nb_clusters`.
-
-    Parameters
-    ----------
-    threshold : float
-        The maximum distance from a bundle for a streamline to be still
-        considered as part of it.
-    metric : str or `Metric` object (optional)
-        The distance metric to use when comparing two streamlines. By default,
-        the Minimum average Direct-Flip (MDF) distance [Garyfallidis12]_ is
-        used and streamlines are automatically resampled so they have
-        12 points.
-    max_nb_clusters : int
-        Limits the creation of bundles.
-
-    Examples
-    --------
-    >>> from robotikos.clustering import QuickBundles
-    >>> from dipy.data import get_data
-    >>> from nibabel import trackvis as tv
-    >>> streams, hdr = tv.read(get_data('fornix'))
-    >>> streamlines = [i[0] for i in streams]
-    >>> # Segment fornix with a treshold of 10mm and streamlines resampled
-    >>> # to 12 points.
-    >>> qb = QuickBundles(threshold=10.)
-    >>> clusters = qb.cluster(streamlines)
-    >>> len(clusters)
-    4
-    >>> list(map(len, clusters))
-    [61, 191, 47, 1]
-    >>> # Resampling streamlines differently is done explicitly as follows.
-    >>> # Note this has an impact on the speed and the accuracy (tradeoff).
-    >>> from robotikos.metric import ResampleFeature
-    >>> from robotikos.metric import AveragePointwiseEuclideanMetric
-    >>> feature = ResampleFeature(nb_points=2)
-    >>> metric = AveragePointwiseEuclideanMetric(feature)
-    >>> qb = QuickBundles(threshold=10., metric=metric)
-    >>> clusters = qb.cluster(streamlines)
-    >>> len(clusters)
-    4
-    >>> list(map(len, clusters))
-    [58, 142, 72, 28]
-
-
-    References
-    ----------
-    .. [Garyfallidis12] Garyfallidis E. et al., QuickBundles a method for
-                        tractography simplification, Frontiers in Neuroscience,
-                        vol 6, no 175, 2012.
-    """
-
-    def __init__(self, threshold, metric="MDF_12points",
-                 max_nb_clusters=np.iinfo('i4').max):
-        self.threshold = threshold
-        self.max_nb_clusters = max_nb_clusters
-
-        if isinstance(metric, MinimumAverageDirectFlipMetric):
-            raise ValueError("Use AveragePointwiseEuclideanMetric instead")
-
-        if isinstance(metric, Metric):
-            self.metric = metric
-        elif metric == "MDF_12points":
-            feature = ResampleFeature(nb_points=12)
-            self.metric = AveragePointwiseEuclideanMetric(feature)
-        else:
-            raise ValueError("Unknown metric: {0}".format(metric))
-
-    def cluster(self, streamlines, ordering=None):
-        """ Clusters `streamlines` into bundles.
-
-        Performs quickbundles algorithm using predefined metric and threshold.
-
-        Parameters
-        ----------
-        streamlines : list of 2D arrays
-            Each 2D array represents a sequence of 3D points (points, 3).
-        ordering : iterable of indices
-            Specifies the order in which data points will be clustered.
-
-        Returns
-        -------
-        `ClusterMapCentroid` object
-            Result of the clustering.
-        """
-        from robotikos.clustering_algorithms import quickbundles
-        cluster_map = quickbundles(streamlines, self.metric,
-                                   threshold=self.threshold,
-                                   max_nb_clusters=self.max_nb_clusters,
-                                   ordering=ordering)
-
-        cluster_map.refdata = streamlines
-        return cluster_map
-
-
-class QuickBundlesX(Clustering):
-    r""" Clusters streamlines using QuickBundlesX.
-
-    Parameters
-    ----------
-    thresholds : list of float
-        Thresholds to use for each clustering layer. A threshold represents the
-        maximum distance from a cluster for a streamline to be still considered
-        as part of it.
-    metric : str or `Metric` object (optional)
-        The distance metric to use when comparing two streamlines. By default,
-        the Minimum average Direct-Flip (MDF) distance [Garyfallidis12]_ is
-        used and streamlines are automatically resampled so they have 12
-        points.
-
-    References
-    ----------
-    .. [Garyfallidis12] Garyfallidis E. et al., QuickBundles a method for
-                        tractography simplification, Frontiers in Neuroscience,
-                        vol 6, no 175, 2012.
-
-    .. [Garyfallidis16] Garyfallidis E. et al. QuickBundlesX: Sequential
-                        clustering of millions of streamlines in multiple
-                        levels of detail at record execution time. Proceedings
-                        of the, International Society of Magnetic Resonance
-                        in Medicine (ISMRM). Singapore, 4187, 2016.
-    """
-    def __init__(self, thresholds, metric="MDF_12points"):
-        self.thresholds = thresholds
-
-        if isinstance(metric, MinimumAverageDirectFlipMetric):
-            raise ValueError("Use AveragePointwiseEuclideanMetric instead")
-
-        if isinstance(metric, Metric):
-            self.metric = metric
-        elif metric == "MDF_12points":
-            feature = ResampleFeature(nb_points=12)
-            self.metric = AveragePointwiseEuclideanMetric(feature)
-        else:
-            raise ValueError("Unknown metric: {0}".format(metric))
-
-    def cluster(self, streamlines, ordering=None):
-        """ Clusters `streamlines` into bundles.
-
-        Performs QuickbundleX using a predefined metric and thresholds.
-
-        Parameters
-        ----------
-        streamlines : list of 2D arrays
-            Each 2D array represents a sequence of 3D points (points, 3).
-        ordering : iterable of indices
-            Specifies the order in which data points will be clustered.
-
-        Returns
-        -------
-        `TreeClusterMap` object
-            Result of the clustering.
-        """
-        from robotikos.clustering_algorithms import quickbundlesx
-        tree = quickbundlesx(streamlines, self.metric,
-                             thresholds=self.thresholds,
-                             ordering=ordering)
-        tree.refdata = streamlines
-        return tree
-
-
 class TreeCluster(ClusterCentroid):
     def __init__(self, threshold, centroid, indices=None):
         super(TreeCluster, self).__init__(centroid=centroid, indices=indices)
@@ -661,109 +492,8 @@ class TreeClusterMap(ClusterMap):
         return clusters
 
 
-def qbx_and_merge(streamlines, thresholds,
-                  nb_pts=20, select_randomly=None, rng=None, verbose=True):
-    """ Run QuickBundlesX and then run again on the centroids of the last layer
-
-    Running again QuickBundles at a layer has the effect of merging
-    some of the clusters that maybe originally devided because of branching.
-    This function help obtain a result at a QuickBundles quality but with
-    QuickBundlesX speed. The merging phase has low cost because it is applied
-    only on the centroids rather than the entire dataset.
-
-    Parameters
-    ----------
-    streamlines : Streamlines
-    thresholds : sequence
-        List of distance thresholds for QuickBundlesX.
-    nb_pts : int
-        Number of points for discretizing each streamline
-    select_randomly : int
-        Randomly select a specific number of streamlines. If None all the
-        streamlines are used.
-    rng : RandomState
-        If None then RandomState is initialized internally.
-    verbose : bool
-        If True print information in stdout.
-
-    Returns
-    -------
-    clusters : obj
-        Contains the clusters of the last layer of QuickBundlesX after merging.
-
-    References
-    ----------
-    .. [Garyfallidis12] Garyfallidis E. et al., QuickBundles a method for
-                        tractography simplification, Frontiers in Neuroscience,
-                        vol 6, no 175, 2012.
-
-    .. [Garyfallidis16] Garyfallidis E. et al. QuickBundlesX: Sequential
-                        clustering of millions of streamlines in multiple
-                        levels of detail at record execution time. Proceedings
-                        of the, International Society of Magnetic Resonance
-                        in Medicine (ISMRM). Singapore, 4187, 2016.
-    """
-    if verbose:
-        t = time()
-    len_s = len(streamlines)
-    if select_randomly is None:
-        select_randomly = len_s
-
-    if rng is None:
-        rng = np.random.RandomState()
-    indices = rng.choice(len_s, min(select_randomly, len_s),
-                         replace=False)
-    sample_streamlines = set_number_of_points(streamlines, nb_pts)
-
-    if verbose:
-        print(' Resampled to {} points'.format(nb_pts))
-        print(' Size is %0.3f MB' % (nbytes(sample_streamlines),))
-        print(' Duration of resampling is %0.3f sec.' % (time() - t,))
-        print(' QBX phase starting...')
-
-    qbx = QuickBundlesX(thresholds,
-                        metric=AveragePointwiseEuclideanMetric())
-
-    if verbose:
-        t1 = time()
-    qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
-
-    if verbose:
-        print(' Merging phase starting ...')
-
-    qbx_merge = QuickBundlesX([thresholds[-1]],
-                              metric=AveragePointwiseEuclideanMetric())
-
-    final_level = len(thresholds)
-    len_qbx_fl = len(qbx_clusters.get_clusters(final_level))
-    qbx_ordering_final = rng.choice(len_qbx_fl, len_qbx_fl, replace=False)
-
-    qbx_merged_cluster_map = qbx_merge.cluster(
-        qbx_clusters.get_clusters(final_level).centroids,
-        ordering=qbx_ordering_final).get_clusters(1)
-
-    qbx_cluster_map = qbx_clusters.get_clusters(final_level)
-
-    merged_cluster_map = ClusterMapCentroid()
-    for cluster in qbx_merged_cluster_map:
-        merged_cluster = ClusterCentroid(centroid=cluster.centroid)
-        for i in cluster.indices:
-            merged_cluster.indices.extend(qbx_cluster_map[i].indices)
-        merged_cluster_map.add_cluster(merged_cluster)
-
-    merged_cluster_map.refdata = streamlines
-
-    if verbose:
-        print(' QuickBundlesX time for %d random streamlines'
-              % (select_randomly,))
-
-        print(' Duration %0.3f sec. \n' % (time() - t1,))
-
-    return merged_cluster_map
-
-
 class FastGroupingNode(Clustering):
-    r""" Clusters streamlines using Fast Grouping Node.
+    r""" Clusters data using Fast Grouping Node.
 
     Parameters
     ----------
@@ -776,13 +506,10 @@ class FastGroupingNode(Clustering):
         the Minimum average Direct-Flip (MDF) distance [Garyfallidis12]_ is
         used and streamlines are automatically resampled so they have 12
         points.
-
     """
+
     def __init__(self, thresholds, metric):
         self.thresholds = thresholds
-
-        if isinstance(metric, MinimumAverageDirectFlipMetric):
-            raise ValueError("Use AveragePointwiseEuclideanMetric instead")
 
         if isinstance(metric, Metric):
             self.metric = metric
@@ -806,9 +533,9 @@ class FastGroupingNode(Clustering):
         `TreeClusterMap` object
             Result of the clustering.
         """
-        from robotikos.clustering_algorithms import quickbundlesx
-        tree = quickbundlesx(streamlines, self.metric,
-                             thresholds=self.thresholds,
-                             ordering=ordering)
+        from robotikos.clustering_algorithms import fast_grouping_node
+        tree = fast_grouping_node(streamlines, self.metric,
+                                  thresholds=self.thresholds,
+                                  ordering=ordering)
         tree.refdata = streamlines
         return tree

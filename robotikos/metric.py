@@ -1,20 +1,19 @@
 from robotikos.featurespeed import (Feature,
-                                       IdentityFeature,
-                                       ResampleFeature,
-                                       CenterOfMassFeature,
-                                       MidpointFeature,
-                                       ArcLengthFeature,
-                                       VectorOfEndpointsFeature)
+                                    IdentityFeature,
+                                    ResampleFeature,
+                                    CenterOfMassFeature,
+                                    MidpointFeature)
 
 from robotikos.metricspeed import (Metric,
-                                      SumPointwiseEuclideanMetric,
-                                      AveragePointwiseEuclideanMetric,
-                                      MinimumAverageDirectFlipMetric,
-                                      CosineMetric,
-                                      CrossCorrelationMetric)
+                                   SumPointwiseEuclideanMetric,
+                                   AveragePointwiseEuclideanMetric,
+                                   NormalizedSumSquaredDiffMetric,
+                                   NormalizedSumAbsDiffMetric,
+                                   CosineMetric,
+                                   CrossCorrelationMetric)
 
 from robotikos.metricspeed import (dist,
-                                      distance_matrix)
+                                   distance_matrix)
 
 # Creates aliases
 EuclideanMetric = SumPointwiseEuclideanMetric

@@ -4,12 +4,10 @@ from metricspeed cimport Metric
 
 cdef struct QuickBundlesStats:
     long nb_mdf_calls
-    long nb_aabb_calls
 
 
 cdef struct QuickBundlesXStatsLayer:
     long nb_mdf_calls
-    long nb_aabb_calls
 
 
 cdef struct QuickBundlesXStats:
@@ -18,22 +16,17 @@ cdef struct QuickBundlesXStats:
 
 cdef struct StreamlineInfos:
     Data2D* features
-    Data2D* features_flip
-    # float[6] aabb
     int idx
-    int use_flip
 
 
 cdef struct Centroid:
     Data2D* features
     int size
-    # float[6] aabb
 
 
 cdef struct NearestCluster:
     int id
     double dist
-    int flip
 
 
 cdef struct Test:
@@ -45,7 +38,6 @@ cdef struct CentroidNode:
     CentroidNode** children
     int nb_children
     Data2D* centroid
-    # float[6] aabb
     float threshold
     int* indices
     int size
@@ -78,7 +70,6 @@ cdef class QuickBundlesX(object):
     cdef Metric metric
     cdef Shape features_shape
     cdef Data2D features
-    cdef Data2D features_flip
     cdef double* thresholds
     cdef int nb_levels
     cdef object level

@@ -34,17 +34,11 @@ cdef class Metric(object):
     """
     def __init__(Metric self, Feature feature=IdentityFeature()):
         self.feature = feature
-        self.is_order_invariant = self.feature.is_order_invariant
 
     property feature:
         """ `Feature` object used to extract features from sequential data """
         def __get__(Metric self):
             return self.feature
-
-    property is_order_invariant:
-        """ Is this metric invariant to the sequence's ordering """
-        def __get__(Metric self):
-            return bool(self.is_order_invariant)
 
     cdef double c_dist(Metric self, Data2D features1, Data2D features2) nogil except -1:
         """ Cython version of `Metric.dist`. """
@@ -52,7 +46,6 @@ cdef class Metric(object):
             _features1 = np.asarray(<float[:features1.shape[0], :features1.shape[1]]> <float*> features1._data)
             _features2 = np.asarray(<float[:features2.shape[0], :features2.shape[1]]> <float*> features2._data)
             return self.dist(_features1, _features2)
-
 
     cpdef double dist(Metric self, features1, features2) except -1:
         """ Computes a distance between two data points based on their features.
@@ -178,7 +171,7 @@ cdef class SumPointwiseEuclideanMetric(CythonMetric):
             dist_n = 0.0
             for d in range(D):
                 dd = features1[n, d] - features2[n, d]
-                dist_n += dd*dd
+                dist_n += dd * dd
 
             dist += sqrt(dist_n)
 
@@ -221,44 +214,6 @@ cdef class AveragePointwiseEuclideanMetric(SumPointwiseEuclideanMetric):
         cdef int N = features1.shape[0]
         cdef double dist = SumPointwiseEuclideanMetric.c_dist(self, features1, features2)
         return dist / N
-
-
-cdef class MinimumAverageDirectFlipMetric(AveragePointwiseEuclideanMetric):
-    r""" Computes the MDF distance (minimum average direct-flip) between two
-    sequential data.
-
-    A sequence of N-dimensional points is represented as a 2D array with
-    shape (nb_points, nb_dimensions).
-
-    Notes
-    -----
-    The distance between two 2D sequential data::
-
-        s1       s2
-
-        0*   a    *0
-          \       |
-           \      |
-           1*     |
-            |  b  *1
-            |      \
-            2*      \
-                c    *2
-
-    is equal to $\min((a+b+c)/3, (a'+b'+c')/3)$ where $a$ is the Euclidean distance
-    between s1[0] and s2[0], $b$ between s1[1] and s2[1], $c$ between s1[2]
-    and s2[2], $a'$ between s1[0] and s2[2], $b'$ between s1[1] and s2[1]
-    and $c'$ between s1[2] and s2[0].
-    """
-    property is_order_invariant:
-        """ Is this metric invariant to the sequence's ordering """
-        def __get__(MinimumAverageDirectFlipMetric self):
-            return True  # Ordering is handled in the distance computation
-
-    cdef double c_dist(MinimumAverageDirectFlipMetric self, Data2D features1, Data2D features2) nogil except -1:
-        cdef double dist_direct = AveragePointwiseEuclideanMetric.c_dist(self, features1, features2)
-        cdef double dist_flipped = AveragePointwiseEuclideanMetric.c_dist(self, features1, features2[::-1])
-        return min(dist_direct, dist_flipped)
 
 
 cdef class CosineMetric(CythonMetric):
@@ -338,42 +293,50 @@ cdef class CrossCorrelationMetric(CythonMetric):
         #return acos(cos_theta) / PI  # Normalized cosine distance
 
 
-cdef class SumSquaredDiffMetric(CythonMetric):
-    r""" Computes the cross correlation distance between two vectors.
-
-    A vector (i.e. a N-dimensional point) is represented as a 2D array with
-    shape (1, nb_dimensions).
+cdef class NormalizedSumSquaredDiffMetric(CythonMetric):
+    r""" Computes the normalized SSD distance between two features.
 
     """
-    def __init__(SumSquaredDiffMetric self, Feature feature):
-        super(SumSquaredDiffMetric, self).__init__(feature=feature)
+    def __init__(NormalizedSumSquaredDiffMetric self, Feature feature):
+        super(NormalizedSumSquaredDiffMetric, self).__init__(feature=feature)
 
-    cdef double c_dist(SumSquaredDiffMetric self, Data2D features1, Data2D features2) nogil except -1:
-        cdef :
-            int d, D = features1.shape[1]
-            double sqr_norm_features1 = 0.0, sqr_norm_features2 = 0.0
-            double cc = 0.0
-            double dot_product = 0.0
+    cdef double c_dist(NormalizedSumSquaredDiffMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef:
+            int s
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            float * ptr1 = &features1[0, 0]
+            float * ptr2 = &features2[0, 0]
+            double summ = 0.0
 
-        for d in range(D):
-            dot_product += features1[0, d] * features2[0, d]
-            sqr_norm_features1 += features1[0, d] * features1[0, d]
-            sqr_norm_features2 += features2[0, d] * features2[0, d]
 
-        if sqr_norm_features1 == 0.:
-            if sqr_norm_features2 == 0.:
-                return 0.
-            else:
-                return 1.
+        for s in range(size):
+            summ += (ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s])
 
-        cc = dot_product / (sqrt(sqr_norm_features1) * sqrt(sqr_norm_features2))
+        return summ / sz
 
-        return 1 - fabs(cc)
-        # Make sure it's in [-1, 1], i.e. within domain of arccosine
-        #cos_theta = min(cos_theta, 1.)
-        #cos_theta = max(cos_theta, -1.)
-        #return acos(cos_theta) / PI  # Normalized cosine distance
 
+cdef class NormalizedSumAbsDiffMetric(CythonMetric):
+    r""" Computes the normalized ASD distance between two features.
+
+    """
+    def __init__(NormalizedSumAbsDiffMetric self, Feature feature):
+        super(NormalizedSumAbsDiffMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(NormalizedSumAbsDiffMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef:
+            int s
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            float * ptr1 = &features1[0, 0]
+            float * ptr2 = &features2[0, 0]
+            double summ = 0.0
+
+
+        for s in range(size):
+            summ += fabs(ptr1[s] - ptr2[s])
+
+        return summ / sz
 
 
 cpdef distance_matrix(Metric metric, data1, data2=None):
@@ -392,7 +355,7 @@ cpdef distance_matrix(Metric metric, data1, data2=None):
     data1 : list of 2D arrays
         List of sequences of N-dimensional points.
     data2 : list of 2D arrays
-        Llist of sequences of N-dimensional points.
+        List of sequences of N-dimensional points.
 
     Returns
     -------

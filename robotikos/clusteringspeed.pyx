@@ -133,9 +133,6 @@ cdef class QuickBundlesX(object):
 
         # print('Start of QBX Init')
         self.metric = metric
-        # print('features shape ', features_shape)
-        # print(levels_thresholds)
-        # self.features_shape = tuple2shape(features_shape)
         # TODO this below should eventually be renamed to features_size
         # only supporting Data2D
         cdef Shape fshape
@@ -143,15 +140,9 @@ cdef class QuickBundlesX(object):
         # print('fshape', features_shape)
         fshape.dims[0] = features_shape[0]
         fshape.dims[1] = features_shape[1]
-        # print('dims 0', fshape.dims[0])
-        # print('dims 1', fshape.dims[1])
         fshape.size = features_shape[0] * features_shape[1]
         self.features_shape = fshape
         self.nb_levels = len(levels_thresholds)
-        # TODO add polygonal box
-
-
-        # print('nv lev ', self.nb_levels)
 
         self.thresholds = <double*> calloc(self.nb_levels, sizeof(double))
 
@@ -172,13 +163,7 @@ cdef class QuickBundlesX(object):
 
         # print('sz ', self.features_shape.size)
         # print('dims ',  self.features_shape.dims)
-
         self.current_streamline.features = create_memview_2d(self.features_shape.size, self.features_shape.dims)
-
-        # TODO : completely remove
-        # self.current_streamline.features_flip = create_memview_2d(self.features_shape.size,
-        #                                                           self.features_shape.dims)
-        # print('End of QBX Init')
 
     def __dealloc__(self):
         # print('Starting dealloc')
@@ -225,11 +210,6 @@ cdef class QuickBundlesX(object):
         cdef int C = node.size
         cdef cnp.npy_intp n, d
 
-        # if streamline_infos.use_flip:
-        #     with gil:
-        #         print('flip true')
-        #     element = streamline_infos.features_flip[0]
-
         # Update centroid
         cdef Data2D centroid = node.centroid[0]
         cdef cnp.npy_intp N = centroid.shape[0], D = centroid.shape[1]
@@ -238,13 +218,9 @@ cdef class QuickBundlesX(object):
                 centroid[n, d] = ((centroid[n, d] * C) + element[n, d]) / (C+1)
 
         # Update list of indices
-        node.indices = <int*> realloc(node.indices, (C+1)*sizeof(int))
+        node.indices = <int*> realloc(node.indices, (C + 1) * sizeof(int))
         node.indices[C] = streamline_infos.idx
         node.size += 1
-
-        # TODO add polygonal box
-        # Update AABB
-        # aabb_creation(centroid, node.aabb)
 
     cdef void _insert_in(self, CentroidNode* node, StreamlineInfos* streamline_infos, int[:] path) nogil:
         cdef:
@@ -259,14 +235,8 @@ cdef class QuickBundlesX(object):
 
         nearest_cluster.id = -1
         nearest_cluster.dist = BIGGEST_DOUBLE
-        # nearest_cluster.flip = 0
 
         for k in range(node.nb_children):
-
-            # TODO add polygonal box
-            # Check streamline's aabb colides with the current child.
-            # self.stats.stats_per_layer[node.level].nb_aabb_calls += 1
-            # if aabb_overlap(node.children[k].aabb, streamline_infos.aabb, node.threshold):
 
             self.stats.stats_per_layer[node.level].nb_mdf_calls += 1
             dist = self.metric.c_dist(node.children[k].centroid[0], streamline_infos.features[0])
@@ -275,22 +245,11 @@ cdef class QuickBundlesX(object):
             if dist < nearest_cluster.dist:
                 nearest_cluster.dist = dist
                 nearest_cluster.id = k
-                # nearest_cluster.flip = 0
 
-            # should be removed
-            # self.stats.stats_per_layer[node.level].nb_mdf_calls += 1
-            # dist_flip = self.metric.c_dist(node.children[k].centroid[0], streamline_infos.features_flip[0])
-
-            # if dist_flip < nearest_cluster.dist:
-            #     nearest_cluster.dist = dist_flip
-            #     nearest_cluster.id = k
-            #     nearest_cluster.flip = 1
-
-        if nearest_cluster.dist > node.threshold:
+        if nearest_cluster.dist >= node.threshold:
             # No near cluster, create a new one.
             nearest_cluster.id = self._add_child(node)
 
-        # streamline_infos.use_flip = nearest_cluster.flip
         path[node.level] = nearest_cluster.id
         self._insert_in(node.children[nearest_cluster.id], streamline_infos, path)
 
@@ -307,8 +266,6 @@ cdef class QuickBundlesX(object):
         # print('Second feature extract done')
         self.current_streamline.idx = datum_idx
         # print('Middle of insert')
-        # TODO add polygonal box
-        # aabb_creation(self.current_streamline.features[0], self.current_streamline.aabb)
         path = -1 * np.ones(self.nb_levels, dtype=np.int32)
         self._insert_in(self.root, self.current_streamline, path)
         # print('Ending insert')
@@ -333,12 +290,12 @@ cdef class QuickBundlesX(object):
         free(node.indices)
         node.indices = NULL
 
-        # No need to free node.father, only the current node.
+        # No need to free father node, only the current node.
         free(node)
 
     cdef object _build_tree_clustermap(self, CentroidNode* node):
         cdef Data2D centroid
-        # centroid = <float[:self.features_shape.dims[0],:self.features_shape.dims[1]]> &node.centroid[0][0,0]
+
         centroid = <float[:self.features_shape.dims[0], :self.features_shape.dims[1]]> &node.centroid[0][0,0]
 
         tree_cluster = TreeCluster(threshold=node.threshold,
@@ -357,7 +314,6 @@ cdef class QuickBundlesX(object):
         stats_per_level = []
         for i in range(self.nb_levels):
             stats_per_level.append({'nb_mdf_calls': self.stats.stats_per_layer[i].nb_mdf_calls,
-                                    # 'nb_aabb_calls': self.stats.stats_per_layer[i].nb_aabb_calls,
                                     'threshold': self.thresholds[i]})
 
         stats = {'stats_per_level': stats_per_level}
@@ -555,20 +511,4 @@ cdef class ClustersCentroid(Clusters):
         # aabb_creation(self.centroids[self._nb_clusters].features[0], self.centroids[self._nb_clusters].aabb)
 
         return Clusters.c_create_cluster(self)
-
-
-def evaluate_aabb_checks():
-    cdef:
-        Data2D feature1 = np.array([[1, 0, 0], [1, 1, 0], [1 + np.sqrt(2)/2., 1 + np.sqrt(2)/2., 0]], dtype='f4')
-        Data2D feature2 = np.array([[1, 0, 0], [1, 1, 0], [1 + np.sqrt(2)/2., 1 + np.sqrt(2)/2., 0]], dtype='f4') + np.array([0.5, 0, 0], dtype='f4')
-        float[6] aabb1
-        float[6] aabb2
-        int res
-
-    aabb_creation(feature1, &aabb1[0])
-    aabb_creation(feature2, &aabb2[0])
-
-    res = aabb_overlap(&aabb1[0], &aabb2[0])
-
-    return np.asarray(aabb1), np.asarray(aabb2), res
 
