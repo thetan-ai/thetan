@@ -605,7 +605,7 @@ def images_3d(run_id, interactive=True, sim=False,
 
 
 def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
-                     subimage_width=None, lab_color=False):
+                     subimage_width=None, lab_color=False, histo=True):
     shuffling = True
 
     p98 = np.percentile(data_orig, 98)
@@ -613,6 +613,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     # from skimage.color import rgb2lab
     # data_orig = rgb2lab(data_orig)
+    print('patch_size', patch_radius * 2 + 1)
 
     data = np.interp(data_orig, (0, p98), (0, 1.))
 
@@ -641,7 +642,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     print('>> Interpolated and padded')
 
     class DataSequence2D:
-        def __init__(self, data, indices, histo=False):
+        def __init__(self, data, indices, histo=True):
 
             self.indices = indices
             self.histo = histo
@@ -667,11 +668,19 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
                 b3 = histogram1d(p3.ravel(), bins=bin_size, range=(0, 1))
                 p3 = b3 / lp
 
-            expand = np.empty((len(p1), 3))
-            expand[:, 0] = p1
-            expand[:, 1] = p2
-            expand[:, 2] = p3
-            return np.ascontiguousarray(expand)
+                expand = np.empty((len(p1), 3))
+                expand[:, 0] = p1
+                expand[:, 1] = p2
+                expand[:, 2] = p3
+                return np.ascontiguousarray(expand)
+
+            else:
+                # compare directly color values
+                expand = np.empty((len(p1.ravel()), 3))
+                expand[:, 0] = p1.ravel()
+                expand[:, 1] = p2.ravel()
+                expand[:, 2] = p3.ravel()
+                return np.ascontiguousarray(expand)
 
         def __len__(self):
             return len(self.indices)
@@ -708,7 +717,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     metric = EuclideanMetric(feature=feature)  # This is actually the sum Eucl.
 
-    ds = DataSequence2D(data, internal_indices, histo=True)
+    ds = DataSequence2D(data, internal_indices, histo=histo)
 
     print('>> Size of DataSequence2D', len(ds))
 
@@ -751,7 +760,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
 #@profile
 def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
-              subimage_width=None, lab_color=False):
+              subimage_width=None, lab_color=False, histo=True):
 
     from imageio import imread
     from os.path import join as pjoin
@@ -769,10 +778,8 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
 
     final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
                                    bin_size=bin_size, thresholds=thresholds,
-                                   subimage_width=subimage_width)
+                                   subimage_width=subimage_width, histo=histo)
 
-
-    interactive = True
     print(final.shape, data.shape, data_orig.shape)
 
     if interactive:
@@ -799,8 +806,8 @@ if __name__ == '__main__':
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
-    images_2d(True, patch_radius=5, bin_size=5, thresholds=[35.],
-              subimage_width=400)
+    images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.],
+              subimage_width=200, histo=True)
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
 
     """
