@@ -19,7 +19,8 @@ else:
 
 
 def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
-                     subimage_width=None, lab_color=False, histo=True):
+                     subimage_width=None, lab_color=False, histo=True,
+                     strides=None):
     shuffling = True
 
     p98 = np.percentile(data_orig, 98)
@@ -116,6 +117,9 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     if shuffling:
         np.random.shuffle(internal_indices)
 
+    if strides is not None:
+        internal_indices = internal_indices[:strides]
+
     internal_indices = np.ascontiguousarray(internal_indices)
 
     print('>> Shuffled indices')
@@ -130,13 +134,13 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     fgn = FastGroupingNode(thresholds=thresholds, metric=metric)
 
-    # from pdb import set_trace
-    # set_trace()
+    print('Number of features', len(ds))
+    print('Feature size', ds[0].shape)
+    print('Thresholds', thresholds)
 
     t1 = time()
     print('Started clustering')
     fgn_tree = fgn.cluster(ds)
-
 
     print('Finished clustering')
     t2 = time()
@@ -164,7 +168,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
 #@profile
 def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
-              subimage_width=None, lab_color=False, histo=True):
+              subimage_width=None, lab_color=False, histo=True, strides=None):
 
     from imageio import imread
     from os.path import join as pjoin
@@ -182,7 +186,8 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
 
     final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
                                    bin_size=bin_size, thresholds=thresholds,
-                                   subimage_width=subimage_width, histo=histo)
+                                   subimage_width=subimage_width,
+                                   histo=histo, strides=strides)
 
     print(final.shape, data.shape, data_orig.shape)
 
@@ -210,5 +215,9 @@ if __name__ == '__main__':
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
     # images_2d(True, patch_radius=1, bin_size=5, thresholds=[1.],
     #           subimage_width=200, histo=True)
-    images_2d(True, patch_radius=1, bin_size=5, thresholds=[1.],
-              subimage_width=None, histo=True)
+    # images_2d(True, patch_radius=1, bin_size=5, thresholds=[1.],
+    #           subimage_width=None, histo=True)
+    # images_2d(True, patch_radius=1, bin_size=5, thresholds=[.2],
+    #           subimage_width=200, histo=False)
+    images_2d(True, patch_radius=5, bin_size=5, thresholds=[.1],
+              subimage_width=None, histo=False, strides=100000)
