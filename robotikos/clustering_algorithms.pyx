@@ -115,7 +115,7 @@ def fast_grouping_node(data, Metric metric, thresholds, ordering=None):
 
 
 def fast_grouping_node_online(features_shape, Metric metric, thresholds):
-    """ Clusters streamlines using QuickBundles.
+    """ Clusters data using FGNs.
 
     Parameters
     ----------
@@ -131,7 +131,7 @@ def fast_grouping_node_online(features_shape, Metric metric, thresholds):
     -------
     function(data, idx)
         When called this function cluster a `datum` with id `idx` and returns
-        the state of the QuickBundles Cython object and the cluster id where the
+        the state of the FGN Cython object and the cluster id where the
         datum has been assigned to.
     """
 
