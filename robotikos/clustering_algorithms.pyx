@@ -64,18 +64,18 @@ def peek(iterable):
     return first, iterator
 
 
-def fast_grouping_node(streamlines, Metric metric, thresholds, ordering=None):
+def fast_grouping_node(data, Metric metric, thresholds, ordering=None):
     """ Clusters streamlines using FGN.
 
     Parameters
     ----------
-    streamlines : list of 2D arrays
-        List of streamlines to cluster.
+    data : sequence of 2D arrays
+        List of data to cluster.
     metric : `Metric` object
-        Tells how to compute the distance between two streamlines.
+        Tells how to compute the distance between two data.
     thresholds : list of double
         Thresholds to use for each clustering layer. A threshold represents the
-        maximum distance from a cluster for a streamline to be still considered
+        maximum distance from a cluster for a datum to be still considered
         as part of it.
     ordering : iterable of indices, optional
         Iterate through `data` using the given ordering.
@@ -112,3 +112,38 @@ def fast_grouping_node(streamlines, Metric metric, thresholds, ordering=None):
         # print('End of the loop')
 
     return qbx.get_tree_cluster_map()
+
+
+def fast_grouping_node_online(features_shape, Metric metric, thresholds):
+    """ Clusters streamlines using QuickBundles.
+
+    Parameters
+    ----------
+    features_shape : tuple
+        Expected shape of the features (used to preallocate centroids).
+    metric : `Metric` object
+        Tells how to compute the distance between two data.
+    thresholds : list of double
+        Thresholds to use for each clustering layer. A threshold represents the
+        maximum distance from a cluster for a datum to be still considered
+        as part of it.
+    Returns
+    -------
+    function(data, idx)
+        When called this function cluster a `datum` with id `idx` and returns
+        the state of the QuickBundles Cython object and the cluster id where the
+        datum has been assigned to.
+    """
+
+    cdef QuickBundlesX qbx = QuickBundlesX(features_shape, thresholds, metric)
+    cdef int cluster_id
+
+    def _step(datum, int idx):
+        if not datum.flags.writeable or datum.dtype != np.float32:
+            datum = datum.astype(np.float32)
+
+        path = qbx.insert(datum, idx)
+        return qbx, path
+
+    return _step
+

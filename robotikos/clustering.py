@@ -516,14 +516,14 @@ class FastGroupingNode(Clustering):
         else:
             raise ValueError("Unknown metric: {0}".format(metric))
 
-    def cluster(self, streamlines, ordering=None):
+    def cluster(self, data, ordering=None):
         """ Clusters `streamlines` into bundles.
 
-        Performs QuickbundleX using a predefined metric and thresholds.
+        Performs FGN using a predefined metric and thresholds.
 
         Parameters
         ----------
-        streamlines : list of 2D arrays
+        data : sequence of 2D arrays
             Each 2D array represents a sequence of 3D points (points, 3).
         ordering : iterable of indices
             Specifies the order in which data points will be clustered.
@@ -533,9 +533,17 @@ class FastGroupingNode(Clustering):
         `TreeClusterMap` object
             Result of the clustering.
         """
+
         from robotikos.clustering_algorithms import fast_grouping_node
-        tree = fast_grouping_node(streamlines, self.metric,
+        tree = fast_grouping_node(data, self.metric,
                                   thresholds=self.thresholds,
                                   ordering=ordering)
         tree.refdata = streamlines
         return tree
+
+    def cluster_online(self, feature_shape):
+        from robotikos.clustering_algorithms import fast_grouping_node_online
+
+        return fast_grouping_node_online(feature_shape,
+                                         self.metric, self.thresholds)
+
