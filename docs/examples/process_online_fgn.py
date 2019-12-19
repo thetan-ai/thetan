@@ -8,8 +8,8 @@ from robotikos.metric import (AveragePointwiseEuclideanMetric,
                               NormalizedSumAbsDiffMetric)
 
 # data with two clusters
-power = 6
-data = np.random.rand(4 * 10**power, 1, 5)
+power = 5
+data = np.random.rand(4 * 10**power, 2, 3)
 data[2 * 10 ** power:] += 4
 
 thresholds = [2.]
@@ -23,6 +23,7 @@ fgn = FastGroupingNode(thresholds, metric)
 
 print('Number of data', len(data))
 print('Number of features', np.prod(data[0].shape))
+print('Feature shape', data[0].shape)
 
 print('Standard FGN version')
 
