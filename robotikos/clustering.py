@@ -538,7 +538,7 @@ class FastGroupingNode(Clustering):
         tree = fast_grouping_node(data, self.metric,
                                   thresholds=self.thresholds,
                                   ordering=ordering)
-        tree.refdata = streamlines
+        tree.refdata = data
         return tree
 
     def cluster_online(self, feature_shape):

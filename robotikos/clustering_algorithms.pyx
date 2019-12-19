@@ -88,14 +88,14 @@ def fast_grouping_node(data, Metric metric, thresholds, ordering=None):
 
     """
     if ordering is None:
-        ordering = range(len(streamlines))
+        ordering = range(len(data))
 
-    # Check if `ordering` or `streamlines` are empty
+    # Check if `ordering` or `data` are empty
     first_idx, ordering = peek(ordering)
-    if first_idx is None or len(streamlines) == 0:
+    if first_idx is None or len(data) == 0:
         return ClusterMapCentroid()
 
-    features_shape = streamlines[first_idx].shape
+    features_shape = data[first_idx].shape
     # print('First idx shape', features_shape)
     cdef QuickBundlesX qbx = QuickBundlesX(features_shape, thresholds, metric)
     cdef int idx
@@ -104,11 +104,11 @@ def fast_grouping_node(data, Metric metric, thresholds, ordering=None):
     for idx in ordering:
         # print('Start of the loop')
         # print(idx)
-        streamline = streamlines[idx]
-        if not streamline.flags.writeable or streamline.dtype != DTYPE:
-            streamline = streamline.astype(DTYPE)
+        datum = data[idx]
+        if not datum.flags.writeable or datum.dtype != DTYPE:
+            datum = datum.astype(DTYPE)
         # print('insert')
-        qbx.insert(streamline, idx)
+        qbx.insert(datum, idx)
         # print('End of the loop')
 
     return qbx.get_tree_cluster_map()
