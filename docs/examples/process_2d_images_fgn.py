@@ -20,7 +20,7 @@ else:
 
 def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
                      subimage_width=None, lab_color=False, histo=True,
-                     strides=None):
+                     random_selection=None, strides=False, distance='nssd'):
     shuffling = True
 
     p98 = np.percentile(data_orig, 98)
@@ -103,12 +103,18 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     internal_indices = []
     X, Y, _ = data.shape
 
-    for idx in np.ndindex(*data.shape[:2]):
-
-        x, y = idx
-        if x >= patch_radius and x < X - patch_radius:
-            if y >= patch_radius and y < Y - patch_radius:
+    if strides:
+        for x in range(patch_radius, data.shape[0], patch_radius * 2 + 1):
+            for y in range(patch_radius, data.shape[1], patch_radius * 2 + 1):
+                idx = (x, y)
                 internal_indices.append(idx)
+
+    if not strides:
+        for idx in np.ndindex(*data.shape[:2]):
+            x, y = idx
+            if x >= patch_radius and x < X - patch_radius:
+                if y >= patch_radius and y < Y - patch_radius:
+                    internal_indices.append(idx)
 
     internal_indices = np.array(internal_indices)
 
@@ -117,8 +123,8 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     if shuffling:
         np.random.shuffle(internal_indices)
 
-    if strides is not None:
-        internal_indices = internal_indices[:strides]
+    if random_selection is not None:
+        internal_indices = internal_indices[:random_selection]
 
     internal_indices = np.ascontiguousarray(internal_indices)
 
@@ -128,9 +134,14 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     print('>> Size of DataSequence2D', len(ds))
 
-    # metric = SumPointwiseEuclideanMetric(feature=IdentityFeature())
-    # metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    if distance.lower() == 'spe':
+        metric = SumPointwiseEuclideanMetric(feature=IdentityFeature())
+    elif distance.lower() == 'nssd':
+        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+    elif distance.lower() == 'nsad':
+        metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    else:
+        raise ValueError('Uknown distance')
 
     fgn = FastGroupingNode(thresholds=thresholds, metric=metric)
 
@@ -168,7 +179,8 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
 #@profile
 def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
-              subimage_width=None, lab_color=False, histo=True, strides=None):
+              subimage_width=None, lab_color=False, histo=True,
+              random_selection=1000000, strides=False, distance='nsad'):
 
     from imageio import imread
     from os.path import join as pjoin
@@ -187,7 +199,9 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
     final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
                                    bin_size=bin_size, thresholds=thresholds,
                                    subimage_width=subimage_width,
-                                   histo=histo, strides=strides)
+                                   histo=histo,
+                                   random_selection=random_selection,
+                                   strides=strides, distance=distance)
 
     print(final.shape, data.shape, data_orig.shape)
 
@@ -210,6 +224,7 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
 
 if __name__ == '__main__':
 
+
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
@@ -219,5 +234,15 @@ if __name__ == '__main__':
     #           subimage_width=None, histo=True)
     # images_2d(True, patch_radius=1, bin_size=5, thresholds=[.2],
     #           subimage_width=200, histo=False)
-    images_2d(True, patch_radius=5, bin_size=5, thresholds=[.1],
-              subimage_width=None, histo=False, strides=100000)
+    # images_2d(True, patch_radius=1, bin_size=5, thresholds=[0.5],
+    #           subimage_width=None, histo=False,
+    #           random_selection=500000,
+    #           strides=False)
+    # images_2d(True, patch_radius=10, bin_size=5, thresholds=[0.5],
+    #           subimage_width=None, histo=False,
+    #           random_selection=10000,
+    #           strides=True, distance='nssd')
+    images_2d(True, patch_radius=1, bin_size=5, thresholds=[1.],
+              subimage_width=200, histo=True,
+              random_selection=None,
+              strides=False, distance='nssd')
