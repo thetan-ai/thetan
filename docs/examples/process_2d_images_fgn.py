@@ -141,7 +141,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     elif distance.lower() == 'nsad':
         metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
     else:
-        raise ValueError('Uknown distance')
+        raise ValueError('Unknown distance')
 
     fgn = FastGroupingNode(thresholds=thresholds, metric=metric)
 
@@ -194,7 +194,20 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
     # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
     # fname = pjoin(dname, 'tree_desert.jpg')
 
-    data_orig = imread(fname)
+    # data_orig = imread(fname)
+
+    data_orig = np.zeros((512, 512, 3)) + 50
+
+    I, J, _ = data_orig.shape
+
+
+    mI = I // 2
+    mJ = J // 2
+    w = 20
+    for mult in [1, 2, 3, 4, 5, 6, 7, 8]:
+
+        data_orig[mI - mult * w: mI + mult * w, mJ - mult * w: mJ + mult * w] += w
+
 
     final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
                                    bin_size=bin_size, thresholds=thresholds,
@@ -242,7 +255,7 @@ if __name__ == '__main__':
     #           subimage_width=None, histo=False,
     #           random_selection=10000,
     #           strides=True, distance='nssd')
-    images_2d(True, patch_radius=1, bin_size=5, thresholds=[1.],
-              subimage_width=200, histo=True,
+    images_2d(True, patch_radius=1, bin_size=5, thresholds=[.5],
+              subimage_width=None, histo=False,
               random_selection=None,
               strides=False, distance='nssd')
