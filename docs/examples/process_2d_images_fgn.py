@@ -211,11 +211,36 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
 
         final_actor2 = actor.texture(
                 (255 * (0.5 * final + 0.5 * data)).astype('uint8'))
+
         final_actor2.SetPosition(2 * data.shape[0] + 2 * 50, 0, 0)
 
         scene.add(final_actor)
         scene.add(final_actor2)
-        window.show(scene)
+
+        from fury.window import vtk
+        showm = window.ShowManager(scene)
+        picker = vtk.vtkCellPicker()
+        picker.SetTolerance(0.01)
+        picker.PickTextureDataOn()
+
+        def left_click_callback_mosaic(obj, _ev):
+            event_pos = showm.iren.GetEventPosition()
+
+            picker.Pick(event_pos[0],
+                        event_pos[1],
+                        0,
+                        showm.scene)
+
+            # from pdb import set_trace
+            # set_trace()
+            i, j, k = picker.GetPointIJK()
+            print(i, j, k, data[i, j, k])
+
+        final_actor.AddObserver('LeftButtonPressEvent',
+                                left_click_callback_mosaic,
+                                1.0)
+        showm.initialize()
+        showm.start()
 
 
 if __name__ == '__main__':
@@ -235,7 +260,7 @@ if __name__ == '__main__':
 
     # data_orig = imread(fname)
 
-    data_orig = np.zeros((512, 512, 3)) + 50
+    data_orig = np.zeros((512, 512, 3))
 
     I, J, _ = data_orig.shape
 
