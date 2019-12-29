@@ -20,17 +20,25 @@ else:
 
 def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
                      subimage_width=None, lab_color=False, histo=True,
-                     random_selection=None, strides=False, distance='nssd'):
+                     random_selection=None, strides=False, distance='nssd',
+                     interpolation='98p'):
     shuffling = True
 
-    p98 = np.percentile(data_orig, 98)
     data_orig = data_orig.astype('f8')
 
     # from skimage.color import rgb2lab
     # data_orig = rgb2lab(data_orig)
     print('patch_size', patch_radius * 2 + 1)
 
-    data = np.interp(data_orig, (0, p98), (0, 1.))
+    if interpolation == '98p':
+        p98 = np.percentile(data_orig, 98)
+        data = np.interp(data_orig, (0, p98), (0, 1.))
+    if interpolation == '0-max':
+        data = np.interp(data_orig, (0, data_orig.max()), (0, 1.))
+    if interpolation == 'min-max':
+        data = np.interp(data_orig, (data_orig.min(), data_orig.max()), (0, 1.))
+    if interpolation == '0-255':
+        data = np.interp(data_orig, (0, 255), (0, 1.))
 
     I, J, _ = data.shape
 
@@ -145,7 +153,6 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     fgn = FastGroupingNode(thresholds=thresholds, metric=metric)
 
-    print('Number of features', len(ds))
     print('Feature size', ds[0].shape)
     print('Thresholds', thresholds)
 
@@ -178,43 +185,19 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
 
 #@profile
-def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
+def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
+              thresholds=[2.],
               subimage_width=None, lab_color=False, histo=True,
-              random_selection=1000000, strides=False, distance='nsad'):
-
-    from imageio import imread
-    from os.path import join as pjoin
-
-    dname = '/home/elef/Data/hubmap'
-    fname = pjoin(dname, 'original.jpg')
-    # fname = pjoin(dname, '188130_web.jpg')
-    # fname = pjoin(dname, 'apptop1-10151.jpg')
-    # fname = pjoin(dname, 'autumn-landscape-photography-3-900x599.jpg')
-    # fname = pjoin(dname, 'forrest.jpg')
-    # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
-    # fname = pjoin(dname, 'tree_desert.jpg')
-
-    # data_orig = imread(fname)
-
-    data_orig = np.zeros((512, 512, 3)) + 50
-
-    I, J, _ = data_orig.shape
-
-
-    mI = I // 2
-    mJ = J // 2
-    w = 20
-    for mult in [1, 2, 3, 4, 5, 6, 7, 8]:
-
-        data_orig[mI - mult * w: mI + mult * w, mJ - mult * w: mJ + mult * w] += w
-
+              random_selection=1000000, strides=False, distance='nsad',
+              interpolation='98p'):
 
     final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
                                    bin_size=bin_size, thresholds=thresholds,
                                    subimage_width=subimage_width,
                                    histo=histo,
                                    random_selection=random_selection,
-                                   strides=strides, distance=distance)
+                                   strides=strides, distance=distance,
+                                   interpolation=interpolation)
 
     print(final.shape, data.shape, data_orig.shape)
 
@@ -238,6 +221,31 @@ def images_2d(interactive=True, patch_radius=1, bin_size=5, thresholds=[2.],
 if __name__ == '__main__':
 
 
+    from imageio import imread
+    from os.path import join as pjoin
+
+    dname = '/home/elef/Data/hubmap'
+    fname = pjoin(dname, 'original.jpg')
+    # fname = pjoin(dname, '188130_web.jpg')
+    # fname = pjoin(dname, 'apptop1-10151.jpg')
+    # fname = pjoin(dname, 'autumn-landscape-photography-3-900x599.jpg')
+    # fname = pjoin(dname, 'forrest.jpg')
+    # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
+    # fname = pjoin(dname, 'tree_desert.jpg')
+
+    # data_orig = imread(fname)
+
+    data_orig = np.zeros((512, 512, 3)) + 50
+
+    I, J, _ = data_orig.shape
+
+    mI = I // 2
+    mJ = J // 2
+    w = 50
+    for mult in [1, 2, 3, 4, 5]:
+
+        data_orig[mI - mult * w: mI + mult * w, mJ - mult * w: mJ + mult * w] += w
+
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
@@ -255,7 +263,9 @@ if __name__ == '__main__':
     #           subimage_width=None, histo=False,
     #           random_selection=10000,
     #           strides=True, distance='nssd')
-    images_2d(True, patch_radius=1, bin_size=5, thresholds=[.5],
-              subimage_width=None, histo=False,
+
+    images_2d(data_orig, True, patch_radius=1, bin_size=10, thresholds=[1.],
+              subimage_width=None, histo=True,
               random_selection=None,
-              strides=False, distance='nssd')
+              strides=False, distance='nssd',
+              interpolation='0-255')
