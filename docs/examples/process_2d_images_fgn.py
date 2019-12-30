@@ -204,13 +204,17 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
     if interactive:
 
         scene = window.Scene()
-        scene.add(actor.texture((255 * data).astype('uint8')))
+        data_actor = actor.texture((255 * data).astype('uint8'),
+                                   interp=False)
+        scene.add(data_actor)
 
-        final_actor = actor.texture((255 * final).astype('uint8'))
+        final_actor = actor.texture((255 * final).astype('uint8'),
+                                    interp=False)
         final_actor.SetPosition(data.shape[0] + 50, 0, 0)
 
         final_actor2 = actor.texture(
-                (255 * (0.5 * final + 0.5 * data)).astype('uint8'))
+                (255 * (0.5 * final + 0.5 * data)).astype('uint8'),
+                interp=False)
 
         final_actor2.SetPosition(2 * data.shape[0] + 2 * 50, 0, 0)
 
@@ -218,7 +222,7 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
         scene.add(final_actor2)
 
         from fury.window import vtk
-        showm = window.ShowManager(scene)
+        showm = window.ShowManager(scene, size=(1200, 1200))
         picker = vtk.vtkCellPicker()
         picker.SetTolerance(0.01)
         picker.PickTextureDataOn()
@@ -234,14 +238,26 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
             # from pdb import set_trace
             # set_trace()
             i, j, k = picker.GetPointIJK()
-            print(i, j, k, data[i, j, k])
+            print(i, j, k, 'data', data[i, j], 'final', final[i, j])
 
         final_actor.AddObserver('LeftButtonPressEvent',
                                 left_click_callback_mosaic,
                                 1.0)
+        data_actor.AddObserver('LeftButtonPressEvent',
+                               left_click_callback_mosaic,
+                               1.0)
+
         showm.initialize()
         showm.start()
 
+        # from pylab import imshow, show, figure
+
+        # figure()
+        # imshow(data)
+
+        # figure()
+        # imshow(final)
+        # show()
 
 if __name__ == '__main__':
 
@@ -260,7 +276,7 @@ if __name__ == '__main__':
 
     # data_orig = imread(fname)
 
-    data_orig = np.zeros((512, 512, 3))
+    data_orig = np.zeros((512, 512, 3)) + 50
 
     I, J, _ = data_orig.shape
 
@@ -289,7 +305,9 @@ if __name__ == '__main__':
     #           random_selection=10000,
     #           strides=True, distance='nssd')
 
-    images_2d(data_orig, True, patch_radius=1, bin_size=10, thresholds=[1.],
+    print('data_orig.max()', data_orig.max())
+
+    images_2d(data_orig, True, patch_radius=1, bin_size=10, thresholds=[.5],
               subimage_width=None, histo=True,
               random_selection=None,
               strides=False, distance='nssd',
