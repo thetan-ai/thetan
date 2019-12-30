@@ -307,8 +307,8 @@ if __name__ == '__main__':
 
     print('data_orig.max()', data_orig.max())
 
-    images_2d(data_orig, True, patch_radius=1, bin_size=10, thresholds=[.5],
-              subimage_width=None, histo=True,
+    images_2d(data_orig, True, patch_radius=1, bin_size=10, thresholds=[.1],
+              subimage_width=None, histo=False,
               random_selection=None,
-              strides=False, distance='nssd',
-              interpolation='0-255')
+              strides=True, distance='nsad',
+              interpolation='min-max')
