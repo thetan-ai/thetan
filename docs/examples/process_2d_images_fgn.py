@@ -172,6 +172,8 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     print('Finished clustering')
     t2 = time()
     print('Duration %.3f' % (t2 - t1,))
+
+    # TODO: generate results for all clusters not only the first cluster
     clusters = fgn_tree.get_clusters(1)
     print('Number of clusters %d' % (len(clusters),))
 
