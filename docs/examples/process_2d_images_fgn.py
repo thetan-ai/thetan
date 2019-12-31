@@ -21,7 +21,7 @@ else:
 def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
                      subimage_width=None, lab_color=False, histo=True,
                      random_selection=None, strides=False, distance='nssd',
-                     interpolation='98p'):
+                     interpolation='0-98p', only_centers=True):
     shuffling = True
 
     data_orig = data_orig.astype('f8')
@@ -30,7 +30,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     # data_orig = rgb2lab(data_orig)
     print('patch_size', patch_radius * 2 + 1)
 
-    if interpolation == '98p':
+    if interpolation == '0-98p':
         p98 = np.percentile(data_orig, 98)
         data = np.interp(data_orig, (0, p98), (0, 1.))
     if interpolation == '0-max':
@@ -39,6 +39,8 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
         data = np.interp(data_orig, (data_orig.min(), data_orig.max()), (0, 1.))
     if interpolation == '0-255':
         data = np.interp(data_orig, (0, 255), (0, 1.))
+
+    print('>> Interpolated')
 
     I, J, _ = data.shape
 
@@ -50,19 +52,18 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     print('data.shape', data.shape)
 
-    # Add padding
-    data_r = np.pad(data[..., 0], pad_width=patch_radius, mode='reflect')
-    data_g = np.pad(data[..., 1], pad_width=patch_radius, mode='reflect')
-    data_b = np.pad(data[..., 2], pad_width=patch_radius, mode='reflect')
+    if patch_radius > 0:
+        data_r = np.pad(data[..., 0], pad_width=patch_radius, mode='reflect')
+        data_g = np.pad(data[..., 1], pad_width=patch_radius, mode='reflect')
+        data_b = np.pad(data[..., 2], pad_width=patch_radius, mode='reflect')
+        print('>> Padding added')
 
-    data = np.zeros(data_r.shape + (3,))
-    data[..., 0] = data_r
-    data[..., 1] = data_g
-    data[..., 2] = data_b
+        data = np.zeros(data_r.shape + (3,))
+        data[..., 0] = data_r
+        data[..., 1] = data_g
+        data[..., 2] = data_b
 
-    print('data.shape after padding', data.shape)
-
-    print('>> Interpolated and padded')
+    print('data.shape', data.shape)
 
     class DataSequence2D:
         def __init__(self, data, indices, histo=True):
@@ -77,11 +78,15 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
             patch = self.data[x - patch_radius: x + patch_radius + 1,
                               y - patch_radius: y + patch_radius + 1]
 
-            p1 = patch[:, :, 0]
-            p2 = patch[:, :, 1]
-            p3 = patch[:, :, 2]
+            if patch_radius > 0:
+                p1 = patch[:, :, 0]
+                p2 = patch[:, :, 1]
+                p3 = patch[:, :, 2]
+                lp = len(p1)
+            else:
 
-            lp = len(p1)
+                p1, p2, p3 = patch[0, 0]
+                lp = 1
 
             if self.histo:
                 b1 = histogram1d(p1.ravel(), bins=bin_size, range=(0, 1))
@@ -98,11 +103,14 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
                 return np.ascontiguousarray(expand)
 
             else:
-                # compare directly color values
-                expand = np.empty((len(p1.ravel()), 3))
-                expand[:, 0] = p1.ravel()
-                expand[:, 1] = p2.ravel()
-                expand[:, 2] = p3.ravel()
+                if patch_radius > 0:
+                    # compare directly color values
+                    expand = np.empty((len(p1.ravel()), 3))
+                    expand[:, 0] = p1.ravel()
+                    expand[:, 1] = p2.ravel()
+                    expand[:, 2] = p3.ravel()
+                else:
+                    expand = np.array([[p1, p2, p2]])
                 return np.ascontiguousarray(expand)
 
         def __len__(self):
@@ -112,6 +120,7 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
     X, Y, _ = data.shape
 
     if strides:
+        print('>> Striding is on')
         for x in range(patch_radius, data.shape[0], patch_radius * 2 + 1):
             for y in range(patch_radius, data.shape[1], patch_radius * 2 + 1):
                 idx = (x, y)
@@ -175,11 +184,20 @@ def fgn_image_2d_rgb(data_orig, patch_radius=1, bin_size=5, thresholds=[2.],
 
     for cluster_id, cluster in enumerate(clusters):
         for idx_ in cluster.indices:
-            final[tuple(internal_indices[idx_])] = cluster_colors[cluster_id]
+            if only_centers:
+                final[tuple(internal_indices[idx_])] = \
+                    cluster_colors[cluster_id]
+            else:
+                idx_tmp = tuple(internal_indices[idx_])
+                x, y = idx_tmp
+                final[x - patch_radius: x + patch_radius + 1,
+                      y - patch_radius: y + patch_radius + 1] = \
+                    cluster_colors[cluster_id]
 
-    print('Removed extra padding')
-    final = final[patch_radius: -patch_radius, patch_radius: -patch_radius]
-    data = data[patch_radius: -patch_radius, patch_radius: -patch_radius]
+    if patch_radius > 0:
+        print('Removed extra padding')
+        final = final[patch_radius: -patch_radius, patch_radius: -patch_radius]
+        data = data[patch_radius: -patch_radius, patch_radius: -patch_radius]
 
     return final, data
 
@@ -189,7 +207,7 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
               thresholds=[2.],
               subimage_width=None, lab_color=False, histo=True,
               random_selection=1000000, strides=False, distance='nsad',
-              interpolation='98p'):
+              interpolation='98p', only_centers=True):
 
     final, data = fgn_image_2d_rgb(data_orig, patch_radius=patch_radius,
                                    bin_size=bin_size, thresholds=thresholds,
@@ -197,7 +215,8 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
                                    histo=histo,
                                    random_selection=random_selection,
                                    strides=strides, distance=distance,
-                                   interpolation=interpolation)
+                                   interpolation=interpolation,
+                                   only_centers=only_centers)
 
     print(final.shape, data.shape, data_orig.shape)
 
@@ -287,6 +306,10 @@ if __name__ == '__main__':
 
         data_orig[mI - mult * w: mI + mult * w, mJ - mult * w: mJ + mult * w] += w
 
+    mult_level = 50
+    noise = mult_level * np.random.rand(*data_orig.shape) - mult_level / 2.
+    data_orig = data_orig + noise
+
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
@@ -307,8 +330,8 @@ if __name__ == '__main__':
 
     print('data_orig.max()', data_orig.max())
 
-    images_2d(data_orig, True, patch_radius=1, bin_size=10, thresholds=[.1],
+    images_2d(data_orig, True, patch_radius=2, bin_size=10, thresholds=[.12],
               subimage_width=None, histo=False,
               random_selection=None,
-              strides=True, distance='nsad',
-              interpolation='min-max')
+              strides=False, distance='nsad',
+              interpolation='min-max', only_centers=False)
