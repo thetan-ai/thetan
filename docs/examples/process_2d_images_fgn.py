@@ -332,7 +332,7 @@ if __name__ == '__main__':
 
     print('data_orig.max()', data_orig.max())
 
-    images_2d(data_orig, True, patch_radius=2, bin_size=10, thresholds=[.12],
+    images_2d(data_orig, True, patch_radius=0, bin_size=10, thresholds=[.12],
               subimage_width=None, histo=False,
               random_selection=None,
               strides=False, distance='nsad',
