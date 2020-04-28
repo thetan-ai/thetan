@@ -1,3 +1,4 @@
+from pdb import set_trace
 from time import time
 import numpy as np
 from robotikos.clustering import FastGroupingNode
@@ -17,22 +18,49 @@ def report_confusion_matrix(y_true, y_pred):
     return cmat
 
 
-def report_accurracy(y_true, y_pred):
+def report_accuracy(y_true, y_pred):
 
     accs = accuracy_score(y_true, y_pred,
                           normalize=True,
                           sample_weight=None)
-    print(accs)
+    return accs
 
 
-def report_groups(clusters, y):
+def report_exactness(y_true, y_pred):
+    exactness = np.sum(np.abs(y_true - y_pred) == 0) / len(y_true)
+    return exactness
 
+
+def report_unique(clusters, y_true):
+    """ use with caution only repeating most predicted value"""
+
+    y_pred = []
     for c_id, c in enumerate(clusters):
         print('Cluster # {} Elements {}'.format(c_id, len(c)))
         y_s = []
         for i in c:
-            y_s.append(y[i])
-        print(np.unique(y_s, return_counts=True))
+            y_s.append(y_true[i])
+        elements, counts = np.unique(y_s, return_counts=True)
+        # print(elements)
+        # print(counts)
+        pred_value = elements[np.argmax(counts)]
+        # print('classified as ' + str(pred_value))
+        pred_value_ext = [pred_value] * len(y_s)
+        y_pred.extend(pred_value_ext)
+        # set_trace()
+        y_sa = np.asarray(y_s)
+        print(np.sum(y_sa == pred_value) / len(y_sa))
+    return np.array(y_pred)
+
+
+def separate_train_data(x_train, y_train):
+
+    sep_data = {}
+    for i in range(10):
+        sep_data[i] = x_train[y_train == i]
+
+    return sep_data
+
 
 
 mnist = tf.keras.datasets.mnist
@@ -42,40 +70,169 @@ mnist = tf.keras.datasets.mnist
 metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 # metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
 
-data = x_train.copy()[:10000]
+train_sz = 60000
+test_sz = 10000
 
-# data = np.ascontiguousarray(data.reshape(data.shape[0], 28 * 28))
-data = np.ascontiguousarray(data / 255.)
-feature_shape = (28, 28)
+print('Training size', train_sz)
+print('Test size', test_sz)
 
-from pdb import set_trace
+x_train_part = x_train.copy()[:train_sz]
+x_train_part = np.ascontiguousarray(x_train_part / 255.)
+
+x_test_part = x_test.copy()[:test_sz]
+x_test_part = np.ascontiguousarray(x_test_part / 255.)
+
+y_train_part = y_train.copy()[:train_sz]
+y_test_part = y_test.copy()[:test_sz]
+
+feature_shape = x_train_part[0].shape
 
 # set_trace()
 
 thresholds = [0.1]
 
-interactive = True
+def test_unique():
+    """ This will not be used as is """
 
-fgn = FastGroupingNode(thresholds, metric)
+    interactive = True
 
-fgn_next = fgn.cluster_online(feature_shape)
+    fgn = FastGroupingNode(thresholds, metric)
 
-print('Async FGN version')
+    fgn_next = fgn.cluster_online(feature_shape)
 
-t1 = time()
-for i in range(len(data)):
-    fgn_online_tree, path = fgn_next(data[i], i)
-t2 = time()
-print('Duration %.3f s' % (t2 - t1,))
+    print('Async FGN version')
 
-fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
+    t1 = time()
+    for i in range(len(data)):
+        fgn_online_tree, path = fgn_next(data[i], i)
+    t2 = time()
+    print('Duration %.3f s' % (t2 - t1,))
 
-for i in range(len(thresholds)):
-    print('Level', i + 1)
-    clusters = fgn_online_all_levels.get_clusters(i + 1)
-    if interactive:
-        print('# clusters', len(clusters))
-        # print('clusters', clusters)
-    print(len(clusters))
-    report_groups(clusters, y_train)
+    fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
 
+    for i in range(len(thresholds)):
+        print('Level', i + 1)
+        clusters = fgn_online_all_levels.get_clusters(i + 1)
+        if interactive:
+            print('# clusters', len(clusters))
+            # print('clusters', clusters)
+        print(len(clusters))
+        # y_pred = report_unique(clusters, y_train)
+        # report_accuracy(y_train, y_pred)
+
+
+def fsn_training_no_fgn(x_train, y_train):
+
+    sep_data = separate_train_data(x_train, y_train)
+
+    centroids = {}
+    for i in sep_data:
+        centroids[i] = np.mean(sep_data[i], axis=0)
+
+    y_pred = []
+    for x in x_train:
+        min_dists = []
+        for i in centroids:
+            c = centroids[i]
+            d = metric.dist(x.astype('f4'), c.astype('f4'))
+            min_dists.append(d)
+        y_pred.append(np.argmin(min_dists))
+    return centroids, y_pred
+
+
+def fsn_test_no_fgn(x_test, centroids):
+
+    y_pred = []
+    for x in x_test:
+        min_dists = []
+        for i in centroids:
+            c = centroids[i]
+            d = metric.dist(x.astype('f4'), c.astype('f4'))
+            min_dists.append(d)
+        y_pred.append(np.argmin(min_dists))
+    return y_pred
+
+
+def fsn_training_with_fgn(x_train, y_train, thresholds, metric):
+
+    sep_data = separate_train_data(x_train, y_train)
+
+    print('Async FGN version')
+    print('Thresholds', thresholds)
+
+    centroids = {}
+    for s in sep_data:
+        t1 = time()
+
+        fgn = FastGroupingNode(thresholds, metric)
+        fgn_next = fgn.cluster_online(feature_shape)
+
+        for i in range(sep_data[s].shape[0]):
+            fgn_online_tree, _path = fgn_next(sep_data[s][i], i)
+
+        t2 = time()
+        print('Duration %.3f s' % (t2 - t1,))
+
+        fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
+
+        for t in range(len(thresholds)):
+            print('Level', t + 1)
+            clusters = fgn_online_all_levels.get_clusters(t + 1)
+
+        centroids[s] = clusters.centroids
+
+    total_no_centroids = np.sum([len(centroids[c]) for c in centroids])
+    print('Total number of centroids', total_no_centroids)
+
+    y_pred = []
+    cnt = 0
+    for x in x_train:
+        if cnt % 5000 == 0:
+            print(cnt)
+        min_dists = []
+        # there are multiple centroids for each training class
+        for key in centroids:
+            min_dists_category = []
+            # look at all available centroids
+            for c in centroids[key]:
+                d = metric.dist(x.astype('f4'), c.astype('f4'))
+                min_dists_category.append(d)
+            min_dists.append(np.min(min_dists_category))
+        y_pred.append(np.argmin(min_dists))
+
+        cnt += 1
+    return centroids, y_pred
+
+
+def fsn_test_with_fgn(x_test, centroids):
+    """ Something is strange """
+
+    y_pred = []
+    for x in x_test:
+        min_dists = []
+        for key in centroids:
+            min_dists_category = []
+            # look at all available
+            for c in centroids[key]:
+                d = metric.dist(x.astype('f4'), c.astype('f4'))
+                min_dists_category.append(d)
+            min_dists.append(np.min(min_dists_category))
+        y_pred.append(np.argmin(min_dists))
+    return y_pred
+
+
+centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
+                                                thresholds, metric)
+# centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part)
+
+y_test_pred = fsn_test_with_fgn(x_test_part, centroids)
+# y_test_pred = fsn_test_no_fgn(x_test, centroids)
+
+print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
+print('Accuracy test set', report_accuracy(y_test_part, y_test_pred))
+
+# print('Exactness training set', report_exactness(y_train_part, y_train_pred))
+# print('Exactness test set', report_exactness(y_test, y_test_pred))
+
+# for i in centroids:
+#    figure(); imshow(centroids[i])
