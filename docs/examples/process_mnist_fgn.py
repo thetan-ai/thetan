@@ -62,7 +62,6 @@ def separate_train_data(x_train, y_train):
     return sep_data
 
 
-
 mnist = tf.keras.datasets.mnist
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -75,6 +74,12 @@ test_sz = 10000
 
 print('Training size', train_sz)
 print('Test size', test_sz)
+
+thresholds = [0.1]
+# thresholds = [0.08]
+print('Thresholds', thresholds)
+
+# TODO add data shuffling
 
 x_train_part = x_train.copy()[:train_sz]
 x_train_part = np.ascontiguousarray(x_train_part / 255.)
@@ -89,9 +94,7 @@ feature_shape = x_train_part[0].shape
 
 # set_trace()
 
-thresholds = [0.1]
-
-def test_unique():
+def count_cluster_spread():
     """ This will not be used as is """
 
     interactive = True
@@ -121,29 +124,24 @@ def test_unique():
         # report_accuracy(y_train, y_pred)
 
 
-def fsn_training_no_fgn(x_train, y_train):
-
+def fsn_training_no_fgn(x_train, y_train, metric):
     sep_data = separate_train_data(x_train, y_train)
 
     centroids = {}
     for i in sep_data:
         centroids[i] = np.mean(sep_data[i], axis=0)
 
-    y_pred = []
-    for x in x_train:
-        min_dists = []
-        for i in centroids:
-            c = centroids[i]
-            d = metric.dist(x.astype('f4'), c.astype('f4'))
-            min_dists.append(d)
-        y_pred.append(np.argmin(min_dists))
+    y_pred = y_pred_no_fgn(x_train, centroids, metric)
     return centroids, y_pred
 
 
-def fsn_test_no_fgn(x_test, centroids):
+def fsn_test_no_fgn(x_test, centroids, metric):
+    return y_pred_no_fgn(x_test, centroids, metric)
 
+
+def y_pred_no_fgn(x_features, centroids, metric):
     y_pred = []
-    for x in x_test:
+    for x in x_features:
         min_dists = []
         for i in centroids:
             c = centroids[i]
@@ -184,13 +182,23 @@ def fsn_training_with_fgn(x_train, y_train, thresholds, metric):
     total_no_centroids = np.sum([len(centroids[c]) for c in centroids])
     print('Total number of centroids', total_no_centroids)
 
+    y_pred = y_pred_with_fgn(x_train, centroids, metric)
+
+    return centroids, y_pred
+
+
+def fsn_test_with_fgn(x_test, centroids, metric):
+    return y_pred_with_fgn(x_test, centroids, metric)
+
+
+def y_pred_with_fgn(x_features, centroids, metric):
     y_pred = []
     cnt = 0
-    for x in x_train:
+    for x in x_features:
         if cnt % 5000 == 0:
             print(cnt)
         min_dists = []
-        # there are multiple centroids for each training class
+        # there are multiple centroids for each underlying training class
         for key in centroids:
             min_dists_category = []
             # look at all available centroids
@@ -199,34 +207,17 @@ def fsn_training_with_fgn(x_train, y_train, thresholds, metric):
                 min_dists_category.append(d)
             min_dists.append(np.min(min_dists_category))
         y_pred.append(np.argmin(min_dists))
-
         cnt += 1
-    return centroids, y_pred
-
-
-def fsn_test_with_fgn(x_test, centroids):
-    """ Something is strange """
-
-    y_pred = []
-    for x in x_test:
-        min_dists = []
-        for key in centroids:
-            min_dists_category = []
-            # look at all available
-            for c in centroids[key]:
-                d = metric.dist(x.astype('f4'), c.astype('f4'))
-                min_dists_category.append(d)
-            min_dists.append(np.min(min_dists_category))
-        y_pred.append(np.argmin(min_dists))
     return y_pred
 
 
 centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
                                                 thresholds, metric)
-# centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part)
+# centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
+#                                               metric)
 
-y_test_pred = fsn_test_with_fgn(x_test_part, centroids)
-# y_test_pred = fsn_test_no_fgn(x_test, centroids)
+y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
+# y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
 
 print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
 print('Accuracy test set', report_accuracy(y_test_part, y_test_pred))
