@@ -1,13 +1,19 @@
 from pdb import set_trace
 from time import time
 import numpy as np
-from robotikos.clustering import FastGroupingNode
+from skimage import filters
+from robotikos.clustering import FastGroupingNode, ClusterMapCentroid, ClusterCentroid
 from robotikos.metric import IdentityFeature
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
                               NormalizedSumAbsDiffMetric)
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix
+import logging
+from dipy.tracking.streamline import set_number_of_points, nbytes
+
+
+logger = logging.getLogger(__name__)
 
 
 def report_confusion_matrix(y_true, y_pred):
@@ -62,37 +68,160 @@ def separate_train_data(x_train, y_train):
     return sep_data
 
 
-mnist = tf.keras.datasets.mnist
+def fgn_mf(data, thresholds, metric,
+           select_randomly=None, rng=None, verbose=False):
+    """ Fast Grouping Node with Merging Final
 
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
+    Parameters
+    ----------
+    data : sequence of features
+    thresholds : sequence
+        List of distance thresholds for FGN
+    metric : class
+    nb_pts : int
+        Number of points for discretizing each streamline
+    select_randomly : int
+        Randomly select a specific number of streamlines. If None all the
+        streamlines are used.
+    rng : RandomState
+        If None then RandomState is initialized internally.
+    verbose : bool, optional.
+        If True, log information. Default False.
+
+    Returns
+    -------
+    clusters : obj
+        Contains the clusters of the last layer of FGN after merging each layer.
+    """
+
+    t = time()
+    len_s = len(data)
+    if select_randomly is None:
+        select_randomly = len_s
+
+    if rng is None:
+        rng = np.random.RandomState()
+    indices = rng.choice(len_s, min(select_randomly, len_s),
+                         replace=False)
+
+    if verbose:
+        logger.info(' FGN phase starting...')
+
+    # qbx = QuickBundlesX(thresholds,
+    #                    metric=AveragePointwiseEuclideanMetric())
+    fgn = FastGroupingNode(thresholds, metric)
+
+    t1 = time()
+    fgn_next = fgn.cluster_online(feature_shape)
+    # qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
+    # TODO : I am currently not supporting different ordering
+
+    for i in range(len(data)):
+        fgn_online_tree, _path = fgn_next(data[i], i)
+
+    fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
+
+    if verbose:
+        logger.info(' Merging phase starting ...')
+
+    # qbx_merge = QuickBundlesX([thresholds[-1]],
+    #                           metric=AveragePointwiseEuclideanMetric())
+
+    fgn_merge = FastGroupingNode([thresholds[-1]], metric=metric)
+
+    final_level = len(thresholds)
+    # len_qbx_fl = len(qbx_clusters.get_clusters(final_level))
+    fgn_clusters = fgn_online_all_levels.get_clusters(final_level)
+    len_fgn_fl = len(fgn_clusters)
+
+    # qbx_ordering_final = rng.choice(len_qbx_fl, len_qbx_fl, replace=False)
+    fgn_ordering_final = rng.choice(len_fgn_fl, len_fgn_fl, replace=False)
+
+    # qbx_merged_cluster_map = qbx_merge.cluster(
+    #     qbx_clusters.get_clusters(final_level).centroids,
+    #     ordering=qbx_ordering_final).get_clusters(1)
+
+    fgn_merged_cluster_map = fgn_merge.cluster(
+        fgn_clusters.get_clusters(final_level).centroids,
+        ordering=fgn_ordering_final).get_clusters(1)
+
+    # qbx_cluster_map = qbx_clusters.get_clusters(final_level)
+    fgn_cluster_map = fgn_clusters.get_clusters(final_level)
+
+    merged_cluster_map = ClusterMapCentroid()
+
+    # for cluster in qbx_merged_cluster_map:
+    #     merged_cluster = ClusterCentroid(centroid=cluster.centroid)
+    #     for i in cluster.indices:
+    #         merged_cluster.indices.extend(qbx_cluster_map[i].indices)
+    #     merged_cluster_map.add_cluster(merged_cluster)
+
+    for cluster in fgn_merged_cluster_map:
+        merged_cluster = ClusterCentroid(centroid=cluster.centroid)
+        for i in cluster.indices:
+            merged_cluster.indices.extend(fgn_cluster_map[i].indices)
+        merged_cluster_map.add_cluster(merged_cluster)
+
+    merged_cluster_map.refdata = data
+
+    if verbose:
+        logger.info(' FGN time for %d random streamlines'
+                    % (select_randomly,))
+
+        logger.info(' Duration %0.3f sec. \n' % (time() - t1,))
+
+    return merged_cluster_map
+
+
+dataset_type = 'fashion'
+
+if dataset_type == 'mnist':
+    print('Loading Hand Written Digits')
+    mnist = tf.keras.datasets.mnist
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+elif dataset_type == 'fashion':
+    print('Loading Fashion MNIST dataset')
+    fashion_mnist = tf.keras.datasets.fashion_mnist
+    (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+else:
+    raise ValueError('Uknown dataset type')
+
 
 metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 # metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
 
 train_sz = 60000
 test_sz = 10000
-
+use_sobel = True
 print('Training size', train_sz)
 print('Test size', test_sz)
 
-thresholds = [0.1]
-# thresholds = [0.08]
+# thresholds = [0.1]
+thresholds = [0.08]
+# thresholds = [0.05]
+# Accuracy training set 0.7715833333333333
+# Accuracy test set (min_dist) 0.7503
 print('Thresholds', thresholds)
 
 # TODO add data shuffling
 
 x_train_part = x_train.copy()[:train_sz]
 x_train_part = np.ascontiguousarray(x_train_part / 255.)
+if use_sobel:
+    for i in range(train_sz):
+        x_train_part[i] = filters.sobel(x_train_part[i])
 
 x_test_part = x_test.copy()[:test_sz]
 x_test_part = np.ascontiguousarray(x_test_part / 255.)
+if use_sobel:
+    for i in range(test_sz):
+        x_test_part[i] = filters.sobel(x_test_part[i])
 
 y_train_part = y_train.copy()[:train_sz]
 y_test_part = y_test.copy()[:test_sz]
 
 feature_shape = x_train_part[0].shape
 
-# set_trace()
 
 def count_cluster_spread():
     """ This will not be used as is """
@@ -211,6 +340,39 @@ def y_pred_with_fgn(x_features, centroids, metric):
     return y_pred
 
 
+def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
+    # TODO number of centroids is radically different for each category
+    # I need to find a weighted measurement that takes into account
+    # number of samples per cluster etc.
+
+    y_pred = []
+
+    cnt = 0
+    for x in x_features:
+        if cnt % 5000 == 0:
+            print(cnt)
+        max_counts = []
+        # each class
+        for key in centroids:
+            counts = 0
+            # each centroid of each class
+            # print(key, len(centroids[key]))
+            for cent in centroids[key]:
+                # print(cent.shape)
+                # set_trace()
+                d = metric.dist(x.astype('f4'), cent.astype('f4'))
+                if d <= thr:
+                    counts += 1
+            max_counts.append(counts)
+        # print(max_counts)
+        # set_trace()
+        y_pred.append(np.argmax(max_counts))
+        cnt += 1
+    return y_pred
+
+
+# TODO focus on FGM with merge! So that you can speed up the samples.
+
 centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
                                                 thresholds, metric)
 # centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
@@ -220,10 +382,16 @@ y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
 # y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
 
 print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
-print('Accuracy test set', report_accuracy(y_test_part, y_test_pred))
+print('Accuracy test set (min_dist)', report_accuracy(y_test_part, y_test_pred))
+
+# for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:
+#     y_test_pred2 = y_pred_with_fgn_counts(x_test_part, centroids, metric, thr=t)
+#     print('Accuracy test set (max_counts)', t, report_accuracy(y_test_part, y_test_pred2))
 
 # print('Exactness training set', report_exactness(y_train_part, y_train_pred))
 # print('Exactness test set', report_exactness(y_test, y_test_pred))
 
 # for i in centroids:
 #    figure(); imshow(centroids[i])
+
+mc_map = fgn_mf(x_train_part, thresholds=[0.1, 0.8], metric=metric)
