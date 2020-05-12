@@ -116,7 +116,7 @@ def compute_rsvd(A, rank):
     Q, B = compute_rqb(A, rank)
 
     # Compute SVD
-    U, s, Vt = linalg.svd(B)
+    U, s, Vt = svd(B)
 
     # Recover right singular vectors
     U = Q.dot(U)
@@ -203,6 +203,8 @@ def fgn_mf(data, thresholds, metric,
         Contains the clusters of the last layer of FGN after merging each layer.
     """
 
+    print('In FGN MF')
+    print('Thresholds ', thresholds)
     t = time()
     len_s = len(data)
     if select_randomly is None:
@@ -251,11 +253,13 @@ def fgn_mf(data, thresholds, metric,
     #     ordering=qbx_ordering_final).get_clusters(1)
 
     fgn_merged_cluster_map = fgn_merge.cluster(
-        fgn_clusters.get_clusters(final_level).centroids,
+        fgn_clusters.centroids,
         ordering=fgn_ordering_final).get_clusters(1)
 
     # qbx_cluster_map = qbx_clusters.get_clusters(final_level)
-    fgn_cluster_map = fgn_clusters.get_clusters(final_level)
+    # Maybe something unexpected here
+    # fgn_cluster_map = fgn_clusters.get_clusters(final_level)
+    fgn_cluster_map = fgn_clusters
 
     merged_cluster_map = ClusterMapCentroid()
 
@@ -282,7 +286,7 @@ def fgn_mf(data, thresholds, metric,
     return merged_cluster_map
 
 
-dataset_type = 'fashion'
+dataset_type = 'mnist'
 
 if dataset_type == 'mnist':
     print('Loading Hand Written Digits')
@@ -301,7 +305,7 @@ metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 
 train_sz = 60000
 test_sz = 10000
-use_sobel = True
+use_sobel = False
 print('Training size', train_sz)
 print('Test size', test_sz)
 
@@ -480,27 +484,33 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
     return y_pred
 
 
-# TODO focus on FGM with merge! So that you can speed up the samples.
+if __name__ == "__main__":
 
-centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
-                                                thresholds, metric)
-# centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
-#                                               metric)
 
-y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
-# y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
+    # TODO focus on FGM with merge! So that you can speed up the samples.
 
-print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
-print('Accuracy test set (min_dist)', report_accuracy(y_test_part, y_test_pred))
+    # centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
+    #                                                 thresholds, metric)
+    # centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
+    #                                               metric)
 
-# for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:
-#     y_test_pred2 = y_pred_with_fgn_counts(x_test_part, centroids, metric, thr=t)
-#     print('Accuracy test set (max_counts)', t, report_accuracy(y_test_part, y_test_pred2))
+    # y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
+    # y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
 
-# print('Exactness training set', report_exactness(y_train_part, y_train_pred))
-# print('Exactness test set', report_exactness(y_test, y_test_pred))
+    # print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
+    # print('Accuracy test set (min_dist)', report_accuracy(y_test_part, y_test_pred))
 
-# for i in centroids:
-#    figure(); imshow(centroids[i])
+    # for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:
+    #     y_test_pred2 = y_pred_with_fgn_counts(x_test_part, centroids, metric, thr=t)
+    #     print('Accuracy test set (max_counts)', t, report_accuracy(y_test_part, y_test_pred2))
 
-mc_map = fgn_mf(x_train_part, thresholds=[0.1, 0.8], metric=metric)
+    # print('Exactness training set', report_exactness(y_train_part, y_train_pred))
+    # print('Exactness test set', report_exactness(y_test, y_test_pred))
+
+    # for i in centroids:
+    #    figure(); imshow(centroids[i])
+
+    mc_map = fgn_mf(x_train_part, thresholds=[0.1, 0.08, 0.05],
+                    metric=metric)
+
+    print('Number of centroids found', len(mc_map.centroids))
