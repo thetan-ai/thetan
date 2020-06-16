@@ -218,14 +218,10 @@ def fgn_mf(data, thresholds, metric,
     if verbose:
         logger.info(' FGN phase starting...')
 
-    # qbx = QuickBundlesX(thresholds,
-    #                    metric=AveragePointwiseEuclideanMetric())
     fgn = FastGroupingNode(thresholds, metric)
 
     t1 = time()
     fgn_next = fgn.cluster_online(feature_shape)
-    # qbx_clusters = qbx.cluster(sample_streamlines, ordering=indices)
-    # TODO : I am currently not supporting different ordering
 
     for i in range(len(data)):
         fgn_online_tree, _path = fgn_next(data[i], i)
@@ -235,39 +231,21 @@ def fgn_mf(data, thresholds, metric,
     if verbose:
         logger.info(' Merging phase starting ...')
 
-    # qbx_merge = QuickBundlesX([thresholds[-1]],
-    #                           metric=AveragePointwiseEuclideanMetric())
-
     fgn_merge = FastGroupingNode([thresholds[-1]], metric=metric)
 
     final_level = len(thresholds)
-    # len_qbx_fl = len(qbx_clusters.get_clusters(final_level))
     fgn_clusters = fgn_online_all_levels.get_clusters(final_level)
     len_fgn_fl = len(fgn_clusters)
 
-    # qbx_ordering_final = rng.choice(len_qbx_fl, len_qbx_fl, replace=False)
     fgn_ordering_final = rng.choice(len_fgn_fl, len_fgn_fl, replace=False)
-
-    # qbx_merged_cluster_map = qbx_merge.cluster(
-    #     qbx_clusters.get_clusters(final_level).centroids,
-    #     ordering=qbx_ordering_final).get_clusters(1)
 
     fgn_merged_cluster_map = fgn_merge.cluster(
         fgn_clusters.centroids,
         ordering=fgn_ordering_final).get_clusters(1)
 
-    # qbx_cluster_map = qbx_clusters.get_clusters(final_level)
-    # Maybe something unexpected here
-    # fgn_cluster_map = fgn_clusters.get_clusters(final_level)
     fgn_cluster_map = fgn_clusters
 
     merged_cluster_map = ClusterMapCentroid()
-
-    # for cluster in qbx_merged_cluster_map:
-    #     merged_cluster = ClusterCentroid(centroid=cluster.centroid)
-    #     for i in cluster.indices:
-    #         merged_cluster.indices.extend(qbx_cluster_map[i].indices)
-    #     merged_cluster_map.add_cluster(merged_cluster)
 
     for cluster in fgn_merged_cluster_map:
         merged_cluster = ClusterCentroid(centroid=cluster.centroid)
