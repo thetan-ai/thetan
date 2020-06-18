@@ -169,6 +169,7 @@ def report_unique(clusters, y_true):
 
 
 def separate_train_data(x_train, y_train):
+    """ Separates training data to each category"""
 
     sep_data = {}
     for i in range(10):
@@ -177,64 +178,14 @@ def separate_train_data(x_train, y_train):
     return sep_data
 
 
-def fgn_mf(data, thresholds, metric,
-           select_randomly=None, rng=None, verbose=False):
-    """ Fast Grouping Node with Merging Final
+def fgn_merging_level(fgn_online_all_levels, level, thresholds, data, rng):
 
-    Parameters
-    ----------
-    data : sequence of features
-    thresholds : sequence
-        List of distance thresholds for FGN
-    metric : class
-    nb_pts : int
-        Number of points for discretizing each streamline
-    select_randomly : int
-        Randomly select a specific number of streamlines. If None all the
-        streamlines are used.
-    rng : RandomState
-        If None then RandomState is initialized internally.
-    verbose : bool, optional.
-        If True, log information. Default False.
+    thr = thresholds[level - 1]
 
-    Returns
-    -------
-    clusters : obj
-        Contains the clusters of the last layer of FGN after merging each layer.
-    """
+    fgn_merge = FastGroupingNode([thr], metric=metric)
 
-    print('In FGN MF')
-    print('Thresholds ', thresholds)
-    t = time()
-    len_s = len(data)
-    if select_randomly is None:
-        select_randomly = len_s
-
-    if rng is None:
-        rng = np.random.RandomState()
-    indices = rng.choice(len_s, min(select_randomly, len_s),
-                         replace=False)
-
-    if verbose:
-        logger.info(' FGN phase starting...')
-
-    fgn = FastGroupingNode(thresholds, metric)
-
-    t1 = time()
-    fgn_next = fgn.cluster_online(feature_shape)
-
-    for i in range(len(data)):
-        fgn_online_tree, _path = fgn_next(data[i], i)
-
-    fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
-
-    if verbose:
-        logger.info(' Merging phase starting ...')
-
-    fgn_merge = FastGroupingNode([thresholds[-1]], metric=metric)
-
-    final_level = len(thresholds)
-    fgn_clusters = fgn_online_all_levels.get_clusters(final_level)
+    # final_level = len(thresholds)
+    fgn_clusters = fgn_online_all_levels.get_clusters(level)
     len_fgn_fl = len(fgn_clusters)
 
     fgn_ordering_final = rng.choice(len_fgn_fl, len_fgn_fl, replace=False)
@@ -255,13 +206,74 @@ def fgn_mf(data, thresholds, metric,
 
     merged_cluster_map.refdata = data
 
-    if verbose:
-        logger.info(' FGN time for %d random streamlines'
-                    % (select_randomly,))
-
-        logger.info(' Duration %0.3f sec. \n' % (time() - t1,))
-
     return merged_cluster_map
+
+
+def fgn_ma(data, thresholds, metric,
+           select_randomly=None, rng=None, verbose=False):
+    """ Fast Grouping Node that Merges (re-clusters) all Levels of the tree
+
+    Parameters
+    ----------
+    data : sequence of features
+    thresholds : sequence
+        List of distance thresholds for FGN
+    metric : class
+    nb_pts : int
+        Number of points for discretizing each streamline
+    select_randomly : int
+        Randomly select a specific number of streamlines. If None all the
+        streamlines are used.
+    rng : RandomState
+        If None then RandomState is initialized internally.
+    verbose : bool, optional.
+        If True, log information. Default False.
+
+    Returns
+    -------
+    all_levels : contains clusters for each level
+        Contains the clusters of all levels.
+    """
+
+    print('In FGN MF')
+    print('Thresholds ', thresholds)
+    t = time()
+    len_s = len(data)
+    if select_randomly is None:
+        select_randomly = len_s
+
+    if rng is None:
+        rng = np.random.RandomState()
+
+    # TODO implement random selection
+    # indices = rng.choice(len_s, min(select_randomly, len_s),
+    #                      replace=False)
+
+    if verbose:
+        logger.info(' FGN phase starting...')
+
+    fgn = FastGroupingNode(thresholds, metric)
+
+    fgn_next = fgn.cluster_online(feature_shape)
+
+    for i in range(len(data)):
+        fgn_online_tree, _path = fgn_next(data[i], i)
+
+    fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
+
+    if verbose:
+        logger.info(' Merging phase starting ...')
+
+    all_levels = {}
+    for l in range(len(thresholds)):
+        merged_cluster_map = fgn_merging_level(fgn_online_all_levels,
+                                               l + 1, thresholds, data, rng)
+        all_levels[l + 1] = merged_cluster_map
+
+    if verbose:
+        logger.info(' Duration %0.3f sec. \n' % (time() - t,))
+
+    return all_levels
 
 
 dataset_type = 'mnist'
@@ -488,7 +500,11 @@ if __name__ == "__main__":
     # for i in centroids:
     #    figure(); imshow(centroids[i])
 
-    mc_map = fgn_mf(x_train_part, thresholds=[0.1, 0.08, 0.05],
-                    metric=metric)
+    thresholds = [0.1, 0.08, 0.05]
+    all_levels = fgn_mf(x_train_part, thresholds=thresholds,
+                        metric=metric, verbose=True)
 
-    print('Number of centroids found', len(mc_map.centroids))
+    for i in range(len(thresholds)):
+        print(len(all_levels[i + 1].centroids))
+
+    # print('Number of centroids found', len(mc_map.centroids))
