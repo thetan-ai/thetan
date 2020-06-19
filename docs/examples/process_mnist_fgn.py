@@ -188,6 +188,8 @@ def fgn_merging_level(fgn_online_all_levels, level, thresholds, data, rng):
     fgn_clusters = fgn_online_all_levels.get_clusters(level)
     len_fgn_fl = len(fgn_clusters)
 
+    # this random selection will be only effective to the centroids of
+    # the selected level
     fgn_ordering_final = rng.choice(len_fgn_fl, len_fgn_fl, replace=False)
 
     fgn_merged_cluster_map = fgn_merge.cluster(
@@ -237,6 +239,7 @@ def fgn_ma(data, thresholds, metric,
 
     print('In FGN MF')
     print('Thresholds ', thresholds)
+
     t = time()
     len_s = len(data)
     if select_randomly is None:
@@ -419,6 +422,46 @@ def fsn_training_with_fgn(x_train, y_train, thresholds, metric):
     return centroids, y_pred
 
 
+def fsn_training_with_fgn_ma(x_train, y_train, thresholds, metric):
+
+    sep_data = separate_train_data(x_train, y_train)
+
+    print('Async FGN version')
+    print('Thresholds', thresholds)
+
+    centroids = {}
+    for s in sep_data:
+        # t1 = time()
+
+        # fgn = FastGroupingNode(thresholds, metric)
+        # fgn_next = fgn.cluster_online(feature_shape)
+
+        # for i in range(sep_data[s].shape[0]):
+        #     fgn_online_tree, _path = fgn_next(sep_data[s][i], i)
+
+        # t2 = time()
+        # print('Duration %.3f s' % (t2 - t1,))
+
+        # fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
+
+        # for t in range(len(thresholds)):
+        #     print('Level', t + 1)
+        #     clusters = fgn_online_all_levels.get_clusters(t + 1)
+
+        # centroids[s] = clusters.centroids
+
+        all_levels = fgn_ma(sep_data[s], thresholds, metric)
+        allk = sorted(all_levels.keys())
+        centroids[s] = all_levels[allk[-1]].centroids
+
+    total_no_centroids = np.sum([len(centroids[c]) for c in centroids])
+    print('Total number of centroids', total_no_centroids)
+
+    y_pred = y_pred_with_fgn(x_train, centroids, metric)
+
+    return centroids, y_pred
+
+
 def fsn_test_with_fgn(x_test, centroids, metric):
     return y_pred_with_fgn(x_test, centroids, metric)
 
@@ -478,17 +521,22 @@ if __name__ == "__main__":
 
 
     # TODO focus on FGM with merge! So that you can speed up the samples.
-
     # centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
     #                                                 thresholds, metric)
+    centroids, y_train_pred = fsn_training_with_fgn_ma(x_train_part,
+                                                       y_train_part,
+                                                       thresholds,
+                                                       metric)
     # centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
     #                                               metric)
 
-    # y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
+    y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
     # y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
 
-    # print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
-    # print('Accuracy test set (min_dist)', report_accuracy(y_test_part, y_test_pred))
+    print('Accuracy training set',
+          report_accuracy(y_train_part, y_train_pred))
+    print('Accuracy test set (min_dist)',
+          report_accuracy(y_test_part, y_test_pred))
 
     # for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:
     #     y_test_pred2 = y_pred_with_fgn_counts(x_test_part, centroids, metric, thr=t)
@@ -500,11 +548,11 @@ if __name__ == "__main__":
     # for i in centroids:
     #    figure(); imshow(centroids[i])
 
-    thresholds = [0.1, 0.08, 0.05]
-    all_levels = fgn_mf(x_train_part, thresholds=thresholds,
-                        metric=metric, verbose=True)
+    # thresholds = [0.1, 0.08, 0.05]
+    # all_levels = fgn_mf(x_train_part, thresholds=thresholds,
+    #                     metric=metric, verbose=True)
 
-    for i in range(len(thresholds)):
-        print(len(all_levels[i + 1].centroids))
+    # for i in range(len(thresholds)):
+    #     print(len(all_levels[i + 1].centroids))
 
     # print('Number of centroids found', len(mc_map.centroids))
