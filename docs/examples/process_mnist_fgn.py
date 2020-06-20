@@ -178,7 +178,8 @@ def separate_train_data(x_train, y_train):
     return sep_data
 
 
-def fgn_merging_level(fgn_online_all_levels, level, thresholds, data, rng):
+def fgn_merging_level(fgn_online_all_levels, level,
+                      thresholds, metric, data, rng):
 
     thr = thresholds[level - 1]
 
@@ -212,7 +213,7 @@ def fgn_merging_level(fgn_online_all_levels, level, thresholds, data, rng):
 
 
 def fgn_ma(data, thresholds, metric,
-           select_randomly=None, rng=None, verbose=False):
+           select_randomly=None, rng=None, verbose=True):
     """ Fast Grouping Node that Merges (re-clusters) all Levels of the tree
 
     Parameters
@@ -237,7 +238,7 @@ def fgn_ma(data, thresholds, metric,
         Contains the clusters of all levels.
     """
 
-    print('In FGN MF')
+    print('In FGN MA')
     print('Thresholds ', thresholds)
 
     t = time()
@@ -253,7 +254,7 @@ def fgn_ma(data, thresholds, metric,
     #                      replace=False)
 
     if verbose:
-        logger.info(' FGN phase starting...')
+        print(' FGN phase starting...')
 
     fgn = FastGroupingNode(thresholds, metric)
 
@@ -265,16 +266,27 @@ def fgn_ma(data, thresholds, metric,
     fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
 
     if verbose:
-        logger.info(' Merging phase starting ...')
+        print(' Merging phase starting ...')
 
     all_levels = {}
     for l in range(len(thresholds)):
+        if verbose:
+            print(' Merging layer %d has %d' %
+                  (l, len(fgn_online_all_levels.get_clusters(l))))
+
         merged_cluster_map = fgn_merging_level(fgn_online_all_levels,
-                                               l + 1, thresholds, data, rng)
+                                               l + 1, thresholds,
+                                               metric, data,
+                                               rng=rng)
+
         all_levels[l + 1] = merged_cluster_map
 
+        if verbose:
+            print(' After layer %d has %d' %
+                  (l, len(merged_cluster_map)))
+
     if verbose:
-        logger.info(' Duration %0.3f sec. \n' % (time() - t,))
+        print(' Duration %0.3f sec. \n' % (time() - t,))
 
     return all_levels
 
@@ -518,7 +530,6 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
 
 
 if __name__ == "__main__":
-
 
     # TODO focus on FGM with merge! So that you can speed up the samples.
     # centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
