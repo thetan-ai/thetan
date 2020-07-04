@@ -1,4 +1,6 @@
+import numpy as np
 from robotikos.clustering import FastGroupingNode, ClusterMapCentroid, ClusterCentroid
+from time import time
 
 
 def fgn_merging_level(fgn_online_all_levels, level,
@@ -33,6 +35,69 @@ def fgn_merging_level(fgn_online_all_levels, level,
     merged_cluster_map.refdata = data
 
     return merged_cluster_map
+
+
+def fgn(data, thresholds, metric,
+        select_randomly=None, rng=None, verbose=True):
+    """ Fast Grouping Node
+
+    Parameters
+    ----------
+    data : sequence of features
+    thresholds : sequence
+        List of distance thresholds for FGN
+    metric : class
+    nb_pts : int
+        Number of points for discretizing each streamline
+    select_randomly : int
+        Randomly select a specific number of streamlines. If None all the
+        streamlines are used.
+    rng : RandomState
+        If None then RandomState is initialized internally.
+    verbose : bool, optional.
+        If True, log information. Default False.
+
+    Returns
+    -------
+    all_levels : contains clusters for each level
+        Contains the clusters of all levels.
+    """
+
+    print('In FGN')
+    print('Thresholds ', thresholds)
+
+    t = time()
+    len_s = len(data)
+    if select_randomly is None:
+        select_randomly = len_s
+
+    if rng is None:
+        rng = np.random.RandomState()
+
+    # TODO implement random selection
+    # indices = rng.choice(len_s, min(select_randomly, len_s),
+    #                      replace=False)
+
+    if verbose:
+        print(' FGN phase starting...')
+
+    fgn = FastGroupingNode(thresholds, metric)
+
+    feature_shape = data[0].shape
+
+    fgn_next = fgn.cluster_online(feature_shape)
+
+    for i in range(len(data)):
+        fgn_online_tree, _path = fgn_next(data[i], i)
+
+    fgn_online_all_levels = fgn_online_tree.get_tree_cluster_map()
+
+    # return fgn_online_all_levels
+    all_levels = {}
+    for l in range(len(thresholds)):
+        all_levels[l + 1] = fgn_online_all_levels.get_clusters(l + 1)
+
+    return all_levels
 
 
 def fgn_ma(data, thresholds, metric,
@@ -81,6 +146,8 @@ def fgn_ma(data, thresholds, metric,
 
     fgn = FastGroupingNode(thresholds, metric)
 
+    feature_shape = data[0].shape
+
     fgn_next = fgn.cluster_online(feature_shape)
 
     for i in range(len(data)):
@@ -94,8 +161,8 @@ def fgn_ma(data, thresholds, metric,
     all_levels = {}
     for l in range(len(thresholds)):
         if verbose:
-            print(' Merging layer %d has %d' %
-                  (l, len(fgn_online_all_levels.get_clusters(l))))
+            print(' Before merging layer %d has %d' %
+                  (l + 1, len(fgn_online_all_levels.get_clusters(l + 1))))
 
         merged_cluster_map = fgn_merging_level(fgn_online_all_levels,
                                                l + 1, thresholds,
@@ -105,10 +172,11 @@ def fgn_ma(data, thresholds, metric,
         all_levels[l + 1] = merged_cluster_map
 
         if verbose:
-            print(' After layer %d has %d' %
-                  (l, len(merged_cluster_map)))
+            print(' After merging layer %d has %d' %
+                  (l + 1, len(merged_cluster_map)))
 
     if verbose:
         print(' Duration %0.3f sec. \n' % (time() - t,))
 
     return all_levels
+
