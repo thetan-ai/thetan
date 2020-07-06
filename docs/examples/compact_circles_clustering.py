@@ -24,7 +24,7 @@ def sklearn_data():
     # ============
     n_samples = 1500
     noisy_circles = datasets.make_circles(n_samples=n_samples, factor=.5,
-                                        noise=.05)
+                                          noise=.05)
     noisy_moons = datasets.make_moons(n_samples=n_samples, noise=0)
     blobs = datasets.make_blobs(n_samples=n_samples, random_state=8)
     no_structure = np.random.rand(n_samples, 2), None
@@ -138,7 +138,7 @@ def generate_circles(n_samples=15, inner_radius=60, outer_radius=15,
 
 
 def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds=[250.], sph_radius=0.1,
-               fstealth=None, init_viz=False, shuffling=True, chain_maker=True, i_r = 60, o_r = 15, 
+               fstealth=None, init_viz=False, shuffling=True, chain_maker=True, i_r = 60, o_r = 15,
                iterations = 1):
     """ skdata or ecubes """
     # added new parameters
@@ -194,19 +194,19 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         def __len__(self):
             return self.data.shape[0]
-    
+
     dataseq = DataSequence(my_data)
 
     vector_feature = IdentityFeature()
     metric = EuclideanMetric(feature=vector_feature)
-    
+
     #qbx = QuickBundlesX(thresholds=thresholds, metric=metric)
 
     internal_indices = np.arange(my_data.shape[0])
     all_clusters = []
-    
+
     for it in range(iterations): # run qbx with different ordering of data points in each iteration
-        
+
         qbx = QuickBundlesX(thresholds=thresholds, metric=metric)
 
         if shuffling:
@@ -247,16 +247,16 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
                 window.show(scene)
             else:
                 window.snapshot(scene, fstealth)
-                
 
-        
+
+
     # return all clusters, which is list of clusters
     # dataseq and my_data
     return all_clusters, dataseq, my_data
 
 import time
 def dist(a, b):
-    
+
     #np.sqrt(np.sum((a-b)**2))
     return np.linalg.norm(a-b)
 # ------------------------------------------------------------------------------
@@ -266,9 +266,9 @@ skdata_id = 0
 fstealth = None
 chain_maker = False
 
-    
-all_clusters, dataseq, my_data = vectors_3d(run=0, mode='packing', skdata_id=0, thresholds=[thr], sph_radius=1, 
-                                 init_viz=False, fstealth=fstealth, shuffling=True, chain_maker=chain_maker, 
+
+all_clusters, dataseq, my_data = vectors_3d(run=0, mode='packing', skdata_id=0, thresholds=[thr], sph_radius=1,
+                                 init_viz=False, fstealth=fstealth, shuffling=True, chain_maker=chain_maker,
                                  i_r=60, o_r=13, iterations = 25)
 
 print(my_data)
@@ -281,14 +281,14 @@ if init_viz: # visualize initial data
     spheres = actor.sphere(centers=my_data, colors=(1,0,0.7), radii=1)
     scene.add(spheres)
     window.show(scene)
-    
+
 m = len(all_clusters) - 1
 all_centroids = all_clusters[m].centroids # get centroids of last qbx run
 
 for i in range(m): # merge/extend it with all centroids from other runs of qbx
-    
+
     all_centroids.extend(all_clusters[i].centroids)
-    
+
 only_c = np.array(all_centroids.copy())
 only_c = only_c.reshape((len(all_centroids),3)) # reshape for visualization
 
@@ -303,12 +303,12 @@ metric = EuclideanMetric(feature=vector_feature)
 qbx = QuickBundlesX(thresholds=thresholds, metric=metric)
 
 tree = qbx.cluster(all_centroids)
-new_clusters = tree.get_clusters(1)  
+new_clusters = tree.get_clusters(1)
 only_nc = np.array(new_clusters.centroids.copy()).reshape((len(new_clusters.centroids), 3))
 
 print("no of clusters = ", len(only_nc))
 
-if init_viz: 
+if init_viz:
     # visualize new centroids on data
     scene = window.Renderer()
     scene.background((1,1,1))
@@ -317,7 +317,7 @@ if init_viz:
     spheres_c = actor.sphere(centers=only_nc, colors=(1,.9,.3), radii=1.8)
     scene.add(spheres_c)
     window.show(scene)
-    
+
 # Re-assignment of points to closest centroid
 
 all_new_centroids = only_nc.copy()
@@ -325,16 +325,16 @@ all_new_centroids = only_nc.copy()
 ct_st = []
 
 for st in range(len(my_data)):
-    
+
     dist_min = 1000000000000000
     ct_number = 0
-    
+
     for ct in range(len(all_new_centroids)):
-        
+
         dist_val = dist(all_new_centroids[ct], my_data[st])
-        
+
         if dist_min > dist_val:
-            
+
             dist_min = dist_val
             ct_number = ct
 
@@ -348,8 +348,8 @@ for st in range(len(my_data)):
 
 
 if init_viz:
-    # visualize final result 
-    
+    # visualize final result
+
     ct_st = np.array(ct_st)
     new_colors = np.zeros((len(my_data), 3))
     no_clusters = len(all_new_centroids)

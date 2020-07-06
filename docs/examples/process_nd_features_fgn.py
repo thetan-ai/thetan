@@ -6,30 +6,30 @@ from robotikos.metric import (AveragePointwiseEuclideanMetric,
                               NormalizedSumSquaredDiffMetric,
                               NormalizedSumAbsDiffMetric)
 from time import time
-from robotikos.fgm import fgn, fgn_ma
+from robotikos.fgm import fgn, fgn_ma, fgn_shuffles
 
 
 def simple_example_3d(interactive=True, merge=False, n_samples=200):
 
     data = np.concatenate(
-        (np.random.rand(n_samples, 3) - 0.5,
-         np.array([2., 0, 0]) + np.random.rand(n_samples, 3) - 0.5,
-         np.array([4., 0, 0]) + np.random.rand(n_samples, 3) - 0.5))
+        (2 * (np.random.rand(n_samples, 3) - 0.5),
+         np.array([2., 0, 0]) + 2 * (np.random.rand(n_samples, 3) - 0.5),
+         np.array([4., 0, 0]) + 2 * (np.random.rand(n_samples, 3) - 0.5)))
 
     # data = np.random.rand(4*10**2, 40, 300)
-    # data[2*10**2:] += 2
+    # data[2 * 10 ** 2:] += 2
 
     # If data is 2D (e.g. array of points) then do
     data = data[:, None, :]
 
-    if interactive:
-        from fury import actor, window
+    # if interactive:
+    #     from fury import actor, window
 
-        scene = window.Scene()
-        # for i in range(len(data)):
-        scene.add(actor.point(np.squeeze(data), colors=(1, 0, 0)))
-        scene.add(actor.axes(scale=(4, 2, 2)))
-        # window.show(scene)
+    #     scene = window.Scene()
+    #     # for i in range(len(data)):
+    #     scene.add(actor.point(np.squeeze(data), colors=(1, 0, 0)))
+    #     scene.add(actor.axes(scale=(4, 2, 2)))
+    #     # window.show(scene)
 
     class DataSequence2D:
         def __init__(self, data, indices):
@@ -73,6 +73,7 @@ def simple_example_3d(interactive=True, merge=False, n_samples=200):
     # thresholds = [2, 1, 0.5]
     # thresholds = [0.5, 0.4, 0.3, 0.2, 0.19, 0.18, 0.17, 0.165, 0.16, 0.15, 0.1]
     # thresholds = [2, 1, 0.5, 0.35, 0.1]
+    # thresholds = [10, 2., 1.]
     thresholds = [1.]
 
     all_levels = fgn_ma(ds, thresholds, metric=metric)
@@ -99,13 +100,20 @@ def simple_example_3d(interactive=True, merge=False, n_samples=200):
 
     all_levels2 = fgn(ds, thresholds, metric=metric)
 
-    return all_levels, all_levels2
+    collect = fgn_shuffles(data, thresholds, metric=metric,
+                           num_shuffles=50, mode='fgn')
+
+    collect2 = fgn_shuffles(data, thresholds, metric=metric,
+                            num_shuffles=50, mode='fgn_ma')
+
+    return all_levels, all_levels2, collect, collect2
 
 
 if __name__ == '__main__':
 
-    all_levels, all_levels2 = simple_example_3d(interactive=True, merge=True,
-                                                n_samples=10**3)
+    all_levels, all_levels2, all_levels3, all_levels4 = simple_example_3d(interactive=True,
+                                                                          merge=True,
+                                                                          n_samples=1 * 10 ** 3)
     print()
     print('Summary FGN MA')
 
@@ -121,4 +129,21 @@ if __name__ == '__main__':
         print('Level ', l)
         print('Number of centroids ', len(all_levels2[l].centroids))
         print(all_levels2[l].centroids)
-    pass
+
+    print()
+    print('Summary FGN SHUFFLE')
+
+    for l in all_levels3.keys():
+        print('Level ', l)
+        print('Number of centroids ', len(all_levels3[l]['centroids']))
+        print(all_levels3[l]['centroids'])
+
+    print()
+    print('Summary FGN_MA SHUFFLE')
+
+    for l in all_levels4.keys():
+        print('Level ', l)
+        print('Number of centroids ', len(all_levels4[l]['centroids']))
+        print(all_levels4[l]['centroids'])
+
+pass
