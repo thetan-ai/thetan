@@ -63,8 +63,9 @@ def fgn(data, thresholds, metric,
         Contains the clusters of all levels.
     """
 
-    print('In FGN')
-    print('Thresholds ', thresholds)
+    if verbose:
+        print('In FGN')
+        print('Thresholds ', thresholds)
 
     len_s = len(data)
     if select_randomly is None:
@@ -125,8 +126,9 @@ def fgn_ma(data, thresholds, metric,
         Contains the clusters of all levels.
     """
 
-    print('In FGN MA')
-    print('Thresholds ', thresholds)
+    if verbose:
+        print('In FGN MA')
+        print('Thresholds ', thresholds)
 
     t = time()
     len_s = len(data)
@@ -207,7 +209,8 @@ def labels_to_centroids(data, labels):
 
 def fgn_shuffles(data, thresholds, metric,
                  num_shuffles,
-                 mode='fgn'):
+                 mode='fgn',
+                 verbose=False):
 
     class DataSequence2D:
         def __init__(self, data, indices):
@@ -230,20 +233,24 @@ def fgn_shuffles(data, thresholds, metric,
 
     for i in range(num_shuffles):
 
-        print('Shuffle ', i)
+        if verbose:
+            print('Shuffle ', i, ' Mode ', )
 
         np.random.shuffle(internal_indices)
 
         ds = DataSequence2D(data, internal_indices)
 
         if mode == 'fgn':
-            all_levels = fgn(ds, thresholds, metric=metric)
+            all_levels = fgn(ds, thresholds, metric=metric, verbose=verbose)
         elif mode == 'fgn_ma':
-            all_levels = fgn_ma(ds, thresholds, metric=metric)
+            all_levels = fgn_ma(ds, thresholds, metric=metric, verbose=verbose)
         else:
             raise ValueError('Incorrect mode')
 
         collect[i] = {}
+
+        if verbose:
+            print('Collecting all centroids')
 
         for j in range(len(thresholds)):
 
@@ -253,11 +260,14 @@ def fgn_shuffles(data, thresholds, metric,
 
     final_levels = {}
 
+    if verbose:
+        print('Reclustering centroids and reassigning all data')
+
     for j in range(len(thresholds)):
         all_levels_centroids[j + 1] = []
         for i in range(num_shuffles):
             all_levels_centroids[j + 1].extend(collect[i][j + 1])
-        res = fgn(all_levels_centroids[j + 1], [thresholds[j]], metric)
+        res = fgn(all_levels_centroids[j + 1], [thresholds[j]], metric, verbose=True)
         new_centroids = res[1].centroids
         labels = assign_to_centroids(data, new_centroids, metric=metric)
         final_levels[j + 1] = {}

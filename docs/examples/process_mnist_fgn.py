@@ -254,22 +254,30 @@ def fsn_training_with_fgn_ma(x_train, y_train, thresholds, metric):
     return centroids, y_pred
 
 
-def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds, metric):
+def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds,
+                                   metric, num_shuffles=1,
+                                   mode='fgn_ma',
+                                   verbose=False):
 
     sep_data = separate_train_data(x_train, y_train)
 
-    print('Async FGN version')
-    print('Thresholds', thresholds)
+    if verbose:
+        print('FGN SHUFFLES version')
+        print('Thresholds', thresholds)
 
     centroids = {}
     for s in sep_data:
 
         collect2 = fgn_shuffles(sep_data[s], thresholds, metric=metric,
-                                num_shuffles=2, mode='fgn_ma')
+                                num_shuffles=num_shuffles,
+                                mode=mode)
         centroids[s] = collect2[len(thresholds)]['centroids']
 
     total_no_centroids = np.sum([len(centroids[c]) for c in centroids])
-    print('Total number of centroids', total_no_centroids)
+
+    if verbose:
+
+        print('Total number of centroids', total_no_centroids)
 
     y_pred = y_pred_with_fgn_shuffles(x_train, centroids, metric)
 
@@ -355,22 +363,13 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
 
 if __name__ == "__main__":
 
-    # TODO focus on FGM with merge! So that you can speed up the samples.
-    # centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
-    #                                                 thresholds, metric)
-    # centroids, y_train_pred = fsn_training_with_fgn_ma(x_train_part,
-    #                                                    y_train_part,
-    #                                                    thresholds,
-    #                                                    metric)
     centroids, y_train_pred = fsn_training_with_fgn_shuffles(x_train_part,
                                                              y_train_part,
                                                              thresholds,
                                                              metric)
-    # centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
-    #                                               metric)
 
     # y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
-    # y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
+
 
     print('Accuracy training set',
           report_accuracy(y_train_part, y_train_pred))
