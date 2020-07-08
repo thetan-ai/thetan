@@ -95,11 +95,11 @@ print('Training size', train_sz)
 print('Test size', test_sz)
 
 # thresholds = [0.1]
-thresholds = [0.5, 0.2, 0.08, 0.05]
+# thresholds = [0.5, 0.2, 0.08, 0.05]
 # thresholds = [0.05]
 # Accuracy training set 0.7715833333333333
 # Accuracy test set (min_dist) 0.7503
-print('Thresholds', thresholds)
+
 
 # TODO add data shuffling
 
@@ -363,10 +363,17 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
 
 if __name__ == "__main__":
 
+    # thresholds = [0.5, 0.2, 0.08, 0.05] # Provided 95% accuracy
+    thresholds = [0.5, 0.2, 0.08]
+    print('Thresholds', thresholds)
+
     centroids, y_train_pred = fsn_training_with_fgn_shuffles(x_train_part,
                                                              y_train_part,
                                                              thresholds,
-                                                             metric)
+                                                             metric,
+                                                             num_shuffles=10,
+                                                             mode='fgn_ma',
+                                                             verbose=True)
 
     # y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
 
