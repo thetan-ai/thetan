@@ -230,6 +230,8 @@ def fgn_shuffles(data, thresholds, metric,
 
     for i in range(num_shuffles):
 
+        print('Shuffle ', i)
+
         np.random.shuffle(internal_indices)
 
         ds = DataSequence2D(data, internal_indices)
@@ -263,3 +265,4 @@ def fgn_shuffles(data, thresholds, metric,
         final_levels[j + 1]['centroids'] = labels_to_centroids(data, labels)
 
     return final_levels
+

@@ -11,119 +11,10 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix
 import logging
 from scipy.linalg import qr, svd
-from robotikos.fgm import fgn_ma
+from robotikos.fgm import fgn_ma, fgn_shuffles
 
 
 logger = logging.getLogger(__name__)
-
-
-def bksvd(data, k = 6, block_size = None, num_iter = 3):
-
-    if block_size is None:
-        block_size = k
-
-    k = min(k, min(data.shape))
-    u = np.zeros((1, data.shape[1]))
-
-    l = np.ones((data.shape[0], 1))
-
-    K = np.zeros((data.shape[1], block_size * num_iter))
-    block = np.random.randn(data.shape[1], block_size)
-
-    block, _ = qr(block, mode='economic')
-
-    T = np.zeros((data.shape[1], block_size))
-
-    for i in range(num_iter):
-        T = data @ block - l * (u @ block)
-        block = data.T @ T - (u.T * (l.T @ T))
-        block, _ = qr(block, mode='economic')
-        K[:, i * block_size: (i + 1) * block_size] = block
-    Q, _ = qr(K, mode='economic')
-
-    # Rayleigh-Ritz iteration
-    T = data @ Q - l @ (u @ Q)
-
-    Ut, St, Vt = svd(T, full_matrices=False)
-    U = Ut[:, :k]
-    S = St[:k]
-    V = Q @ Vt.T
-    return U, S, V[:, :k].T
-
-
-def compute_rqb(A, rank):
-    """Randomized QB Decomposition.
-    Randomized algorithm for computing the approximate low-rank QB
-    decomposition of a rectangular `(m, n)` matrix `A`, with target rank
-    `rank << min{m, n}`. The input matrix is factored as `A = Q * B`.
-    Parameters
-    ----------
-    A : array_like, shape `(m, n)`.
-        Input array.
-    rank : integer
-        Target rank. Best if `rank << min{m,n}`
-    Returns
-    -------
-    Q:  array_like, shape `(m, rank)`.
-        Orthonormal basis matrix.
-    B : array_like, shape `(rank, n)`.
-        Smaller matrix.
-    """
-    def johnson_lindenstrauss(A, l):
-        """
-        Given an m x n matrix A, and an integer l, this scheme computes an
-        m x l orthonormal matrix Q whose range approximates the range of A
-        """
-        # construct gaussian random matrix
-        Omega = np.random.standard_normal(size=(A.shape[1], l)).astype(A.dtype)
-
-        # project A onto Omega
-        return A.dot(Omega)
-
-    Q = johnson_lindenstrauss(A, rank)
-    Qt = Q.T
-
-    B = np.dot(Qt, A)
-    return Q, B
-
-
-def compute_rsvd(A, rank):
-    """Randomized Singular Value Decomposition.
-    Randomized algorithm for computing the approximate low-rank singular value
-    decomposition of a rectangular `(m, n)` matrix `A`, with target rank
-    `k << min{m, n}`. The input matrix is factored as `A = U * diag(s) * Vt`.
-    The right singular vectors are the columns of the real or complex unitary
-    matrix `U`. The left singular vectors are the columns of the real or
-    complex unitary matrix `V`. The singular values `s` are non-negative and
-    real numbers.
-    Parameters
-    ----------
-    A : array_like, shape `(m, n)`.
-        Input array.
-    rank : integer
-        Target rank. Best if `rank << min{m,n}`
-    Returns
-    -------
-    U:  array_like
-        Right singular values, array of shape `(m, rank)`.
-    s : array_like
-        Singular values, 1-d array of length `rank`.
-    Vh : array_like
-        Left singular values, array of shape `(rank, n)`.
-    """
-    m, n = A.shape
-
-    # Compute QB decomposition
-    Q, B = compute_rqb(A, rank)
-
-    # Compute SVD
-    U, s, Vt = svd(B)
-
-    # Recover right singular vectors
-    U = Q.dot(U)
-
-    # Return Trunc
-    return U[:, :rank], s[:rank], Vt[:rank, :]
 
 
 def report_confusion_matrix(y_true, y_pred):
@@ -204,7 +95,7 @@ print('Training size', train_sz)
 print('Test size', test_sz)
 
 # thresholds = [0.1]
-thresholds = [0.08]
+thresholds = [0.5, 0.2, 0.08, 0.05]
 # thresholds = [0.05]
 # Accuracy training set 0.7715833333333333
 # Accuracy test set (min_dist) 0.7503
@@ -363,6 +254,28 @@ def fsn_training_with_fgn_ma(x_train, y_train, thresholds, metric):
     return centroids, y_pred
 
 
+def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds, metric):
+
+    sep_data = separate_train_data(x_train, y_train)
+
+    print('Async FGN version')
+    print('Thresholds', thresholds)
+
+    centroids = {}
+    for s in sep_data:
+
+        collect2 = fgn_shuffles(sep_data[s], thresholds, metric=metric,
+                                num_shuffles=2, mode='fgn_ma')
+        centroids[s] = collect2[len(thresholds)]['centroids']
+
+    total_no_centroids = np.sum([len(centroids[c]) for c in centroids])
+    print('Total number of centroids', total_no_centroids)
+
+    y_pred = y_pred_with_fgn_shuffles(x_train, centroids, metric)
+
+    return centroids, y_pred
+
+
 def fsn_test_with_fgn(x_test, centroids, metric):
     return y_pred_with_fgn(x_test, centroids, metric)
 
@@ -380,6 +293,28 @@ def y_pred_with_fgn(x_features, centroids, metric):
             # look at all available centroids
             for c in centroids[key]:
                 d = metric.dist(x.astype('f4'), c.astype('f4'))
+                # d = metric.dist(x.astype('f4'), centroids[key][c].astype('f4'))
+                min_dists_category.append(d)
+            min_dists.append(np.min(min_dists_category))
+        y_pred.append(np.argmin(min_dists))
+        cnt += 1
+    return y_pred
+
+
+def y_pred_with_fgn_shuffles(x_features, centroids, metric):
+    y_pred = []
+    cnt = 0
+    for x in x_features:
+        if cnt % 5000 == 0:
+            print(cnt)
+        min_dists = []
+        # there are multiple centroids for each underlying training class
+        for key in centroids:
+            min_dists_category = []
+            # look at all available centroids
+            for c in centroids[key]:
+                # d = metric.dist(x.astype('f4'), c.astype('f4'))
+                d = metric.dist(x.astype('f4'), centroids[key][c].astype('f4'))
                 min_dists_category.append(d)
             min_dists.append(np.min(min_dists_category))
         y_pred.append(np.argmin(min_dists))
@@ -423,20 +358,24 @@ if __name__ == "__main__":
     # TODO focus on FGM with merge! So that you can speed up the samples.
     # centroids, y_train_pred = fsn_training_with_fgn(x_train_part, y_train_part,
     #                                                 thresholds, metric)
-    centroids, y_train_pred = fsn_training_with_fgn_ma(x_train_part,
-                                                       y_train_part,
-                                                       thresholds,
-                                                       metric)
+    # centroids, y_train_pred = fsn_training_with_fgn_ma(x_train_part,
+    #                                                    y_train_part,
+    #                                                    thresholds,
+    #                                                    metric)
+    centroids, y_train_pred = fsn_training_with_fgn_shuffles(x_train_part,
+                                                             y_train_part,
+                                                             thresholds,
+                                                             metric)
     # centroids, y_train_pred = fsn_training_no_fgn(x_train_part, y_train_part,
     #                                               metric)
 
-    y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
+    # y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
     # y_test_pred = fsn_test_no_fgn(x_test_part, centroids, metric)
 
     print('Accuracy training set',
           report_accuracy(y_train_part, y_train_pred))
-    print('Accuracy test set (min_dist)',
-          report_accuracy(y_test_part, y_test_pred))
+    # print('Accuracy test set (min_dist)',
+    #       report_accuracy(y_test_part, y_test_pred))
 
     # for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:
     #     y_test_pred2 = y_pred_with_fgn_counts(x_test_part, centroids, metric, thr=t)
