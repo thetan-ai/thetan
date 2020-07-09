@@ -267,7 +267,8 @@ def fgn_shuffles(data, thresholds, metric,
         all_levels_centroids[j + 1] = []
         for i in range(num_shuffles):
             all_levels_centroids[j + 1].extend(collect[i][j + 1])
-        res = fgn(all_levels_centroids[j + 1], [thresholds[j]], metric, verbose=True)
+        res = fgn(all_levels_centroids[j + 1], [thresholds[j]], metric,
+                  verbose=verbose)
         new_centroids = res[1].centroids
         labels = assign_to_centroids(data, new_centroids, metric=metric)
         final_levels[j + 1] = {}

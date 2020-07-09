@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import qr, svd
 
 
-def bksvd(data, k = 6, block_size = None, num_iter = 3):
+def bksvd(data, k=6, block_size=None, num_iter=3):
 
     if block_size is None:
         block_size = k
@@ -72,7 +72,7 @@ def compute_rqb(A, rank):
     return Q, B
 
 
-def compute_rsvd(A, rank):
+def rsvd(A, rank):
     """Randomized Singular Value Decomposition.
     Randomized algorithm for computing the approximate low-rank singular value
     decomposition of a rectangular `(m, n)` matrix `A`, with target rank
@@ -109,3 +109,26 @@ def compute_rsvd(A, rank):
 
     # Return Trunc
     return U[:, :rank], s[:rank], Vt[:rank, :]
+
+
+if __name__ == '__main__':
+
+    A = np.random.rand(50, 50)
+
+    U, s, V = bksvd(A, k=40, block_size=None, num_iter=3)
+
+    # U, s, V = rsvd(A, rank=10)
+
+    from pylab import imshow, show, figure
+
+    figure()
+    imshow(A)
+
+    figure()
+    imshow(np.dot(U, np.dot(np.diag(s), V)))
+
+    show()
+
+
+
+    pass
