@@ -270,13 +270,12 @@ def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds,
 
         collect2 = fgn_shuffles(sep_data[s], thresholds, metric=metric,
                                 num_shuffles=num_shuffles,
-                                mode=mode)
+                                mode=mode, verbose=verbose)
         centroids[s] = collect2[len(thresholds)]['centroids']
 
     total_no_centroids = np.sum([len(centroids[c]) for c in centroids])
 
     if verbose:
-
         print('Total number of centroids', total_no_centroids)
 
     y_pred = y_pred_with_fgn_shuffles(x_train, centroids, metric)
@@ -286,6 +285,10 @@ def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds,
 
 def fsn_test_with_fgn(x_test, centroids, metric):
     return y_pred_with_fgn(x_test, centroids, metric)
+
+
+def fsn_test_with_fgn_shuffles(x_test, centroids, metric):
+    return y_pred_with_fgn_shuffles(x_test, centroids, metric)
 
 
 def y_pred_with_fgn(x_features, centroids, metric):
@@ -363,25 +366,27 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
 
 if __name__ == "__main__":
 
-    # thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy
-    thresholds = [0.5, 0.2, 0.08]  # Provided 80% accuracy
+    # thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy with 1 or 2 shuffles
+    thresholds = [0.5, 0.2, 0.08]  # Provided 80% acc (1 shuffle), 85% acc (10) and 85.5% acc (50)
     print('Thresholds', thresholds)
 
+    t1 = time()
     centroids, y_train_pred = fsn_training_with_fgn_shuffles(x_train_part,
                                                              y_train_part,
                                                              thresholds,
                                                              metric,
-                                                             num_shuffles=10,
+                                                             num_shuffles=50,
                                                              mode='fgn_ma',
                                                              verbose=True)
+    t2 = time()
+    print('Duration ', t2 - t1)
 
-    # y_test_pred = fsn_test_with_fgn(x_test_part, centroids, metric)
-
+    y_test_pred = fsn_test_with_fgn_shuffles(x_test_part, centroids, metric)
 
     print('Accuracy training set',
           report_accuracy(y_train_part, y_train_pred))
-    # print('Accuracy test set (min_dist)',
-    #       report_accuracy(y_test_part, y_test_pred))
+    print('Accuracy test set (min_dist)',
+          report_accuracy(y_test_part, y_test_pred))
 
     # for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:
     #     y_test_pred2 = y_pred_with_fgn_counts(x_test_part, centroids, metric, thr=t)
