@@ -363,8 +363,8 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
 
 if __name__ == "__main__":
 
-    # thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy
-    thresholds = [0.5, 0.2, 0.08]  # Provided 80% accuracy
+    thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy for 1 shuffle and 0.9652 for 10.
+    # thresholds = [0.5, 0.2, 0.08]  # Provided 80% accuracy and then 83% with 10 shuffles
     print('Thresholds', thresholds)
 
     centroids, y_train_pred = fsn_training_with_fgn_shuffles(x_train_part,
