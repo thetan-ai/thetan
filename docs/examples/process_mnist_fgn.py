@@ -194,6 +194,7 @@ def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds,
     sep_data = separate_train_data(x_train, y_train, num_labels=num_labels)
 
     if verbose:
+        print('#')
         print('FGN SHUFFLES version')
         print('Thresholds', thresholds)
 
@@ -321,7 +322,9 @@ if __name__ == "__main__":
     # thresholds = [0.5, 0.2, 0.08]  # 80% acc (1 shuffle), 85% acc (10) and 85.5% acc (50)
     # thresholds = [0.5, 0.2, 0.08, 0.07, 0.06, 0.05]
     # thresholds = [0.5, 0.2, 0.08, 0.06, 0.04]
-    thresholds = [0.07, 0.06, 0.05, 0.04]
+    # thresholds = [0.07, 0.06, 0.05, 0.04]
+    thresholds = [0.1, 0.08]
+
     print('Thresholds', thresholds)
 
     num_shuffles = 1

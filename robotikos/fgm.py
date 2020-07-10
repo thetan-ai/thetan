@@ -206,7 +206,7 @@ def labels_to_centroids(data, labels):
 
     return centroids
 
-
+@profile
 def fgn_shuffles(data, thresholds, metric,
                  num_shuffles,
                  mode='fgn',
@@ -240,6 +240,9 @@ def fgn_shuffles(data, thresholds, metric,
 
         ds = DataSequence2D(data, internal_indices)
 
+        if verbose:
+            print('Calling ', mode)
+
         if mode == 'fgn':
             all_levels = fgn(ds, thresholds, metric=metric, verbose=verbose)
         elif mode == 'fgn_ma':
@@ -250,7 +253,7 @@ def fgn_shuffles(data, thresholds, metric,
         collect[i] = {}
 
         if verbose:
-            print('Collecting all centroids')
+            print('Collecting all centroids of all levels')
 
         for j in range(len(thresholds)):
 
@@ -261,7 +264,7 @@ def fgn_shuffles(data, thresholds, metric,
     final_levels = {}
 
     if verbose:
-        print('Reclustering centroids and reassigning all data')
+        print('Reclustering centroids and reassigning all data to each level')
 
     for j in range(len(thresholds)):
         all_levels_centroids[j + 1] = []
