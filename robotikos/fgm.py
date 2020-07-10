@@ -100,6 +100,7 @@ def fgn(data, thresholds, metric,
     return all_levels
 
 
+# @profile
 def fgn_ma(data, thresholds, metric,
            select_randomly=None, rng=None, verbose=True):
     """ Fast Grouping Node that Merges (re-clusters) all Levels of the tree
@@ -206,7 +207,7 @@ def labels_to_centroids(data, labels):
 
     return centroids
 
-@profile
+# @profile
 def fgn_shuffles(data, thresholds, metric,
                  num_shuffles,
                  mode='fgn',
