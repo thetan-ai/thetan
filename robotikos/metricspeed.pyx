@@ -2,6 +2,7 @@
 # cython: wraparound=False, cdivision=True, boundscheck=False
 
 import numpy as np
+cimport numpy as cnp
 
 from libc.math cimport sqrt, acos, fabs
 
@@ -382,6 +383,59 @@ cpdef distance_matrix(Metric metric, data1, data2=None):
             distance_matrix[i, j] = metric.c_dist(features1, features2)
 
     return distance_matrix
+
+
+cpdef assign_to_centroid(Metric metric, data, centroids):
+    """ Computes the distance matrix between two lists of sequential data.
+
+    The distance matrix is obtained by computing the pairwise distance of all
+    tuples spawn by the Cartesian product of `data1` with `data2`. If `data2`
+    is not provided, the Cartesian product of `data1` with itself is used
+    instead. A sequence of N-dimensional points is represented as a 2D array with
+    shape (nb_points, nb_dimensions).
+
+    Parameters
+    ----------
+    metric : `Metric` object
+        Tells how to compute the distance between two sequential data.
+    data1 : list of 2D arrays
+        List of sequences of N-dimensional points.
+    data2 : list of 2D arrays
+        List of sequences of N-dimensional points.
+
+    Returns
+    -------
+    2D array (double)
+        Distance matrix.
+    """
+    cdef cnp.npy_intp i, j
+
+    # TODO this should be called size?
+    shape = data[0].shape
+
+    cdef:
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.int)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        Data2D features1 = np.empty(shape, np.float32)
+        Data2D features2 = np.empty(shape, np.float32)
+
+    for i in range(len(data)):
+        datum1 = data[i] if data[i].flags.writeable and data[i].dtype is np.float32 else data[i].astype(np.float32)
+        metric.feature.c_extract(datum1, features1)
+
+        curr_min = biggest_double
+        for j in range(len(centroids)):
+            datum2 = centroids[j] if centroids[j].flags.writeable and centroids[j].dtype is np.float32 else centroids[j].astype(np.float32)
+            metric.feature.c_extract(datum2, features2)
+            dist = metric.c_dist(features1, features2)
+            if dist < curr_min:
+                curr_min = dist
+                curr_id = j
+        labels[i] = curr_id
+
+    return labels
 
 
 cpdef double dist(Metric metric, datum1, datum2) except -1:
