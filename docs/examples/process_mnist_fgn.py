@@ -7,7 +7,6 @@ from robotikos.metric import IdentityFeature
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
                               NormalizedSumAbsDiffMetric)
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix
 import logging
 from scipy.linalg import qr, svd
@@ -352,18 +351,38 @@ if __name__ == "__main__":
         raise ValueError('Uknown dataset type')
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-    # metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
     # thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy for 1 shuffle and 0.9652 for 10.
     # thresholds = [0.5, 0.2, 0.08]  # 80% acc (1 shuffle), 85% acc (10) and 85.5% acc (50)
     # thresholds = [0.5, 0.2, 0.08, 0.07, 0.06, 0.05]
     # thresholds = [0.5, 0.2, 0.08, 0.06, 0.04]
     # thresholds = [0.07, 0.06, 0.05, 0.04]
     thresholds = [0.1, 0.08]
+    thresholds = [0.5, 0.25, 0.1, 0.05]  # This works well for L1 metric 0.966
+    # L1 1 shuffle (many centroids)
+    # Accuracy training set 0.9949333333333333
+    # Accuracy test set (min_dist) 0.9626
+    thresholds = [0.15, 0.1]
+    thresholds = [0.15, 0.1, 0.08]
+    # L1 1 shuffle
+    # Total number of centroids 6402
+    # Duration FGN shuffles training 774.688 s
+    # Total number of centroids  6402
+    # Duration FGN shuffles testing 100.918 s
+    # Accuracy training set 0.9684833333333334
+    # Accuracy test set 0.9452
+    # L1 10 shuffles
+    # Total number of centroids 8587
+    # Duration FGN shuffles training 1272.338 s
+    # Total number of centroids  8587
+    # Duration FGN shuffles testing 135.132 s
+    # Accuracy training set 0.98245
+    # Accuracy test set (min_dist) 0.9536
 
     print('Thresholds', thresholds)
 
-    num_shuffles = 1
-    train_sz = 10000
+    num_shuffles = 10
+    train_sz = 60000
     test_sz = 10000
     use_sobel = False
     use_bksvd = False
