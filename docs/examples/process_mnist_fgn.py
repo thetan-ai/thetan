@@ -13,6 +13,7 @@ import logging
 from scipy.linalg import qr, svd
 from robotikos.fgm import fgn_ma, fgn_shuffles
 from robotikos.rsvd import bksvd
+from robotikos.metricspeed import assign_to_centroid_nl1, assign_to_centroid_nl2
 
 
 logger = logging.getLogger(__name__)
@@ -215,7 +216,7 @@ def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds,
     if verbose:
         print('Total number of centroids', total_no_centroids)
 
-    y_pred = y_pred_with_fgn_shuffles(x_train, centroids, metric)
+    y_pred = y_pred_with_fgn_shuffles_fast(x_train, centroids, metric)
 
     return centroids, y_pred
 
@@ -225,7 +226,7 @@ def fsn_test_with_fgn(x_test, centroids, metric):
 
 
 def fsn_test_with_fgn_shuffles(x_test, centroids, metric):
-    return y_pred_with_fgn_shuffles(x_test, centroids, metric)
+    return y_pred_with_fgn_shuffles_fast(x_test, centroids, metric)
 
 
 def y_pred_with_fgn(x_features, centroids, metric):
@@ -267,6 +268,31 @@ def y_pred_with_fgn_shuffles(x_features, centroids, metric):
             min_dists.append(np.min(min_dists_category))
         y_pred.append(np.argmin(min_dists))
         cnt += 1
+    return y_pred
+
+
+def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
+    y_pred = []
+    cnt = 0
+    lengths = [len(centroids[key]) for key in centroids]
+    total_centroids = np.sum(lengths)
+    feature_shape = x_features[0].shape
+    all_centroids = np.zeros((total_centroids,
+                              feature_shape[0],
+                              feature_shape[1]))
+    for key in centroids:
+        for c in centroids[key]:
+            all_centroids[cnt] = centroids[key][c]
+            cnt += 1
+
+    labels = assign_to_centroid_nl2(metric,
+                                    x_features.astype('f4'),
+                                    all_centroids.astype('f4'))
+    tiled = np.repeat(np.arange(len(centroids.keys())), tuple(lengths))
+
+    y_pred = [tiled[l] for l in labels]
+    y_pred = np.array(y_pred)
+
     return y_pred
 
 
@@ -328,7 +354,7 @@ if __name__ == "__main__":
     print('Thresholds', thresholds)
 
     num_shuffles = 1
-    train_sz = 60000
+    train_sz = 10000
     test_sz = 10000
     use_sobel = False
     use_bksvd = False

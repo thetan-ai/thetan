@@ -1,6 +1,10 @@
 import numpy as np
 from robotikos.clustering import FastGroupingNode, ClusterMapCentroid, ClusterCentroid
 from time import time
+from robotikos.metricspeed import assign_to_centroid
+from robotikos.metricspeed import assign_to_centroid_nl1, assign_to_centroid_nl2
+from robotikos.metric import (NormalizedSumSquaredDiffMetric,
+                              NormalizedSumAbsDiffMetric)
 
 
 def fgn_merging_level(fgn_online_all_levels, level,
@@ -183,7 +187,7 @@ def fgn_ma(data, thresholds, metric,
     return all_levels
 
 
-def assign_to_centroids(data, centroids, metric):
+def assign_to_centroids(metric, data, centroids):
     """ Assign data to nearest centroids """
     y_pred = []
     for x in data:
@@ -267,17 +271,71 @@ def fgn_shuffles(data, thresholds, metric,
     if verbose:
         print('Reclustering centroids and reassigning all data to each level')
 
+    if isinstance(metric, NormalizedSumSquaredDiffMetric):
+        assign_to_centroids_fast = assign_to_centroid_nl2
+    elif isinstance(metric, NormalizedSumAbsDiffMetric):
+        assign_to_centroids_fast = assign_to_centroid_nl1
+    else:
+        print('Unknown metric to use here - switching to slow version')
+        assign_to_centroids_fast = assign_to_centroids
+
     for j in range(len(thresholds)):
         all_levels_centroids[j + 1] = []
         for i in range(num_shuffles):
             all_levels_centroids[j + 1].extend(collect[i][j + 1])
         res = fgn(all_levels_centroids[j + 1], [thresholds[j]], metric,
                   verbose=verbose)
-        new_centroids = res[1].centroids
-        labels = assign_to_centroids(data, new_centroids, metric=metric)
+        new_centroids = np.ascontiguousarray(res[1].centroids)
+        # labels = assign_to_centroids(data, new_centroids, metric=metric)
+        labels = assign_to_centroids_fast(metric, data.astype('f4'),
+                                          new_centroids.astype('f4'))
+
         final_levels[j + 1] = {}
         final_levels[j + 1]['labels'] = labels
         final_levels[j + 1]['centroids'] = labels_to_centroids(data, labels)
 
     return final_levels
+
+
+
+if __name__ == "__main__":
+
+    from robotikos.metric import (NormalizedSumSquaredDiffMetric,
+                                  NormalizedSumAbsDiffMetric, IdentityFeature)
+
+
+
+    data = np.random.rand(600, 34, 28)
+    new_centroids = np.random.rand(100, 34, 28)
+    metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+
+    t1 = time()
+
+    labels = assign_to_centroids(metric, data, new_centroids)
+
+    t2 = time()
+
+
+    labels2 = assign_to_centroid_nl2(metric,
+                                     data.astype('f4'),
+                                     new_centroids.astype('f4'))
+
+    t3 = time()
+
+    labels3 = assign_to_centroid_nl1(metric,
+                                     data.astype('f4'),
+                                     new_centroids.astype('f4'))
+
+    t4 = time()
+
+
+    print(t2 - t1)
+    print(t3 - t2)
+    print(t4 - t3)
+
+    print(np.sum(np.abs(labels-labels2)))
+    print(np.sum(np.abs(labels-labels3)))
+
+    pass
+
 

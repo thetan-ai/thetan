@@ -11,6 +11,7 @@ from featurespeed cimport IdentityFeature, ResampleFeature
 
 DEF biggest_double = 1.7976931348623157e+308  #  np.finfo('f8').max
 
+
 import math
 cdef double PI = math.pi
 
@@ -316,6 +317,22 @@ cdef class NormalizedSumSquaredDiffMetric(CythonMetric):
 
         return summ / sz
 
+    cdef double c_distp(NormalizedSumSquaredDiffMetric self, float * ptr1, float * ptr2, int size) nogil:
+            cdef:
+                int s
+                # int size = features1.shape[0] * features1.shape[1]
+                double sz = <double> size
+                # float * ptr1 = &features1[0, 0]
+                # float * ptr2 = &features2[0, 0]
+                double summ = 0.0
+
+
+            for s in range(size):
+                summ += (ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s])
+
+            return summ / sz
+
+
 
 cdef class NormalizedSumAbsDiffMetric(CythonMetric):
     r""" Computes the normalized ASD distance between two features.
@@ -386,27 +403,20 @@ cpdef distance_matrix(Metric metric, data1, data2=None):
 
 
 cpdef assign_to_centroid(Metric metric, data, centroids):
-    """ Computes the distance matrix between two lists of sequential data.
-
-    The distance matrix is obtained by computing the pairwise distance of all
-    tuples spawn by the Cartesian product of `data1` with `data2`. If `data2`
-    is not provided, the Cartesian product of `data1` with itself is used
-    instead. A sequence of N-dimensional points is represented as a 2D array with
-    shape (nb_points, nb_dimensions).
+    """ Assigns data points to their closest centroids
 
     Parameters
     ----------
     metric : `Metric` object
         Tells how to compute the distance between two sequential data.
-    data1 : list of 2D arrays
+    data : list of 2D arrays
         List of sequences of N-dimensional points.
-    data2 : list of 2D arrays
+    centroid : list of 2D arrays
         List of sequences of N-dimensional points.
 
     Returns
     -------
-    2D array (double)
-        Distance matrix.
+    labels : int array
     """
     cdef cnp.npy_intp i, j
 
@@ -414,7 +424,7 @@ cpdef assign_to_centroid(Metric metric, data, centroids):
     shape = data[0].shape
 
     cdef:
-        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.int)
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
         double dist = 0.0
         double curr_min = biggest_double
         cnp.npy_intp curr_id = -1
@@ -435,7 +445,86 @@ cpdef assign_to_centroid(Metric metric, data, centroids):
                 curr_id = j
         labels[i] = curr_id
 
-    return labels
+    return np.asarray(labels)
+
+
+cdef double c_distp_nl2(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double summ = 0.0
+
+        for s in range(size):
+            summ += (ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s])
+
+        return summ / sz
+
+
+cdef double c_distp_nl1(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double summ = 0.0
+
+        for s in range(size):
+            summ += fabs(ptr1[s] - ptr2[s])
+
+        return summ / sz
+
+
+def assign_to_centroid_nl2(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_nl2(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+
+def assign_to_centroid_nl1(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_nl1(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
 
 
 cpdef double dist(Metric metric, datum1, datum2) except -1:
