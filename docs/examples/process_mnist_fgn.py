@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix
 import logging
 from scipy.linalg import qr, svd
-from robotikos.fgm import fgn_ma, fgn_shuffles
+from robotikos.fgm import fgn_ma, fgn_shuffles, assign_to_centroids
 from robotikos.rsvd import bksvd
-from robotikos.metricspeed import assign_to_centroid_nl1, assign_to_centroid_nl2
+from robotikos.metricspeed import (assign_to_centroid_nl1,
+                                   assign_to_centroid_nl2)
 
 
 logger = logging.getLogger(__name__)
@@ -285,9 +286,17 @@ def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
             all_centroids[cnt] = centroids[key][c]
             cnt += 1
 
-    labels = assign_to_centroid_nl2(metric,
-                                    x_features.astype('f4'),
-                                    all_centroids.astype('f4'))
+    if isinstance(metric, NormalizedSumSquaredDiffMetric):
+        assign_to_centroid_fast = assign_to_centroid_nl2
+    elif isinstance(metric, NormalizedSumAbsDiffMetric):
+        assign_to_centroid_fast = assign_to_centroid_nl1
+    else:
+        print('Unknown metric to use here - switching to slow version')
+        assign_to_centroid_fast = assign_to_centroids
+
+    labels = assign_to_centroid_fast(metric,
+                                     x_features.astype('f4'),
+                                     all_centroids.astype('f4'))
     tiled = np.repeat(np.arange(len(centroids.keys())), tuple(lengths))
 
     y_pred = [tiled[l] for l in labels]
