@@ -288,6 +288,9 @@ if __name__ == '__main__':
 
     dname = '/home/elef/Data/hubmap'
     fname = pjoin(dname, 'original.jpg')
+    dname = '/home/elef/Desktop'
+    fname = pjoin(dname, 'average.jpg')
+
     # fname = pjoin(dname, '188130_web.jpg')
     # fname = pjoin(dname, 'apptop1-10151.jpg')
     # fname = pjoin(dname, 'autumn-landscape-photography-3-900x599.jpg')
@@ -295,24 +298,30 @@ if __name__ == '__main__':
     # fname = pjoin(dname, 'Reuben_Wu_Phase_One_XT_1.jpg')
     # fname = pjoin(dname, 'tree_desert.jpg')
 
-    # data_orig = imread(fname)
+    data_orig = imread(fname)
+    data_tmp = data_orig
+    data_orig = np.zeros(data_orig.shape + (3,))
+    data_orig[..., 0] = data_tmp
+    data_orig[..., 1] = data_tmp
+    data_orig[..., 2] = data_tmp
 
-    data_orig = np.zeros((512, 512, 3)) + 50
 
-    I, J, _ = data_orig.shape
+    # data_orig = np.zeros((512, 512, 3)) + 50
 
-    mI = I // 2
-    mJ = J // 2
-    w = 50
-    for mult in [1, 2, 3, 4, 5]:
+    # I, J, _ = data_orig.shape
 
-        data_orig[mI - mult * w: mI + mult * w, mJ - mult * w: mJ + mult * w] += w
+    # mI = I // 2
+    # mJ = J // 2
+    # w = 50
+    # for mult in [1, 2, 3, 4, 5]:
 
-    mult_level = 50
-    noise = mult_level * np.random.rand(*data_orig.shape) - mult_level / 2.
-    data_orig = data_orig + noise
+    #     data_orig[mI - mult * w: mI + mult * w, mJ - mult * w: mJ + mult * w] += w
 
-    # images_2d(True, patch_radius=5, bin_size=5, thresholds=[20.])
+    # mult_level = 50
+    # noise = mult_level * np.random.rand(*data_orig.shape) - mult_level / 2.
+    # data_orig = data_orig + noise
+
+    # images_2d(True, patch_radius=5, bin_size=5, thresholds=[10.])
     # images_2d(True, patch_radius=5, bin_size=5, thresholds=[40.])
     # images_2d(True, patch_radius=3, bin_size=5, thresholds=[15.])
     # images_2d(True, patch_radius=1, bin_size=5, thresholds=[1.],
@@ -332,8 +341,13 @@ if __name__ == '__main__':
 
     print('data_orig.max()', data_orig.max())
 
-    images_2d(data_orig, True, patch_radius=0, bin_size=10, thresholds=[.12],
-              subimage_width=None, histo=False,
+    # images_2d(data_orig, True, patch_radius=0, bin_size=10, thresholds=[.12],
+    #           subimage_width=None, histo=False,
+    #           random_selection=None,
+    #           strides=False, distance='nsad',
+    #           interpolation='min-max', only_centers=False)
+    images_2d(data_orig, True, patch_radius=0, bin_size=10, thresholds=[0.1],
+              subimage_width=None, histo=True,
               random_selection=None,
               strides=False, distance='nsad',
               interpolation='min-max', only_centers=False)

@@ -74,8 +74,8 @@ def simple_example_3d(interactive=True, n_shuffles=10, n_samples=200):
     # thresholds = [0.5, 0.4, 0.3, 0.2, 0.19, 0.18, 0.17, 0.165, 0.16, 0.15, 0.1]
     # thresholds = [2, 1, 0.5, 0.35, 0.1]
     # thresholds = [10, 2., 1.]
-    thresholds = [10, 5., 2.5, 1., .5]
-    # thresholds = [1.]
+    # thresholds = [10, 5., 2.5, 1., .5]
+    thresholds = [1.]
 
     #all_levels = fgn_ma(ds, thresholds, metric=metric)
     # fgn = FastGroupingNode(thresholds=thresholds, metric=metric)
