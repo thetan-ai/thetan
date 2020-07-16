@@ -259,7 +259,7 @@ def images_2d(data_orig, interactive=True, patch_radius=1, bin_size=5,
             # from pdb import set_trace
             # set_trace()
             i, j, k = picker.GetPointIJK()
-            print(i, j, k, 'data', data[i, j], 'final', final[i, j])
+            print(i, j, k, 'data', data[j, i], 'final', final[j, i])
 
         final_actor.AddObserver('LeftButtonPressEvent',
                                 left_click_callback_mosaic,
