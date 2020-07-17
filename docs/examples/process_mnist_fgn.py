@@ -337,7 +337,7 @@ def y_pred_with_fgn_counts(x_features, centroids, metric, thr):
 
 if __name__ == "__main__":
 
-    dataset_type = 'mnist'
+    dataset_type = 'fashion'
 
     if dataset_type == 'mnist':
         print('Loading Hand Written Digits')
@@ -351,7 +351,7 @@ if __name__ == "__main__":
         raise ValueError('Uknown dataset type')
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    # metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
     # thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy for 1 shuffle and 0.9652 for 10.
     # thresholds = [0.5, 0.2, 0.08]  # 80% acc (1 shuffle), 85% acc (10) and 85.5% acc (50)
     # thresholds = [0.5, 0.2, 0.08, 0.07, 0.06, 0.05]
@@ -378,7 +378,9 @@ if __name__ == "__main__":
     # Duration FGN shuffles testing 135.132 s
     # Accuracy training set 0.98245
     # Accuracy test set (min_dist) 0.9536
-
+    thresholds = [0.1, 0.075, 0.05, 0.025]  # fashion mnist 0.93 (train acc.) and 0.82 (test acc.)
+    thresholds = [0.1, 0.075, 0.05]  # fashion mnist threshold
+    thresholds = [0.1, 0.075]  # fashion mnist threshold (binary 0.2) 0.86 (train acc.) and 0.80 (test acc.)
     print('Thresholds', thresholds)
 
     num_shuffles = 10
@@ -386,9 +388,11 @@ if __name__ == "__main__":
     test_sz = 10000
     use_sobel = False
     use_bksvd = False
+    use_binary = True
     k = 10
     verbose = True
     level = None
+
 
     print('Training size', train_sz)
     print('Test size', test_sz)
@@ -406,6 +410,18 @@ if __name__ == "__main__":
         print('Duration bksvd %.3f s' % (t2 - t1,))
         x_train_part = x_train_part_ev
 
+    if use_binary:
+        x_train_part[x_train_part > 0.2] = 1.
+        x_train_part[x_train_part <= 0.2] = 0.
+
+    import pylab as pl
+
+    # for i in range(10):
+    #     pl.figure()
+    #     pl.imshow(x_train_part[i])
+
+    # pl.show()
+
     x_test_part = x_test.copy()[:test_sz]
     x_test_part = np.ascontiguousarray(x_test_part / 255.)
     x_test_part_ev = np.zeros((x_test_part.shape[0], 1, k))
@@ -414,6 +430,10 @@ if __name__ == "__main__":
         for i in range(test_sz):
             x_test_part_ev[i][0] = bksvd(x_test_part[i], k=k)[1]
         x_test_part = x_test_part_ev
+
+    if use_binary:
+        x_test_part[x_test_part > 0.2] = 1.
+        x_test_part[x_test_part <= 0.2] = 0.
 
     y_train_part = y_train.copy()[:train_sz]
     y_test_part = y_test.copy()[:test_sz]
