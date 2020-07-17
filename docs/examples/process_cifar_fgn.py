@@ -50,18 +50,17 @@ def separate_train_data(x_train, y_train, num_labels=10):
     """ Separates training data to each category"""
     sep_data = {}
     for i in range(num_labels):
-        sep_data[i] = x_train[y_train == i]
+        y_arg = np.where(y_train == i)
+        sep_data[i] = x_train[y_arg[0]]
     return sep_data
 
 
 def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
-    y_pred = []
     cnt = 0
     lengths = [len(centroids[key]) for key in centroids]
     total_centroids = np.sum(lengths)
     feature_shape = x_features[0].shape
-    all_centroids = np.zeros((total_centroids, feature_shape[0],
-                              feature_shape[1]))
+    all_centroids = np.zeros((total_centroids,) + feature_shape)
     for key in centroids:
         for c in centroids[key]:
             all_centroids[cnt] = centroids[key][c]
@@ -104,7 +103,14 @@ if __name__ == '__main__':
     print('Training size', train_sz)
     print('Test size', test_sz)
 
-    x_train_part = x_train.copy()[:train_sz]
+    #nt = t.reshape(5000, 1, 32 * 32 * 3)
+    #nt = t.reshape(5000, 32*32, 3)
+
+    data_shape = x_train.shape[1:]
+    x_train_rsh = np.reshape(
+        x_train, (y_train.shape[0], 1, np.prod(data_shape)))
+
+    x_train_part = x_train_rsh  # x_train.copy()[:train_sz]
     x_train_part = np.ascontiguousarray(x_train_part / 255.)
     # low rank approximation
     x_train_part_ev = np.zeros((x_train_part.shape[0], 1, k))
@@ -117,7 +123,10 @@ if __name__ == '__main__':
         print('Duration bksvd %.3f s' % (t2 - t1,))
         x_train_part = x_train_part_ev
 
-    x_test_part = x_test.copy()[:test_sz]
+    x_test_rsh = np.reshape(
+        x_test, (y_test.shape[0], 1, np.prod(data_shape)))
+
+    x_test_part = x_test_rsh  # x_test.copy()[:test_sz]
     x_test_part = np.ascontiguousarray(x_test_part / 255.)
     x_test_part_ev = np.zeros((x_test_part.shape[0], 1, k))
 
