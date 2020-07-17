@@ -4,7 +4,7 @@
 import numpy as np
 cimport numpy as cnp
 
-from libc.math cimport sqrt, acos, fabs
+from libc.math cimport sqrt, acos, fabs, log, exp
 
 # from cythonutils cimport same_shape
 from featurespeed cimport IdentityFeature, ResampleFeature
@@ -295,6 +295,60 @@ cdef class CrossCorrelationMetric(CythonMetric):
         #return acos(cos_theta) / PI  # Normalized cosine distance
 
 
+cdef class KLDivergenceMetric(CythonMetric):
+    r""" Computes the KL divergence between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Due to the nature of the metric, each feature should add upto 1
+    and be positive values
+
+    """
+    def __init__(KLDivergenceMetric self, Feature feature):
+        super(KLDivergenceMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(KLDivergenceMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int d, D = features1.shape[1]
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            double kl = 0.0
+
+        for d in range(D):
+            if features1[0, d] != 0 and features2[0, d] != 0:
+                kl += features1[0, d] * log(features1[0, d]/features2[0, d])
+
+        return kl / size
+
+cdef class NormalKLDivergenceMetric(CythonMetric):
+    r""" Computes the normalized KL divergence between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Due to the nature of the metric, each feature should add upto 1
+    and be positive values
+
+    """
+    def __init__(NormalKLDivergenceMetric self, Feature feature):
+        super(NormalKLDivergenceMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(NormalKLDivergenceMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int d, D = features1.shape[1]
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            double kl = 0.0
+
+        for d in range(D):
+            if features1[0, d] != 0 and features2[0, d] != 0:
+                kl += features1[0, d] * log(features1[0, d]/features2[0, d])
+
+        kl = 1 - exp(kl)
+        return kl / size
+
+
 cdef class NormalizedSumSquaredDiffMetric(CythonMetric):
     r""" Computes the normalized SSD distance between two features.
 
@@ -356,6 +410,30 @@ cdef class NormalizedSumAbsDiffMetric(CythonMetric):
 
         return summ / sz
 
+cdef class NormalizedSumInfDiffMetric(CythonMetric):
+    r""" Computes the normalized ASD distance between two features.
+
+    """
+    def __init__(NormalizedSumInfDiffMetric self, Feature feature):
+        super(NormalizedSumInfDiffMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(NormalizedSumInfDiffMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef:
+            int s
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            float * ptr1 = &features1[0, 0]
+            float * ptr2 = &features2[0, 0]
+            double temp
+            double max_v = 0.0
+
+
+        for s in range(size):
+            temp = fabs(ptr1[s] - ptr2[s])
+            if temp > max_v:
+                max_v = temp
+
+        return max_v / sz
 
 cpdef distance_matrix(Metric metric, data1, data2=None):
     """ Computes the distance matrix between two lists of sequential data.
@@ -471,6 +549,19 @@ cdef double c_distp_nl1(float * ptr1, float * ptr2, int size) nogil:
 
         return summ / sz
 
+cdef double c_distp_nlinf(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double max_v = 0.0
+            double temp        
+
+        for s in range(size):
+            temp = fabs(ptr1[s] - ptr2[s])
+            if temp > max_v:
+                max_v = temp
+        
+        return max_v / sz
 
 def assign_to_centroid_nl2(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
 
@@ -525,7 +616,31 @@ def assign_to_centroid_nl1(Metric metric, float [:, :, ::1] data, float [:, :, :
 
     return np.asarray(labels)
 
+def assign_to_centroid_nlinf(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
 
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_nlinf(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
 
 cpdef double dist(Metric metric, datum1, datum2) except -1:
     """ Computes a distance between `datum1` and `datum2`.
