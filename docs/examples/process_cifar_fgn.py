@@ -87,7 +87,8 @@ if __name__ == '__main__':
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
     #metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
 
-    thresholds = [0.15, 0.1, 0.08]
+    #thresholds = [0.15, 0.1, 0.08]
+    thresholds = [.1, .08, .004]
 
     print('Thresholds', thresholds)
 
@@ -103,12 +104,11 @@ if __name__ == '__main__':
     print('Training size', train_sz)
     print('Test size', test_sz)
 
-    #nt = t.reshape(5000, 1, 32 * 32 * 3)
-    #nt = t.reshape(5000, 32*32, 3)
-
     data_shape = x_train.shape[1:]
+    # [N, 1, 3072=(32x32x3)]
     x_train_rsh = np.reshape(
         x_train, (y_train.shape[0], 1, np.prod(data_shape)))
+    # [N, 3, 1024=(32x32)]
 
     x_train_part = x_train_rsh  # x_train.copy()[:train_sz]
     x_train_part = np.ascontiguousarray(x_train_part / 255.)
@@ -123,8 +123,10 @@ if __name__ == '__main__':
         print('Duration bksvd %.3f s' % (t2 - t1,))
         x_train_part = x_train_part_ev
 
+    # [N, 1, 3072=(32x32x3)]
     x_test_rsh = np.reshape(
         x_test, (y_test.shape[0], 1, np.prod(data_shape)))
+    # [N, 3, 1024=(32x32)]
 
     x_test_part = x_test_rsh  # x_test.copy()[:test_sz]
     x_test_part = np.ascontiguousarray(x_test_part / 255.)
