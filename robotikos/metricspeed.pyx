@@ -448,6 +448,17 @@ cpdef assign_to_centroid(Metric metric, data, centroids):
     return np.asarray(labels)
 
 
+cdef double c_distp_l2(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double summ = 0.0
+
+        for s in range(size):
+            summ += (ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s])
+
+        return summ
+
+
 cdef double c_distp_nl2(float * ptr1, float * ptr2, int size) nogil:
         cdef:
             int s
@@ -470,6 +481,9 @@ cdef double c_distp_nl1(float * ptr1, float * ptr2, int size) nogil:
             summ += fabs(ptr1[s] - ptr2[s])
 
         return summ / sz
+
+
+
 
 
 def assign_to_centroid_nl2(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
@@ -559,3 +573,27 @@ cpdef double dist(Metric metric, datum1, datum2) except -1:
     metric.feature.c_extract(datum1, features1)
     metric.feature.c_extract(datum2, features2)
     return metric.c_dist(features1, features2)
+
+
+def patch_distance_matrix(float [:, ::1] f1,
+                          float [:, ::1] f2,
+                          cnp.npy_intp f1_size,
+                          cnp.npy_intp f2_size,
+                          cnp.npy_intp cols,
+                          double [:, ::1] D):
+    """ Experimental distance matrix
+    """
+
+    cdef:
+        cnp.npy_intp i=0, j=0, mov_i=0, mov_j=0
+
+    with nogil:
+
+        for i in range(f1_size):
+            for j in range(f2_size):
+
+                D[i, j] = c_distp_l2(&f1[i, 0],
+                                     &f2[j, 0],
+                                     cols)
+
+    return np.asarray(D)
