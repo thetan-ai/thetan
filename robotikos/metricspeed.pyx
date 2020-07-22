@@ -301,8 +301,8 @@ cdef class KLDivergenceMetric(CythonMetric):
     A vector (i.e. a N-dimensional point) is represented as a 2D array with
     shape (1, nb_dimensions).
 
-    Due to the nature of the metric, each feature should add upto 1
-    and be positive values
+    Due to the nature of the metric, each feature
+    should be positive values
 
     """
     def __init__(KLDivergenceMetric self, Feature feature):
@@ -319,7 +319,7 @@ cdef class KLDivergenceMetric(CythonMetric):
             if features1[0, d] != 0 and features2[0, d] != 0:
                 kl += features1[0, d] * log(features1[0, d]/features2[0, d])
 
-        return kl / size
+        return kl / sz
 
 cdef class NormalKLDivergenceMetric(CythonMetric):
     r""" Computes the normalized KL divergence between two vectors.
@@ -327,8 +327,8 @@ cdef class NormalKLDivergenceMetric(CythonMetric):
     A vector (i.e. a N-dimensional point) is represented as a 2D array with
     shape (1, nb_dimensions).
 
-    Due to the nature of the metric, each feature should add upto 1
-    and be positive values
+    Due to the nature of the metric, each feature
+    should be positive values
 
     """
     def __init__(NormalKLDivergenceMetric self, Feature feature):
@@ -345,8 +345,8 @@ cdef class NormalKLDivergenceMetric(CythonMetric):
             if features1[0, d] != 0 and features2[0, d] != 0:
                 kl += features1[0, d] * log(features1[0, d]/features2[0, d])
 
-        kl = 1 - exp(kl)
-        return kl / size
+        kl = 1 - exp(kl / sz)
+        return kl
 
 
 cdef class NormalizedSumSquaredDiffMetric(CythonMetric):
@@ -563,6 +563,31 @@ cdef double c_distp_nlinf(float * ptr1, float * ptr2, int size) nogil:
         
         return max_v / sz
 
+cdef double c_distp_kldiv(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double kl = 0.0
+        
+        for s in range(size):
+            if ptr1[s] > 0 and ptr2[s] > 0:
+                kl += ptr1[s] * log(ptr1[s]/ptr2[s])
+
+        return kl / sz
+
+cdef double c_distp_normkl(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double kl = 0.0
+
+        for s in range(size):
+            if ptr1[s] > 0 and ptr2[s] > 0:
+                kl += ptr1[s] * log(ptr1[s]/ptr2[s])
+
+        return 1 - exp(kl / sz)
+
+
 def assign_to_centroid_nl2(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
 
     cdef:
@@ -635,6 +660,58 @@ def assign_to_centroid_nlinf(Metric metric, float [:, :, ::1] data, float [:, :,
             for j in range(J):
                 # dist = metric.c_dist(features1, features2)
                 dist = c_distp_nlinf(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+def assign_to_centroid_kldiv(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_kldiv(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+def assign_to_centroid_normkl(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_normkl(&data[i, 0, 0], &centroids[j, 0, 0], size)
                 if dist < curr_min:
                     curr_min = dist
                     curr_id = j

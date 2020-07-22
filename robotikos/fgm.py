@@ -2,10 +2,16 @@ import numpy as np
 from robotikos.clustering import FastGroupingNode, ClusterMapCentroid, ClusterCentroid
 from time import time
 from robotikos.metricspeed import assign_to_centroid
-from robotikos.metricspeed import assign_to_centroid_nl1, assign_to_centroid_nl2, assign_to_centroid_nlinf
+from robotikos.metricspeed import (assign_to_centroid_nl1,
+                                   assign_to_centroid_nl2,
+                                   assign_to_centroid_nlinf,
+                                   assign_to_centroid_kldiv,
+                                   assign_to_centroid_normkl)
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
                               NormalizedSumAbsDiffMetric,
-                              NormalizedSumInfDiffMetric)
+                              NormalizedSumInfDiffMetric,
+                              KLDivergenceMetric,
+                              NormalKLDivergenceMetric)
 
 
 def fgn_merging_level(fgn_online_all_levels, level,
@@ -278,6 +284,10 @@ def fgn_shuffles(data, thresholds, metric,
         assign_to_centroids_fast = assign_to_centroid_nl1
     elif isinstance(metric, NormalizedSumInfDiffMetric):
         assign_to_centroids_fast = assign_to_centroid_nlinf
+    elif isinstance(metric, KLDivergenceMetric):
+        assign_to_centroids_fast = assign_to_centroid_kldiv
+    elif isinstance(metric, NormalKLDivergenceMetric):
+        assign_to_centroids_fast = assign_to_centroid_normkl
     else:
         print('Unknown metric to use here - switching to slow version')
         assign_to_centroids_fast = assign_to_centroids
