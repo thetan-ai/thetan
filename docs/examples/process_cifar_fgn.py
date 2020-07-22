@@ -6,13 +6,24 @@ from robotikos.metric import IdentityFeature
 from robotikos.metricspeed import (assign_to_centroid_nl1,
                                    assign_to_centroid_nl2)
 from robotikos.rsvd import bksvd
+from skimage.feature import hog
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from time import time
 
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
+
+def extract_hog(img, orientations=9, px_per_cell=(2, 2),
+                cells_per_block=(1, 1), viz=False):
+    res = hog(
+        img, orientations=orientations, pixels_per_cell=px_per_cell,
+        cells_per_block=cells_per_block, visualize=viz, transform_sqrt=True,
+        multichannel=True)
+    return res
 
 
 def fsn_test_with_fgn_shuffles(x_test, centroids, metric):
@@ -57,6 +68,20 @@ def separate_train_data(x_train, y_train, num_labels=10):
     return sep_data
 
 
+def viz_hog(img):
+    fd, hog_img = extract_hog(img, viz=True)
+    fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
+
+    ax1.axis('off')
+    ax1.imshow(img)
+    ax1.set_title('Input image')
+
+    ax2.axis('off')
+    ax2.imshow(hog_img, cmap=plt.cm.gray)
+    ax2.set_title('Histogram of Oriented Gradients')
+    plt.show()
+
+
 def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
     cnt = 0
     lengths = [len(centroids[key]) for key in centroids]
@@ -88,6 +113,8 @@ if __name__ == '__main__':
     print('Original training size: {}'.format(y_train.shape[0]))
     print('Original testing size: {}'.format(y_test.shape[0]))
 
+    viz_hog(x_train[0])
+
     test_size = .2
     print('Splitting training dataset into training and validation({}/{})'
           '...'.format(int((1 - test_size) * 100), int(test_size * 100)))
@@ -102,16 +129,17 @@ if __name__ == '__main__':
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 
-    thresholds = [.08, .004]
+    thresholds = [.11, .1, .09]
     print('Thresholds: {}'.format(thresholds))
 
-    num_shuffles = 2
+    num_shuffles = 10
     use_sobel = False
     use_bksvd = False
     k = 10
     verbose = True
     level = None
 
+    """    
     data_shape = x_train.shape[1:]
     # [N, 1, 3072=(32x32x3)]
     x_train_work = np.reshape(
@@ -119,6 +147,11 @@ if __name__ == '__main__':
     # [N, 3, 1024=(32x32)]
 
     x_train_work = np.ascontiguousarray(x_train_work / 255.)
+    """
+
+    x_train_work = np.array([extract_hog(x_train[i])[np.newaxis, :]
+                             for i in range(train_sz)])
+
     # Low rank approximation
     x_train_work_ev = np.zeros((train_sz, 1, k))
 
@@ -130,12 +163,18 @@ if __name__ == '__main__':
         print('Duration bksvd: {}'.format(time_diff))
         x_train_work = x_train_work_ev
 
+    """
     # [N, 1, 3072=(32x32x3)]
     x_val_work = np.reshape(
         x_val, (val_sz, 1, np.prod(data_shape)))
     # [N, 3, 1024=(32x32)]
 
     x_val_work = np.ascontiguousarray(x_val_work / 255.)
+    """
+
+    x_val_work = np.array([extract_hog(x_val[i])[np.newaxis, :]
+                           for i in range(val_sz)])
+
     x_val_work_ev = np.zeros((val_sz, 1, k))
 
     if use_bksvd:
