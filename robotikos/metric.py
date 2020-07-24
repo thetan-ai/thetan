@@ -10,7 +10,10 @@ from robotikos.metricspeed import (Metric,
                                    NormalizedSumSquaredDiffMetric,
                                    NormalizedSumAbsDiffMetric,
                                    CosineMetric,
-                                   CrossCorrelationMetric)
+                                   CrossCorrelationMetric,
+                                   NormalizedSumInfDiffMetric,
+                                   KLDivergenceMetric,
+                                   NormalKLDivergenceMetric)
 
 from robotikos.metricspeed import (dist,
                                    distance_matrix)
