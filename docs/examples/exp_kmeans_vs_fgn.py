@@ -21,7 +21,7 @@ if exp_type == 'blobs':
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                            np.ravel(yy)[:, np.newaxis]))
 
-    X, y = make_blobs(n_samples=10000, centers=n_centres, random_state=0)
+    X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
 
     points = X
     sz = len(n_centres)
@@ -77,12 +77,13 @@ from robotikos.metric import (NormalizedSumSquaredDiffMetric,
 metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 
 elbow_check = []
-theta_range = np.linspace(3.8, 5, num=30) # np.linspace(1, 3.5, num=50)
+theta_range = [5.365]  # np.linspace(3.8, 5.5, num=40) # np.linspace(1, 3.5, num=50)
+theta_range = [7.25] # 5.8 (104), 6.0 (101), 6.2 (102), 6.4 (101), 6.6 (102), 7.0 (101), 7.2 (101), 7.3 (99), 7.5 (98), 8.0 (96)
 for t in theta_range:
     print(t)
     t1 = time()
     res = fgn_shuffles(points[:, None, :], thresholds=[t], metric=metric,
-                       num_shuffles=1, mode='fgn')
+                       num_shuffles=100, mode='fgn_ma')
     t2 = time()
 
     fgn_time = t2 - t1
@@ -121,7 +122,9 @@ plot_centroids_clusters(points, kcentroids, klabels, 'kmeans++')
 
 plot_centroids_clusters(points, fgn_centroids, flabels, 'fgn_ma')
 
-pl.plot(theta_range, elbow_check); pl.grid(); pl.show()
+pl.plot(theta_range, elbow_check)
+pl.grid()
+pl.show()
 
 t = 1
 
