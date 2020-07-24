@@ -1,3 +1,4 @@
+from datetime import timedelta
 from robotikos.fgm import assign_to_centroids, fgn_shuffles
 from robotikos.metric import (NormalizedSumAbsDiffMetric,
                               NormalizedSumSquaredDiffMetric)
@@ -5,12 +6,24 @@ from robotikos.metric import IdentityFeature
 from robotikos.metricspeed import (assign_to_centroid_nl1,
                                    assign_to_centroid_nl2)
 from robotikos.rsvd import bksvd
+from skimage.feature import hog
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 from time import time
 
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
+
+def extract_hog(img, orientations=9, px_per_cell=(2, 2),
+                cells_per_block=(1, 1), viz=False):
+    res = hog(
+        img, orientations=orientations, pixels_per_cell=px_per_cell,
+        cells_per_block=cells_per_block, visualize=viz, transform_sqrt=True,
+        multichannel=True)
+    return res
 
 
 def fsn_test_with_fgn_shuffles(x_test, centroids, metric):
@@ -55,6 +68,20 @@ def separate_train_data(x_train, y_train, num_labels=10):
     return sep_data
 
 
+def viz_hog(img):
+    fd, hog_img = extract_hog(img, viz=True)
+    fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
+
+    ax1.axis('off')
+    ax1.imshow(img)
+    ax1.set_title('Input image')
+
+    ax2.axis('off')
+    ax2.imshow(hog_img, cmap=plt.cm.gray)
+    ax2.set_title('Histogram of Oriented Gradients')
+    plt.show()
+
+
 def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
     cnt = 0
     lengths = [len(centroids[key]) for key in centroids]
@@ -83,79 +110,100 @@ def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
 if __name__ == '__main__':
     dataset = tf.keras.datasets.cifar10
     (x_train, y_train), (x_test, y_test) = dataset.load_data()
+    print('Original training size: {}'.format(y_train.shape[0]))
+    print('Original testing size: {}'.format(y_test.shape[0]))
+
+    viz_hog(x_train[0])
+
+    test_size = .2
+    print('Splitting training dataset into training and validation({}/{})'
+          '...'.format(int((1 - test_size) * 100), int(test_size * 100)))
+    x_train, x_val, y_train, y_val = train_test_split(
+        x_train, y_train, test_size=test_size, random_state=42,
+        stratify=y_train)
+    train_sz = y_train.shape[0]
+    val_sz = y_val.shape[0]
+    test_sz = y_test.shape[0]
+    print('Split training size: {}'.format(train_sz))
+    print('Split validation size: {}'.format(val_sz))
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-    #metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
 
-    thresholds = [0.15, 0.1, 0.08]
-
-    print('Thresholds', thresholds)
+    thresholds = [.11, .1, .09]
+    print('Thresholds: {}'.format(thresholds))
 
     num_shuffles = 10
-    train_sz = y_train.shape[0]
-    test_sz = y_test.shape[0]
     use_sobel = False
     use_bksvd = False
     k = 10
     verbose = True
     level = None
 
-    print('Training size', train_sz)
-    print('Test size', test_sz)
-
-    #nt = t.reshape(5000, 1, 32 * 32 * 3)
-    #nt = t.reshape(5000, 32*32, 3)
-
+    """    
     data_shape = x_train.shape[1:]
-    x_train_rsh = np.reshape(
-        x_train, (y_train.shape[0], 1, np.prod(data_shape)))
+    # [N, 1, 3072=(32x32x3)]
+    x_train_work = np.reshape(
+        x_train, (train_sz, 1, np.prod(data_shape)))
+    # [N, 3, 1024=(32x32)]
 
-    x_train_part = x_train_rsh  # x_train.copy()[:train_sz]
-    x_train_part = np.ascontiguousarray(x_train_part / 255.)
-    # low rank approximation
-    x_train_part_ev = np.zeros((x_train_part.shape[0], 1, k))
+    x_train_work = np.ascontiguousarray(x_train_work / 255.)
+    """
+
+    x_train_work = np.array([extract_hog(x_train[i])[np.newaxis, :]
+                             for i in range(train_sz)])
+
+    # Low rank approximation
+    x_train_work_ev = np.zeros((train_sz, 1, k))
 
     if use_bksvd:
-        t1 = time()
+        t = time()
         for i in range(train_sz):
-            x_train_part_ev[i][0] = bksvd(x_train_part[i], k=k)[1]
-        t2 = time()
-        print('Duration bksvd %.3f s' % (t2 - t1,))
-        x_train_part = x_train_part_ev
+            x_train_work_ev[i][0] = bksvd(x_train_work[i], k=k)[1]
+        time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+        print('Duration bksvd: {}'.format(time_diff))
+        x_train_work = x_train_work_ev
 
-    x_test_rsh = np.reshape(
-        x_test, (y_test.shape[0], 1, np.prod(data_shape)))
+    """
+    # [N, 1, 3072=(32x32x3)]
+    x_val_work = np.reshape(
+        x_val, (val_sz, 1, np.prod(data_shape)))
+    # [N, 3, 1024=(32x32)]
 
-    x_test_part = x_test_rsh  # x_test.copy()[:test_sz]
-    x_test_part = np.ascontiguousarray(x_test_part / 255.)
-    x_test_part_ev = np.zeros((x_test_part.shape[0], 1, k))
+    x_val_work = np.ascontiguousarray(x_val_work / 255.)
+    """
+
+    x_val_work = np.array([extract_hog(x_val[i])[np.newaxis, :]
+                           for i in range(val_sz)])
+
+    x_val_work_ev = np.zeros((val_sz, 1, k))
 
     if use_bksvd:
-        for i in range(test_sz):
-            x_test_part_ev[i][0] = bksvd(x_test_part[i], k=k)[1]
-        x_test_part = x_test_part_ev
+        for i in range(val_sz):
+            x_val_work_ev[i][0] = bksvd(x_val_work[i], k=k)[1]
+        x_val_work = x_val_work_ev
 
-    y_train_part = y_train.copy()[:train_sz]
-    y_test_part = y_test.copy()[:test_sz]
+    y_train_work = y_train
+    y_val_work = y_val
 
-    feature_shape = x_train_part[0].shape
+    feature_shape = x_train_work[0].shape
 
-    t1 = time()
+    t = time()
     centroids, y_train_pred = fsn_training_with_fgn_shuffles(
-        x_train_part, y_train_part, thresholds, metric,
-        num_shuffles=num_shuffles, mode='fgn_ma',
-        verbose=verbose, level=level, num_labels=10)
-    t2 = time()
-    print('Duration FGN shuffles training %.3f s' % (t2 - t1,))
+        x_train_work, y_train_work, thresholds, metric,
+        num_shuffles=num_shuffles, mode='fgn_ma', verbose=verbose, level=level,
+        num_labels=10)
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration FGN shuffles training: {}'.format(time_diff))
 
     total_centroids = np.sum([len(centroids[c]) for c in centroids])
-    print('Total number of centroids ', total_centroids)
+    print('Total number of centroids: {}'.format(total_centroids))
 
-    t1 = time()
-    y_test_pred = fsn_test_with_fgn_shuffles(x_test_part, centroids, metric)
-    t2 = time()
-    print('Duration FGN shuffles testing %.3f s' % (t2 - t1,))
+    t = time()
+    y_val_pred = fsn_test_with_fgn_shuffles(x_val_work, centroids, metric)
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration FGN shuffles validation: {}'.format(time_diff))
 
-    print('Accuracy training set', report_accuracy(y_train_part, y_train_pred))
-    print('Accuracy test set (min_dist)', report_accuracy(y_test_part,
-                                                          y_test_pred))
+    print('Accuracy training set: {}'.format(
+        report_accuracy(y_train_work, y_train_pred)))
+    print('Accuracy validation set (min_dist): {}'.format(
+        report_accuracy(y_val_work, y_val_pred)))
