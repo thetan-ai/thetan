@@ -9,7 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from itertools import cycle, islice
 from sklearn.datasets import make_blobs
 import pylab as pl
-
+from sklearn.cluster import Birch, MiniBatchKMeans
+from sklearn.mixture import GaussianMixture
 
 exp_type = 'blobs'
 
@@ -21,7 +22,7 @@ if exp_type == 'blobs':
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                            np.ravel(yy)[:, np.newaxis]))
 
-    X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
+    X, y = make_blobs(n_samples=10000, centers=n_centres, random_state=0)
 
     points = X
     sz = len(n_centres)
@@ -83,7 +84,7 @@ for t in theta_range:
     print(t)
     t1 = time()
     res = fgn_shuffles(points[:, None, :], thresholds=[t], metric=metric,
-                       num_shuffles=100, mode='fgn_ma')
+                       num_shuffles=1, mode='fgn_ma')
     t2 = time()
 
     fgn_time = t2 - t1
@@ -99,6 +100,42 @@ fgn_centroids = np.zeros((len(fcentroids), 2))
 for i, c in enumerate(fcentroids.keys()):
     fgn_centroids[i] = np.squeeze(fcentroids[c])
 
+t1 = time()
+# birch = Birch(threshold=1.7, n_clusters=None).fit(points)
+birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
+t2 = time()
+
+birch_time = t2 - t1
+print('birch_time ', birch_time)
+
+birch_labels = birch.labels_
+birch_centroids = birch.subcluster_centers_
+print('# centroids ', len(birch_centroids))
+
+t1 = time()
+mbk = MiniBatchKMeans(init='k-means++', n_clusters=int(np.prod(sz)),
+                      batch_size=100,
+                      n_init=10, max_no_improvement=10, verbose=0,
+                      random_state=0).fit(points)
+t2 = time()
+mb_kmeans_time = t2 - t1
+print('mb_kmeans_time ', mb_kmeans_time)
+
+mbk_labels = mbk.labels_
+mbk_centroids = mbk.cluster_centers_
+print('# centroids ', len(mbk_centroids))
+
+t1 = time()
+cov_type = ['spherical', 'diag', 'tied', 'full']
+gmm = GaussianMixture(n_components=int(np.prod(sz)),
+                      covariance_type=cov_type[0],
+                      max_iter=200, random_state=0).fit(points)
+t2 = time()
+gmm_time = t2 - t1
+print('# gmm_time ', gmm_time)
+
+gmm_centroids = gmm.means_
+gmm_labels = gmm.predict(points)
 
 def plot_centroids_clusters(data, centroids, labels, title):
 
@@ -115,13 +152,20 @@ def plot_centroids_clusters(data, centroids, labels, title):
     pl.scatter(data[:, 0], data[:, 1], c=new_colors)
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
 
-    pl.show()
+    # pl.show()
 
 
 plot_centroids_clusters(points, kcentroids, klabels, 'kmeans++')
 
 plot_centroids_clusters(points, fgn_centroids, flabels, 'fgn_ma')
 
+plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch')
+
+plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mb_kmeans')
+
+plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm')
+
+pl.figure()
 pl.plot(theta_range, elbow_check)
 pl.grid()
 pl.show()
