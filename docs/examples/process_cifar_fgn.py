@@ -9,6 +9,9 @@ from robotikos.rsvd import bksvd
 from skimage.feature import hog
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.models import Model
 from time import time
 
 
@@ -52,6 +55,17 @@ def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds, metric,
         print('Total number of centroids', total_no_centroids)
     y_pred = y_pred_with_fgn_shuffles_fast(x_train, centroids, metric)
     return centroids, y_pred
+
+
+def nn_feature(img, model, preprocessing=None):
+    img = np.expand_dims(img, axis=0)
+    # TODO: Try Keras preproc
+    """
+    Convert the images from RGB to BGR, then will zero-center each color 
+    channel with respect to the ImageNet dataset, without scaling.
+    """
+    #img = preprocess_input(img)
+    return model.predict(img)
 
 
 def report_accuracy(y_true, y_pred):
@@ -113,13 +127,53 @@ if __name__ == '__main__':
     print('Original training size: {}'.format(y_train.shape[0]))
     print('Original testing size: {}'.format(y_test.shape[0]))
 
-    viz_hog(x_train[0])
+    # Data normalization
+    x_train_work = x_train / 255.
 
-    test_size = .2
+    """
+    data_shape = x_train.shape[1:]
+    # [N, 1, 3072=(32x32x3)]
+    x_train_work = np.reshape(x_train, (train_sz, 1, np.prod(data_shape)))
+    # [N, 3, 1024=(32x32)]
+    """
+
+    #viz_hog(x_train[0])
+
+    """
+    t = time()
+    x_train_work = np.array([extract_hog(x_train_work[i])[np.newaxis, :]
+                             for i in range(y_train.shape[0])])
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration feature descriptor calculation on training dataset: '
+          '{}'.format(time_diff))
+    """
+
+    """
+    base_model = VGG16(include_top=False, weights='imagenet',
+                       input_shape=(32, 32, 3), classes=10)
+    base_model.summary()
+    model = Model(inputs=base_model.inputs,
+                  outputs=base_model.get_layer('block5_pool').output)
+    """
+
+    base_model = ResNet50(include_top=False, weights='imagenet',
+                          input_shape=(32, 32, 3), classes=10)
+    base_model.summary()
+    model = Model(inputs=base_model.inputs,
+                  outputs=base_model.get_layer('conv5_block3_out').output)
+
+    t = time()
+    x_train_work = np.array([nn_feature(x_train_work[i], model)[0, 0]
+                             for i in range(y_train.shape[0])])
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration feature descriptor calculation on training dataset: '
+          '{}'.format(time_diff))
+
+    val_prop = .2
     print('Splitting training dataset into training and validation({}/{})'
-          '...'.format(int((1 - test_size) * 100), int(test_size * 100)))
-    x_train, x_val, y_train, y_val = train_test_split(
-        x_train, y_train, test_size=test_size, random_state=42,
+          '...'.format(int((1 - val_prop) * 100), int(val_prop * 100)))
+    x_train_work, x_val_work, y_train, y_val = train_test_split(
+        x_train_work, y_train, test_size=val_prop, random_state=42,
         stratify=y_train)
     train_sz = y_train.shape[0]
     val_sz = y_val.shape[0]
@@ -129,28 +183,15 @@ if __name__ == '__main__':
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 
-    thresholds = [.11, .1, .09]
+    thresholds = [.01, .005]
     print('Thresholds: {}'.format(thresholds))
 
-    num_shuffles = 10
+    num_shuffles = 5
     use_sobel = False
     use_bksvd = False
     k = 10
     verbose = True
     level = None
-
-    """    
-    data_shape = x_train.shape[1:]
-    # [N, 1, 3072=(32x32x3)]
-    x_train_work = np.reshape(
-        x_train, (train_sz, 1, np.prod(data_shape)))
-    # [N, 3, 1024=(32x32)]
-
-    x_train_work = np.ascontiguousarray(x_train_work / 255.)
-    """
-
-    x_train_work = np.array([extract_hog(x_train[i])[np.newaxis, :]
-                             for i in range(train_sz)])
 
     # Low rank approximation
     x_train_work_ev = np.zeros((train_sz, 1, k))
@@ -162,18 +203,6 @@ if __name__ == '__main__':
         time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
         print('Duration bksvd: {}'.format(time_diff))
         x_train_work = x_train_work_ev
-
-    """
-    # [N, 1, 3072=(32x32x3)]
-    x_val_work = np.reshape(
-        x_val, (val_sz, 1, np.prod(data_shape)))
-    # [N, 3, 1024=(32x32)]
-
-    x_val_work = np.ascontiguousarray(x_val_work / 255.)
-    """
-
-    x_val_work = np.array([extract_hog(x_val[i])[np.newaxis, :]
-                           for i in range(val_sz)])
 
     x_val_work_ev = np.zeros((val_sz, 1, k))
 
