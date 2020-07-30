@@ -9,7 +9,8 @@ from robotikos.rsvd import bksvd
 from skimage.feature import hog
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.models import Model
 from time import time
 
@@ -147,11 +148,19 @@ if __name__ == '__main__':
           '{}'.format(time_diff))
     """
 
+    """
     base_model = VGG16(include_top=False, weights='imagenet',
                        input_shape=(32, 32, 3), classes=10)
     base_model.summary()
     model = Model(inputs=base_model.inputs,
                   outputs=base_model.get_layer('block5_pool').output)
+    """
+
+    base_model = ResNet50(include_top=False, weights='imagenet',
+                          input_shape=(32, 32, 3), classes=10)
+    base_model.summary()
+    model = Model(inputs=base_model.inputs,
+                  outputs=base_model.get_layer('conv5_block3_out').output)
 
     t = time()
     x_train_work = np.array([nn_feature(x_train_work[i], model)[0, 0]
@@ -160,11 +169,11 @@ if __name__ == '__main__':
     print('Duration feature descriptor calculation on training dataset: '
           '{}'.format(time_diff))
 
-    test_size = .2
+    val_prop = .2
     print('Splitting training dataset into training and validation({}/{})'
-          '...'.format(int((1 - test_size) * 100), int(test_size * 100)))
+          '...'.format(int((1 - val_prop) * 100), int(val_prop * 100)))
     x_train_work, x_val_work, y_train, y_val = train_test_split(
-        x_train_work, y_train, test_size=test_size, random_state=42,
+        x_train_work, y_train, test_size=val_prop, random_state=42,
         stratify=y_train)
     train_sz = y_train.shape[0]
     val_sz = y_val.shape[0]
@@ -174,7 +183,7 @@ if __name__ == '__main__':
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 
-    thresholds = [.1, .05]
+    thresholds = [.01, .005]
     print('Thresholds: {}'.format(thresholds))
 
     num_shuffles = 5
