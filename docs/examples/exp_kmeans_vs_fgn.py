@@ -59,8 +59,10 @@ timings = {}
 
 if exp_type == 'blobs':
     # Generate centers for the blobs so that it forms a 10 X 10 grid.
-    xx = np.linspace(-22, 22, 10)
-    yy = np.linspace(-22, 22, 10)
+    # xx = np.linspace(-22, 22, 10)
+    # yy = np.linspace(-22, 22, 10)
+    xx = np.linspace(-44, 44, 20)
+    yy = np.linspace(-44, 44, 20)
     xx, yy = np.meshgrid(xx, yy)
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                            np.ravel(yy)[:, np.newaxis]))
