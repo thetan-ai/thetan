@@ -49,11 +49,12 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
 
 
-exp_type = 'blobs'
+exp_type = 'disks'
 methods = ['kmeans', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
 # methods = ['kmeans', 'fgn_ma']
 evaluation_thr = 0.3
 verbose = True
+
 misses = {}
 timings = {}
 
@@ -88,7 +89,8 @@ if exp_type == 'disks':
             r = np.sqrt(np.random.random())
             theta = np.random.random() * 2 * np.pi
             x1 = 5 * x + r * np.cos(theta)
-            y1 = 5 * y + 2 * r * np.sin(theta)
+            # y1 = 5 * y + 2 * r * np.sin(theta)
+            y1 = 5 * y + r * np.sin(theta)
             coords.append([x1, y1])
         centroids.append([5 * x, 5 * y])
 
