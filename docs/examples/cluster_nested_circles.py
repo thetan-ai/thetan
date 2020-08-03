@@ -104,7 +104,7 @@ class DataSequence:
 
 import time
 def dist(a, b):
-    
+
     #np.sqrt(np.sum((a-b)**2))
     return np.linalg.norm(a-b)
 
@@ -135,10 +135,10 @@ for i in range(len(total_clusters)):
     # 0th index means 0th point in data
     # index tells the data point number
     # value on that index means cluster number it belongs to
-    
 
-viz = True      
-if viz : 
+
+viz = True
+if viz :
 
     colors = [np.random.rand(3) for streamline in range(len(total_clusters)) ]
 
@@ -162,14 +162,15 @@ if viz :
 
 '''
 cluster_chaining is list of lists
-each list on ith index corresponds to the ith data point 
+each list on ith index corresponds to the ith data point
 ith list will have all the cluster numbers ith data point belongs to
 
 '''
-iteration = 36 # number of iterations you want to run
+iteration = 3 # number of iterations you want to run
+total_clusters = list(set(cluster_no))
 
 for ite in range(iteration):
-    
+
     cluster_chaining = [[1]]
     for p in range(len(cluster_no)):
         #initially just assigning it the original cluster numbers we got from qbx
@@ -178,8 +179,8 @@ for ite in range(iteration):
 
     start_time = time.time()
     theta = 0.15
-    
-    
+
+
     for ck in range(len(total_clusters)): # cluster number
 
         cc = total_clusters[ck]
@@ -207,13 +208,13 @@ for ite in range(iteration):
     for r in range(len(cluster_chaining)):
 
         relabled[r] = min(cluster_chaining[r])
-        
+
     cluster_no = relabled.copy()
     total_clusters = list(set(relabled)) # number of clusters left. like cluster 4, 7 9 ,10
-        
-        
-viz = True      
-if viz : 
+
+
+viz = True
+if viz :
     # visualize final result
     m = int(max(set(relabled)) + 1)
 
