@@ -52,3 +52,18 @@ for i in range(len(x_data)):
 dataseq = DataSequence(x_data)
 
 fcn(data=dataseq, qbx_thresholds=[1], chaining_thr=1.7, viz=True)
+
+# Eaxmple 3
+# Aggregation data
+my_data = np.loadtxt("/Users/bramshqamarchandio/robotikos/data/Aggregation.txt")
+x_data = my_data.copy()
+
+''' last dimension is different for each cluster presumably it's the label
+already provided in the data making it 0 for all '''
+
+for i in range(len(x_data)):
+    x_data[i][2] = 0.00
+
+dataseq = DataSequence(x_data)
+
+fcn(data=dataseq, qbx_thresholds=[1.2], chaining_thr=2, viz=True)

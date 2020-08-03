@@ -15,6 +15,19 @@ def dist(a, b):
 
 
 def fcn(data, qbx_thresholds, chaining_thr, viz):
+    '''Fast Chaining Node
+
+    Parameters
+    ----------
+    data : sequence of features
+        input data to be clustered
+    qbx_thresholds: sequence
+        ist of distance thresholds for for QBX
+    chaining_thr: float
+        chaining threshold
+    viz: bool
+        visualize the result if true
+    '''
 
     # We first get initial clusters using QBX
 
