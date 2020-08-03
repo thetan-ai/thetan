@@ -67,3 +67,54 @@ for i in range(len(x_data)):
 dataseq = DataSequence(x_data)
 
 fcn(data=dataseq, qbx_thresholds=[1.2], chaining_thr=2, viz=True)
+
+# Eaxmple 4
+# many small moons data
+my_data = np.loadtxt("/Users/bramshqamarchandio/robotikos/data/R15.txt")
+x_data = my_data.copy()
+
+''' last dimension is different for each cluster presumably it's the label
+already provided in the data making it 0 for all '''
+
+for i in range(len(x_data)):
+    x_data[i][2] = 0.00
+
+dataseq = DataSequence(x_data)
+
+fcn(data=dataseq, qbx_thresholds=[1], chaining_thr=1.1, viz=True)
+
+
+# Eaxmple 5.1
+# flame data
+my_data = np.loadtxt("/Users/bramshqamarchandio/robotikos/data/flame.txt")
+x_data = my_data.copy()
+
+''' last dimension is different for each cluster presumably it's the label
+already provided in the data making it 0 for all '''
+
+for i in range(len(x_data)):
+    x_data[i][2] = 0.00
+
+dataseq = DataSequence(x_data)
+
+fcn(data=dataseq, qbx_thresholds=[0.2], chaining_thr=0.8, viz=True)
+
+# Eaxmple 5.2
+# with different thresholds
+
+fcn(data=dataseq, qbx_thresholds=[0.5], chaining_thr=1, viz=True)
+
+# Eaxmple 6
+# one big and one small half moons data
+my_data = np.loadtxt("/Users/bramshqamarchandio/robotikos/data/jain.txt")
+x_data = my_data.copy()
+
+''' last dimension is different for each cluster presumably it's the label
+already provided in the data making it 0 for all '''
+
+for i in range(len(x_data)):
+    x_data[i][2] = 0.00
+
+dataseq = DataSequence(x_data)
+
+fcn(data=dataseq, qbx_thresholds=[2.5], chaining_thr=5, viz=True)
