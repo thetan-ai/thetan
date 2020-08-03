@@ -125,7 +125,7 @@ if 'kmeans' in methods:
                                 'kmeans++',
                                 initial_centroids=centroids)
 
-    misses['kmeans++'] = len(centroids) - evaluate_centroids(kcentroids, centroids, evaluation_thr)
+    misses['kmeans++'] = np.abs(len(centroids) - evaluate_centroids(kcentroids, centroids, evaluation_thr))
     timings['kmeans++'] = kmeans_time
 
     tmp = 0
@@ -181,7 +181,7 @@ if 'fgn_ma' in methods:
         if verbose:
             plot_centroids_clusters(points, fgn_centroids, flabels, 'fgn_ma ' + ext)
 
-        misses['fgn_ma ' + ext] = len(centroids) - evaluate_centroids(fgn_centroids, centroids, evaluation_thr)
+        misses['fgn_ma ' + ext] = np.abs(len(centroids) - evaluate_centroids(fgn_centroids, centroids, evaluation_thr))
         timings['fgn_ma ' + ext] = fgn_time
 
 
@@ -206,7 +206,7 @@ if 'birch' in methods:
         if verbose:
             plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + str(np.round(bt, 2)))
 
-        misses['birch ' + str(np.round(bt, 2))] = len(centroids) - evaluate_centroids(birch_centroids, centroids, evaluation_thr)
+        misses['birch ' + str(np.round(bt, 2))] = np.abs(len(centroids) - evaluate_centroids(birch_centroids, centroids, evaluation_thr))
         timings['birch ' + str(np.round(bt, 2))] = birch_time
 
 if 'mb_kmeans' in methods:
@@ -226,7 +226,7 @@ if 'mb_kmeans' in methods:
     if verbose:
         plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mb_kmeans')
 
-    misses['mb_kmeans'] = len(centroids) - evaluate_centroids(mbk_centroids, centroids, evaluation_thr)
+    misses['mb_kmeans'] = np.abs(len(centroids) - evaluate_centroids(mbk_centroids, centroids, evaluation_thr))
     timings['mb_kmeans'] = mb_kmeans_time
 
 if 'gmm' in methods:
@@ -246,7 +246,7 @@ if 'gmm' in methods:
     if verbose:
         plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm')
 
-    misses['gmm'] = len(centroids) - evaluate_centroids(gmm_centroids, centroids, evaluation_thr)
+    misses['gmm'] = np.abs(len(centroids) - evaluate_centroids(gmm_centroids, centroids, evaluation_thr))
     timings['gmm'] = gmm_time
 
 # pl.figure()
