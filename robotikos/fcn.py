@@ -52,6 +52,7 @@ def fcn(data, qbx_thresholds, chaining_thr, viz):
     # array that has cluster numbers for each data point
     cluster_no = np.zeros(len(data))
     # an array that has cluster numbers for each cluster centroid
+    # Now we save centroid label information too
     c_cluster_no = np.zeros(len(total_clusters))
 
     for i in range(len(total_clusters)):
@@ -64,6 +65,7 @@ def fcn(data, qbx_thresholds, chaining_thr, viz):
         '''
         c_cluster_no[i] = i  # same goes for cluster centroid numbers
 
+    print("--------------------------------------------------------------")
     print("total number of initial clusters = ", len(list(set(cluster_no))))
 
     # visualize the clusters
@@ -93,11 +95,12 @@ def fcn(data, qbx_thresholds, chaining_thr, viz):
 
     '''
     cluster_chaining is list of lists
-    each list on ith index corresponds to the ith data point
-    ith list will have all the cluster numbers ith data point belongs to
+    each list on ith index corresponds to the ith data point (now centroid)
+    ith list will have all the cluster numbers ith data point (or ith centroid)
+    belongs to
 
     '''
-    iteration = 10  # number of iterations you want to run
+    iteration = 10  # max number of iterations you want to run
     total_clusters = list(set(cluster_no))
     theta = chaining_thr
     old_clusters = total_clusters.copy()
@@ -120,7 +123,7 @@ def fcn(data, qbx_thresholds, chaining_thr, viz):
             for k in remaining_cts:
                 # k has point number that belongs to complement of cluster ck
                 k = k[0]
-                pointy = all_centroids[k]  # point value
+                pointy = all_centroids[k]  # centroid value
 
                 if dist(ct, pointy) <= theta:
                     # if within threshold, add to cluster
@@ -146,16 +149,13 @@ def fcn(data, qbx_thresholds, chaining_thr, viz):
 
                     remaining_points = np.argwhere(c_cluster_no == j)
                     for k in remaining_points:
-                        # k has point number that belongs to complement
+                        # k has centroid number that belongs to complement
                         # of cluster ck
                         k = k[0]
                         c_cluster_no[k] = relabled[r]
 
-                        # edit
+                        # update cluster_chaining list of kth centroid too
                         cluster_chaining[k].append(relabled[r])
-
-        # total_clusters = list(set(relabled)) # number of clusters left.
-        # like cluster 4, 7 9 ,10
 
         new_clusters = len(list(set(cluster_no)))
 
@@ -169,6 +169,7 @@ def fcn(data, qbx_thresholds, chaining_thr, viz):
     print("--- %s seconds ---" % (time.time() - f_start_time))
 
     print("total number of final clusters = ", len(list(set(cluster_no))))
+    print("--------------------------------------------------------------")
 
     if viz:
 
