@@ -43,27 +43,28 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
     pl.figure()
     pl.title(title)
     pl.axis('equal')
-    pl.scatter(data[:, 0], data[:, 1], c=new_colors)
+    pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
     if initial_centroids is not None:
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
 
 
-exp_type = 'disks'
-methods = ['kmeans', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
-# methods = ['kmeans', 'fgn_ma']
+exp_type = 'blobs'
+methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
+methods = ['kmeans', 'fgn_ma']
 evaluation_thr = 0.3
 verbose = True
+show_thr = False
 
 misses = {}
 timings = {}
 
 if exp_type == 'blobs':
     # Generate centers for the blobs so that it forms a 10 X 10 grid.
-    # xx = np.linspace(-22, 22, 10)
-    # yy = np.linspace(-22, 22, 10)
-    xx = np.linspace(-44, 44, 20)
-    yy = np.linspace(-44, 44, 20)
+    xx = np.linspace(-22, 22, 10)
+    yy = np.linspace(-22, 22, 10)
+    # xx = np.linspace(-44, 44, 20)
+    # yy = np.linspace(-44, 44, 20)
     xx, yy = np.meshgrid(xx, yy)
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                            np.ravel(yy)[:, np.newaxis]))
@@ -111,6 +112,29 @@ print('Number of gold centroids ', np.prod(sz))
 if 'kmeans' in methods:
 
     t1 = time()
+    kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=1,
+                    max_iter=300, tol=0.0001, random_state=0).fit(points)
+    t2 = time()
+
+    kmeans_time = t2 - t1
+    print('kmeans ', kmeans_time)
+
+    kcentroids = kmeans.cluster_centers_
+    klabels = kmeans.labels_
+    if verbose:
+        plot_centroids_clusters(points, kcentroids, klabels,
+                                'kmeans',
+                                initial_centroids=centroids)
+
+    misses['kmeans'] = np.abs(len(centroids) - evaluate_centroids(kcentroids, centroids, evaluation_thr))
+    timings['kmeans'] = kmeans_time
+
+    tmp = 0
+
+
+if 'kmeans++' in methods:
+
+    t1 = time()
     kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
                     max_iter=300, tol=0.0001, random_state=0).fit(points)
     t2 = time()
@@ -140,7 +164,7 @@ if 'fgn_ma' in methods:
     theta_range = [6.0]
     # theta_range = [20., 10, 5.5]
 
-    for fgn_t in np.linspace(5.5, 6.5, num=10):
+    for fgn_t in np.linspace(5., 5.5, num=5):
         t1 = time()
         res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                            metric=metric,
@@ -178,16 +202,17 @@ if 'fgn_ma' in methods:
             fgn_centroids[i] = np.squeeze(fcentroids[c])
 
         ext = str(np.round(fgn_t, 2))
+        if not show_thr:
+            ext = ''
         if verbose:
-            plot_centroids_clusters(points, fgn_centroids, flabels, 'fgn_ma ' + ext)
-
-        misses['fgn_ma ' + ext] = np.abs(len(centroids) - evaluate_centroids(fgn_centroids, centroids, evaluation_thr))
-        timings['fgn_ma ' + ext] = fgn_time
+            plot_centroids_clusters(points, fgn_centroids, flabels, 'fgn ' + ext)
+        misses['fgn ' + ext] = np.abs(len(centroids) - evaluate_centroids(fgn_centroids, centroids, evaluation_thr))
+        timings['fgn ' + ext] = fgn_time
 
 
 if 'birch' in methods:
 
-    for bt in np.linspace(1.5, 2.5, 10):
+    for bt in [1.94]:  # np.linspace(1.5, 2.5, 10):
 
         t1 = time()
         # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
@@ -203,11 +228,16 @@ if 'birch' in methods:
         birch_labels = birch.labels_
         birch_centroids = birch.subcluster_centers_
         print('# centroids ', len(birch_centroids))
-        if verbose:
-            plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + str(np.round(bt, 2)))
 
-        misses['birch ' + str(np.round(bt, 2))] = np.abs(len(centroids) - evaluate_centroids(birch_centroids, centroids, evaluation_thr))
-        timings['birch ' + str(np.round(bt, 2))] = birch_time
+        ext = str(np.round(bt, 2))
+        if not show_thr:
+            ext = ''
+
+        if verbose:
+            plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext)
+
+        misses['birch ' + ext] = np.abs(len(centroids) - evaluate_centroids(birch_centroids, centroids, evaluation_thr))
+        timings['birch ' + ext] = birch_time
 
 if 'mb_kmeans' in methods:
 
@@ -224,10 +254,10 @@ if 'mb_kmeans' in methods:
     mbk_centroids = mbk.cluster_centers_
     print('# centroids ', len(mbk_centroids))
     if verbose:
-        plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mb_kmeans')
+        plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', initial_centroids=centroids)
 
-    misses['mb_kmeans'] = np.abs(len(centroids) - evaluate_centroids(mbk_centroids, centroids, evaluation_thr))
-    timings['mb_kmeans'] = mb_kmeans_time
+    misses['mini_batch'] = np.abs(len(centroids) - evaluate_centroids(mbk_centroids, centroids, evaluation_thr))
+    timings['mini_batch'] = mb_kmeans_time
 
 if 'gmm' in methods:
 
@@ -235,7 +265,7 @@ if 'gmm' in methods:
     cov_type = ['spherical', 'diag', 'tied', 'full']
     gmm = GaussianMixture(n_components=int(np.prod(sz)),
                           covariance_type=cov_type[3],
-                          max_iter=200, random_state=0).fit(points)
+                          max_iter=200, n_init=5, random_state=0).fit(points)
     t2 = time()
     gmm_time = t2 - t1
     print('# gmm_time ', gmm_time)
@@ -244,7 +274,7 @@ if 'gmm' in methods:
     gmm_labels = gmm.predict(points)
 
     if verbose:
-        plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm')
+        plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
 
     misses['gmm'] = np.abs(len(centroids) - evaluate_centroids(gmm_centroids, centroids, evaluation_thr))
     timings['gmm'] = gmm_time
@@ -256,13 +286,13 @@ if 'gmm' in methods:
 pl.figure()
 pl.title('Misses')
 x_tmp = np.arange(len(misses.values()))
-pl.bar(x_tmp, misses.values())
+pl.bar(x_tmp, misses.values(), alpha=0.7)
 pl.xticks(x_tmp, misses.keys())
 
 pl.figure()
 pl.title('Timings')
 x_tmp = np.arange(len(timings.values()))
-pl.bar(x_tmp, timings.values())
+pl.bar(x_tmp, timings.values(), color=(1, 0, 0., 0.7))
 pl.xticks(x_tmp, timings.keys())
 
 
