@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     x_train_work = x_train / 255.
 
-    # viz_hog(x_train_work[0])
+    #viz_hog(x_train_work[8])
 
     t = time()
     x_train_work = np.array([shog(x_train_work[i])

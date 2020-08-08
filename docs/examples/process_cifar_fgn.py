@@ -111,15 +111,15 @@ def shog(img, orientations=9, px_per_cell=(8, 8), cells_per_block=(2, 2),
 
 def viz_hog(img):
     fd, hog_img = shog(img, viz=True)
-    fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, sharey=True)
 
     ax1.axis('off')
     ax1.imshow(img)
-    ax1.set_title('Input image')
+    #ax1.set_title('Input image')
 
     ax2.axis('off')
     ax2.imshow(hog_img, cmap=plt.cm.gray)
-    ax2.set_title('Histogram of Oriented Gradients')
+    #ax2.set_title('Histogram of Oriented Gradients')
     plt.show()
 
 
