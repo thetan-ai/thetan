@@ -99,3 +99,20 @@ if __name__ == '__main__':
         report_accuracy(y_train, y_train_pred)))
     print('Accuracy validation set: {}'.format(
         report_accuracy(y_val, y_val_pred)))
+
+    x_test_work = x_test / 255.
+
+    t = time()
+    x_test_work = np.array([shog(x_test_work[i])
+                            for i in range(y_test.shape[0])])
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration feature descriptor calculation on testing dataset: '
+          '{}'.format(time_diff))
+
+    t = time()
+    y_test_pred = model.predict(x_test_work)
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration testing prediction: {}'.format(time_diff))
+
+    print('Accuracy validation set: {}'.format(
+        report_accuracy(y_test, y_test_pred)))

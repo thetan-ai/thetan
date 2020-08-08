@@ -260,6 +260,7 @@ if __name__ == '__main__':
     shuffle = 10
     min_shuffle = 1
     shuffle_step = 1
+    # Shuffle=4, Train Acc=.964325, Val Acc=.5298
 
     # ResNet50(output='conv5_block3_out')
     """
@@ -317,3 +318,20 @@ if __name__ == '__main__':
 
         #thr -= thr_step
         shuffle -= shuffle_step
+
+    x_test_work = x_test / 255.
+
+    t = time()
+    x_test_work = np.array([shog(x_test_work[i])[np.newaxis, :]
+                            for i in range(y_test.shape[0])])
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration feature descriptor calculation on testing dataset: '
+          '{}'.format(time_diff))
+
+    t = time()
+    y_test_pred = fsn_test_with_fgn_shuffles(x_test_work, centroids, metric)
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration testing prediction: {}'.format(time_diff))
+
+    print('Accuracy validation set: {}'.format(
+        report_accuracy(y_test, y_test_pred)))
