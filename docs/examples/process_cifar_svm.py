@@ -43,8 +43,9 @@ if __name__ == '__main__':
     y_train_work = np.ravel(y_train)
 
     grid = GridSearchCV(LinearSVC(loss='hinge'), {
-        'C': [100, 10, 8, 4, 2, 1.5, 1.2, .1, .01, .001]}, n_jobs=-1)
+        'C': [100, 10, 8, 4, 2, 1.5, 1.2, 1, .1, .01, .001]}, n_jobs=-1)
 
+    """
     pipeline = Pipeline([('kernel', Nystroem(kernel='linear')),
                          ('clf', LinearSVC())])
 
@@ -56,6 +57,7 @@ if __name__ == '__main__':
          'clf__dual': [False]}
     ]
     grid = GridSearchCV(pipeline, param_grid, n_jobs=-1)
+    """
 
     t = time()
     grid.fit(x_train_work, y_train_work)
@@ -70,11 +72,13 @@ if __name__ == '__main__':
     #model = LinearSVC(C=1.2)  # Train Acc=.5625, Val Acc=.5357
     #model = LinearSVC(C=8, dual=False)  # Train Acc=.563, Val Acc=.533
     #model = LinearSVC(C=4, dual=False)  # Train Acc=.5628, Val Acc=.5333
-    model = LinearSVC(loss='hinge', C=.001)  # Train Acc=.505525, Val Acc=.4952
     """
     model = Pipeline([('kernel', Nystroem(gamma=.01)),
                       ('clf', LinearSVC(penalty='l1', C=2, dual=False))])
     # Train Acc=.511275, Val Acc=.5004
+    """
+    """
+    model = LinearSVC(loss='hinge', C=.001)  # Train Acc=.505525, Val Acc=.4952
     """
 
     t = time()

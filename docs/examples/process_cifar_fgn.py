@@ -21,6 +21,10 @@ import torch
 import torchvision.models as pt_apps
 
 
+LEVEL = None
+VERBOSE = True
+
+
 def feature_from_pt(img, trans, model):
     img = trans(img)
     img = torch.unsqueeze(img, 0)
@@ -63,23 +67,22 @@ def fsn_training_with_fgn_shuffles(x_train, y_train, thresholds, metric,
     return centroids, y_pred
 
 
-def plot(thrs, num_centroids, train_accs, val_accs):
+def plot(x, num_centroids, train_accs, val_accs):
     fig = plt.figure(10)
     fig.clf()
 
     ax = fig.add_subplot(311)
-    ax.plot(thrs, num_centroids)
+    ax.plot(x, num_centroids)
     ax.set_ylabel('Centroids')
 
     ax = fig.add_subplot(312)
-    ax.plot(thrs, train_accs)
+    ax.plot(x, train_accs)
     ax.set_ylabel('Training Accuracy')
 
     ax = fig.add_subplot(313)
-    ax.plot(thrs, val_accs)
+    ax.plot(x, val_accs)
     ax.set_ylabel('Validation Accuracy')
 
-    plt.xlabel('Threshold')
     plt.show()
 
 
@@ -229,37 +232,64 @@ if __name__ == '__main__':
     print('Split training size: {}'.format(train_sz))
     print('Split validation size: {}'.format(val_sz))
 
-    #metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
-
-    num_shuffles = 2
-    verbose = True
-    level = None
-
     y_train_work = y_train
     y_val_work = y_val
 
     feature_shape = x_train_work[0].shape
 
+    # HOG(orientations=9, px_per_cell=(8, 8), cells_per_block=(2, 2),
+    # norm='L2-Hys', sqrt=True)
+    """
+    shuffle = 2
+    metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
     thr = .01
-    min_thr = .002
+    min_thr = .001
     thr_step = .001
+    # Thr=.006, Train Acc=.91835, Val Acc=.5006
+    """
+    """
+    shuffle = 2
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    thr = .1
+    min_thr = .01
+    thr_step = .01
+    # Thr=.06, Train Acc=.9559, Val Acc=.5264
+    """
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    thr = .06
+    shuffle = 10
+    min_shuffle = 1
+    shuffle_step = 1
 
-    thrs = []
+    # ResNet50(output='conv5_block3_out')
+    """
+    num_shuffles = 2
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    thr = .01
+    min_thr = .001
+    thr_step = .001
+    # Thr=.006, Train Acc=, Val Acc=.3
+    """
+
+    #thrs = []
+    shuffles = []
+
     train_times = []
     num_centroids = []
     valpred_times = []
     train_accs = []
     val_accs = []
 
-    while thr >= min_thr:
-        thrs.append(thr)
+    #while thr >= min_thr:
+    while shuffle >= min_shuffle:
+        #thrs.append(thr)
+        shuffles.append(shuffle)
 
         t = time()
         centroids, y_train_pred = fsn_training_with_fgn_shuffles(
             x_train_work, y_train_work, [thr], metric,
-            num_shuffles=num_shuffles, mode='fgn_ma', verbose=verbose,
-            level=level, num_labels=10)
+            num_shuffles=shuffle, mode='fgn_ma', verbose=VERBOSE,
+            level=LEVEL, num_labels=10)
         time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
         print('Duration FGN shuffles training: {}'.format(time_diff))
         train_times.append(time_diff)
@@ -282,13 +312,8 @@ if __name__ == '__main__':
         print('Accuracy validation set (min_dist): {}'.format(val_acc))
         val_accs.append(val_acc)
 
-        plot(thrs, num_centroids, train_accs, val_accs)
+        #plot(thrs, num_centroids, train_accs, val_accs)
+        plot(shuffles, num_centroids, train_accs, val_accs)
 
-        thr -= thr_step
-
-    thrs = np.array(thrs)
-    train_times = np.array(train_times)
-    num_centroids = np.array(num_centroids)
-    valpred_times = np.array(valpred_times)
-    train_accs = np.array(train_accs)
-    val_accs = np.array(val_accs)
+        #thr -= thr_step
+        shuffle -= shuffle_step
