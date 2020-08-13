@@ -157,22 +157,27 @@ if __name__ == '__main__':
     # Data normalization
     x_train_work = x_train / 255.
 
-    """
     data_shape = x_train_work.shape[1:]
+
+    """
     # [N, 1, 3072=(32x32x3)]
     x_train_work = np.reshape(x_train_work, (y_train.shape[0], 1, 
                                              np.prod(data_shape)))
-    # [N, 3, 1024=(32x32)]
     """
+
+    # [N, 3, 1024=(32x32)]
+    x_train_work = np.reshape(x_train_work, (y_train.shape[0], 3, 1024))
 
     #viz_hog(x_train[0])
 
+    """
     t = time()
     x_train_work = np.array([shog(x_train_work[i])[np.newaxis, :]
                              for i in range(y_train.shape[0])])
     time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
     print('Duration feature descriptor calculation on training dataset: '
           '{}'.format(time_diff))
+    """
 
     """
     base_model = tf_apps.VGG16(include_top=False, weights='imagenet',
@@ -237,6 +242,34 @@ if __name__ == '__main__':
 
     feature_shape = x_train_work[0].shape
 
+    # RAW data
+    # [N, 1, 3072=(32x32x3)]
+    """
+    shuffle = 2
+    metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+    thr = .1
+    min_thr = .01
+    thr_step = .01
+    # Thr=.01, Train Acc=.99535, Val Acc=.3428
+    """
+    """
+    shuffle = 2
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    thr = .1
+    min_thr = .01
+    thr_step = .01
+    # Thr=.07, Train Acc=.9973, Val Acc=.3726
+    """
+    # [N, 3, 1024=(32x32)]
+    """
+    shuffle = 2
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
+    thr = .1
+    min_thr = .01
+    thr_step = .01
+    # Thr=.09, Train Acc=.979625, Val Acc=.3751
+    """
+
     # HOG(orientations=9, px_per_cell=(8, 8), cells_per_block=(2, 2),
     # norm='L2-Hys', sqrt=True)
     """
@@ -246,7 +279,6 @@ if __name__ == '__main__':
     min_thr = .001
     thr_step = .001
     # Thr=.006, Train Acc=.91835, Val Acc=.5006
-    """
     """
     shuffle = 2
     metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
@@ -261,6 +293,7 @@ if __name__ == '__main__':
     min_shuffle = 1
     shuffle_step = 1
     # Shuffle=4, Train Acc=.964325, Val Acc=.5298
+    """
 
     # ResNet50(output='conv5_block3_out')
     """
@@ -272,8 +305,8 @@ if __name__ == '__main__':
     # Thr=.006, Train Acc=, Val Acc=.3
     """
 
-    #thrs = []
-    shuffles = []
+    thrs = []
+    #shuffles = []
 
     train_times = []
     num_centroids = []
@@ -281,10 +314,10 @@ if __name__ == '__main__':
     train_accs = []
     val_accs = []
 
-    #while thr >= min_thr:
-    while shuffle >= min_shuffle:
-        #thrs.append(thr)
-        shuffles.append(shuffle)
+    while thr >= min_thr:
+    #while shuffle >= min_shuffle:
+        thrs.append(thr)
+        #shuffles.append(shuffle)
 
         t = time()
         centroids, y_train_pred = fsn_training_with_fgn_shuffles(
@@ -313,11 +346,11 @@ if __name__ == '__main__':
         print('Accuracy validation set (min_dist): {}'.format(val_acc))
         val_accs.append(val_acc)
 
-        #plot(thrs, num_centroids, train_accs, val_accs)
-        plot(shuffles, num_centroids, train_accs, val_accs)
+        plot(thrs, num_centroids, train_accs, val_accs)
+        #plot(shuffles, num_centroids, train_accs, val_accs)
 
-        #thr -= thr_step
-        shuffle -= shuffle_step
+        thr -= thr_step
+        #shuffle -= shuffle_step
 
     x_test_work = x_test / 255.
 
