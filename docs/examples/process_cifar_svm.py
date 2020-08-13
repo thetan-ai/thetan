@@ -1,6 +1,5 @@
 from datetime import timedelta
-from docs.examples.process_cifar_fgn import (extract_hog, report_accuracy,
-                                             viz_hog)
+from docs.examples.process_cifar_fgn import report_accuracy, shog, viz_hog
 from sklearn.kernel_approximation import Nystroem
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
@@ -20,10 +19,10 @@ if __name__ == '__main__':
 
     x_train_work = x_train / 255.
 
-    # viz_hog(x_train_work[0])
+    #viz_hog(x_train_work[8])
 
     t = time()
-    x_train_work = np.array([extract_hog(x_train_work[i])
+    x_train_work = np.array([shog(x_train_work[i])
                              for i in range(y_train.shape[0])])
     time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
     print('Duration feature descriptor calculation on training dataset: '
@@ -43,26 +42,45 @@ if __name__ == '__main__':
 
     y_train_work = np.ravel(y_train)
 
-    #grid = GridSearchCV(LinearSVC(dual=False), {'C': [1, 2, 4, 8]}, n_jobs=-1)
+    grid = GridSearchCV(LinearSVC(loss='hinge'), {
+        'C': [100, 10, 8, 4, 2, 1.5, 1.2, 1, .1, .01, .001]}, n_jobs=-1)
 
+    """
     pipeline = Pipeline([('kernel', Nystroem(kernel='linear')),
-                         ('clf', LinearSVC(dual=False))])
+                         ('clf', LinearSVC())])
 
     param_grid = [
-        {'kernel': [Nystroem(gamma=.001), Nystroem(gamma=.0001)],
-         'clf__C': [100, 10, 1, .1, .01], 'clf__penalty': ['l1']}
+        {'kernel': [Nystroem(gamma=.01), Nystroem(gamma=.001),
+                    Nystroem(gamma=.0001)],
+         'clf__penalty': ['l1'], 'clf__loss': ['hinge'],
+         'clf__C': [100, 10, 8, 4, 2, 1.5, 1.2, .1, .01, .001],
+         'clf__dual': [False]}
     ]
     grid = GridSearchCV(pipeline, param_grid, n_jobs=-1)
+    """
 
     t = time()
     grid.fit(x_train_work, y_train_work)
     time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
     print('Duration hyperparams estimation: {}'.format(time_diff))
 
-    # LinearSVC(dual=False, C=4)
-    # LinearSVC(dual=False, C=8)
-    # Nystroem(gamma=.001) LinearSVC(dual=False, C=1, penalty='l1')
     model = grid.best_estimator_
+
+    # HOG(orientations=9, px_per_cell=(8, 8), cells_per_block=(2, 2),
+    # norm='L2-Hys', sqrt=True)
+    #model = LinearSVC(dual=False)  # Train Acc=.562175, Val Acc=.5359
+    #model = LinearSVC(C=1.2)  # Train Acc=.5625, Val Acc=.5357
+    #model = LinearSVC(C=8, dual=False)  # Train Acc=.563, Val Acc=.533
+    #model = LinearSVC(C=4, dual=False)  # Train Acc=.5628, Val Acc=.5333
+    """
+    model = Pipeline([('kernel', Nystroem(gamma=.01)),
+                      ('clf', LinearSVC(penalty='l1', C=2, dual=False))])
+    # Train Acc=.511275, Val Acc=.5004
+    """
+    """
+    model = LinearSVC(loss='hinge', C=.001)  # Train Acc=.505525, Val Acc=.4952
+    """
+
     t = time()
     model.fit(x_train_work, y_train_work)
     time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
@@ -81,3 +99,20 @@ if __name__ == '__main__':
         report_accuracy(y_train, y_train_pred)))
     print('Accuracy validation set: {}'.format(
         report_accuracy(y_val, y_val_pred)))
+
+    x_test_work = x_test / 255.
+
+    t = time()
+    x_test_work = np.array([shog(x_test_work[i])
+                            for i in range(y_test.shape[0])])
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration feature descriptor calculation on testing dataset: '
+          '{}'.format(time_diff))
+
+    t = time()
+    y_test_pred = model.predict(x_test_work)
+    time_diff = str(timedelta(seconds=time() - t)).split('.')[0]
+    print('Duration testing prediction: {}'.format(time_diff))
+
+    print('Accuracy validation set: {}'.format(
+        report_accuracy(y_test, y_test_pred)))
