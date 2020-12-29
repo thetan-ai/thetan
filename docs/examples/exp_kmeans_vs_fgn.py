@@ -51,7 +51,7 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 exp_type = 'blobs'
 methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
-methods = ['kmeans', 'fgn_ma']
+methods = ['kmeans', 'kmeans++', 'fgn_ma']
 evaluation_thr = 0.3
 verbose = True
 show_thr = False
@@ -99,6 +99,7 @@ if exp_type == 'disks':
     centroids = np.array(centroids, dtype='f4')
 
 
+
 print('Before shuffling')
 print(points[:10])
 
@@ -106,6 +107,8 @@ np.random.shuffle(points)
 
 print('After shuffling')
 print(points[:10])
+
+print('Number of points ', points.shape)
 
 print('Number of gold centroids ', np.prod(sz))
 
@@ -164,7 +167,7 @@ if 'fgn_ma' in methods:
     theta_range = [6.0]
     # theta_range = [20., 10, 5.5]
 
-    for fgn_t in np.linspace(5., 5.5, num=5):
+    for fgn_t in [5.5]: #np.linspace(5., 5.5, num=5):
         t1 = time()
         res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                            metric=metric,

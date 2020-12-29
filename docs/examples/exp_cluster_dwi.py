@@ -65,6 +65,10 @@ X_cnt = np.zeros(X.shape[:3], dtype='f4')
 for vox_id, l in enumerate(labels):
     X2[vox_id] = centroids[l].copy()
     # we could save here the number of counts
+    # here I am directly copying the centroids
+    # but perhaps better strategy is to weight 
+    # the contributions of signals of that cluster that are
+    # more similar to the current signal.
 
 X2 = X2 * xmax
 X2 = X2.reshape(data.shape)
