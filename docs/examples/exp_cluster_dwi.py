@@ -10,7 +10,7 @@ from robotikos.metric import (NormalizedSumSquaredDiffMetric,
 # fout = r"C:\\Users\\elef\\.dipy\\stanford_hardi\\HARDI150_out.nii.gz"
 fname = r"/home/elef/.dipy/stanford_hardi/HARDI150.nii.gz"
 
-theta = 0.0001 * 0.5 * 0.2 * 0.9
+theta = 0.0001 * 0.5 * 0.2 * 0.8
 num_shuffles = 10
 
 print('Threshold ', theta)
