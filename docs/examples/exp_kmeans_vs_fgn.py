@@ -53,7 +53,7 @@ exp_type = 'blobs'
 methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
 methods = ['kmeans', 'kmeans++', 'fgn_ma']
 evaluation_thr = 0.3
-verbose = True
+verbose = False
 show_thr = False
 
 misses = {}
@@ -61,15 +61,16 @@ timings = {}
 
 if exp_type == 'blobs':
     # Generate centers for the blobs so that it forms a 10 X 10 grid.
-    xx = np.linspace(-22, 22, 10)
-    yy = np.linspace(-22, 22, 10)
-    # xx = np.linspace(-44, 44, 20)
-    # yy = np.linspace(-44, 44, 20)
+    # xx = np.linspace(-22, 22, 10)
+    # yy = np.linspace(-22, 22, 10)
+    xx = np.linspace(-220, 220, 20)
+    yy = np.linspace(-220, 220, 20)
     xx, yy = np.meshgrid(xx, yy)
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                            np.ravel(yy)[:, np.newaxis]))
 
-    X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
+    #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
+    X, y = make_blobs(n_samples=1000000, centers=n_centres, random_state=0)
 
     points = X
     sz = len(n_centres)
@@ -116,7 +117,7 @@ if 'kmeans' in methods:
 
     t1 = time()
     kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=1,
-                    max_iter=300, tol=0.0001, random_state=0).fit(points)
+                    max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
     t2 = time()
 
     kmeans_time = t2 - t1
@@ -139,7 +140,7 @@ if 'kmeans++' in methods:
 
     t1 = time()
     kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
-                    max_iter=300, tol=0.0001, random_state=0).fit(points)
+                    max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
     t2 = time()
 
     kmeans_time = t2 - t1
