@@ -53,7 +53,7 @@ exp_type = 'blobs'
 methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
 methods = ['kmeans', 'kmeans++', 'fgn_ma']
 evaluation_thr = 0.3
-verbose = False
+verbose = True
 show_thr = False
 
 misses = {}
@@ -70,7 +70,7 @@ if exp_type == 'blobs':
                            np.ravel(yy)[:, np.newaxis]))
 
     #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-    X, y = make_blobs(n_samples=1000000, centers=n_centres, random_state=0)
+    X, y = make_blobs(n_samples=1000, centers=n_centres, random_state=0)
 
     points = X
     sz = len(n_centres)
@@ -167,8 +167,10 @@ if 'fgn_ma' in methods:
     theta_range = [7.25]  # with blobs 5.8 (104), 6.0 (101), 6.2 (102), 6.4 (101), 6.6 (102), 7.0 (101), 7.2 (101), 7.3 (99), 7.5 (98), 8.0 (96)
     theta_range = [6.0]
     # theta_range = [20., 10, 5.5]
+    theta_range = [25.0]
 
-    for fgn_t in [5.5]: #np.linspace(5., 5.5, num=5):
+
+    for fgn_t in theta_range: #np.linspace(5., 5.5, num=5):
         t1 = time()
         res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                            metric=metric,
