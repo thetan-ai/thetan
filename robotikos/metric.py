@@ -13,7 +13,12 @@ from robotikos.metricspeed import (Metric,
                                    CrossCorrelationMetric,
                                    NormalizedSumInfDiffMetric,
                                    KLDivergenceMetric,
-                                   NormalKLDivergenceMetric)
+                                   NormalKLDivergenceMetric,
+                                   AbsKLDivergenceMetric,
+                                   SymKLDivergenceMetric,
+                                   WassersteinDistanceMetric,
+                                   CategoricalEntropyMetric,
+                                   HellingerDistanceMetric)
 
 from robotikos.metricspeed import (dist,
                                    distance_matrix)
