@@ -52,7 +52,7 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 exp_type = 'blobs'
 methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
 methods = ['kmeans', 'kmeans++', 'fgn_ma']
-evaluation_thr = 0.3
+evaluation_thr = 0.5
 verbose = True
 show_thr = False
 
