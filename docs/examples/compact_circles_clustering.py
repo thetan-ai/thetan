@@ -225,7 +225,7 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
 
         #init_viz = True
         if init_viz:
-            scene = window.Renderer()
+            scene = window.Scene()
             scene.background((1,1,1))
             spheres = actor.sphere(centers=my_data, colors=(1,0,0.7), radii=sph_radius)
             scene.add(spheres)
@@ -239,7 +239,7 @@ def vectors_3d(run=0, mode='skdata', sampling='uniform', skdata_id=0, thresholds
                 for ind in cluster.indices:
                     new_colors[ind] = cluster_colors[c]
 
-            scene = window.Renderer()
+            scene = window.Scene()
             scene.background((1,1,1))
             spheres = actor.sphere(centers=my_data, colors=new_colors, radii=sph_radius)
             scene.add(spheres)
@@ -276,7 +276,7 @@ from fury import actor, window, ui
 
 init_viz = True
 if init_viz: # visualize initial data
-    scene = window.Renderer()
+    scene = window.Scene()
     scene.background((1,1,1))
     spheres = actor.sphere(centers=my_data, colors=(1,0,0.7), radii=1)
     scene.add(spheres)
@@ -310,7 +310,7 @@ print("no of clusters = ", len(only_nc))
 
 if init_viz:
     # visualize new centroids on data
-    scene = window.Renderer()
+    scene = window.Scene()
     scene.background((1,1,1))
     spheres = actor.sphere(centers=my_data, colors=(1,0,0.8), radii=1)
     scene.add(spheres)
@@ -359,7 +359,7 @@ if init_viz:
         ind = np.argwhere(ct_st == c)
         new_colors[ind] = cluster_colors[c]
 
-    scene = window.Renderer()
+    scene = window.Scene()
     scene.background((1,1,1))
     spheres = actor.sphere(centers=my_data, colors=new_colors, radii=1)
     scene.add(spheres)

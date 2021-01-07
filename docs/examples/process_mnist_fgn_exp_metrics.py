@@ -5,10 +5,7 @@ from skimage import filters
 from robotikos.clustering import FastGroupingNode, ClusterMapCentroid, ClusterCentroid
 from robotikos.metric import IdentityFeature
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric,
-                              NormalizedSumInfDiffMetric,
-                              KLDivergenceMetric,
-                              NormalKLDivergenceMetric)
+                              NormalizedSumAbsDiffMetric)
 import tensorflow as tf
 from sklearn.metrics import accuracy_score, confusion_matrix
 import logging
@@ -16,12 +13,7 @@ from scipy.linalg import qr, svd
 from robotikos.fgm import fgn_ma, fgn_shuffles, assign_to_centroids
 from robotikos.rsvd import bksvd
 from robotikos.metricspeed import (assign_to_centroid_nl1,
-                                   assign_to_centroid_nl2,
-                                   assign_to_centroid_nlinf,
-                                   assign_to_centroid_kldiv,
-                                   assign_to_centroid_normkl)
-
-from fast_histogram import histogram1d
+                                   assign_to_centroid_nl2)
 
 
 logger = logging.getLogger(__name__)
@@ -297,12 +289,6 @@ def y_pred_with_fgn_shuffles_fast(x_features, centroids, metric):
         assign_to_centroid_fast = assign_to_centroid_nl2
     elif isinstance(metric, NormalizedSumAbsDiffMetric):
         assign_to_centroid_fast = assign_to_centroid_nl1
-    elif isinstance(metric, NormalizedSumInfDiffMetric):
-        assign_to_centroid_fast = assign_to_centroid_nlinf
-    elif isinstance(metric, KLDivergenceMetric):
-        assign_to_centroid_fast = assign_to_centroid_kldiv
-    elif isinstance(metric, NormalKLDivergenceMetric):
-        assign_to_centroid_fast = assign_to_centroid_normkl
     else:
         print('Unknown metric to use here - switching to slow version')
         assign_to_centroid_fast = assign_to_centroids
@@ -364,21 +350,20 @@ if __name__ == "__main__":
     else:
         raise ValueError('Uknown dataset type')
 
-    #metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-    #metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
-    metric = KLDivergenceMetric(feature=IdentityFeature())
+    metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+    metric = NormalizedSumAbsDiffMetric(feature=IdentityFeature())
     # thresholds = [0.5, 0.2, 0.08, 0.05]  # Provided 95% accuracy for 1 shuffle and 0.9652 for 10.
     # thresholds = [0.5, 0.2, 0.08]  # 80% acc (1 shuffle), 85% acc (10) and 85.5% acc (50)
     # thresholds = [0.5, 0.2, 0.08, 0.07, 0.06, 0.05]
     # thresholds = [0.5, 0.2, 0.08, 0.06, 0.04]
     # thresholds = [0.07, 0.06, 0.05, 0.04]
-    #thresholds = [0.004, 0.002, 0.001]
-    #thresholds = [0.5, 0.25, 0.1, 0.05]  # This works well for L1 metric 0.966
+    thresholds = [0.1, 0.08]
+    thresholds = [0.5, 0.25, 0.1, 0.05]  # This works well for L1 metric 0.966
     # L1 1 shuffle (many centroids)
     # Accuracy training set 0.9949333333333333
     # Accuracy test set (min_dist) 0.9626
-    #thresholds = [0.15, 0.1]
-    #thresholds = [7.0, 3.5, 1.4, 0.7]
+    thresholds = [0.15, 0.1]
+    thresholds = [0.15, 0.1, 0.08]
     # L1 1 shuffle
     # Total number of centroids 6402
     # Duration FGN shuffles training 774.688 s
@@ -394,27 +379,8 @@ if __name__ == "__main__":
     # Accuracy training set 0.98245
     # Accuracy test set (min_dist) 0.9536
 
-    #print('Thresholds', thresholds)
-    #parameter for 30% mnist with KL
-    """
-    thresholds = [0.2, 0.1, 0.04, 0.02]
-    num_shuffles = 10
-    train_sz = 60000
-    test_sz = 10000
-    use_sobel = False
-    use_bksvd = False
-    k = 10
-    verbose = False
-    level = None
-    use_histo = True
-    bins = 100
-    patch_radius = 0
-    """
+    print('Thresholds', thresholds)
 
-    
-    #parameter for 37% fashion with KL
-    
-    thresholds = [0.05, 0.025, 0.01, 0.005]
     num_shuffles = 10
     train_sz = 60000
     test_sz = 10000
@@ -423,19 +389,12 @@ if __name__ == "__main__":
     k = 10
     verbose = True
     level = None
-    use_histo = True
-    bins = 50
-    patch_radius = 0
-    
 
-    print('thresholds, num_shuffles, bins, patch_radius')
-    print(thresholds, num_shuffles, bins, patch_radius)
     print('Training size', train_sz)
     print('Test size', test_sz)
 
     x_train_part = x_train.copy()[:train_sz]
     x_train_part = np.ascontiguousarray(x_train_part / 255.)
-    
     # low rank approximation
     x_train_part_ev = np.zeros((x_train_part.shape[0], 1, k))
 
@@ -446,20 +405,6 @@ if __name__ == "__main__":
         t2 = time()
         print('Duration bksvd %.3f s' % (t2 - t1,))
         x_train_part = x_train_part_ev
-    
-    if use_histo:
-        x_train_hist = []
-        for single_data in x_train_part:
-            if patch_radius > 0:
-                new_single_data = np.zeros_like(single_data)
-                padded_data = np.pad(single_data, patch_radius, 'constant')
-                for x, y in zip(range(single_data.shape[0]), range(single_data.shape[1])):
-                    avg = np.mean(padded_data[x:x+2*patch_radius, y:y+2*patch_radius])
-                    new_single_data[x, y] = avg
-                x_train_hist.append(histogram1d(new_single_data.ravel(), bins=bins, range = (0,1)))
-            else:
-                x_train_hist.append(histogram1d(single_data.ravel(), bins=bins, range = (0,1)))
-        x_train_part = np.ascontiguousarray(np.reshape(np.asarray(x_train_hist), (train_sz, 1, bins)))
 
     x_test_part = x_test.copy()[:test_sz]
     x_test_part = np.ascontiguousarray(x_test_part / 255.)
@@ -470,24 +415,17 @@ if __name__ == "__main__":
             x_test_part_ev[i][0] = bksvd(x_test_part[i], k=k)[1]
         x_test_part = x_test_part_ev
 
-    if use_histo:
-        x_test_hist = []
-        for single_data in x_test_part:
-            if patch_radius > 0:
-                new_single_data = np.zeros_like(single_data)
-                padded_data = np.pad(single_data, patch_radius, 'constant')
-                for x, y in zip(range(single_data.shape[0]), range(single_data.shape[1])):
-                    avg = np.mean(padded_data[x:x+2*patch_radius, y:y+2*patch_radius])
-                    new_single_data[x, y] = avg
-                x_test_hist.append(histogram1d(new_single_data.ravel(), bins=bins, range = (0,1)))
-            else:
-                x_test_hist.append(histogram1d(single_data.ravel(), bins=bins, range = (0,1)))
-        x_test_part = np.ascontiguousarray(np.reshape(np.asarray(x_test_hist), (test_sz, 1, bins)))
-    
-    #print(np.shape(x_train_part))
-
     y_train_part = y_train.copy()[:train_sz]
     y_test_part = y_test.copy()[:test_sz]
+
+
+    from robotikos.metricspeed import patch_distance_matrix
+
+    debug = 1
+    some_f1s = np.ascontiguousarray(x_train_part[:10]).reshape(10, 28*28).astype('f4')
+    some_f2s = np.ascontiguousarray(x_train_part[10:20]).reshape(10, 28*28).astype('f4')
+    D = np.zeros((10, 10))
+    D = patch_distance_matrix(some_f1s, some_f2s, 10, 10, 28*28, D)
 
     feature_shape = x_train_part[0].shape
 
@@ -511,8 +449,6 @@ if __name__ == "__main__":
     print('Accuracy test set (min_dist)',
           report_accuracy(y_test_part, y_test_pred))
 
-    print(x_train_part.shape)
-    print(x_test_part.shape)
     pass
 
     # for t in [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.12, 0.14, 0.2]:

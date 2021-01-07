@@ -7,7 +7,7 @@ def kl_divergence(p, q):
 
 
 def kl_divergence_normed(p, q):
-    return 1 - 1 *np.exp(- kl_divergence(p, q))
+    return 1 - 1 * np.exp(- kl_divergence(p, q))
 
 
 if __name__ == "__main__":

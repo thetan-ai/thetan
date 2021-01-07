@@ -6,6 +6,7 @@ from nose.tools import (assert_true, assert_false, assert_equal,
                         assert_greater_equal, assert_less_equal)
 from numpy.testing import (assert_array_equal, assert_raises, run_module_suite,
                            assert_almost_equal)
+from robotikos.metricspeed import patch_distance_matrix
 
 
 def norm(x, ord=None, axis=None):
@@ -254,6 +255,20 @@ def test_distance_matrix():
                 assert_equal(D[i, j], dipymetric.dist(metric, data[i],
                                                       data2[j]))
 
+
+def test_patch_distance_matrix():
+
+    D = np.zeros((4, 5))
+    A = np.ones((4, 3))
+    B = np.ones((4, 3))
+    B = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2.], [3, 3, 3], [4, 4, 4]])
+    D = patch_distance_matrix(A.astype('f4'), B.astype('f4'), 4, 5, 3, D)
+
+    D_expected = np.array([[3., 0., 3., 12., 27.],
+                           [3., 0., 3., 12., 27.],
+                           [3., 0., 3., 12., 27.],
+                           [3., 0., 3., 12., 27.]])
+    assert_array_equal(D, D_expected)
 
 if __name__ == '__main__':
     run_module_suite()
