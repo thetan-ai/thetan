@@ -74,14 +74,14 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
 
 
-exp_type = 'blobs'
-methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
+exp_type = 'hard'
+methods = ['kmeans', 'kmeans++', 'fgn_ma']
 modes = ['NMI', 'SIL', 'FMS', 'SSD', 'RAI']
 evaluation_thr = 0.1
-verbose = True
+verbose = False
 show_thr = False
 radius = 4
-n_local_samples = 25
+n_local_samples = 10
 blob_dis = 33
 cluster_per_dim = 10
 scores = {}
@@ -121,6 +121,75 @@ if exp_type == 'blobs':
     #centroids = np.array(n_centres, dtype='f4')
     centroids = gt_centroids
 
+if exp_type == 'easy':
+    # Generate centers for the blobs so that it forms a 10 X 10 grid.
+    # xx = np.linspace(-22, 22, 10)
+    # yy = np.linspace(-22, 22, 10)
+    blob_dis = 10
+    cluster_x = 100
+    cluster_y = 100
+    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
+    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+
+    xx, yy = np.meshgrid(xx, yy)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
+                           np.ravel(yy)[:, np.newaxis]))
+
+    #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
+    # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+        #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+        local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    gt_centroids = np.array(gt_centroids)
+
+    points = X
+    labels = y
+    sz = len(n_centres)
+    #centroids = np.array(n_centres, dtype='f4')
+    centroids = gt_centroids
+
+if exp_type == 'hard':
+    blob_dis = 5
+    cluster_x = 100
+    cluster_y = 100
+    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
+    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+
+    xx, yy = np.meshgrid(xx, yy)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
+                           np.ravel(yy)[:, np.newaxis]))
+
+    #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
+    # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+        #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+        local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    gt_centroids = np.array(gt_centroids)
+
+    points = X
+    labels = y
+    sz = len(n_centres)
+    #centroids = np.array(n_centres, dtype='f4')
+    centroids = gt_centroids
+
 if exp_type == 'disks':
 
     np.random.seed(0)
@@ -143,10 +212,11 @@ if exp_type == 'disks':
 
     points = np.array(coords)
     centroids = np.array(centroids, dtype='f4')
-
+"""
 plot_centroids_clusters(points, centroids, labels,
                                 'original',
                                 initial_centroids=centroids)
+"""
 
 
 print('Before shuffling')
@@ -173,7 +243,7 @@ print('Number of gold centroids ', np.prod(sz))
 if 'kmeans' in methods:
 
     t1 = time()
-    kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=1,
+    kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=10,
                     max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
     t2 = time()
 
@@ -202,7 +272,7 @@ if 'kmeans' in methods:
 if 'kmeans++' in methods:
 
     t1 = time()
-    kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+    kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
                     max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
     t2 = time()
 
@@ -228,6 +298,65 @@ if 'kmeans++' in methods:
 
     tmp = 0
 
+if 'local_search++' in methods:
+
+    t1 = time()
+    kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
+                    max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+
+
+    ls_centroids = kmeans.cluster_centers_
+
+    n_iter = int(np.prod(sz) * np.log(np.log(np.prod(sz))))
+
+    dis = np.zeros(len(points))
+    dis[0] = np.sum(np.square(points[0] - kcentroids[klabels[0]]))
+    for idx in range(1, len(points)):
+        dis[idx] = np.sum(np.square(points[idx] - kcentroids[klabels[idx]])) + dis[idx-1]
+    for _ in range(n_iter):
+        rand_n = np.random.uniform()
+        border = rand_n * dis[-1]
+        sel_idx = np.argwhere(dis >= border)[0]
+        min_idx = -1
+        for c_idx in range(len(ls_centroids)):
+            temp_centroids = ls_centroids.copy()
+            temp_centroids[c_idx] = points[sel_idx]
+            temp_dis = np.zeros(len(points))
+            temp_dis[0] = np.min(np.sum(np.square([temp_centroids[i] - points[0] for i in range(len(temp_centroids))])))
+            for p_idx in range(1, len(points)):
+                temp_dis[p_idx] = np.min(np.sum(np.square([temp_centroids[i] - points[p_idx] for i in range(len(temp_centroids))]))) + temp_dis[p_idx-1]
+            if dis[-1] > temp_dis[-1]:
+                min_idx = c_idx
+                dis = temp_dis
+        
+        if min_idx != -1:
+            ls_centroids[min_idx] = points[sel_idx]
+
+    ls_labels = np.zeros(len(points))
+    for p_idx in range(len(points)):
+        ls_labels[p_idx] = np.argmin(np.sum(np.square([ls_centroids[i] - points[p_idx] for i in range(len(ls_centroids))])))
+
+
+    if verbose:
+        plot_centroids_clusters(points, kcentroids, klabels,
+                                'local_search++',
+                                initial_centroids=centroids)
+
+    t2 = time()
+    local_search_time = t2 - t1
+    print('local_search++ ', local_search_time)
+    scores['local_search++'] = {}
+    for mode in modes:
+        if mode == 'SIL':
+            scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=ls_labels)
+        elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
+            scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=ls_labels, true_label=labels)
+        elif mode == 'SSD':
+            scores['local_search++'][mode] = evaluate_centroids(ls_centroids, centroids, evaluation_thr, mode=mode)
+    timings['local_search++'] = kmeans_time
+
+    tmp = 0
+
 if 'fgn_ma' in methods:
 
     metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
@@ -237,14 +366,14 @@ if 'fgn_ma' in methods:
     theta_range = [7.25]  # with blobs 5.8 (104), 6.0 (101), 6.2 (102), 6.4 (101), 6.6 (102), 7.0 (101), 7.2 (101), 7.3 (99), 7.5 (98), 8.0 (96)
     theta_range = [6.0]
     # theta_range = [20., 10, 5.5]
-    theta_range = [9.0]
+    theta_range = [6.0]
 
 
     for fgn_t in theta_range: #np.linspace(5., 5.5, num=5):
         t1 = time()
         res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                            metric=metric,
-                           num_shuffles=1, mode='fgn_ma', verbose=True)
+                           num_shuffles=10, mode='fgn_ma', verbose=True)
 
         # res = fgn_ma(points[:, None, :], thresholds=theta_range, metric=metric,
         #              select_randomly=None, rng=None, verbose=True)
