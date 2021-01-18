@@ -19,6 +19,8 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score, rand_score, adjusted_rand_score
 from robotikos.metricspeed import distance_matrix
 
+import seaborn as sns
+
 
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
@@ -75,8 +77,8 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 
 #for exp_type, exp_param in zip(exps, exp_params):
-for exp_type in ['high_dim']:
-    methods = ['kmeans', 'kmeans++', 'fgn_ma']
+for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
+    methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
     modes = ['NMI', 'SIL', 'FMS', 'SSD', 'RAI']
     scores = {}
     timings = {}
@@ -86,7 +88,7 @@ for exp_type in ['high_dim']:
         for mode in modes:
             scores[method][mode] = []
 
-    for round_idx in range(20):
+    for round_idx in range(10):
         #exp_type = 'hard'
         print('step', round_idx)
         evaluation_thr = 0.1
@@ -96,6 +98,7 @@ for exp_type in ['high_dim']:
         n_local_samples = 20
         blob_dis = 33
         cluster_per_dim = 10
+        n_dim = 10
         #scores = {}
         #timings = {}
 
@@ -103,23 +106,22 @@ for exp_type in ['high_dim']:
             # Generate centers for the blobs so that it forms a 10 X 10 grid.
             # xx = np.linspace(-22, 22, 10)
             # yy = np.linspace(-22, 22, 10)
-            blob_dis = 5
-            cluster_n = 1000
+            blob_dis = 20
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n//2, blob_dis)
 
-            n_centres = np.pad(np.expand_dims(xx, -1), ((0, 0), (0, 999)), mode='edge')
+            n_centres = np.pad(np.expand_dims(xx, -1), ((0, 0), (0, n_dim-1)), mode='edge')
 
             print(n_centres.shape)
             #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
             # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
 
             gt_centroids = []
-            X = np.zeros((n_local_samples * n_centres.shape[0], 1000))
+            X = np.zeros((n_local_samples * n_centres.shape[0], n_dim))
             y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
             for i in range(n_centres.shape[0]):
                 cpos = n_centres[i]
                 #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
-                local_X = cpos + np.random.normal(0, 1, (n_local_samples, 1000))
+                local_X = cpos + np.random.normal(0, 1, (n_local_samples, n_dim))
                 X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
                 y[i * n_local_samples: (i + 1) * n_local_samples] = i
                 gt_centroids.append(local_X.mean(axis=0))
@@ -445,7 +447,7 @@ for exp_type in ['high_dim']:
                 print('# centroids', len(fcentroids.keys()))
                 elbow_check.append(len(fcentroids.keys()))
 
-                fgn_centroids = np.zeros((len(fcentroids), 1000))
+                fgn_centroids = np.zeros((len(fcentroids), n_dim))
                 for i, c in enumerate(fcentroids.keys()):
                     fgn_centroids[i] = np.squeeze(fcentroids[c])
 
@@ -559,13 +561,12 @@ for exp_type in ['high_dim']:
     pl.title('Timings')
     pl.boxplot([timings[key] for key in timings.keys()])
     pl.xticks([i for i in range(1, len(methods)+1)], timings.keys())
-    pl.savefig('Timings_1000_' + exp_type + '.jpg')
+    pl.savefig('Timings_'+str(cluster_n)+'_cluster_n.jpg')
 
     for mode in modes:
         pl.figure()
         pl.title(exp_type + ' ' + mode)
-        pl.boxplot([scores[method][mode] for method in methods])
-        pl.xticks([i for i in range(1, len(methods)+1)], methods)
-        pl.savefig(mode + '_1000_' + exp_type + '.jpg')
-
+        pl.boxplot([scores[method][mode] for key in scores.keys()])
+        pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
+        pl.savefig(mode + '_'+str(cluster_n)+'_cluster_n.jpg')
 
