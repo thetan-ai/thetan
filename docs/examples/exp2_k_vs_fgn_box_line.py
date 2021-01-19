@@ -77,7 +77,7 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 
 #for exp_type, exp_param in zip(exps, exp_params):
-for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
+for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
     methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
     modes = ['NMI', 'SIL', 'FMS', 'SSD', 'RAI']
     scores = {}
@@ -91,7 +91,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
     for round_idx in range(10):
         #exp_type = 'hard'
         print('step', round_idx)
-        evaluation_thr = 0.1
+        evaluation_thr = 0.05
         verbose = False
         show_thr = False
         radius = 4
@@ -105,7 +105,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
             # Generate centers for the blobs so that it forms a 10 X 10 grid.
             # xx = np.linspace(-22, 22, 10)
             # yy = np.linspace(-22, 22, 10)
-            blob_dis = 20
+            blob_dis = 10
             cluster_n = 10
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n//2, blob_dis)
 
@@ -402,7 +402,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
 
             tmp = 0
 
-        if 'fgn_ma' in methods:
+        if 'OM_G' in methods:
 
             metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
 
@@ -418,7 +418,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
                 t1 = time()
                 res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                                     metric=metric,
-                                    num_shuffles=1, mode='fgn_ma', verbose=False)
+                                    num_shuffles=1, mode='fgn', verbose=False)
 
                 # res = fgn_ma(points[:, None, :], thresholds=theta_range, metric=metric,
                 #              select_randomly=None, rng=None, verbose=True)
@@ -455,15 +455,15 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
                 if not show_thr:
                     ext = ''
                 if verbose:
-                    plot_centroids_clusters(points, fgn_centroids, flabels, 'fgn_ma', initial_centroids=centroids)
+                    plot_centroids_clusters(points, fgn_centroids, flabels, 'OM_G', initial_centroids=centroids)
                 for mode in modes:
                     if mode == 'SIL':
-                        scores['fgn_ma'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=flabels))
+                        scores['OM_G'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=flabels))
                     elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                        scores['fgn_ma'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=flabels, true_label=labels))
+                        scores['OM_G'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=flabels, true_label=labels))
                     elif mode == 'SSD':
-                        scores['fgn_ma'][mode].append(evaluate_centroids(fgn_centroids, centroids, evaluation_thr, mode=mode))
-                timings['fgn_ma'].append(fgn_time)
+                        scores['OM_G'][mode].append(evaluate_centroids(fgn_centroids, centroids, evaluation_thr, mode=mode))
+                timings['OM_G'].append(fgn_time)
 
 
         if 'birch' in methods:
@@ -492,15 +492,14 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
                 if verbose:
                     plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, initial_centroids=centroids)
 
-                scores['birch ' + ext] = {}
                 for mode in modes:
                     if mode == 'SIL':
-                        scores['birch ' + ext][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=birch_labels)
+                        scores['birch'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=birch_labels))
                     elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                        scores['birch ' + ext][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=birch_labels, true_label=labels)
+                        scores['birch'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=birch_labels, true_label=labels))
                     elif mode == 'SSD':
-                        scores['birch ' + ext][mode] = evaluate_centroids(birch_centroids, centroids, evaluation_thr, mode=mode)
-                timings['birch ' + ext] = birch_time
+                        scores['birch'][mode].append(evaluate_centroids(birch_centroids, centroids, evaluation_thr, mode=mode))
+                timings['birch'].append(birch_time)
 
         if 'mb_kmeans' in methods:
 
@@ -519,15 +518,14 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
             if verbose:
                 plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', initial_centroids=centroids)
 
-            scores['mini_batch'] = {}
             for mode in modes:
                 if mode == 'SIL':
-                    scores['mini_batch'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=mbk_labels)
+                    scores['mb_kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=mbk_labels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['mini_batch'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=mbk_labels, true_label=labels)
+                    scores['mb_kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=mbk_labels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['mini_batch'][mode] = evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode)
-            timings['mini_batch'] = mb_kmeans_time
+                    scores['mb_kmeans'][mode].append(evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode))
+            timings['mb_kmeans'].append(mb_kmeans_time)
 
         if 'gmm' in methods:
 
@@ -546,27 +544,28 @@ for n_dim, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'hig
             if verbose:
                 plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
 
-            scores['gmm'] = {}
             for mode in modes:
                 if mode == 'SIL':
-                    scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=gmm_labels)
+                    scores['gmm'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=gmm_labels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=gmm_labels, true_label=labels)
+                    scores['gmm'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=gmm_labels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['gmm'][mode] = evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode)
-            timings['gmm'] = gmm_time
+                    scores['gmm'][mode].append(evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode))
+            timings['gmm'].append(gmm_time)
 
 
-    pl.figure()
+    fig = pl.figure()
     pl.title('Timings')
     pl.boxplot([timings[key] for key in timings.keys()])
-    pl.xticks([i for i in range(1, len(methods)+1)], timings.keys())
+    pl.xticks([i for i in range(1, len(timings.keys())+1)], timings.keys())
     pl.savefig('Timings_'+str(n_dim)+'_' + exp_type + '.jpg')
+    pl.close(fig)
 
     for mode in modes:
-        pl.figure()
+        fig = pl.figure()
         pl.title(exp_type + ' ' + mode)
-        pl.boxplot([scores[method][mode] for key in scores.keys()])
+        pl.boxplot([scores[key][mode] for key in scores.keys()])
         pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
         pl.savefig(mode + '_'+str(n_dim)+'_' + exp_type + '.jpg')
+        pl.close(fig)
 

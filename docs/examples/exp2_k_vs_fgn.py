@@ -74,11 +74,12 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
 
 
-exp_type = 'hard'
-methods = ['kmeans', 'kmeans++', 'fgn_ma']
+exp_type = 'easy'
+methods = ['kmeans', 'kmeans++', 'fgn_ma', 'mb_kmeans', 'gmm']
+methods = ['birch']
 modes = ['NMI', 'SIL', 'FMS', 'SSD', 'RAI']
 evaluation_thr = 0.1
-verbose = False
+verbose = True
 show_thr = False
 radius = 4
 n_local_samples = 10
@@ -126,8 +127,8 @@ if exp_type == 'easy':
     # xx = np.linspace(-22, 22, 10)
     # yy = np.linspace(-22, 22, 10)
     blob_dis = 10
-    cluster_x = 100
-    cluster_y = 100
+    cluster_x = 10
+    cluster_y = 10
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
     yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
 
@@ -159,8 +160,8 @@ if exp_type == 'easy':
 
 if exp_type == 'hard':
     blob_dis = 5
-    cluster_x = 100
-    cluster_y = 100
+    cluster_x = 10
+    cluster_y = 10
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
     yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
 
@@ -366,7 +367,7 @@ if 'fgn_ma' in methods:
     theta_range = [7.25]  # with blobs 5.8 (104), 6.0 (101), 6.2 (102), 6.4 (101), 6.6 (102), 7.0 (101), 7.2 (101), 7.3 (99), 7.5 (98), 8.0 (96)
     theta_range = [6.0]
     # theta_range = [20., 10, 5.5]
-    theta_range = [6.0]
+    theta_range = [6.5]
 
 
     for fgn_t in theta_range: #np.linspace(5., 5.5, num=5):
@@ -424,7 +425,7 @@ if 'fgn_ma' in methods:
 
 if 'birch' in methods:
 
-    for bt in [1.94]:  # np.linspace(1.5, 2.5, 10):
+    for bt in [2.8]:  # np.linspace(1.5, 2.5, 10):
 
         t1 = time()
         # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
@@ -515,7 +516,7 @@ if 'gmm' in methods:
 # pl.figure()
 # pl.plot(theta_range, elbow_check)
 # pl.grid()
-
+"""
 pl.figure()
 pl.title('Score')
 x_tmp = np.arange(len(modes))
@@ -525,6 +526,7 @@ for i, method in zip(range(len(scores.keys())), scores.keys()):
     pl.bar(x_tmp + width * i, scores[method].values(), width, label=method)
 pl.xticks(x_tmp + width / 2 + (len(methods)-2) * width/2 , modes)
 pl.legend()
+"""
 
 pl.figure()
 pl.title('Timings')
