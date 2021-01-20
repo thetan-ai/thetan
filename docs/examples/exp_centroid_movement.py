@@ -23,7 +23,7 @@ from robotikos.metricspeed import distance_matrix
 
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
-        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+        metric = NormalizedSumSquaredRootDiffMetric(feature=IdentityFeature())
         D = np.sqrt(distance_matrix(metric,
                                     np.ascontiguousarray(ecentroids[:, None, :]),
                                     np.ascontiguousarray(centroids[:, None, :])))
