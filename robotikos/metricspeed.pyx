@@ -386,6 +386,42 @@ cdef class NormalizedSumSquaredDiffMetric(CythonMetric):
 
             return summ / sz
 
+cdef class NormalizedSumSquaredRootDiffMetric(CythonMetric):
+    r""" Computes the normalized SSD distance between two features.
+
+    """
+    def __init__(NormalizedSumSquaredRootDiffMetric self, Feature feature):
+        super(NormalizedSumSquaredRootDiffMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(NormalizedSumSquaredRootDiffMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef:
+            int s
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            float * ptr1 = &features1[0, 0]
+            float * ptr2 = &features2[0, 0]
+            double summ = 0.0
+
+
+        for s in range(size):
+            summ += sqrt((ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s]))
+
+        return summ / sz
+
+    cdef double c_distp(NormalizedSumSquaredRootDiffMetric self, float * ptr1, float * ptr2, int size) nogil:
+            cdef:
+                int s
+                # int size = features1.shape[0] * features1.shape[1]
+                double sz = <double> size
+                # float * ptr1 = &features1[0, 0]
+                # float * ptr2 = &features2[0, 0]
+                double summ = 0.0
+
+
+            for s in range(size):
+                summ += sqrt((ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s]))
+
+            return summ / sz
 
 
 cdef class NormalizedSumAbsDiffMetric(CythonMetric):
@@ -532,7 +568,7 @@ cdef double c_distp_l2(float * ptr1, float * ptr2, int size) nogil:
             double summ = 0.0
 
         for s in range(size):
-            summ += (ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s])
+            summ += sqrt((ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s]))
 
         return summ
 
@@ -544,7 +580,7 @@ cdef double c_distp_nl2(float * ptr1, float * ptr2, int size) nogil:
             double summ = 0.0
 
         for s in range(size):
-            summ += (ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s])
+            summ += sqrt((ptr1[s] - ptr2[s]) * (ptr1[s] - ptr2[s]))
 
         return summ / sz
 

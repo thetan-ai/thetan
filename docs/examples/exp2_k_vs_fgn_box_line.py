@@ -14,7 +14,8 @@ from sklearn.mixture import GaussianMixture
 from robotikos.fgm import fgn_shuffles, fgn_ma
 from robotikos.metric import IdentityFeature
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric)
+                              NormalizedSumAbsDiffMetric,
+                              NormalizedSumSquaredRootDiffMetric)
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score, rand_score, adjusted_rand_score
 from robotikos.metricspeed import distance_matrix
@@ -24,7 +25,7 @@ import seaborn as sns
 
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
-        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+        metric = NormalizedSumSquaredRootDiffMetric(feature=IdentityFeature())
         D = np.sqrt(distance_matrix(metric,
                                     np.ascontiguousarray(ecentroids[:, None, :]),
                                     np.ascontiguousarray(centroids[:, None, :])))
@@ -77,8 +78,8 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 
 #for exp_type, exp_param in zip(exps, exp_params):
-for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
-    methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
+for n_dim, exp_type in zip([10, 100, 1000, 5000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
+    methods = ['kmeans', 'kmeans++', 'OM_G', 'birch', 'mb_kmeans']
     modes = ['NMI', 'SIL', 'FMS', 'SSD', 'RAI']
     scores = {}
     timings = {}
@@ -91,7 +92,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high
     for round_idx in range(10):
         #exp_type = 'hard'
         print('step', round_idx)
-        evaluation_thr = 0.05
+        evaluation_thr = 0.5
         verbose = False
         show_thr = False
         radius = 4
@@ -105,8 +106,8 @@ for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high
             # Generate centers for the blobs so that it forms a 10 X 10 grid.
             # xx = np.linspace(-22, 22, 10)
             # yy = np.linspace(-22, 22, 10)
-            blob_dis = 10
-            cluster_n = 10
+            blob_dis = 5
+            cluster_n = 100
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n//2, blob_dis)
 
             n_centres = np.pad(np.expand_dims(xx, -1), ((0, 0), (0, n_dim-1)), mode='edge')
@@ -289,7 +290,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high
         if 'kmeans' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=1,
+            kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=10,
                             max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
             t2 = time()
 
@@ -317,7 +318,7 @@ for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high
         if 'kmeans++' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
                             max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
             t2 = time()
 
@@ -404,21 +405,21 @@ for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high
 
         if 'OM_G' in methods:
 
-            metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+            metric = NormalizedSumSquaredRootDiffMetric(feature=IdentityFeature())
 
             elbow_check = []
             theta_range = [5.365]  # np.linspace(3.8, 5.5, num=40) # np.linspace(1, 3.5, num=50)
             theta_range = [7.25]  # with blobs 5.8 (104), 6.0 (101), 6.2 (102), 6.4 (101), 6.6 (102), 7.0 (101), 7.2 (101), 7.3 (99), 7.5 (98), 8.0 (96)
             theta_range = [6.0]
             # theta_range = [20., 10, 5.5]
-            theta_range = [6.0]
+            theta_range = [3.0]
 
 
             for fgn_t in theta_range: #np.linspace(5., 5.5, num=5):
                 t1 = time()
                 res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                                     metric=metric,
-                                    num_shuffles=1, mode='fgn', verbose=False)
+                                    num_shuffles=10, mode='fgn_ma', verbose=False)
 
                 # res = fgn_ma(points[:, None, :], thresholds=theta_range, metric=metric,
                 #              select_randomly=None, rng=None, verbose=True)
@@ -554,18 +555,52 @@ for n_dim, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high
             timings['gmm'].append(gmm_time)
 
 
-    fig = pl.figure()
-    pl.title('Timings')
-    pl.boxplot([timings[key] for key in timings.keys()])
+    fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
+    ax.boxplot([timings[key] for key in timings.keys()])
+    ax2.boxplot([timings[key] for key in timings.keys()])
+    ax.set_ylim(np.min(timings['mb_kmeans'])/2, np.max(timings['mb_kmeans'])*2)
+    ax2.set_ylim(0.0, np.max(timings['OM_G'])*2)
+    ax.spines['bottom'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    ax.xaxis.tick_top()
+    ax.tick_params(labeltop=False)
+    ax2.xaxis.tick_bottom()
+
+    d = .015  # how big to make the diagonal lines in axes coordinates
+    kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+    ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+    ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+    ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
     pl.xticks([i for i in range(1, len(timings.keys())+1)], timings.keys())
-    pl.savefig('Timings_'+str(n_dim)+'_' + exp_type + '.jpg')
+    pl.savefig('Timings_'+str(n_dim)+'_' + exp_type + '.png')
     pl.close(fig)
 
     for mode in modes:
-        fig = pl.figure()
-        pl.title(exp_type + ' ' + mode)
-        pl.boxplot([scores[key][mode] for key in scores.keys()])
+        fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
+        ax.boxplot([scores[key][mode] for key in scores.keys()])
+        ax2.boxplot([scores[key][mode] for key in scores.keys()])
+        ax.set_ylim(0.9, 1.0)
+        ax2.set_ylim(0.0, 0.9)
+        ax.spines['bottom'].set_visible(False)
+        ax2.spines['top'].set_visible(False)
+        ax.xaxis.tick_top()
+        ax.tick_params(labeltop=False)
+        ax2.xaxis.tick_bottom()
+
+        d = .015  # how big to make the diagonal lines in axes coordinates
+        kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+        ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+        ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+        kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+        ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+        ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
         pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig(mode + '_'+str(n_dim)+'_' + exp_type + '.jpg')
+        pl.savefig(mode + '_'+str(n_dim)+'_' + exp_type + '.png')
         pl.close(fig)
 
