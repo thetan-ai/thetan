@@ -19,6 +19,10 @@ cdef extern from "stdlib.h" nogil:
     void *realloc(void *ptr, size_t elsize)
     void *memset(void *ptr, int value, size_t num)
 
+cdef extern from "limits.h":
+    cdef int INT_MAX
+    cdef unsigned int UINT_MAX
+
 
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     cdef:
@@ -32,7 +36,7 @@ cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
 
 
 def theta_g1(double[:, ::1] X, double theta):
-    
+
     cdef:
         cnp.npy_intp N = X.shape[0]
         cnp.npy_intp D = X.shape[1]
@@ -40,8 +44,10 @@ def theta_g1(double[:, ::1] X, double theta):
         cnp.npy_intp k = 0, K = 0
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double * summs = <double *> malloc(<size_t> D)
-        cnp.npy_intp * clusters_sizes = <cnp.npy_intp *> malloc(<size_t> 1)  
+        cnp.npy_intp * clusters_sizes = <cnp.npy_intp *> malloc(<size_t> 1)
         double * centroid = <double *> malloc(<size_t> D)
+        double dist = 0, minimum = INT_MAX
+        cnp.npy_intp argmin = -1
 
     with nogil:
 
@@ -51,28 +57,46 @@ def theta_g1(double[:, ::1] X, double theta):
             summs[d] = X[0, d]
         K = 1
         clusters_sizes[0] = 1
-        
+
         for i in range(1, N):
 
+            minimum = INT_MAX
+            argmin = 0
             for k in range(K):
 
                 for d in range(D):
                     centroid[d] = summs[k * D + d] / clusters_sizes[k]
 
-                if euclidean(&X[i, 0], &centroid[0], D) < theta:
+                dist = euclidean(&X[i, 0], &centroid[0], D)
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
 
-                    for d in range(D):
-                    
-                        summs[k * D + d] += X[i, d]
+            # add in existing
+            if minimum < theta:
 
-                    clusters_sizes[k] += 1
+                for d in range(D):
+                    summs[argmin * D + d] += X[i, d]
+                clusters_sizes[argmin] += 1
+                indices[i] = argmin
 
-                
-            
+            # create new cluster
+            else:
+
+                K += 1
+                realloc(summs, <size_t> D * K)
+                realloc(clusters_sizes, <size_t> K)
+                indices[i] = K - 1
+                for d in range(D):
+                    summs[ (K - 1) * D + d] = X[i, d]
+                clusters_sizes[K - 1] = 1
+
+
     final_summs = np.asarray(<double[:K, :D]>summs)
     final_clusters_sizes = np.asarray(<cnp.npy_intp[:K]>clusters_sizes)
-
+    final_indices = np.asarray(indices)
     free(centroid)
 
-    return final_summs, final_clusters_sizes    
+
+    return final_summs, final_clusters_sizes, final_indices
 
