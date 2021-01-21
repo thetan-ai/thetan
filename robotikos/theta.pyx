@@ -88,7 +88,7 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean'):
 
             for k in range(K):
                 
-                dist = metric_func(&X[i, 0], &centroids[k * D], D)
+                dist = ssd(&X[i, 0], &centroids[k * D], D)
          
                 if dist < minimum:
                     minimum = dist
