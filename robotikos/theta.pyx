@@ -26,6 +26,8 @@ cdef extern from "limits.h":
 cdef extern from "float.h":
     cdef double DBL_MAX
 
+ctypedef double (*metricp)(double *, double *, cnp.npy_intp) nogil
+
 
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     cdef:
@@ -38,7 +40,18 @@ cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     return sqrt(summ)
 
 
-def theta_g1(double[:, ::1] X, double theta):
+cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
+    cdef:
+        cnp.npy_intp d
+        double summ = 0.0
+
+    for d in range(D):
+        summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
+
+    return summ
+
+
+def theta_g1(double[:, ::1] X, double theta, metric='euclidean'):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
@@ -47,10 +60,16 @@ def theta_g1(double[:, ::1] X, double theta):
         cnp.npy_intp k = 0, K = 0
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> D * sizeof(double))
         cnp.npy_intp * clusters_sizes = <cnp.npy_intp *> malloc(<size_t> 1 * sizeof(cnp.npy_intp))
-        double * centroid = <double *> malloc(<size_t> D * sizeof(double))
-        double dist = 0, minimum = 1000000000.0
+        double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
 
     with nogil:
 
@@ -58,23 +77,19 @@ def theta_g1(double[:, ::1] X, double theta):
         indices[0] = 0
         for d in range(D):
             summs[d] = X[0, d]
+            centroids[d] = X[0, d]
         K = 1
         clusters_sizes[0] = 1
 
         for i in range(1, N):
 
-            with gil:
-                print('i', i)
-
-            minimum = 1000000000000.0
+            minimum = DBL_MAX
             argmin = 0
-            for k in range(K):
-                with gil:
-                    print('k', k)
-                for d in range(D):
-                    centroid[d] = summs[k * D + d] / clusters_sizes[k]
 
-                dist = euclidean(&X[i, 0], &centroid[0], D)
+            for k in range(K):
+                
+                dist = metric_func(&X[i, 0], &centroids[k * D], D)
+         
                 if dist < minimum:
                     minimum = dist
                     argmin = k
@@ -85,6 +100,8 @@ def theta_g1(double[:, ::1] X, double theta):
                 for d in range(D):
                     summs[argmin * D + d] += X[i, d]
                 clusters_sizes[argmin] += 1
+                for d in range(D):
+                    centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
                 indices[i] = argmin
 
             # create new cluster
@@ -93,17 +110,18 @@ def theta_g1(double[:, ::1] X, double theta):
                 K += 1
                 summs = <double *> realloc(summs, <size_t> D * K * sizeof(double))
                 clusters_sizes = <cnp.npy_intp *> realloc(clusters_sizes, <size_t> K * sizeof(cnp.npy_intp))
+                centroids = <double *> realloc(centroids, <size_t> D * K * sizeof(double))
                 indices[i] = K - 1
                 for d in range(D):
-                    summs[ (K - 1) * D + d] = X[i, d]
+                    summs[(K - 1) * D + d] = X[i, d]
                 clusters_sizes[K - 1] = 1
-
+                for d in range(D):
+                    centroids[(K - 1) * D + d] = summs[(K - 1) * D + d] 
 
     final_summs = np.asarray(<double[:K, :D]> summs)
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
     final_clusters_sizes = np.asarray(<cnp.npy_intp[:K]> clusters_sizes)
     final_indices = np.asarray(indices)
-    free(centroid)
-
-
-    return final_summs, final_clusters_sizes, final_indices
+    
+    return final_summs, final_clusters_sizes, final_centroids, final_indices
 
