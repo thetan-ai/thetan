@@ -23,6 +23,9 @@ cdef extern from "limits.h":
     cdef int INT_MAX
     cdef unsigned int UINT_MAX
 
+cdef extern from "float.h":
+    cdef double DBL_MAX
+
 
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     cdef:
@@ -43,10 +46,10 @@ def theta_g1(double[:, ::1] X, double theta):
         cnp.npy_intp i = 0, d = 0
         cnp.npy_intp k = 0, K = 0
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
-        double * summs = <double *> malloc(<size_t> D)
-        cnp.npy_intp * clusters_sizes = <cnp.npy_intp *> malloc(<size_t> 1)
-        double * centroid = <double *> malloc(<size_t> D)
-        double dist = 0, minimum = INT_MAX
+        double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        cnp.npy_intp * clusters_sizes = <cnp.npy_intp *> malloc(<size_t> 1 * sizeof(cnp.npy_intp))
+        double * centroid = <double *> malloc(<size_t> D * sizeof(double))
+        double dist = 0, minimum = 1000000000.0
         cnp.npy_intp argmin = -1
 
     with nogil:
@@ -60,10 +63,14 @@ def theta_g1(double[:, ::1] X, double theta):
 
         for i in range(1, N):
 
-            minimum = INT_MAX
+            with gil:
+                print('i', i)
+
+            minimum = 1000000000000.0
             argmin = 0
             for k in range(K):
-
+                with gil:
+                    print('k', k)
                 for d in range(D):
                     centroid[d] = summs[k * D + d] / clusters_sizes[k]
 
@@ -84,16 +91,16 @@ def theta_g1(double[:, ::1] X, double theta):
             else:
 
                 K += 1
-                realloc(summs, <size_t> D * K)
-                realloc(clusters_sizes, <size_t> K)
+                summs = <double *> realloc(summs, <size_t> D * K * sizeof(double))
+                clusters_sizes = <cnp.npy_intp *> realloc(clusters_sizes, <size_t> K * sizeof(cnp.npy_intp))
                 indices[i] = K - 1
                 for d in range(D):
                     summs[ (K - 1) * D + d] = X[i, d]
                 clusters_sizes[K - 1] = 1
 
 
-    final_summs = np.asarray(<double[:K, :D]>summs)
-    final_clusters_sizes = np.asarray(<cnp.npy_intp[:K]>clusters_sizes)
+    final_summs = np.asarray(<double[:K, :D]> summs)
+    final_clusters_sizes = np.asarray(<cnp.npy_intp[:K]> clusters_sizes)
     final_indices = np.asarray(indices)
     free(centroid)
 
