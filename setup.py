@@ -80,6 +80,7 @@ ext_kwargs = {'include_dirs': ['src']}  # We add np.get_include() later
 
 for modulename, other_sources, language in (
         ('robotikos.cythonutils', [], 'c'),
+        ('robotikos.theta', [], 'c'),
         ('robotikos.featurespeed', [], 'c'),
         ('robotikos.metricspeed', [], 'c'),
         ('robotikos.clusteringspeed', [], 'c'),
