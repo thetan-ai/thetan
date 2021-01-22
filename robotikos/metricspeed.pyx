@@ -5,6 +5,7 @@ import numpy as np
 cimport numpy as cnp
 
 from libc.math cimport sqrt, acos, fabs, log, exp
+from libc.stdlib cimport malloc, free
 
 # from cythonutils cimport same_shape
 from featurespeed cimport IdentityFeature, ResampleFeature
@@ -321,6 +322,61 @@ cdef class KLDivergenceMetric(CythonMetric):
 
         return kl / sz
 
+cdef class AbsKLDivergenceMetric(CythonMetric):
+    r""" Computes the KL divergence between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Due to the nature of the metric, each feature
+    should be positive values
+
+    """
+    def __init__(AbsKLDivergenceMetric self, Feature feature):
+        super(AbsKLDivergenceMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(AbsKLDivergenceMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int d, D = features1.shape[1]
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            double kl = 0.0
+
+        for d in range(D):
+            if features1[0, d] != 0 and features2[0, d] != 0:
+                kl += features2[0, d] * log(features2[0, d]/features1[0, d])
+
+        return fabs(kl / sz)
+
+cdef class SymKLDivergenceMetric(CythonMetric):
+    r""" Computes the KL divergence between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Due to the nature of the metric, each feature
+    should be positive values
+
+    """
+    def __init__(SymKLDivergenceMetric self, Feature feature):
+        super(SymKLDivergenceMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(SymKLDivergenceMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int d, D = features1.shape[1]
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            double kl = 0.0
+
+        for d in range(D):
+            if features1[0, d] > 0 and features2[0, d] > 0:
+                if features1[0, d] > features2[0, d]:
+                    kl += features1[0, d] * log(features1[0, d]/features2[0, d])
+                else:
+                    kl += features2[0, d] * log(features2[0, d]/features1[0, d])
+
+        return kl
+
 cdef class NormalKLDivergenceMetric(CythonMetric):
     r""" Computes the normalized KL divergence between two vectors.
 
@@ -345,8 +401,145 @@ cdef class NormalKLDivergenceMetric(CythonMetric):
             if features1[0, d] != 0 and features2[0, d] != 0:
                 kl += features1[0, d] * log(features1[0, d]/features2[0, d])
 
-        kl = 1 - exp(kl / sz)
+        kl = 1 - exp(-1 * kl / sz)
         return kl
+
+cdef class WassersteinDistanceMetric(CythonMetric):
+    r""" Computes the Wasserstein Distance between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Follows implementation of scipy
+
+    """
+    def __init__(WassersteinDistanceMetric self, Feature feature):
+        super(WassersteinDistanceMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(WassersteinDistanceMetric self, Data2D features1, Data2D features2) nogil except -1:
+        """
+        cdef:
+            int size = features1.shape[0] * features1.shape[1]
+            int s
+            int i
+            int j
+            int flag = 0
+            double ret_sum = 0.0
+            double sz = <double> size
+            double temp
+            double *ptr1_index = <double *> malloc(size * sizeof(double))
+            double *ptr2_index = <double *> malloc(size * sizeof(double))
+            double *ptr1_sorted = <double *> malloc(size * sizeof(double))
+            double *ptr2_sorted = <double *> malloc(size * sizeof(double))
+            double *all_sorted = <double *> malloc((size * 2) * sizeof(double))
+            double *diff = <double *> malloc((size * 2 - 1) * sizeof(double))
+        
+        for s in range(size):
+            ptr1_sorted[s] = features1[0, s]
+            ptr2_sorted[s] = features2[0, s]
+        for i in range(size):
+            for j in range(size):
+                if ptr1_sorted[j] > ptr1_sorted[j+1]:
+                    temp = ptr1_sorted[j]
+                    ptr1_sorted[j] = ptr1_sorted[j+1]
+                    ptr1_sorted[j+1] = temp
+                    flag = 1
+            if flag == 0:
+                break
+            flag = 0
+
+        for i in range(size):
+            for j in range(size):
+                if ptr2_sorted[j] > ptr2_sorted[j+1]:
+                    temp = ptr2_sorted[j]
+                    ptr2_sorted[j] = ptr2_sorted[j+1]
+                    ptr2_sorted[j+1] = temp
+                    flag = 1
+            if flag == 0:
+                break
+            flag = 0
+        
+        i = 0
+        j = 0
+        s = 0
+        while i < size and j < size:
+            if ptr1_sorted[i] < ptr2_sorted[j]:
+                ptr1_index[i] = s
+                all_sorted[s] = ptr1_sorted[i]
+                i += 1
+            else:
+                ptr2_index[j] = s
+                all_sorted[s] = ptr2_sorted[j]
+                j += 1
+            s += 1
+        
+        while i < size:
+            ptr1_index[i] = s
+            all_sorted[s] = ptr1_sorted[i]
+            s += 1
+            i += 1
+        
+        while j < size:
+            ptr2_index[j] = s
+            all_sorted[s] = ptr2_sorted[j]
+            s += 1
+            j += 1
+
+        for s in range(size * 2 - 1):
+            diff[s] = all_sorted[s+1] - all_sorted[s]
+
+        for s in range(size):
+            ret_sum += fabs(ptr1_index[s] - ptr2_index[s]) / sz * diff[s]
+
+        free(ptr1_index)
+        free(ptr2_index)
+        free(ptr1_sorted)
+        free(ptr2_sorted)
+        free(all_sorted)
+        free(diff)
+        return ret_sum
+        """
+        cdef :
+            int d, D = features1.shape[1]
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            double wd = 0.0
+
+        for d in range(D):
+            wd += fabs(features1[0, d] - features2[0, d])
+
+        return wd
+
+cdef class HellingerDistanceMetric(CythonMetric):
+    r""" Computes the Hellinger Distance between two vectors.
+
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Must be a probability distribution
+
+    sqrt must be pre calculated
+
+    """
+    def __init__(HellingerDistanceMetric self, Feature feature):
+        super(HellingerDistanceMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(HellingerDistanceMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int D_R = features1.shape[0]
+            int D_C = features1.shape[1]
+            double sz = <double> D_R
+            int dr, dc
+            double rhd = 0.0
+            double hd = 0.0
+
+        for dr in range(D_R):
+            rhd = 0.0
+            for dc in range(D_C):
+                rhd += features1[dr, dc] * features2[dr, dc]
+            hd += sqrt(1 - rhd)
+
+        return hd / sz
 
 
 cdef class NormalizedSumSquaredDiffMetric(CythonMetric):
@@ -423,6 +616,28 @@ cdef class NormalizedSumSquaredRootDiffMetric(CythonMetric):
 
             return summ / sz
 
+    A vector (i.e. a N-dimensional point) is represented as a 2D array with
+    shape (1, nb_dimensions).
+
+    Due to the nature of the metric, each feature
+    should be positive values
+
+    """
+    def __init__(CategoricalEntropyMetric self, Feature feature):
+        super(CategoricalEntropyMetric, self).__init__(feature=feature)
+
+    cdef double c_dist(CategoricalEntropyMetric self, Data2D features1, Data2D features2) nogil except -1:
+        cdef :
+            int d, D = features1.shape[1]
+            int size = features1.shape[0] * features1.shape[1]
+            double sz = <double> size
+            double ce = 0.0
+
+        for d in range(D):
+            if features1[0, d] != 0 and features2[0, d] != 0:
+                ce -= features1[0, d] * log(features2[0, d])
+
+        return ce
 
 cdef class NormalizedSumAbsDiffMetric(CythonMetric):
     r""" Computes the normalized ASD distance between two features.
@@ -622,6 +837,33 @@ cdef double c_distp_kldiv(float * ptr1, float * ptr2, int size) nogil:
 
         return kl / sz
 
+cdef double c_distp_abskl(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double kl = 0.0
+        
+        for s in range(size):
+            if ptr1[s] > 0 and ptr2[s] > 0:
+                kl += ptr1[s] * log(ptr1[s]/ptr2[s])
+
+        return fabs(kl / sz)
+
+cdef double c_distp_symkl(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double kl = 0.0
+        
+        for s in range(size):
+            if ptr1[s] > 0 and ptr2[s] > 0:
+                if ptr1[s] > ptr2[s]:
+                    kl += ptr1[s] * log(ptr1[s]/ptr2[s])
+                else:
+                    kl += ptr1[s] * log(ptr2[s]/ptr1[s])
+
+        return kl
+
 cdef double c_distp_normkl(float * ptr1, float * ptr2, int size) nogil:
         cdef:
             int s
@@ -632,8 +874,122 @@ cdef double c_distp_normkl(float * ptr1, float * ptr2, int size) nogil:
             if ptr1[s] > 0 and ptr2[s] > 0:
                 kl += ptr1[s] * log(ptr1[s]/ptr2[s])
 
-        return 1 - exp(kl / sz)
+        return 1 - exp(-1 * kl)
 
+cdef double c_distp_wdis(float * ptr1, float * ptr2, int size) nogil:
+        cdef :
+            int s
+            double sz = <double> size
+            double wd = 0.0
+
+        for s in range(size):
+            wd += fabs(ptr1[s] - ptr2[s])
+
+        return wd
+        """
+        cdef:
+            int s
+            int i
+            int j
+            int flag = 0
+            double ret_sum = 0.0
+            double sz = <double> size
+            double temp
+            double *ptr1_index = <double *> malloc(size * sizeof(double))
+            double *ptr2_index = <double *> malloc(size * sizeof(double))
+            double *ptr1_sorted = <double *> malloc(size * sizeof(double))
+            double *ptr2_sorted = <double *> malloc(size * sizeof(double))
+            double *all_sorted = <double *> malloc((size * 2) * sizeof(double))
+            double *diff = <double *> malloc((size * 2 - 1) * sizeof(double))
+        
+        for s in range(size):
+            ptr1_sorted[s] = ptr1[s]
+            ptr2_sorted[s] = ptr2[s]
+        for i in range(size):
+            for j in range(size):
+                if ptr1_sorted[j] > ptr1_sorted[j+1]:
+                    temp = ptr1_sorted[j]
+                    ptr1_sorted[j] = ptr1_sorted[j+1]
+                    ptr1_sorted[j+1] = temp
+                    flag = 1
+            if flag == 0:
+                break
+            flag = 0
+
+        for i in range(size):
+            for j in range(size):
+                if ptr2_sorted[j] > ptr2_sorted[j+1]:
+                    temp = ptr2_sorted[j]
+                    ptr2_sorted[j] = ptr2_sorted[j+1]
+                    ptr2_sorted[j+1] = temp
+                    flag = 1
+            if flag == 0:
+                break
+            flag = 0
+        
+        i = 0
+        j = 0
+        s = 0
+        while i < size and j < size:
+            if ptr1_sorted[i] < ptr2_sorted[j]:
+                ptr1_index[i] = s
+                all_sorted[s] = ptr1_sorted[i]
+                i += 1
+            else:
+                ptr2_index[j] = s
+                all_sorted[s] = ptr2_sorted[j]
+                j += 1
+            s += 1
+        
+        while i < size:
+            ptr1_index[i] = s
+            all_sorted[s] = ptr1_sorted[i]
+            s += 1
+            i += 1
+        
+        while j < size:
+            ptr2_index[j] = s
+            all_sorted[s] = ptr2_sorted[j]
+            s += 1
+            j += 1
+
+        for s in range(size * 2 - 1):
+            diff[s] = all_sorted[s+1] - all_sorted[s]
+
+        for s in range(size):
+            ret_sum += fabs(ptr1_index[s] - ptr2_index[s]) / sz * diff[s]
+
+        free(ptr1_index)
+        free(ptr2_index)
+        free(ptr1_sorted)
+        free(ptr2_sorted)
+        free(all_sorted)
+        free(diff)
+        return ret_sum
+        """
+
+cdef double c_distp_hdis(float * ptr1, float * ptr2, int size) nogil:
+        cdef :
+            int s
+            double sz = <double> size
+            double hd = 0.0
+
+        for s in range(size):
+            hd += ptr1[s] * ptr2[s]
+        
+        return sqrt(1 - hd)
+
+cdef double c_distp_catent(float * ptr1, float * ptr2, int size) nogil:
+        cdef:
+            int s
+            double sz = <double> size
+            double ce = 0.0
+
+        for s in range(size):
+            if ptr1[s] > 0 and ptr2[s] > 0:
+                ce -= ptr1[s] * log(ptr2[s])
+
+        return ce
 
 
 
@@ -743,6 +1099,59 @@ def assign_to_centroid_kldiv(Metric metric, float [:, :, ::1] data, float [:, :,
 
     return np.asarray(labels)
 
+def assign_to_centroid_abskl(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_abskl(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+def assign_to_centroid_symkl(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_symkl(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+
 def assign_to_centroid_normkl(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
 
     cdef:
@@ -762,6 +1171,88 @@ def assign_to_centroid_normkl(Metric metric, float [:, :, ::1] data, float [:, :
             for j in range(J):
                 # dist = metric.c_dist(features1, features2)
                 dist = c_distp_normkl(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+def assign_to_centroid_wdis(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_wdis(&data[i, 0, 0], &centroids[j, 0, 0], size)
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+def assign_to_centroid_hdis(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j, k
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        cnp.npy_intp r_size = <cnp.npy_intp> data.shape[1]
+        double sz = <double> data.shape[1]
+        int c_size = data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = 0.0
+                for k in range(r_size):
+                    dist += c_distp_hdis(&data[i, k, 0], &centroids[j, k, 0], c_size) / sz
+                if dist < curr_min:
+                    curr_min = dist
+                    curr_id = j
+            labels[i] = curr_id
+
+    return np.asarray(labels)
+
+def assign_to_centroid_catent(Metric metric, float [:, :, ::1] data, float [:, :, ::1] centroids):
+
+    cdef:
+        cnp.npy_intp i, j
+        cnp.npy_intp [::1] labels = np.zeros((len(data)), dtype=np.intp)
+        double dist = 0.0
+        double curr_min = biggest_double
+        cnp.npy_intp curr_id = -1
+        cnp.npy_intp I = <cnp.npy_intp> data.shape[0]
+        cnp.npy_intp J = <cnp.npy_intp> centroids.shape[0]
+        int size = data.shape[1] * data.shape[2]
+
+    with nogil:
+
+        for i in range(I):
+            curr_min = biggest_double
+            for j in range(J):
+                # dist = metric.c_dist(features1, features2)
+                dist = c_distp_catent(&data[i, 0, 0], &centroids[j, 0, 0], size)
                 if dist < curr_min:
                     curr_min = dist
                     curr_id = j

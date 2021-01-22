@@ -6,7 +6,12 @@ from robotikos.metricspeed import (assign_to_centroid_nl1,
                                    assign_to_centroid_nl2,
                                    assign_to_centroid_nlinf,
                                    assign_to_centroid_kldiv,
-                                   assign_to_centroid_normkl)
+                                   assign_to_centroid_normkl,
+                                   assign_to_centroid_abskl,
+                                   assign_to_centroid_symkl,
+                                   assign_to_centroid_wdis,
+                                   assign_to_centroid_catent,
+                                   assign_to_centroid_hdis)
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
                               NormalizedSumAbsDiffMetric,
                               NormalizedSumInfDiffMetric,
@@ -289,6 +294,16 @@ def fgn_shuffles(data, thresholds, metric,
         assign_to_centroids_fast = assign_to_centroid_kldiv
     elif isinstance(metric, NormalKLDivergenceMetric):
         assign_to_centroids_fast = assign_to_centroid_normkl
+    elif isinstance(metric, AbsKLDivergenceMetric):
+        assign_to_centroids_fast = assign_to_centroid_abskl
+    elif isinstance(metric, SymKLDivergenceMetric):
+        assign_to_centroids_fast = assign_to_centroid_symkl
+    elif isinstance(metric, CategoricalEntropyMetric):
+        assign_to_centroids_fast = assign_to_centroid_catent
+    elif isinstance(metric, WassersteinDistanceMetric):
+        assign_to_centroids_fast = assign_to_centroid_wdis
+    elif isinstance(metric, HellingerDistanceMetric):
+        assign_to_centroids_fast = assign_to_centroid_hdis
     else:
         print('Unknown metric to use here - switching to slow version')
         assign_to_centroids_fast = assign_to_centroids
