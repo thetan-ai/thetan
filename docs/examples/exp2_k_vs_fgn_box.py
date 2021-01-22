@@ -14,17 +14,17 @@ from sklearn.mixture import GaussianMixture
 from robotikos.fgm import fgn_shuffles, fgn_ma
 from robotikos.metric import IdentityFeature
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric)
+                              NormalizedSumAbsDiffMetric,
+                              NormalizedSumSquaredRootDiffMetric)
 from sklearn.cluster import KMeans
-from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score, rand_score, adjusted_rand_score
+from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 from robotikos.metricspeed import distance_matrix
 
-import seaborn as sns
 
 
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
-        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+        metric = NormalizedSumSquaredRootDiffMetric(feature=IdentityFeature())
         D = np.sqrt(distance_matrix(metric,
                                     np.ascontiguousarray(ecentroids[:, None, :]),
                                     np.ascontiguousarray(centroids[:, None, :])))
@@ -41,10 +41,6 @@ def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=N
     
     elif mode == 'FMS':
         score = fowlkes_mallows_score(true_label, label)
-
-    elif mode == 'RAI':
-        score = adjusted_rand_score(true_label, label)
-        #score = rand_score(true_label, label)
 
     else:
         print('no mode')
@@ -77,9 +73,9 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 
 #for exp_type, exp_param in zip(exps, exp_params):
-for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
-    methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
-    modes = ['NMI', 'SIL', 'FMS', 'SSD', 'RAI']
+for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
+    methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans']
+    modes = ['NMI', 'SIL', 'FMS', 'SSD']
     scores = {}
     timings = {}
     for method in methods:
@@ -91,7 +87,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
     for round_idx in range(10):
         #exp_type = 'hard'
         print('step', round_idx)
-        evaluation_thr = 0.1
+        evaluation_thr = 0.5
         verbose = False
         show_thr = False
         radius = 4
@@ -106,7 +102,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
             # Generate centers for the blobs so that it forms a 10 X 10 grid.
             # xx = np.linspace(-22, 22, 10)
             # yy = np.linspace(-22, 22, 10)
-            blob_dis = 20
+            blob_dis = 2
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n//2, blob_dis)
 
             n_centres = np.pad(np.expand_dims(xx, -1), ((0, 0), (0, n_dim-1)), mode='edge')
@@ -289,8 +285,8 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
         if 'kmeans' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=1,
-                            max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+            kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=10,
+                            max_iter=300, tol=0.0001, random_state=0, n_jobs=1, precompute_distances=False).fit(points)
             t2 = time()
 
             kmeans_time = t2 - t1
@@ -317,8 +313,8 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
         if 'kmeans++' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
-                            max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=20,
+                            max_iter=300, tol=0.0001, random_state=0, n_jobs=1, precompute_distances=False).fit(points)
             t2 = time()
 
             kmeans_time = t2 - t1
@@ -346,7 +342,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
         if 'local_search++' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
+            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=20,
                             max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
 
 
@@ -404,21 +400,21 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
 
         if 'fgn_ma' in methods:
 
-            metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+            metric = NormalizedSumSquaredRootDiffMetric(feature=IdentityFeature())
 
             elbow_check = []
             theta_range = [5.365]  # np.linspace(3.8, 5.5, num=40) # np.linspace(1, 3.5, num=50)
             theta_range = [7.25]  # with blobs 5.8 (104), 6.0 (101), 6.2 (102), 6.4 (101), 6.6 (102), 7.0 (101), 7.2 (101), 7.3 (99), 7.5 (98), 8.0 (96)
             theta_range = [6.0]
             # theta_range = [20., 10, 5.5]
-            theta_range = [6.0]
+            theta_range = [1.5]
 
 
             for fgn_t in theta_range: #np.linspace(5., 5.5, num=5):
                 t1 = time()
                 res = fgn_shuffles(points[:, None, :], thresholds=[fgn_t],
                                     metric=metric,
-                                    num_shuffles=1, mode='fgn_ma', verbose=False)
+                                    num_shuffles=20, mode='fgn_ma', verbose=False)
 
                 # res = fgn_ma(points[:, None, :], thresholds=theta_range, metric=metric,
                 #              select_randomly=None, rng=None, verbose=True)
@@ -468,7 +464,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
 
         if 'birch' in methods:
 
-            for bt in [1.94]:  # np.linspace(1.5, 2.5, 10):
+            for bt in [1.7]:  # np.linspace(1.5, 2.5, 10):
 
                 t1 = time()
                 # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
@@ -492,22 +488,21 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
                 if verbose:
                     plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, initial_centroids=centroids)
 
-                scores['birch ' + ext] = {}
                 for mode in modes:
                     if mode == 'SIL':
-                        scores['birch ' + ext][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=birch_labels)
+                        scores['birch'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=birch_labels))
                     elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                        scores['birch ' + ext][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=birch_labels, true_label=labels)
+                        scores['birch'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=birch_labels, true_label=labels))
                     elif mode == 'SSD':
-                        scores['birch ' + ext][mode] = evaluate_centroids(birch_centroids, centroids, evaluation_thr, mode=mode)
-                timings['birch ' + ext] = birch_time
+                        scores['birch'][mode].append(evaluate_centroids(birch_centroids, centroids, evaluation_thr, mode=mode))
+                timings['birch'].append(birch_time)
 
         if 'mb_kmeans' in methods:
 
             t1 = time()
             mbk = MiniBatchKMeans(init='k-means++', n_clusters=int(np.prod(sz)),
                                     batch_size=100,
-                                    n_init=10, max_no_improvement=10, verbose=0,
+                                    n_init=20, max_no_improvement=10, verbose=0,
                                     random_state=0).fit(points)
             t2 = time()
             mb_kmeans_time = t2 - t1
@@ -519,15 +514,14 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
             if verbose:
                 plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', initial_centroids=centroids)
 
-            scores['mini_batch'] = {}
             for mode in modes:
                 if mode == 'SIL':
-                    scores['mini_batch'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=mbk_labels)
+                    scores['mb_kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=mbk_labels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['mini_batch'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=mbk_labels, true_label=labels)
+                    scores['mb_kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=mbk_labels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['mini_batch'][mode] = evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode)
-            timings['mini_batch'] = mb_kmeans_time
+                    scores['mb_kmeans'][mode].append(evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode))
+            timings['mb_kmeans'].append(mb_kmeans_time)
 
         if 'gmm' in methods:
 
@@ -546,27 +540,69 @@ for cluster_n, exp_type in zip([10, 100, 1000, 10000], ['high_dim', 'high_dim', 
             if verbose:
                 plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
 
-            scores['gmm'] = {}
             for mode in modes:
                 if mode == 'SIL':
-                    scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=gmm_labels)
+                    scores['gmm'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=gmm_labels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=gmm_labels, true_label=labels)
+                    scores['gmm'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=gmm_labels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['gmm'][mode] = evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode)
-            timings['gmm'] = gmm_time
+                    scores['gmm'][mode].append(evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode))
+            timings['gmm'].append(gmm_time)
+
+    fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
+    ax.boxplot([timings[key] for key in timings.keys()])
+    ax2.boxplot([timings[key] for key in timings.keys()])
+    ax.set_ylim(np.min(timings['mb_kmeans'])/2, np.max(timings['mb_kmeans'])*2)
+    ax2.set_ylim(0.0, np.max(timings['fgn_ma'])*2)
+    ax.spines['bottom'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    ax.xaxis.tick_top()
+    ax.tick_params(labeltop=False)
+    ax2.xaxis.tick_bottom()
 
 
-    pl.figure()
-    pl.title('Timings')
-    pl.boxplot([timings[key] for key in timings.keys()])
-    pl.xticks([i for i in range(1, len(methods)+1)], timings.keys())
-    pl.savefig('Timings_'+str(cluster_n)+'_cluster_n.jpg')
+    d = .015  # how big to make the diagonal lines in axes coordinates
+    kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+    ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+    ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+    ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+    pl.xticks([i for i in range(1, len(timings.keys())+1)], timings.keys())
+    pl.savefig('Timings_'+str(cluster_n)+'_' + 'cluster_n_' + '.png')
+    pl.close(fig)
 
     for mode in modes:
         pl.figure()
         pl.title(exp_type + ' ' + mode)
         pl.boxplot([scores[method][mode] for key in scores.keys()])
         pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig(mode + '_'+str(cluster_n)+'_cluster_n.jpg')
+        pl.savefig(mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
+    """
+    for mode in modes:
+        fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
+        ax.boxplot([scores[key][mode] for key in scores.keys()])
+        ax2.boxplot([scores[key][mode] for key in scores.keys()])
+        ax.set_ylim(0.9, 1.0)
+        ax2.set_ylim(0.0, 0.9)
+        ax.spines['bottom'].set_visible(False)
+        ax2.spines['top'].set_visible(False)
+        ax.xaxis.tick_top()
+        ax.tick_params(labeltop=False)
+        ax2.xaxis.tick_bottom()
 
+        d = .015  # how big to make the diagonal lines in axes coordinates
+        kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+        ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+        ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+        kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+        ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+        ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+        pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
+        pl.savefig(mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
+        pl.close(fig)
+    """
