@@ -45,19 +45,21 @@ def disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15,
     return np.array(coord_list)
 
 
+if __name__ == "__main__":
+ 
 
-X = disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15, density=500)
+    X = disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15, density=500)
 
-print('Shape of X', X.shape)
+    print('Shape of X', X.shape)
 
-from theta_machines_tests import theta_g2
+    from theta_machines_tests import theta_g2
 
-centroids, labels = theta_g2(X, theta=20, num_shuffles=100)
+    centroids, labels = theta_g2(X, theta=20, num_shuffles=100)
 
 
-from pylab import plot, show
+    from pylab import plot, show
 
-plot(X[:, 0], X[:, 1], '.')
-plot(centroids[:, 0], centroids[:, 1], '.')
-show()
+    plot(X[:, 0], X[:, 1], '.')
+    plot(centroids[:, 0], centroids[:, 1], '.')
+    show()
 
