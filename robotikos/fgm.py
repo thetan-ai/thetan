@@ -17,11 +17,7 @@ from robotikos.metric import (NormalizedSumSquaredDiffMetric,
                               NormalizedSumInfDiffMetric,
                               KLDivergenceMetric,
                               NormalKLDivergenceMetric,
-                              AbsKLDivergenceMetric,
-                              SymKLDivergenceMetric,
-                              WassersteinDistanceMetric,
-                              HellingerDistanceMetric,
-                              CategoricalEntropyMetric)
+                              NormalizedSumSquaredRootDiffMetric)
 
 
 def fgn_merging_level(fgn_online_all_levels, level,
@@ -288,7 +284,7 @@ def fgn_shuffles(data, thresholds, metric,
     if verbose:
         print('Reclustering centroids and reassigning all data to each level')
 
-    if isinstance(metric, NormalizedSumSquaredDiffMetric):
+    if isinstance(metric, NormalizedSumSquaredDiffMetric) or isinstance(metric, NormalizedSumSquaredRootDiffMetric):
         assign_to_centroids_fast = assign_to_centroid_nl2
     elif isinstance(metric, NormalizedSumAbsDiffMetric):
         assign_to_centroids_fast = assign_to_centroid_nl1
