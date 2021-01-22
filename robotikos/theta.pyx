@@ -4,6 +4,7 @@
 cimport cython
 import numpy as np
 cimport numpy as cnp
+from scipy.linalg.cython_blas cimport ddot
 
 from libc.math cimport fabs
 
@@ -48,7 +49,7 @@ cdef double norm_ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     for d in range(D):
         summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
 
-    return summ / <double>D
+    return summ / D
 
 
 cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:

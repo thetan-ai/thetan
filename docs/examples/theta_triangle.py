@@ -122,4 +122,6 @@ def test_theta_g1_large_array(theta=10.0, size=(500000, 200), verbose=False):
     # npt.assert_array_almost_equal(centroids, np.squeeze(fgn_centroids), decimal=3)
     pass
 
-test_theta_g1_large_array(theta=1.5, size=(500000, 300))
+# test_theta_g1_large_array(theta=1.6, size=(500000, 300))
+# test_theta_g1_large_array(theta=1.6, size=(500000, 30))
+test_theta_g1_large_array(theta=1.6, size=(500000, 10))
