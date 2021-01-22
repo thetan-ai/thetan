@@ -4,7 +4,7 @@
 cimport cython
 import numpy as np
 cimport numpy as cnp
-from scipy.linalg.cython_blas cimport ddot
+# from scipy.linalg.cython_blas cimport ddot
 
 from libc.math cimport fabs
 
@@ -174,7 +174,7 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
     cdef:
         cnp.npy_intp N = X.shape[0]
         cnp.npy_intp D = X.shape[1]
-        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp i = 0
         cnp.npy_intp k = 0, K = centroids.shape[0]
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
@@ -205,7 +205,7 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
                     minimum = dist
                     argmin = k
 
-                indices[i] = argmin
+            indices[i] = argmin
 
     final_indices = np.asarray(indices)
     
