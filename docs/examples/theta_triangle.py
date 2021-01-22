@@ -187,12 +187,8 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
 def test_theta_g2(verbose=False):
     X = np.random.normal(size=(500000, 2))
 
-    X[:250000] += np.array([5, 0.])
-    # X[:250000] += np.array([10, 0.])
-
-    # np.random.shuffle(X)
-
-    X = np.ascontiguousarray(X, dtype='f8')
+    #X[:250000] += np.array([5, 0.])
+    X[:250000] += np.array([10, 0.])
 
     # X = X[:10].copy()
     # print(X)
