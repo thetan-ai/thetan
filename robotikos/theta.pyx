@@ -63,7 +63,28 @@ cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     return summ
 
 
-def theta_g1(double[:, ::1] X, double theta, metric='euclidean'):
+cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) nogil:    
+    cdef:
+        int i
+        int n = D // 4
+        int rem = D % 4
+        double result = 0
+
+    # We manually unroll the loop for better cache optimization.
+    for i in range(n):
+        result += ((a[0] - b[0]) * (a[0] - b[0])
+                  +(a[1] - b[1]) * (a[1] - b[1])
+                  +(a[2] - b[2]) * (a[2] - b[2])
+                  +(a[3] - b[3]) * (a[3] - b[3]))
+        a += 4; b += 4
+
+    for i in range(rem):
+        result += (a[i] - b[i]) * (a[i] - b[i])
+
+    return result / D
+
+
+def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
@@ -84,6 +105,8 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean'):
         metric_func = &ssd
     if metric == 'norm_ssd':
         metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
 
     with nogil:
 
@@ -132,10 +155,58 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean'):
                     centroids[K * D + d] = summs[K * D + d] 
                 K += 1
 
-    final_summs = np.asarray(<double[:K, :D]> summs)
-    final_centroids = np.asarray(<double[:K, :D]> centroids)
-    final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+    
+    final_centroids = np.asarray(<double[:K, :D]> centroids)    
     final_indices = np.asarray(indices)
     
-    return final_summs, final_clusters_sizes, final_centroids, final_indices
+    if all_out:
+        final_summs = np.asarray(<double[:K, :D]> summs)
+        final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+        return final_centroids, final_indices, final_summs, final_clusters_sizes 
+    else:
+        free(summs)
+        free(clusters_sizes)
+        return final_centroids, final_indices
 
+
+def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = centroids.shape[0]
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+    with nogil:
+        
+        for i in range(N):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            for k in range(K):
+                
+                dist = metric_func(&X[i, 0], &centroids[k, 0], D)
+         
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
+
+                indices[i] = argmin
+
+    final_indices = np.asarray(indices)
+    
+    return final_indices

@@ -1,7 +1,7 @@
 from time import time
 import numpy as np
 from numpy import testing as npt
-from robotikos.theta import theta_g1
+from robotikos.theta import theta_g1, assign
 from robotikos.fgm import fgn_shuffles, fgn
 from robotikos.metric import IdentityFeature
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
@@ -29,8 +29,8 @@ def test_theta_g1(verbose=False):
 
     theta = 10.0
 
-    t1 = time()
-    summs, clusters_sizes, centroids, indices = theta_g1(X, theta=theta, metric='euclidean')
+    t1 = time()    
+    centroids, indices, summs, clusters_sizes = theta_g1(X, theta=theta, metric='euclidean', all_out=True)
     t2 = time()
     tg1_duration = t2 - t1
     print('TG1 time', t2-t1)
@@ -83,7 +83,7 @@ def test_theta_g1_large_array(theta=10.0, size=(500000, 200), verbose=False):
     theta = theta
 
     t1 = time()
-    summs, clusters_sizes, centroids, indices = theta_g1(X, theta=theta, metric='norm_ssd')
+    centroids, indices, summs, clusters_sizes = theta_g1(X, theta=theta, metric='norm_ssd', all_out=True)
     t2 = time()
     tg1_duration = t2 - t1
     print('TG1 time', t2-t1)
@@ -124,4 +124,85 @@ def test_theta_g1_large_array(theta=10.0, size=(500000, 200), verbose=False):
 
 # test_theta_g1_large_array(theta=1.6, size=(500000, 300))
 # test_theta_g1_large_array(theta=1.6, size=(500000, 30))
-test_theta_g1_large_array(theta=1.6, size=(500000, 10))
+# test_theta_g1_large_array(theta=1.6, size=(500000, 10))
+
+
+def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
+
+    all_centroids = {}
+    X_work = X.copy()
+
+    num_centroids = []
+    for s in range(num_shuffles):
+
+        np.random.shuffle(X_work)
+        centroids, _ = theta_g1(X_work, theta=theta, metric=metric)
+
+        all_centroids[s] = centroids
+        num_centroids.append(len(centroids))
+
+    total_num_centroids = np.sum(num_centroids)
+    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]))
+
+    offset = 0
+
+    for s in range(num_shuffles):
+
+        X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
+        offset = all_centroids[s].shape[0]
+    
+    new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
+
+    new_indices = assign(X, new_centroids, metric=metric)
+
+    return new_centroids, new_indices
+
+
+def test_theta_g2(verbose=False):
+    X = np.random.normal(size=(500000, 2))
+
+    X[:250000] += np.array([10, 0.])
+
+    # np.random.shuffle(X)
+
+    X = np.ascontiguousarray(X, dtype='f8')
+
+    # X = X[:10].copy()
+    # print(X)
+
+    theta = 10.0
+
+    t1 = time()    
+    centroids, indices = theta_g2(X, theta=theta*theta, metric='norm_ssd', num_shuffles=10)
+    t2 = time()
+    tg1_duration = t2 - t1
+    print('TG2 time', t2-t1)
+    print('centroids', centroids)
+    print('size of indices', len(indices))
+
+
+    X2 = X.copy()[:, None, :]
+
+    metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+    t1 = time()
+    all_levels = fgn_shuffles(X2, thresholds=[theta*theta], metric=metric, num_shuffles=10)
+    t2 = time()
+    fgn_duration = t2 - t1
+    print('FGN time', fgn_duration)
+    print('centroids', all_levels[1]['centroids'])
+    print('Speedup ', fgn_duration/tg1_duration)
+
+    if verbose:
+        from pylab import figure, plot, show , axis
+
+        figure()
+        plot(X[:, 0], X[:, 1], '.')
+        plot(centroids[:, 0], centroids[:, 1], 'rx')
+        for k in all_levels[1]['centroids'].keys():
+            fgn_centroid = all_levels[1]['centroids'][k]
+            plot(fgn_centroid[0, 0], fgn_centroid[0, 1], 'bo')
+        axis('equal')
+        show()
+
+
+test_theta_g2(True)
