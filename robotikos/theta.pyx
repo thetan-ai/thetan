@@ -210,3 +210,5 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
     final_indices = np.asarray(indices)
     
     return final_indices
+
+

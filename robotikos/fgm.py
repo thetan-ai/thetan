@@ -228,7 +228,7 @@ def labels_to_centroids(data, labels):
 def fgn_shuffles(data, thresholds, metric,
                  num_shuffles,
                  mode='fgn',
-                 verbose=False):
+                 verbose=False, ret_shuffles_centroids=False):
 
     class DataSequence2D:
         def __init__(self, data, indices):
@@ -322,6 +322,9 @@ def fgn_shuffles(data, thresholds, metric,
         final_levels[j + 1] = {}
         final_levels[j + 1]['labels'] = labels
         final_levels[j + 1]['centroids'] = labels_to_centroids(data, labels)
+
+    if ret_shuffles_centroids:
+        return final_levels, all_levels_centroids
 
     return final_levels
 

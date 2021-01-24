@@ -230,4 +230,4 @@ def test_theta_g2(verbose=False):
         show()
 
 
-test_theta_g2(True)
+# test_theta_g2(True)
