@@ -46,20 +46,41 @@ def disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15,
 
 
 if __name__ == "__main__":
- 
+
 
     X = disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15, density=500)
 
     print('Shape of X', X.shape)
 
+    from pylab import plot, show, scatter, figure, title
+
     from theta_machines_tests import theta_g2
+    from robotikos.fgm import fgn_shuffles
 
-    centroids, labels = theta_g2(X, theta=20, num_shuffles=100)
+    from robotikos.metric import IdentityFeature
+    from robotikos.metric import NormalizedSumSquaredDiffMetric
 
 
-    from pylab import plot, show
+    for theta in [5., 10., 15., 20.]:
 
-    plot(X[:, 0], X[:, 1], '.')
-    plot(centroids[:, 0], centroids[:, 1], '.')
+        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+        # centroids, labels = theta_g2(X, theta=theta, num_shuffles=20)
+
+
+        all_levels = fgn_shuffles(X, thresholds=[theta*theta], metric=metric, num_shuffles=10)
+        centroids = all_levels[1]['centroids']
+        labels = all_levels[1]['labels']
+
+        unique_colors = np.random.rand(centroids.shape[0], 4)
+        colors = np.zeros((labels.shape[0], 4), dtype='f8')
+        for i in range(X.shape[0]):
+            colors[i] = unique_colors[labels[i]]
+        colors[:, 3] = 1
+
+        figure()
+        title('Theta is ' + str(theta))
+        scatter(X[:, 0], X[:, 1], c=colors[:, ])
+        scatter(centroids[:, 0], centroids[:, 1])
+
     show()
 
