@@ -61,14 +61,20 @@ if __name__ == "__main__":
     from robotikos.metric import NormalizedSumSquaredDiffMetric
 
 
-    for theta in [5., 10., 15., 20.]:
+
+    # for theta in [15., 16., 18., 19., 20., 21.]:
+    for theta in [20.]:
 
         metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-        # centroids, labels = theta_g2(X, theta=theta, num_shuffles=20)
+        # centroids, labels = theta_g2(X, theta=theta, num_shuffles=50)
 
-
-        all_levels = fgn_shuffles(X, thresholds=[theta*theta], metric=metric, num_shuffles=10)
-        centroids = all_levels[1]['centroids']
+        all_levels = fgn_shuffles(X[:, None, :], thresholds=[theta*theta/X.shape[1]],
+                                  metric=metric,
+                                  num_shuffles=50, mode='fgn_ma', verbose=True)
+        centroids_tmp = all_levels[1]['centroids']
+        centroids = np.zeros((len(centroids_tmp), 2))
+        for ci, c in enumerate(centroids_tmp.values()):
+            centroids[ci] = c
         labels = all_levels[1]['labels']
 
         unique_colors = np.random.rand(centroids.shape[0], 4)
