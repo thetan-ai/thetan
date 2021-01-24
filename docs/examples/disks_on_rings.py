@@ -1,5 +1,5 @@
 import numpy as np
-from pylab import plot, show, scatter, figure, title, savefig
+from pylab import plot, show, scatter, figure, title, savefig, axis
 
 
 def disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15,
@@ -56,6 +56,7 @@ def show_clusters(method, centroids, labels):
     for i in range(X.shape[0]):
         colors[i] = unique_colors[labels[i]]
         colors[:, 3] = 1
+    axis('equal')
     scatter(X[:, 0], X[:, 1], c=colors)
     # scatter(scentroids[:, 0], scentroids[:, 1], c=np.array([0.6, .6, .6]))
     scatter(centroids[:, 0], centroids[:, 1])
@@ -80,11 +81,21 @@ if __name__ == "__main__":
 
     # notice that n_disks=15 challenging for theta_g2
 
+    n_disks = 15
+    X = disks_on_a_circle(n_samples=n_disks, inner_radius=60, outer_radius=15, density=500)
+
+    n_disks = 15
+    X2 = disks_on_a_circle(n_samples=n_disks, inner_radius=120, outer_radius=15, density=500)
+
+    n_disks = 15 * 2
+
+    X = np.concatenate((X, X2))
+
     # n_disks = 12
     # X = disks_on_a_circle(n_samples=n_disks, inner_radius=60, outer_radius=15, density=500)
 
-    n_disks = 120
-    X = disks_on_a_circle(n_samples=n_disks, inner_radius=600, outer_radius=15, density=500)
+    # n_disks = 120
+    # X = disks_on_a_circle(n_samples=n_disks, inner_radius=600, outer_radius=15, density=500)
 
     print('Shape of X', X.shape)
 
