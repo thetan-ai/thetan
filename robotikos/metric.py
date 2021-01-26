@@ -8,18 +8,12 @@ from robotikos.metricspeed import (Metric,
                                    SumPointwiseEuclideanMetric,
                                    AveragePointwiseEuclideanMetric,
                                    NormalizedSumSquaredDiffMetric,
-                                   NormalizedSumSquaredRootDiffMetric,
                                    NormalizedSumAbsDiffMetric,
                                    CosineMetric,
                                    CrossCorrelationMetric,
                                    NormalizedSumInfDiffMetric,
                                    KLDivergenceMetric,
-                                   NormalKLDivergenceMetric,
-                                   AbsKLDivergenceMetric,
-                                   SymKLDivergenceMetric,
-                                   WassersteinDistanceMetric,
-                                   CategoricalEntropyMetric,
-                                   HellingerDistanceMetric)
+                                   NormalKLDivergenceMetric)
 
 from robotikos.metricspeed import (dist,
                                    distance_matrix)
