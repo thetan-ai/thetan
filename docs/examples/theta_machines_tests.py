@@ -230,7 +230,7 @@ def test_theta_g2(verbose=False):
         show()
 
 
-def theta_g2x(X, theta, metric='euclidean', num_partitions=10):
+def theta_g2x(X, theta, metric='euclidean', num_partitions=10, num_centroid_shuffles=10):
 
     all_centroids = {}
     X_work = X.copy()
@@ -254,7 +254,8 @@ def theta_g2x(X, theta, metric='euclidean', num_partitions=10):
 
     if last > 0:
         t1 = time()
-        centroids, _ = theta_g1(X_work[num_partitions*part:num_partitions*part + last], theta=theta, metric=metric)
+        centroids, _ = theta_g1(X_work[num_partitions*part:num_partitions*part + last],
+                                theta=theta, metric=metric)
         t2 = time()
         timings.append(t2-t1)
 
@@ -274,7 +275,8 @@ def theta_g2x(X, theta, metric='euclidean', num_partitions=10):
         offset += all_centroids[s].shape[0]
 
     t1 = time()
-    new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
+    new_centroids, _ = theta_g2(X_centroids, theta=theta, metric=metric,
+                                num_shuffles=num_centroid_shuffles)
     t2 = time()
     print('Time for tg1 on centroids', t2 - t1)
 
@@ -284,7 +286,7 @@ def theta_g2x(X, theta, metric='euclidean', num_partitions=10):
     print('Time for assign calls', t2 - t1)
     final_centroids = labels_to_centroids(X, final_indices)
 
-    return final_centroids, final_indices
+    return final_centroids, final_indices, X_centroids
 
 
 

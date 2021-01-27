@@ -114,8 +114,9 @@ if __name__ == "__main__":
             centroids, labels = theta_g2(X, theta=theta, num_shuffles=50)
             show_clusters('t_g2', centroids, labels)
 
-            centroids, labels = theta_g2x(X, theta=theta, num_partitions=10)
+            centroids, labels, interm_centroids = theta_g2x(X, theta=theta, num_partitions=10, num_centroid_shuffles=10)
             show_clusters('t_g2x', centroids, labels)
+            show_clusters('t_g2x_interm', interm_centroids, labels)
 
 
         if 'fgn_shuffles' in methods:
