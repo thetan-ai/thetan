@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
 
     from robotikos.theta import theta_g1, assign
-    from theta_machines_tests import theta_g2, labels_to_centroids
+    from theta_machines_tests import theta_g2, theta_g2x, labels_to_centroids
     from robotikos.fgm import fgn_shuffles
 
     from robotikos.metric import IdentityFeature
@@ -84,12 +84,12 @@ if __name__ == "__main__":
     n_disks = 15
     X = disks_on_a_circle(n_samples=n_disks, inner_radius=60, outer_radius=15, density=500)
 
-    n_disks = 15
-    X2 = disks_on_a_circle(n_samples=n_disks, inner_radius=120, outer_radius=15, density=500)
+    # n_disks = 15
+    # X2 = disks_on_a_circle(n_samples=n_disks, inner_radius=120, outer_radius=15, density=500)
 
-    n_disks = 15 * 2
+    # n_disks = 15 * 2
 
-    X = np.concatenate((X, X2))
+    # X = np.concatenate((X, X2))
 
     # n_disks = 12
     # X = disks_on_a_circle(n_samples=n_disks, inner_radius=60, outer_radius=15, density=500)
@@ -113,6 +113,10 @@ if __name__ == "__main__":
 
             centroids, labels = theta_g2(X, theta=theta, num_shuffles=50)
             show_clusters('t_g2', centroids, labels)
+
+            centroids, labels = theta_g2x(X, theta=theta, num_partitions=10)
+            show_clusters('t_g2x', centroids, labels)
+
 
         if 'fgn_shuffles' in methods:
 

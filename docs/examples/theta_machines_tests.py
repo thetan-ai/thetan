@@ -29,7 +29,7 @@ def test_theta_g1(verbose=False):
 
     theta = 10.0
 
-    t1 = time()    
+    t1 = time()
     centroids, indices, summs, clusters_sizes = theta_g1(X, theta=theta, metric='euclidean', all_out=True)
     t2 = time()
     tg1_duration = t2 - t1
@@ -68,7 +68,7 @@ def test_theta_g1(verbose=False):
 # test_theta_g1()
 
 def test_theta_g1_large_array(theta=10.0, size=(500000, 200), verbose=False):
-    
+
     X = np.random.normal(size=size)
 
     #X[:250000] += np.array([20, 0.])
@@ -131,7 +131,7 @@ def labels_to_centroids(data, labels):
 
     unique_labels, unique_counts = np.unique(labels,
                                              return_counts=True)
-    
+
     centroids = np.zeros((len(unique_labels), data.shape[1]))
 
     for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
@@ -153,7 +153,7 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
         centroids, _ = theta_g1(X_work_cp, theta=theta, metric=metric)
-        t2 = time()        
+        t2 = time()
         timings.append(t2-t1)
 
         all_centroids[s] = centroids
@@ -169,7 +169,7 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
 
         X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
         offset += all_centroids[s].shape[0]
-    
+
     t1 = time()
     new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
     t2 = time()
@@ -196,7 +196,7 @@ def test_theta_g2(verbose=False):
     theta = 10.0
     theta = 5.0
 
-    t1 = time()    
+    t1 = time()
     # centroids, indices = theta_g1(X, theta=theta*theta, metric='norm_ssd')
     centroids, indices = theta_g2(X, theta=theta*theta, metric='norm_ssd', num_shuffles=10)
     t2 = time()
@@ -230,4 +230,64 @@ def test_theta_g2(verbose=False):
         show()
 
 
+def theta_g2x(X, theta, metric='euclidean', num_partitions=10):
+
+    all_centroids = {}
+    X_work = X.copy()
+    np.random.shuffle(X_work)
+
+    N = X.shape[0]
+    part = N // num_partitions
+    last = N % num_partitions
+
+    num_centroids = []
+    timings = []
+    for s in range(num_partitions):
+
+        t1 = time()
+        centroids, _ = theta_g1(X_work[s*part:s*part + part], theta=theta, metric=metric)
+        t2 = time()
+        timings.append(t2-t1)
+
+        all_centroids[s] = centroids
+        num_centroids.append(len(centroids))
+
+    if last > 0:
+        t1 = time()
+        centroids, _ = theta_g1(X_work[num_partitions*part:num_partitions*part + last], theta=theta, metric=metric)
+        t2 = time()
+        timings.append(t2-t1)
+
+        all_centroids[s] = centroids
+        num_centroids.append(len(centroids))
+
+
+    print('Time for tg1 calls', np.sum(timings))
+    total_num_centroids = np.sum(num_centroids)
+    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype='f8')
+
+    offset = 0
+
+    for s in range(len(all_centroids.keys())):
+
+        X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
+        offset += all_centroids[s].shape[0]
+
+    t1 = time()
+    new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
+    t2 = time()
+    print('Time for tg1 on centroids', t2 - t1)
+
+    t1 = time()
+    final_indices = assign(X, new_centroids, metric=metric)
+    t2 = time()
+    print('Time for assign calls', t2 - t1)
+    final_centroids = labels_to_centroids(X, final_indices)
+
+    return final_centroids, final_indices
+
+
+
 # test_theta_g2(True)
+
+
