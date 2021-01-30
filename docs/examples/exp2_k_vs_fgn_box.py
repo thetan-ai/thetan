@@ -2,6 +2,7 @@ from time import time
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from sklearn import cluster, datasets, mixture
 from sklearn.neighbors import kneighbors_graph
@@ -18,6 +19,8 @@ from robotikos.theta import theta_g1, assign
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 from robotikos.metricspeed import distance_matrix
+
+import seaborn as sns
 
 def labels_to_centroids(data, labels):
 
@@ -89,7 +92,7 @@ def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=N
 
         closest = np.min(D, axis=1)
         count = np.sum(closest < thr)
-        score = count / len(centroids)
+        score = count / len(ecentroids)
 
     elif mode == 'NMI':
         score = normalized_mutual_info_score(true_label, label)
@@ -131,21 +134,15 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 
 #for exp_type, exp_param in zip(exps, exp_params):
-for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
-    methods = ['kmeans', 'kmeans++', 'tm', 'birch', 'mb_kmeans']
+for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [5.11, 5.11, 5.2, 5.2], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
+    methods = ['kmeans', 'kmeans++', 'ThetA', 'birch', 'mb_kmeans']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
-    scores = {}
-    timings = {}
-    for method in methods:
-        scores[method] = {}
-        timings[method] = []
-        for mode in modes:
-            scores[method][mode] = []
+    scores = {'Timing':[], 'method':[], 'NMI':[], 'SIL':[], 'FMS':[], 'SSD':[]}
 
     for round_idx in range(10):
         #exp_type = 'hard'
         print('step', round_idx)
-        evaluation_thr = 0.1
+        evaluation_thr = 0.05
         verbose = False
         show_thr = False
         radius = 4
@@ -160,7 +157,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             # Generate centers for the blobs so that it forms a 10 X 10 grid.
             # xx = np.linspace(-22, 22, 10)
             # yy = np.linspace(-22, 22, 10)
-            blob_dis = np.sqrt(25/n_dim)
+            blob_dis = 1.6
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n//2, blob_dis)
             xx = xx[:cluster_n]
 
@@ -344,7 +341,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
         if 'kmeans' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=10,
+            kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=50,
                             max_iter=300, tol=0.0001, random_state=0, n_jobs=1, precompute_distances=False).fit(points)
             t2 = time()
 
@@ -357,14 +354,16 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
                 plot_centroids_clusters(points, kcentroids, klabels,
                                         'kmeans',
                                         initial_centroids=centroids)
+                                    
+            scores['method'].append('kmeans')
             for mode in modes:
                 if mode == 'SIL':
-                    scores['kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=klabels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=klabels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=klabels, true_label=labels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=klabels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['kmeans'][mode].append(evaluate_centroids(kcentroids, centroids, evaluation_thr, mode=mode))
-            timings['kmeans'].append(kmeans_time)
+                    scores[mode].append(evaluate_centroids(kcentroids, centroids, evaluation_thr, mode=mode))
+            scores['Timing'].append(kmeans_time)
 
             tmp = 0
 
@@ -372,7 +371,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
         if 'kmeans++' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=20,
+            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=50,
                             max_iter=300, tol=0.0001, random_state=0, n_jobs=1, precompute_distances=False).fit(points)
             t2 = time()
 
@@ -386,14 +385,15 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
                                         'kmeans++',
                                         initial_centroids=centroids)
 
+            scores['method'].append('kmeans++')
             for mode in modes:
                 if mode == 'SIL':
-                    scores['kmeans++'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=klabels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=klabels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['kmeans++'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=klabels, true_label=labels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=klabels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['kmeans++'][mode].append(evaluate_centroids(kcentroids, centroids, evaluation_thr, mode=mode))
-            timings['kmeans++'].append(kmeans_time)
+                    scores[mode].append(evaluate_centroids(kcentroids, centroids, evaluation_thr, mode=mode))
+            scores['Timing'].append(kmeans_time)
 
             tmp = 0
 
@@ -401,7 +401,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
         if 'local_search++' in methods:
 
             t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=20,
+            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=50,
                             max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
 
 
@@ -457,32 +457,32 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
 
             tmp = 0
 
-        if 'tm' in methods:
-            theta = 5.1
+        if 'ThetA' in methods:
 
-            tcentroids, tlabels, tm_time = theta_g2(points, theta=theta, num_shuffles=20)
+            tcentroids, tlabels, tm_time = theta_g2(points, theta=theta, num_shuffles=50)
 
             print('tm ', tm_time)
-            print('Speedup', kmeans_time/tm_time)
+            #print('Speedup', kmeans_time/tm_time)
 
             if verbose:
-                plot_centroids_clusters(points, tcentroids, tlabels, 'tm', initial_centroids=centroids)
+                plot_centroids_clusters(points, tcentroids, tlabels, 'ThetA', initial_centroids=centroids)
 
                 #ext = str(np.round(fgn_t, 2))
             print(tcentroids.shape[0])
+            scores['method'].append('ThetA')
             for mode in modes:
                 if mode == 'SIL':
-                    scores['tm'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=tlabels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=tlabels))
                 elif mode == 'NMI' or mode == 'FMS':
-                    scores['tm'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=tlabels, true_label=labels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=tlabels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['tm'][mode].append(evaluate_centroids(tcentroids, centroids, evaluation_thr, mode=mode))
-            timings['tm'].append(tm_time)
+                    scores[mode].append(evaluate_centroids(tcentroids, centroids, evaluation_thr, mode=mode))
+            scores['Timing'].append(tm_time)
 
 
         if 'birch' in methods:
 
-            for bt in [4.0]:  # np.linspace(1.5, 2.5, 10):
+            for bt in [3.85]:  # np.linspace(1.5, 2.5, 10):
 
                 t1 = time()
                 # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
@@ -506,21 +506,22 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
                 if verbose:
                     plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, initial_centroids=centroids)
 
+                scores['method'].append('birch')
                 for mode in modes:
                     if mode == 'SIL':
-                        scores['birch'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=birch_labels))
+                        scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=birch_labels))
                     elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                        scores['birch'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=birch_labels, true_label=labels))
+                        scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=birch_labels, true_label=labels))
                     elif mode == 'SSD':
-                        scores['birch'][mode].append(evaluate_centroids(birch_centroids, centroids, evaluation_thr, mode=mode))
-                timings['birch'].append(birch_time)
+                        scores[mode].append(evaluate_centroids(birch_centroids, centroids, evaluation_thr, mode=mode))
+                scores['Timing'].append(birch_time)
 
         if 'mb_kmeans' in methods:
 
             t1 = time()
             mbk = MiniBatchKMeans(init='k-means++', n_clusters=int(np.prod(sz)),
-                                    batch_size=100,
-                                    n_init=20, max_no_improvement=10, verbose=0,
+                                    batch_size=cluster_n,
+                                    n_init=50, max_no_improvement=10, verbose=0,
                                     random_state=0).fit(points)
             t2 = time()
             mb_kmeans_time = t2 - t1
@@ -532,14 +533,15 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             if verbose:
                 plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', initial_centroids=centroids)
 
+            scores['method'].append('mb_kmeans')
             for mode in modes:
                 if mode == 'SIL':
-                    scores['mb_kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=mbk_labels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=mbk_labels))
                 elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['mb_kmeans'][mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=mbk_labels, true_label=labels))
+                    scores[mode].append(evaluate_centroids(thr=evaluation_thr, mode=mode, label=mbk_labels, true_label=labels))
                 elif mode == 'SSD':
-                    scores['mb_kmeans'][mode].append(evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode))
-            timings['mb_kmeans'].append(mb_kmeans_time)
+                    scores[mode].append(evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode))
+            scores['Timing'].append(mb_kmeans_time)
 
         if 'gmm' in methods:
 
@@ -567,37 +569,33 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
                     scores['gmm'][mode].append(evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode))
             timings['gmm'].append(gmm_time)
 
-    fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
-    ax.boxplot([timings[key] for key in timings.keys()], showfliers=False)
-    ax2.boxplot([timings[key] for key in timings.keys()], showfliers=False)
-    ax.set_ylim(np.min(timings['mb_kmeans'])/2, np.max(timings['mb_kmeans'])*2)
-    ax2.set_ylim(0.0, np.max(timings['tm'])*2)
-    ax.spines['bottom'].set_visible(False)
-    ax2.spines['top'].set_visible(False)
-    ax.xaxis.tick_top()
-    ax.tick_params(labeltop=False)
-    ax2.xaxis.tick_bottom()
-
-
-    d = .015  # how big to make the diagonal lines in axes coordinates
-    kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
-    ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
-    ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
-
-    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
-    ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
-
+    """
+    fig = pl.figure()
+    pl.title('hard_cluster_n_Timings_'+str(cluster_n))
+    pl.boxplot([timings[key] for key in timings.keys()], showfliers=False)
     pl.xticks([i for i in range(1, len(timings.keys())+1)], timings.keys())
-    pl.savefig('Timings_'+str(cluster_n)+'_' + 'cluster_n_' + '.png')
+    pl.savefig('hard_Timings_'+str(cluster_n)+'_' + 'cluster_n_' + '.png')
     pl.close(fig)
 
     for mode in modes:
-        pl.figure()
-        pl.title(exp_type + ' ' + mode)
-        pl.boxplot([scores[method][mode] for key in scores.keys()], showfliers=False)
+        fig = pl.figure()
+        pl.title('hard_cluster_n_'+mode+'_'+str(cluster_n))
+        pl.boxplot([scores[key][mode] for key in scores.keys()], showfliers=False)
         pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig(mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
+        pl.savefig('hard_' + mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
+        pl.close(fig)
+    """
+    data = pd.DataFrame(scores)
+    boxplot = sns.boxplot(x='method', y='Timing', data=data, fliersize=0)
+    fig = boxplot.get_figure()
+    fig.savefig('hard_Timings_'+str(cluster_n)+'_cluster_n.png', dpi=300)
+    pl.close(fig)
+    for mode in modes:
+        boxplot = sns.boxplot(x='method', y=mode, data=data, fliersize=0)
+        fig = boxplot.get_figure()
+        fig.savefig('hard_'+mode+'_'+str(cluster_n)+'_cluster_n.png', dpi=300)
+        pl.close(fig)
+
     """
     for mode in modes:
         fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
