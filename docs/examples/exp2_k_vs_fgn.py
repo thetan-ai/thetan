@@ -112,7 +112,7 @@ def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=N
 
 
 
-def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=None):
+def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_centroids=None):
 
     new_colors = np.zeros((len(data), 3))
     no_clusters = len(centroids)
@@ -121,13 +121,15 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
     for ind in range(len(points)):
         new_colors[ind] = cluster_colors[labels[ind]]
 
-    pl.figure()
+    fig = pl.figure()
     pl.title(title)
     pl.axis('equal')
     pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
     if initial_centroids is not None:
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
+    pl.savefig(exp_type+'_'+title+'.png', dpi=300)
+    pl.close(fig)
 
 
 exp_type = 'easy'
@@ -312,7 +314,7 @@ if exp_type == 'easy':
         klabels = kmeans.labels_
         if verbose:
             plot_centroids_clusters(points, kcentroids, klabels,
-                                    'kmeans',
+                                    'kmeans', exp_type,
                                     initial_centroids=centroids)
         scores['kmeans'] = {}
         for mode in modes:
@@ -341,7 +343,7 @@ if exp_type == 'easy':
         klabels = kmeans.labels_
         if verbose:
             plot_centroids_clusters(points, kcentroids, klabels,
-                                    'kmeans++',
+                                    'kmeans++', exp_type,
                                     initial_centroids=centroids)
 
         scores['kmeans++'] = {}
@@ -353,65 +355,6 @@ if exp_type == 'easy':
             elif mode == 'SSD':
                 scores['kmeans++'][mode] = evaluate_centroids(kcentroids, centroids, evaluation_thr, mode=mode)
         timings['kmeans++'] = kmeans_time
-
-        tmp = 0
-
-    if 'local_search++' in methods:
-
-        t1 = time()
-        kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
-                        max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
-
-
-        ls_centroids = kmeans.cluster_centers_
-
-        n_iter = int(np.prod(sz) * np.log(np.log(np.prod(sz))))
-
-        dis = np.zeros(len(points))
-        dis[0] = np.sum(np.square(points[0] - kcentroids[klabels[0]]))
-        for idx in range(1, len(points)):
-            dis[idx] = np.sum(np.square(points[idx] - kcentroids[klabels[idx]])) + dis[idx-1]
-        for _ in range(n_iter):
-            rand_n = np.random.uniform()
-            border = rand_n * dis[-1]
-            sel_idx = np.argwhere(dis >= border)[0]
-            min_idx = -1
-            for c_idx in range(len(ls_centroids)):
-                temp_centroids = ls_centroids.copy()
-                temp_centroids[c_idx] = points[sel_idx]
-                temp_dis = np.zeros(len(points))
-                temp_dis[0] = np.min(np.sum(np.square([temp_centroids[i] - points[0] for i in range(len(temp_centroids))])))
-                for p_idx in range(1, len(points)):
-                    temp_dis[p_idx] = np.min(np.sum(np.square([temp_centroids[i] - points[p_idx] for i in range(len(temp_centroids))]))) + temp_dis[p_idx-1]
-                if dis[-1] > temp_dis[-1]:
-                    min_idx = c_idx
-                    dis = temp_dis
-            
-            if min_idx != -1:
-                ls_centroids[min_idx] = points[sel_idx]
-
-        ls_labels = np.zeros(len(points))
-        for p_idx in range(len(points)):
-            ls_labels[p_idx] = np.argmin(np.sum(np.square([ls_centroids[i] - points[p_idx] for i in range(len(ls_centroids))])))
-
-
-        if verbose:
-            plot_centroids_clusters(points, kcentroids, klabels,
-                                    'local_search++',
-                                    initial_centroids=centroids)
-
-        t2 = time()
-        local_search_time = t2 - t1
-        print('local_search++ ', local_search_time)
-        scores['local_search++'] = {}
-        for mode in modes:
-            if mode == 'SIL':
-                scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=ls_labels)
-            elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=ls_labels, true_label=labels)
-            elif mode == 'SSD':
-                scores['local_search++'][mode] = evaluate_centroids(ls_centroids, centroids, evaluation_thr, mode=mode)
-        timings['local_search++'] = kmeans_time
 
         tmp = 0
 
@@ -428,7 +371,7 @@ if exp_type == 'easy':
         print('Speedup', kmeans_time/tm_time)
 
         if verbose:
-            plot_centroids_clusters(points, tcentroids, tlabels, 'tm', initial_centroids=centroids)
+            plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
         timings['tm'] = tm_time
 
 
@@ -456,7 +399,7 @@ if exp_type == 'easy':
                 ext = ''
 
             if verbose:
-                plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, initial_centroids=centroids)
+                plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, exp_type, initial_centroids=centroids)
 
             scores['birch ' + ext] = {}
             for mode in modes:
@@ -483,7 +426,7 @@ if exp_type == 'easy':
         mbk_centroids = mbk.cluster_centers_
         print('# centroids ', len(mbk_centroids))
         if verbose:
-            plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', initial_centroids=centroids)
+            plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', exp_type, initial_centroids=centroids)
 
         scores['mini_batch'] = {}
         for mode in modes:
@@ -495,60 +438,18 @@ if exp_type == 'easy':
                 scores['mini_batch'][mode] = evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode)
         timings['mini_batch'] = mb_kmeans_time
 
-    if 'gmm' in methods:
 
-        t1 = time()
-        cov_type = ['spherical', 'diag', 'tied', 'full']
-        gmm = GaussianMixture(n_components=int(np.prod(sz)),
-                            covariance_type=cov_type[3],
-                            max_iter=200, n_init=5, random_state=0).fit(points)
-        t2 = time()
-        gmm_time = t2 - t1
-        print('# gmm_time ', gmm_time)
-
-        gmm_centroids = gmm.means_
-        gmm_labels = gmm.predict(points)
-
-        if verbose:
-            plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
-
-        scores['gmm'] = {}
-        for mode in modes:
-            if mode == 'SIL':
-                scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=gmm_labels)
-            elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=gmm_labels, true_label=labels)
-            elif mode == 'SSD':
-                scores['gmm'][mode] = evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode)
-        timings['gmm'] = gmm_time
-
-    # pl.figure()
-    # pl.plot(theta_range, elbow_check)
-    # pl.grid()
-    """
-    pl.figure()
-    pl.title('Score')
-    x_tmp = np.arange(len(modes))
-    width = 1/len(methods)
-
-    for i, method in zip(range(len(scores.keys())), scores.keys()):
-        pl.bar(x_tmp + width * i, scores[method].values(), width, label=method)
-    pl.xticks(x_tmp + width / 2 + (len(methods)-2) * width/2 , modes)
-    pl.legend()
-    """
-
-    pl.figure()
+    fig = pl.figure()
     pl.title('Timings')
     x_tmp = np.arange(len(timings.values()))
     pl.bar(x_tmp, timings.values(), color=(1, 0, 0., 0.7))
     pl.xticks(x_tmp, timings.keys())
-
-
-    pl.show()
+    pl.savefig('easy_Timing.png', dpi=300)
+    pl.close(fig)
 
 
     t = 1
-
+exp_type = 'hard'
 if exp_type == 'hard':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
     #methods = ['birch']
@@ -719,7 +620,7 @@ if exp_type == 'hard':
     if 'kmeans' in methods:
 
         t1 = time()
-        kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=20,
+        kmeans = KMeans(n_clusters=np.prod(sz), init='random', n_init=50,
                         max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
         t2 = time()
 
@@ -730,7 +631,7 @@ if exp_type == 'hard':
         klabels = kmeans.labels_
         if verbose:
             plot_centroids_clusters(points, kcentroids, klabels,
-                                    'kmeans',
+                                    'kmeans', exp_type,
                                     initial_centroids=centroids)
         scores['kmeans'] = {}
         for mode in modes:
@@ -748,7 +649,7 @@ if exp_type == 'hard':
     if 'kmeans++' in methods:
 
         t1 = time()
-        kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=20,
+        kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=50,
                         max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
         t2 = time()
 
@@ -759,7 +660,7 @@ if exp_type == 'hard':
         klabels = kmeans.labels_
         if verbose:
             plot_centroids_clusters(points, kcentroids, klabels,
-                                    'kmeans++',
+                                    'kmeans++', exp_type,
                                     initial_centroids=centroids)
 
         scores['kmeans++'] = {}
@@ -774,81 +675,23 @@ if exp_type == 'hard':
 
         tmp = 0
 
-    if 'local_search++' in methods:
-
-        t1 = time()
-        kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=10,
-                        max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
-
-
-        ls_centroids = kmeans.cluster_centers_
-
-        n_iter = int(np.prod(sz) * np.log(np.log(np.prod(sz))))
-
-        dis = np.zeros(len(points))
-        dis[0] = np.sum(np.square(points[0] - kcentroids[klabels[0]]))
-        for idx in range(1, len(points)):
-            dis[idx] = np.sum(np.square(points[idx] - kcentroids[klabels[idx]])) + dis[idx-1]
-        for _ in range(n_iter):
-            rand_n = np.random.uniform()
-            border = rand_n * dis[-1]
-            sel_idx = np.argwhere(dis >= border)[0]
-            min_idx = -1
-            for c_idx in range(len(ls_centroids)):
-                temp_centroids = ls_centroids.copy()
-                temp_centroids[c_idx] = points[sel_idx]
-                temp_dis = np.zeros(len(points))
-                temp_dis[0] = np.min(np.sum(np.square([temp_centroids[i] - points[0] for i in range(len(temp_centroids))])))
-                for p_idx in range(1, len(points)):
-                    temp_dis[p_idx] = np.min(np.sum(np.square([temp_centroids[i] - points[p_idx] for i in range(len(temp_centroids))]))) + temp_dis[p_idx-1]
-                if dis[-1] > temp_dis[-1]:
-                    min_idx = c_idx
-                    dis = temp_dis
-            
-            if min_idx != -1:
-                ls_centroids[min_idx] = points[sel_idx]
-
-        ls_labels = np.zeros(len(points))
-        for p_idx in range(len(points)):
-            ls_labels[p_idx] = np.argmin(np.sum(np.square([ls_centroids[i] - points[p_idx] for i in range(len(ls_centroids))])))
-
-
-        if verbose:
-            plot_centroids_clusters(points, kcentroids, klabels,
-                                    'local_search++',
-                                    initial_centroids=centroids)
-
-        t2 = time()
-        local_search_time = t2 - t1
-        print('local_search++ ', local_search_time)
-        scores['local_search++'] = {}
-        for mode in modes:
-            if mode == 'SIL':
-                scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=ls_labels)
-            elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=ls_labels, true_label=labels)
-            elif mode == 'SSD':
-                scores['local_search++'][mode] = evaluate_centroids(ls_centroids, centroids, evaluation_thr, mode=mode)
-        timings['local_search++'] = kmeans_time
-
-        tmp = 0
 
     if 'tm' in methods:
         theta = 3.6
 
-        tcentroids, tlabels, tm_time = theta_g2(points, theta=theta, num_shuffles=20)
+        tcentroids, tlabels, tm_time = theta_g2(points, theta=theta, num_shuffles=50)
 
         print('tm ', tm_time)
         print('Speedup', kmeans_time/tm_time)
 
         if verbose:
-            plot_centroids_clusters(points, tcentroids, tlabels, 'tm', initial_centroids=centroids)
+            plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
         timings['tm'] = tm_time
 
 
     if 'birch' in methods:
 
-        for bt in [2.9]:  # np.linspace(1.5, 2.5, 10):
+        for bt in [2.0]:  # np.linspace(1.5, 2.5, 10):
 
             t1 = time()
             # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
@@ -870,7 +713,7 @@ if exp_type == 'hard':
                 ext = ''
 
             if verbose:
-                plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, initial_centroids=centroids)
+                plot_centroids_clusters(points, birch_centroids, birch_labels, 'birch ' + ext, exp_type, initial_centroids=centroids)
 
             scores['birch ' + ext] = {}
             for mode in modes:
@@ -886,8 +729,8 @@ if exp_type == 'hard':
 
         t1 = time()
         mbk = MiniBatchKMeans(init='k-means++', n_clusters=int(np.prod(sz)),
-                            batch_size=100,
-                            n_init=20, max_no_improvement=10, verbose=0,
+                            batch_size=int(np.prod(sz)),
+                            n_init=50, max_no_improvement=10, verbose=0,
                             random_state=0).fit(points)
         t2 = time()
         mb_kmeans_time = t2 - t1
@@ -897,7 +740,7 @@ if exp_type == 'hard':
         mbk_centroids = mbk.cluster_centers_
         print('# centroids ', len(mbk_centroids))
         if verbose:
-            plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', initial_centroids=centroids)
+            plot_centroids_clusters(points, mbk_centroids, mbk_labels, 'mini_batch', exp_type, initial_centroids=centroids)
 
         scores['mini_batch'] = {}
         for mode in modes:
@@ -908,33 +751,6 @@ if exp_type == 'hard':
             elif mode == 'SSD':
                 scores['mini_batch'][mode] = evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode)
         timings['mini_batch'] = mb_kmeans_time
-
-    if 'gmm' in methods:
-
-        t1 = time()
-        cov_type = ['spherical', 'diag', 'tied', 'full']
-        gmm = GaussianMixture(n_components=int(np.prod(sz)),
-                            covariance_type=cov_type[3],
-                            max_iter=200, n_init=5, random_state=0).fit(points)
-        t2 = time()
-        gmm_time = t2 - t1
-        print('# gmm_time ', gmm_time)
-
-        gmm_centroids = gmm.means_
-        gmm_labels = gmm.predict(points)
-
-        if verbose:
-            plot_centroids_clusters(points, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
-
-        scores['gmm'] = {}
-        for mode in modes:
-            if mode == 'SIL':
-                scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=gmm_labels)
-            elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                scores['gmm'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=gmm_labels, true_label=labels)
-            elif mode == 'SSD':
-                scores['gmm'][mode] = evaluate_centroids(gmm_centroids, centroids, evaluation_thr, mode=mode)
-        timings['gmm'] = gmm_time
 
     # pl.figure()
     # pl.plot(theta_range, elbow_check)
@@ -951,14 +767,10 @@ if exp_type == 'hard':
     pl.legend()
     """
 
-    pl.figure()
+    fig = pl.figure()
     pl.title('Timings')
     x_tmp = np.arange(len(timings.values()))
     pl.bar(x_tmp, timings.values(), color=(1, 0, 0., 0.7))
     pl.xticks(x_tmp, timings.keys())
-
-
-    pl.show()
-
-
-    t = 1
+    pl.savefig('hard_Timing.png', dpi=300)
+    pl.close(fig)

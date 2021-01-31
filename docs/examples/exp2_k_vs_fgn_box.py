@@ -134,7 +134,7 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
 
 
 #for exp_type, exp_param in zip(exps, exp_params):
-for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [5.11, 5.11, 5.2, 5.2], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
+for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [15.4, 15.4, 15.4, 15.4], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
     methods = ['kmeans', 'kmeans++', 'ThetA', 'birch', 'mb_kmeans']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     scores = {'Timing':[], 'method':[], 'NMI':[], 'SIL':[], 'FMS':[], 'SSD':[]}
@@ -142,14 +142,14 @@ for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [5.11, 5.11, 5.2, 5
     for round_idx in range(10):
         #exp_type = 'hard'
         print('step', round_idx)
-        evaluation_thr = 0.05
+        evaluation_thr = 0.5
         verbose = False
         show_thr = False
         radius = 4
         n_local_samples = 20
         blob_dis = 33
         cluster_per_dim = 10
-        n_dim = 10
+        n_dim = 100
         #scores = {}
         #timings = {}
 
@@ -482,7 +482,7 @@ for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [5.11, 5.11, 5.2, 5
 
         if 'birch' in methods:
 
-            for bt in [3.85]:  # np.linspace(1.5, 2.5, 10):
+            for bt in [12.75]:  # np.linspace(1.5, 2.5, 10): 3.85
 
                 t1 = time()
                 # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
