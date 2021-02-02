@@ -13,22 +13,31 @@ from robotikos.metric import (NormalizedSumSquaredDiffMetric,
 def show_clusters(X, method, centroids, gt_centroids, labels):
     pl.figure()
     pl.title('Method is ' + method)
-    unique_colors = np.random.rand(centroids.shape[0], 4)
-    colors = np.zeros((labels.shape[0], 4), dtype='f8')
+    unique_colors = np.random.rand(centroids.shape[0], 3)
+    colors = np.zeros((labels.shape[0], 3), dtype='f8')
     for i in range(X.shape[0]):
         colors[i] = unique_colors[labels[i]]
-        colors[:, 3] = 0.5
+        # colors[:, 3] = 0.5
     pl.axis('equal')
-    pl.scatter(X[:, 0], X[:, 1], c=colors)
+    pl.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
     # scatter(scentroids[:, 0], scentroids[:, 1], c=np.array([0.6, .6, .6]))
-    # pl.scatter(centroids[:, 0], centroids[:, 1])
-    pl.scatter(gt_centroids[:, 0], gt_centroids[:, 1], 'm^')
+    pl.plot(centroids[:, 0], centroids[:, 1], 'bx')
+    pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'm^')
     pl.show()
 
+def 
+    # res = fgn_shuffles(points[:, None, :], thresholds=[(165000.0**2) / 2.0],
+    #                    metric=metric,
+    #                    num_shuffles=2000, mode='fgn_ma', verbose=True)
+    # fcentroids = res[1]['centroids']
+    # centroids = np.zeros((len(fcentroids), 2))
+    # for i, c in enumerate(fcentroids.keys()):
+    #     centroids[i] = np.squeeze(fcentroids[c])
 
 from pathlib import Path
 
-dname = Path('c:/Users/elef/Devel/robotikos/docs/examples/S-Sets')
+# dname = Path('c:/Users/elef/Devel/robotikos/docs/examples/S-Sets')
+dname = '/home/elef/Devel/robotikos/docs/examples/S-sets/'
 
 ########s1########
 # points = np.loadtxt("S-sets\s1.txt")
@@ -38,18 +47,21 @@ dname = Path('c:/Users/elef/Devel/robotikos/docs/examples/S-Sets')
 # gt_centroids = np.loadtxt("S-sets\s2-cb.txt")
 ########s2########
 
-
-points = np.loadtxt(dname / "s3.txt")
-gt_centroids = np.loadtxt(dname / "s3-cb.txt")
+points = np.loadtxt(dname + "s3.txt")
+gt_centroids = np.loadtxt(dname + "s3-cb.txt")
+# points = np.loadtxt(dname / "s3.txt")
+# gt_centroids = np.loadtxt(dname / "s3-cb.txt")
 ########s2########
 # points = np.loadtxt("S-sets\s4.txt")
 # gt_centroids = np.loadtxt("S-sets\s4-cb.txt")
+
+np.random.shuffle(points)
 
 from theta_machines_tests import theta_g1, theta_g2, theta_g2x
 n_clusters = 15
 
 centroids, labels = theta_g1(points, theta=1000)
-methods = ['kmeans++'] # 'kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
+methods = [] # ['kmeans++'] # 'kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
 misses = {}
 timings = {}
 evaluation_thr = 0.5
@@ -110,19 +122,40 @@ else:
     # centroids, labels = theta_g1(points, theta=189162) ####s3_elef###### Not good
     # centroids, labels = theta_g2(points, theta=120000, num_shuffles=50) ####s4
     # centroids, labels = theta_g2(points, theta=680, num_shuffles=50) ####s1
-    centroids, labels = theta_g1(points, theta=120000) ####s3 - break problem into smaller problems
+    # centroids, labels = theta_g1(points, theta=120000) ####s3 - break problem into smaller problems
 
-    # res = fgn_shuffles(points[:, None, :], thresholds=[(165000.0**2) / 2.0],
-    #                    metric=metric,
-    #                    num_shuffles=2000, mode='fgn_ma', verbose=True)
-    # fcentroids = res[1]['centroids']
-    # centroids = np.zeros((len(fcentroids), 2))
-    # for i, c in enumerate(fcentroids.keys()):
-    #     centroids[i] = np.squeeze(fcentroids[c])
+    # >>> Go to smaller clusters and find those that are dense
+    centroids, labels = theta_g2(points, theta=50000, num_shuffles=50) ####s3
+    unique_labels, sizes = np.unique(labels, return_counts=True)
+
+    # >>> Sub samples should be more sparse
+    # sub_sample = 500
+    # ss_index = np.random.randint(0, points.shape[0]-1, size = sub_sample)
+    # points_sample = points[ss_index].copy()
+    # points_sample = np.ascontiguousarray(points_sample)
+
+    # final_centroids = []
+    # for i in range(10):
+    #     centroids, labels = theta_g2(points_sample, theta=100000, num_shuffles=50)
+    #     final_centroids.append(centroids)
+
+    # final_centroids = np.concatenate(final_centroids)
+    # centroids, labels = theta_g2(final_centroids, theta=100000, num_shuffles=50)
+
+    # labels = assign(points, centroids)
+
+    # pl.figure()
+    # pl.title('sample of ' + str(sub_sample))
+    # pl.scatter(points[:sub_sample, 0], points[:sub_sample, 1], alpha=0.5)
+    # pl.plot(gt_centroids[:, 0], gt_centroids[:, 1],'m^')
+    # pl.show()
+
+
 
     # unique_labels, sizes = np.unique(labels, return_counts=True)
     print(centroids.shape)
     pl.figure()
+    pl.title('All points')
     pl.scatter(points[:, 0], points[:, 1], alpha=0.5)
     #pl.scatter(kcentroids[:, 0], kcentroids[:, 1])
     pl.plot(centroids[:, 0], centroids[:, 1],'bx')
