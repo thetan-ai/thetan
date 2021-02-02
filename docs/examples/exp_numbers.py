@@ -25,7 +25,7 @@ def show_clusters(X, method, centroids, gt_centroids, labels):
     pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'm^')
     pl.show()
 
-def 
+
     # res = fgn_shuffles(points[:, None, :], thresholds=[(165000.0**2) / 2.0],
     #                    metric=metric,
     #                    num_shuffles=2000, mode='fgn_ma', verbose=True)
@@ -37,7 +37,9 @@ def
 from pathlib import Path
 
 # dname = Path('c:/Users/elef/Devel/robotikos/docs/examples/S-Sets')
-dname = '/home/elef/Devel/robotikos/docs/examples/S-sets/'
+# dname = '/home/nasim/Devel/GRG-Lab/robotikos/docs/examples/S-sets/'
+dname = 'C:/Users/nasim/Devel/GRG-Lab/robotikos/docs/examples/S-sets/'
+
 
 ########s1########
 # points = np.loadtxt("S-sets\s1.txt")
@@ -47,8 +49,8 @@ dname = '/home/elef/Devel/robotikos/docs/examples/S-sets/'
 # gt_centroids = np.loadtxt("S-sets\s2-cb.txt")
 ########s2########
 
-points = np.loadtxt(dname + "s3.txt")
-gt_centroids = np.loadtxt(dname + "s3-cb.txt")
+points = np.loadtxt(dname + "s4.txt")
+gt_centroids = np.loadtxt(dname + "s4-cb.txt")
 # points = np.loadtxt(dname / "s3.txt")
 # gt_centroids = np.loadtxt(dname / "s3-cb.txt")
 ########s2########
@@ -100,7 +102,7 @@ if theta_range_plot:
 
         res = fgn_shuffles(points[:, None, :], thresholds=[(theta_t**2) / 2.0],
                            metric=metric,
-                           num_shuffles=1000, mode='fgn_ma', verbose=True)
+                           num_shuffles=10, mode='fgn_ma', verbose=True)
         centroids = res[1]['centroids']
         num_clusters.append(len(centroids))
     # pl.ylim([0 , 50])
@@ -125,8 +127,22 @@ else:
     # centroids, labels = theta_g1(points, theta=120000) ####s3 - break problem into smaller problems
 
     # >>> Go to smaller clusters and find those that are dense
-    centroids, labels = theta_g2(points, theta=50000, num_shuffles=50) ####s3
+    # centroids, labels = theta_g2(points, theta=100000, num_shuffles=50) ####s3
+    centroids, labels = theta_g2(points, theta=100000, num_shuffles=100) ####s3
+
     unique_labels, sizes = np.unique(labels, return_counts=True)
+    # pl.plot(unique_labels, sizes, 'red')
+    pl.plot(np.sort(sizes)[::-1], 'red')
+
+    big_idx = np.argsort(sizes)[::-1][:15]
+
+    big_centroids = centroids[big_idx]
+
+    labels = assign(points, big_centroids)
+
+    show_clusters(points, 'Big g2', big_centroids, gt_centroids, labels)
+
+
 
     # >>> Sub samples should be more sparse
     # sub_sample = 500
