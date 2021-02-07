@@ -132,11 +132,9 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.close(fig)
 
 
-#exp_type = 'easy'
 exp_type = 'hard'
 if exp_type == 'easy':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
-    #methods = ['birch']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
     verbose = True
@@ -149,9 +147,6 @@ if exp_type == 'easy':
     timings = {}
 
     if exp_type == 'blobs':
-        # Generate centers for the blobs so that it forms a 10 X 10 grid.
-        # xx = np.linspace(-22, 22, 10)
-        # yy = np.linspace(-22, 22, 10)
         
         xx = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
         yy = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
@@ -160,8 +155,6 @@ if exp_type == 'easy':
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                             np.ravel(yy)[:, np.newaxis]))
 
-        #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-        # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))
@@ -169,7 +162,7 @@ if exp_type == 'easy':
         for i in range(n_centres.shape[0]):
             cpos = n_centres[i]
             local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
-            #local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+
             X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
             y[i * n_local_samples: (i + 1) * n_local_samples] = i
             gt_centroids.append(local_X.mean(axis=0))
@@ -179,13 +172,11 @@ if exp_type == 'easy':
         points = X
         labels = y
         sz = len(n_centres)
-        #centroids = np.array(n_centres, dtype='f4')
+
         centroids = gt_centroids
 
     if exp_type == 'easy':
-        # Generate centers for the blobs so that it forms a 10 X 10 grid.
-        # xx = np.linspace(-22, 22, 10)
-        # yy = np.linspace(-22, 22, 10)
+
         blob_dis = 10
         cluster_x = 10
         cluster_y = 10
@@ -196,15 +187,14 @@ if exp_type == 'easy':
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                             np.ravel(yy)[:, np.newaxis]))
 
-        #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-        # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))
         y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
         for i in range(n_centres.shape[0]):
             cpos = n_centres[i]
-            #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+
             local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
             X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
             y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -215,7 +205,7 @@ if exp_type == 'easy':
         points = X
         labels = y
         sz = len(n_centres)
-        #centroids = np.array(n_centres, dtype='f4')
+
         centroids = gt_centroids
 
     if exp_type == 'hard':
@@ -229,15 +219,14 @@ if exp_type == 'easy':
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                             np.ravel(yy)[:, np.newaxis]))
 
-        #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-        # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))
         y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
         for i in range(n_centres.shape[0]):
             cpos = n_centres[i]
-            #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+
             local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
             X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
             y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -248,7 +237,7 @@ if exp_type == 'easy':
         points = X
         labels = y
         sz = len(n_centres)
-        #centroids = np.array(n_centres, dtype='f4')
+
         centroids = gt_centroids
 
     if exp_type == 'disks':
@@ -265,7 +254,7 @@ if exp_type == 'easy':
                 r = np.sqrt(np.random.random())
                 theta = np.random.random() * 2 * np.pi
                 x1 = 5 * x + r * np.cos(theta)
-                # y1 = 5 * y + 2 * r * np.sin(theta)
+
                 y1 = 5 * y + r * np.sin(theta)
                 coords.append([x1, y1])
                 
@@ -273,11 +262,6 @@ if exp_type == 'easy':
 
         points = np.array(coords)
         centroids = np.array(centroids, dtype='f4')
-    """
-    plot_centroids_clusters(points, centroids, labels,
-                                    'original',
-                                    initial_centroids=centroids)
-    """
 
 
     print('Before shuffling')
@@ -378,12 +362,10 @@ if exp_type == 'easy':
 
     if 'birch' in methods:
 
-        for bt in [2.7]:  # np.linspace(1.5, 2.5, 10):
+        for bt in [2.7]:
 
             t1 = time()
-            # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
-            # birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
-            # birch = Birch(threshold=3.0, n_clusters=int(np.prod(sz))).fit(points)
+
             birch = Birch(threshold=bt, n_clusters=int(np.prod(sz))).fit(points)
 
             t2 = time()
@@ -453,7 +435,7 @@ if exp_type == 'easy':
 exp_type = 'hard'
 if exp_type == 'hard':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
-    #methods = ['birch']
+
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
     verbose = True
@@ -466,9 +448,7 @@ if exp_type == 'hard':
     timings = {}
 
     if exp_type == 'blobs':
-        # Generate centers for the blobs so that it forms a 10 X 10 grid.
-        # xx = np.linspace(-22, 22, 10)
-        # yy = np.linspace(-22, 22, 10)
+
         
         xx = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
         yy = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
@@ -477,8 +457,7 @@ if exp_type == 'hard':
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                             np.ravel(yy)[:, np.newaxis]))
 
-        #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-        # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))
@@ -486,7 +465,7 @@ if exp_type == 'hard':
         for i in range(n_centres.shape[0]):
             cpos = n_centres[i]
             local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
-            #local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+
             X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
             y[i * n_local_samples: (i + 1) * n_local_samples] = i
             gt_centroids.append(local_X.mean(axis=0))
@@ -496,13 +475,11 @@ if exp_type == 'hard':
         points = X
         labels = y
         sz = len(n_centres)
-        #centroids = np.array(n_centres, dtype='f4')
+
         centroids = gt_centroids
 
     if exp_type == 'easy':
-        # Generate centers for the blobs so that it forms a 10 X 10 grid.
-        # xx = np.linspace(-22, 22, 10)
-        # yy = np.linspace(-22, 22, 10)
+
         blob_dis = 10
         cluster_x = 10
         cluster_y = 10
@@ -513,15 +490,14 @@ if exp_type == 'hard':
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                             np.ravel(yy)[:, np.newaxis]))
 
-        #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-        # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))
         y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
         for i in range(n_centres.shape[0]):
             cpos = n_centres[i]
-            #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+
             local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
             X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
             y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -532,7 +508,7 @@ if exp_type == 'hard':
         points = X
         labels = y
         sz = len(n_centres)
-        #centroids = np.array(n_centres, dtype='f4')
+
         centroids = gt_centroids
 
     if exp_type == 'hard':
@@ -546,15 +522,14 @@ if exp_type == 'hard':
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                             np.ravel(yy)[:, np.newaxis]))
 
-        #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-        # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))
         y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
         for i in range(n_centres.shape[0]):
             cpos = n_centres[i]
-            #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+
             local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
             X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
             y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -565,7 +540,7 @@ if exp_type == 'hard':
         points = X
         labels = y
         sz = len(n_centres)
-        #centroids = np.array(n_centres, dtype='f4')
+
         centroids = gt_centroids
 
     if exp_type == 'disks':
@@ -582,7 +557,7 @@ if exp_type == 'hard':
                 r = np.sqrt(np.random.random())
                 theta = np.random.random() * 2 * np.pi
                 x1 = 5 * x + r * np.cos(theta)
-                # y1 = 5 * y + 2 * r * np.sin(theta)
+
                 y1 = 5 * y + r * np.sin(theta)
                 coords.append([x1, y1])
                 
@@ -590,11 +565,6 @@ if exp_type == 'hard':
 
         points = np.array(coords)
         centroids = np.array(centroids, dtype='f4')
-    """
-    plot_centroids_clusters(points, centroids, labels,
-                                    'original',
-                                    initial_centroids=centroids)
-    """
 
 
     print('Before shuffling')
@@ -692,12 +662,10 @@ if exp_type == 'hard':
 
     if 'birch' in methods:
 
-        for bt in [2.0]:  # np.linspace(1.5, 2.5, 10):
+        for bt in [2.0]:
 
             t1 = time()
-            # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
-            # birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
-            # birch = Birch(threshold=3.0, n_clusters=int(np.prod(sz))).fit(points)
+
             birch = Birch(threshold=bt, n_clusters=int(np.prod(sz))).fit(points)
 
             t2 = time()
@@ -753,20 +721,7 @@ if exp_type == 'hard':
                 scores['mini_batch'][mode] = evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode)
         timings['mini_batch'] = mb_kmeans_time
 
-    # pl.figure()
-    # pl.plot(theta_range, elbow_check)
-    # pl.grid()
-    """
-    pl.figure()
-    pl.title('Score')
-    x_tmp = np.arange(len(modes))
-    width = 1/len(methods)
 
-    for i, method in zip(range(len(scores.keys())), scores.keys()):
-        pl.bar(x_tmp + width * i, scores[method].values(), width, label=method)
-    pl.xticks(x_tmp + width / 2 + (len(methods)-2) * width/2 , modes)
-    pl.legend()
-    """
 
     fig = pl.figure()
     pl.title('Timings')

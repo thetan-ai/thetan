@@ -133,9 +133,6 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
 
 
-#for exp_type, exp_param in zip(exps, exp_params):
-#3.89, 12.75, 29.96, 54.75
-#5.2, 15.4, 50, 70
 for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
                                         [5.195, 15.4, 50, 70],
                                         [3.5, 12.0, 29.0, 54.0],
@@ -148,7 +145,7 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
         scores[mode] = []
 
     for round_idx in range(10):
-        #exp_type = 'hard'
+
         print('step', round_idx)
         evaluation_thr = 0.0005*n_dim
         verbose = False
@@ -157,13 +154,10 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
         max_samples = 50
         blob_dis = 33
         cluster_n = 100
-        #scores = {}
-        #timings = {}
+
 
         if exp_type == 'high_dim':
-            # Generate centers for the blobs so that it forms a 10 X 10 grid.
-            # xx = np.linspace(-22, 22, 10)
-            # yy = np.linspace(-22, 22, 10)
+
             blob_dis = 1.6
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n*2, blob_dis)
             xx = xx[:cluster_n]
@@ -171,8 +165,7 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
             n_centres = np.pad(np.expand_dims(xx, -1), ((0, 0), (0, n_dim-1)), mode='edge')
 
             print(n_centres.shape)
-            #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-            # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
             gt_centroids = []
             sample_n = np.random.randint(10, max_samples+1, cluster_n)
@@ -181,7 +174,7 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
             idx = 0
             for i in range(n_centres.shape[0]):
                 cpos = n_centres[i]
-                #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+
                 local_X = cpos + np.random.normal(0, 1, (sample_n[i], n_dim))
                 X[idx:idx+sample_n[i]] = local_X
                 y[idx:idx+sample_n[i]] = i
@@ -193,11 +186,10 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
             points = X
             labels = y
             sz = len(n_centres)
-            #centroids = np.array(n_centres, dtype='f4')
+
             centroids = gt_centroids
 
-        #print('Before shuffling')
-        #print(points[:10])
+
 
         points_idx = np.arange(np.shape(points)[0])
         np.random.shuffle(points_idx)
@@ -210,8 +202,7 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
         points = new_points
         labels = new_labels
 
-        #print('After shuffling')
-        #print(points[:10])
+
 
         print('Number of points ', points.shape)
 
@@ -280,12 +271,12 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
             tcentroids, tlabels, tm_time = theta_g2(points, theta=theta, num_shuffles=50)
 
             print('tm ', tm_time)
-            #print('Speedup', kmeans_time/tm_time)
+
 
             if verbose:
                 plot_centroids_clusters(points, tcentroids, tlabels, 'tm', initial_centroids=centroids)
 
-                #ext = str(np.round(fgn_t, 2))
+
             print(tcentroids.shape[0])
             scores['method'].append('tm')
             for mode in modes:
@@ -300,12 +291,10 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
 
         if 'birch' in methods:
 
-            for bt in [b_th]:  # np.linspace(1.5, 2.5, 10):
+            for bt in [b_th]:
 
                 t1 = time()
-                # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
-                # birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
-                # birch = Birch(threshold=3.0, n_clusters=int(np.prod(sz))).fit(points)
+
                 birch = Birch(threshold=bt, n_clusters=int(np.prod(sz))).fit(points)
 
                 t2 = time()
@@ -361,14 +350,7 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
                     scores[mode].append(evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode))
             scores['Timing'].append(mb_kmeans_time)
 
-    """
-    fig = pl.figure()
-    pl.title('Hard_Timings_' + str(n_dim))
-    pl.boxplot([timings[key] for key in timings.keys()], showfliers=False)
-    pl.xticks([i for i in range(1, len(timings.keys())+1)], timings.keys())
-    pl.savefig('hard_Timings_'+str(n_dim)+'_' + 'high_dim' + '.pdf')
-    pl.close(fig)
-    """
+
     data=pd.DataFrame(scores)
     boxplot = sns.boxplot(x="method", y="Timing", data=data, fliersize=0)
     fig = boxplot.get_figure()
@@ -380,39 +362,3 @@ for n_dim, theta, b_th, exp_type in zip([10, 100, 1000, 2000],
         fig = boxplot.get_figure()
         fig.savefig('diff_hard_'+mode + '_'+str(n_dim)+'_' + 'high_dim.png', dpi=300)
         pl.close(fig)
-    """
-    for mode in modes:
-        fig = pl.figure()
-        pl.title('Hard_' + mode + '_' + str(n_dim))
-        pl.boxplot([scores[key][mode] for key in scores.keys()], showfliers=False)
-        pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig(mode + '_'+str(n_dim)+'_' + 'high_dim' + '.pdf')
-        pl.close(fig)
-    """
-
-    """
-    for mode in modes:
-        fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
-        ax.boxplot([scores[key][mode] for key in scores.keys()])
-        ax2.boxplot([scores[key][mode] for key in scores.keys()])
-        ax.set_ylim(0.9, 1.0)
-        ax2.set_ylim(0.0, 0.9)
-        ax.spines['bottom'].set_visible(False)
-        ax2.spines['top'].set_visible(False)
-        ax.xaxis.tick_top()
-        ax.tick_params(labeltop=False)
-        ax2.xaxis.tick_bottom()
-
-        d = .015  # how big to make the diagonal lines in axes coordinates
-        kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
-        ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
-        ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
-
-        kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-        ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
-        ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
-
-        pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig(mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
-        pl.close(fig)
-    """

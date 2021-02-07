@@ -135,7 +135,6 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
 exp_type = 'easy'
 if exp_type == 'easy':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
-    #methods = ['birch']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
     verbose = True
@@ -148,9 +147,6 @@ if exp_type == 'easy':
     timings = {}
 
 
-    # Generate centers for the blobs so that it forms a 10 X 10 grid.
-    # xx = np.linspace(-22, 22, 10)
-    # yy = np.linspace(-22, 22, 10)
     blob_dis = 10
     cluster_x = 10
     cluster_y = 10
@@ -161,8 +157,6 @@ if exp_type == 'easy':
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                         np.ravel(yy)[:, np.newaxis]))
 
-    #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-    # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
 
     gt_centroids = []
     sample_n = np.random.randint(10, max_samples+1, cluster_x * cluster_y)
@@ -171,7 +165,6 @@ if exp_type == 'easy':
     idx = 0
     for i in range(n_centres.shape[0]):
         cpos = n_centres[i]
-        #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
         local_X = cpos + np.random.normal(0, 1, (sample_n[i], 2))
         X[idx:idx + sample_n[i]] = local_X
         y[idx:idx + sample_n[i]] = i
@@ -182,7 +175,6 @@ if exp_type == 'easy':
     points = X
     labels = y
     sz = len(n_centres)
-    #centroids = np.array(n_centres, dtype='f4')
     centroids = gt_centroids
 
 
@@ -284,12 +276,9 @@ if exp_type == 'easy':
 
     if 'birch' in methods:
 
-        for bt in [2.7]:  # np.linspace(1.5, 2.5, 10):
+        for bt in [2.7]:
 
             t1 = time()
-            # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
-            # birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
-            # birch = Birch(threshold=3.0, n_clusters=int(np.prod(sz))).fit(points)
             birch = Birch(threshold=bt, n_clusters=int(np.prod(sz))).fit(points)
 
             t2 = time()
@@ -356,10 +345,10 @@ if exp_type == 'easy':
     print('easy timings', timings)
 
     t = 1
+
 exp_type = 'hard'
 if exp_type == 'hard':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
-    #methods = ['birch']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
     verbose = True
@@ -381,8 +370,6 @@ if exp_type == 'hard':
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                         np.ravel(yy)[:, np.newaxis]))
 
-    #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-    # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
 
     gt_centroids = []
     sample_n = np.random.randint(10, max_samples+1, cluster_x * cluster_y)
@@ -391,7 +378,6 @@ if exp_type == 'hard':
     idx = 0
     for i in range(n_centres.shape[0]):
         cpos = n_centres[i]
-        #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
         local_X = cpos + np.random.normal(0, 1, (sample_n[i], 2))
         X[idx:idx + sample_n[i]] = local_X
         y[idx:idx + sample_n[i]] = i
@@ -403,7 +389,6 @@ if exp_type == 'hard':
     points = X
     labels = y
     sz = len(n_centres)
-    #centroids = np.array(n_centres, dtype='f4')
     centroids = gt_centroids
 
 
@@ -502,12 +487,9 @@ if exp_type == 'hard':
 
     if 'birch' in methods:
 
-        for bt in [2.0]:  # np.linspace(1.5, 2.5, 10):
+        for bt in [2.0]:
 
             t1 = time()
-            # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
-            # birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
-            # birch = Birch(threshold=3.0, n_clusters=int(np.prod(sz))).fit(points)
             birch = Birch(threshold=bt, n_clusters=int(np.prod(sz))).fit(points)
 
             t2 = time()
@@ -563,20 +545,6 @@ if exp_type == 'hard':
                 scores['mini_batch'][mode] = evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode)
         timings['mini_batch'] = mb_kmeans_time
 
-    # pl.figure()
-    # pl.plot(theta_range, elbow_check)
-    # pl.grid()
-    """
-    pl.figure()
-    pl.title('Score')
-    x_tmp = np.arange(len(modes))
-    width = 1/len(methods)
-
-    for i, method in zip(range(len(scores.keys())), scores.keys()):
-        pl.bar(x_tmp + width * i, scores[method].values(), width, label=method)
-    pl.xticks(x_tmp + width / 2 + (len(methods)-2) * width/2 , modes)
-    pl.legend()
-    """
 
     fig = pl.figure()
     pl.title('Timings')

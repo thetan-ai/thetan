@@ -133,13 +133,12 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
 
 
-#for exp_type, exp_param in zip(exps, exp_params):
 for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', 'high_dim', 'high_dim']):
     methods = ['kmeans', 'kmeans++', 'ThetA', 'birch', 'mb_kmeans']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     scores = {'Timing':[], 'method':[], 'NMI':[], 'SIL':[], 'FMS':[], 'SSD':[]}
     for round_idx in range(10):
-        #exp_type = 'hard'
+
         print('step', round_idx)
         evaluation_thr = 0.05
         verbose = False
@@ -149,13 +148,10 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
         blob_dis = 33
         cluster_per_dim = 10
         n_dim = 10
-        #scores = {}
-        #timings = {}
+
 
         if exp_type == 'high_dim':
-            # Generate centers for the blobs so that it forms a 10 X 10 grid.
-            # xx = np.linspace(-22, 22, 10)
-            # yy = np.linspace(-22, 22, 10)
+
             blob_dis = 10
             xx = np.arange(-1*blob_dis*cluster_n//2, blob_dis*cluster_n//2, blob_dis)
             xx = xx[:cluster_n]
@@ -163,15 +159,12 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             n_centres = np.pad(np.expand_dims(xx, -1), ((0, 0), (0, n_dim-1)), mode='edge')
 
             print(n_centres.shape)
-            #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-            # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
 
             gt_centroids = []
             X = np.zeros((n_local_samples * n_centres.shape[0], n_dim))
             y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
             for i in range(n_centres.shape[0]):
                 cpos = n_centres[i]
-                #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
                 local_X = cpos + np.random.normal(0, 1, (n_local_samples, n_dim))
                 X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
                 y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -182,12 +175,8 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             points = X
             labels = y
             sz = len(n_centres)
-            #centroids = np.array(n_centres, dtype='f4')
             centroids = gt_centroids
         if exp_type == 'blobs':
-            # Generate centers for the blobs so that it forms a 10 X 10 grid.
-            # xx = np.linspace(-22, 22, 10)
-            # yy = np.linspace(-22, 22, 10)
 
             xx = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
             yy = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
@@ -196,8 +185,6 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                                     np.ravel(yy)[:, np.newaxis]))
 
-            #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-            # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
 
             gt_centroids = []
             X = np.zeros((n_local_samples * n_centres.shape[0], 2))
@@ -205,7 +192,6 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             for i in range(n_centres.shape[0]):
                 cpos = n_centres[i]
                 local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
-                #local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
                 X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
                 y[i * n_local_samples: (i + 1) * n_local_samples] = i
                 gt_centroids.append(local_X.mean(axis=0))
@@ -215,13 +201,11 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             points = X
             labels = y
             sz = len(n_centres)
-            #centroids = np.array(n_centres, dtype='f4')
+
             centroids = gt_centroids
 
         if exp_type == 'easy':
-            # Generate centers for the blobs so that it forms a 10 X 10 grid.
-            # xx = np.linspace(-22, 22, 10)
-            # yy = np.linspace(-22, 22, 10)
+
             blob_dis = 10
             cluster_x = 100
             cluster_y = 10
@@ -232,15 +216,14 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                                     np.ravel(yy)[:, np.newaxis]))
 
-            #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-            # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
             gt_centroids = []
             X = np.zeros((n_local_samples * n_centres.shape[0], 2))
             y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
             for i in range(n_centres.shape[0]):
                 cpos = n_centres[i]
-                #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
+
                 local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
                 X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
                 y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -251,7 +234,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             points = X
             labels = y
             sz = len(n_centres)
-            #centroids = np.array(n_centres, dtype='f4')
+
             centroids = gt_centroids
 
         if exp_type == 'hard':
@@ -265,15 +248,13 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
                                     np.ravel(yy)[:, np.newaxis]))
 
-            #X, y = make_blobs(n_samples=100000, centers=n_centres, random_state=0)
-            # X, y = make_blobs(n_samples=100000, centers=n_centres, cluster_std = 1.0, random_state=0)
+
 
             gt_centroids = []
             X = np.zeros((n_local_samples * n_centres.shape[0], 2))
             y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
             for i in range(n_centres.shape[0]):
                 cpos = n_centres[i]
-                #local_X = cpos + radius*(np.random.rand(n_local_samples, 2) - 0.5)
                 local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
                 X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
                 y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -284,7 +265,6 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
             points = X
             labels = y
             sz = len(n_centres)
-            #centroids = np.array(n_centres, dtype='f4')
             centroids = gt_centroids
 
         if exp_type == 'disks':
@@ -301,7 +281,6 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
                     r = np.sqrt(np.random.random())
                     theta = np.random.random() * 2 * np.pi
                     x1 = 5 * x + r * np.cos(theta)
-                    # y1 = 5 * y + 2 * r * np.sin(theta)
                     y1 = 5 * y + r * np.sin(theta)
                     coords.append([x1, y1])
                     
@@ -309,15 +288,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
 
             points = np.array(coords)
             centroids = np.array(centroids, dtype='f4')
-            """
-            plot_centroids_clusters(points, centroids, labels,
-                                        'original',
-                                        initial_centroids=centroids)
-            """
 
-
-        #print('Before shuffling')
-        #print(points[:10])
 
         points_idx = np.arange(np.shape(points)[0])
         np.random.shuffle(points_idx)
@@ -330,8 +301,6 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
         points = new_points
         labels = new_labels
 
-        #print('After shuffling')
-        #print(points[:10])
 
         print('Number of points ', points.shape)
 
@@ -395,66 +364,6 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
 
             tmp = 0
 
-        # Not usable yet
-        if 'local_search++' in methods:
-
-            t1 = time()
-            kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=50,
-                            max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
-
-
-            ls_centroids = kmeans.cluster_centers_
-
-            n_iter = int(np.prod(sz) * np.log(np.log(np.prod(sz))))
-
-            dis = np.zeros(len(points))
-            dis[0] = np.sum(np.square(points[0] - kcentroids[klabels[0]]))
-            for idx in range(1, len(points)):
-                dis[idx] = np.sum(np.square(points[idx] - kcentroids[klabels[idx]])) + dis[idx-1]
-            for _ in range(n_iter):
-                rand_n = np.random.uniform()
-                border = rand_n * dis[-1]
-                sel_idx = np.argwhere(dis >= border)[0]
-                min_idx = -1
-                for c_idx in range(len(ls_centroids)):
-                    temp_centroids = ls_centroids.copy()
-                    temp_centroids[c_idx] = points[sel_idx]
-                    temp_dis = np.zeros(len(points))
-                    temp_dis[0] = np.min(np.sum(np.square([temp_centroids[i] - points[0] for i in range(len(temp_centroids))])))
-                    for p_idx in range(1, len(points)):
-                        temp_dis[p_idx] = np.min(np.sum(np.square([temp_centroids[i] - points[p_idx] for i in range(len(temp_centroids))]))) + temp_dis[p_idx-1]
-                    if dis[-1] > temp_dis[-1]:
-                        min_idx = c_idx
-                        dis = temp_dis
-                
-                if min_idx != -1:
-                    ls_centroids[min_idx] = points[sel_idx]
-
-            ls_labels = np.zeros(len(points))
-            for p_idx in range(len(points)):
-                ls_labels[p_idx] = np.argmin(np.sum(np.square([ls_centroids[i] - points[p_idx] for i in range(len(ls_centroids))])))
-
-
-            if verbose:
-                plot_centroids_clusters(points, kcentroids, klabels,
-                                        'local_search++',
-                                        initial_centroids=centroids)
-
-            t2 = time()
-            local_search_time = t2 - t1
-            print('local_search++ ', local_search_time)
-            scores['local_search++'] = {}
-            for mode in modes:
-                if mode == 'SIL':
-                    scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, X=points, label=ls_labels)
-                elif mode == 'NMI' or mode == 'FMS' or mode == 'RAI':
-                    scores['local_search++'][mode] = evaluate_centroids(thr=evaluation_thr, mode=mode, label=ls_labels, true_label=labels)
-                elif mode == 'SSD':
-                    scores['local_search++'][mode] = evaluate_centroids(ls_centroids, centroids, evaluation_thr, mode=mode)
-            timings['local_search++'] = kmeans_time
-
-            tmp = 0
-
         if 'ThetA' in methods:
             theta = 8.0
             t1 = time()
@@ -481,12 +390,9 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
 
         if 'birch' in methods:
 
-            for bt in [10.0]:  # np.linspace(1.5, 2.5, 10):
+            for bt in [10.0]:
 
                 t1 = time()
-                # birch = Birch(threshold=1.7, n_clusters=None).fit(points)
-                # birch = Birch(threshold=1.7, n_clusters=int(np.prod(sz))).fit(points)
-                # birch = Birch(threshold=3.0, n_clusters=int(np.prod(sz))).fit(points)
                 birch = Birch(threshold=bt, n_clusters=int(np.prod(sz))).fit(points)
 
                 t2 = time()
@@ -541,22 +447,7 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
                     scores[mode].append(evaluate_centroids(mbk_centroids, centroids, evaluation_thr, mode=mode))
             scores['Timing'].append(mb_kmeans_time)
 
-    """
-    fig = pl.figure()
-    pl.title('hard_cluster_n_Timings_'+str(cluster_n))
-    pl.boxplot([timings[key] for key in timings.keys()], showfliers=False)
-    pl.xticks([i for i in range(1, len(timings.keys())+1)], timings.keys())
-    pl.savefig('hard_Timings_'+str(cluster_n)+'_' + 'cluster_n_' + '.png')
-    pl.close(fig)
 
-    for mode in modes:
-        fig = pl.figure()
-        pl.title('hard_cluster_n_'+mode+'_'+str(cluster_n))
-        pl.boxplot([scores[key][mode] for key in scores.keys()], showfliers=False)
-        pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig('hard_' + mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
-        pl.close(fig)
-    """
     data = pd.DataFrame(scores)
     boxplot = sns.boxplot(x='method', y='Timing', data=data, fliersize=0)
     fig = boxplot.get_figure()
@@ -567,30 +458,3 @@ for cluster_n, exp_type in zip([10, 100, 1000, 2000], ['high_dim', 'high_dim', '
         fig = boxplot.get_figure()
         fig.savefig('easy_'+mode+'_'+str(cluster_n)+'_cluster_n.png', dpi=300)
         pl.close(fig)
-
-    """
-    for mode in modes:
-        fig, (ax, ax2) = pl.subplots(2, 1, sharex=True)
-        ax.boxplot([scores[key][mode] for key in scores.keys()])
-        ax2.boxplot([scores[key][mode] for key in scores.keys()])
-        ax.set_ylim(0.9, 1.0)
-        ax2.set_ylim(0.0, 0.9)
-        ax.spines['bottom'].set_visible(False)
-        ax2.spines['top'].set_visible(False)
-        ax.xaxis.tick_top()
-        ax.tick_params(labeltop=False)
-        ax2.xaxis.tick_bottom()
-
-        d = .015  # how big to make the diagonal lines in axes coordinates
-        kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
-        ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
-        ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
-
-        kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-        ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
-        ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
-
-        pl.xticks([i for i in range(1, len(scores.keys())+1)], scores.keys())
-        pl.savefig(mode + '_'+str(cluster_n)+'_' + 'cluster_n' + '.png')
-        pl.close(fig)
-    """
