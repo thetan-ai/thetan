@@ -26,13 +26,13 @@ def show_clusters(X, method, centroids, gt_centroids, labels):
     pl.show()
 
 
-    # res = fgn_shuffles(points[:, None, :], thresholds=[(165000.0**2) / 2.0],
-    #                    metric=metric,
-    #                    num_shuffles=2000, mode='fgn_ma', verbose=True)
-    # fcentroids = res[1]['centroids']
-    # centroids = np.zeros((len(fcentroids), 2))
-    # for i, c in enumerate(fcentroids.keys()):
-    #     centroids[i] = np.squeeze(fcentroids[c])
+# res = fgn_shuffles(points[:, None, :], thresholds=[(165000.0**2) / 2.0],
+#                    metric=metric,
+#                    num_shuffles=2000, mode='fgn_ma', verbose=True)
+# fcentroids = res[1]['centroids']
+# centroids = np.zeros((len(fcentroids), 2))
+# for i, c in enumerate(fcentroids.keys()):
+#     centroids[i] = np.squeeze(fcentroids[c])
 
 from pathlib import Path
 
@@ -56,6 +56,21 @@ gt_centroids = np.loadtxt(dname + "s4-cb.txt")
 ########s2########
 # points = np.loadtxt("S-sets\s4.txt")
 # gt_centroids = np.loadtxt("S-sets\s4-cb.txt")
+
+
+# just playing with some random matrices
+# points2 = points - points * 0.2 * (np.random.rand(*points.shape) - 0.5)
+# I need possibly the opposite of the one bellow inflation/deflation.
+rmt = True
+
+if rmt:
+    points2 = points - points * 0.05 * np.random.normal(size=points.shape)
+
+    pl.figure()
+    pl.plot(points2[:, 0], points2[:, 1], 'r.', alpha=0.2)
+    pl.figure()
+    pl.plot(points[:, 0], points[:, 1], 'b.', alpha=0.2)
+    pl.show()
 
 np.random.shuffle(points)
 
