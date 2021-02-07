@@ -3,7 +3,7 @@ from time import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-
+import os
 
 from sklearn import cluster, datasets, mixture
 from sklearn.neighbors import kneighbors_graph
@@ -23,7 +23,7 @@ from robotikos.metricspeed import distance_matrix
 from theta_machines_tests import theta_g1, theta_g2, theta_g2x, labels_to_centroids
 import seaborn as sns
 
-
+dir_path = os.path.dirname(os.path.realpath(__file__))
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
         metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
@@ -73,7 +73,7 @@ def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=No
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
     pl.xlabel('x')
     pl.ylabel('y')
-    pl.savefig("C:/Users/nasim/OneDrive/Desktop/MyResearch/Compare_KM_++_ThetA.png", dpi=300)
+    pl.savefig(os.path.join(dir_path, 'Compare_KM_++_ThetA.png'), dpi=300)
     pl.show()
     # pl.clf()
 
@@ -228,4 +228,4 @@ pl.ylabel('Number of Clusters')
 pl.ylim([0 , 50])
 pl.xlim([0 , 50])
 pl.show()
-pl.savefig("C:/Users/nasim/OneDrive/Desktop/MyResearch/clusters_vs_ThetA_range.png", dpi=300)
+pl.savefig(os.path.join(dir_path, 'clusters_vs_ThetA_range.png'), dpi=300)

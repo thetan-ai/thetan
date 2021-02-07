@@ -1,6 +1,7 @@
 from time import time
 import numpy as np
 import string
+import os
 from numpy import testing as npt
 from robotikos.theta import theta_g1, assign
 from robotikos.fgm import fgn_shuffles, fgn
@@ -13,6 +14,8 @@ from sklearn.metrics.cluster import normalized_mutual_info_score
 from robotikos.metric import (NormalizedSumSquaredDiffMetric,
                               NormalizedSumAbsDiffMetric)
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+dir_path = os.path.join(dir_path, 'S-sets')
 
 def show_clusters(X, method, gt_centroids, labels, kcentroids, centroids):
     pl.figure()
@@ -27,16 +30,15 @@ def show_clusters(X, method, gt_centroids, labels, kcentroids, centroids):
     pl.plot(kcentroids[:, 0], kcentroids[:, 1], 'r^')
     pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
     pl.xlim([0 , 1000000])
-    pl.savefig("C:/Users/nasim/OneDrive/Desktop/MyResearch/s3_compare_GT_Tetha_KM++.png", dpi=300)
+    pl.savefig(os.path.join(dir_path,'s3_compare_GT_Tetha_KM++.png'), dpi=300)
     pl.show()
 
 
 
 from pathlib import Path
-dname = 'C:/Users/nasim/Devel/GRG-Lab/robotikos/docs/examples/S-sets/'
-points = np.loadtxt(dname + "s3.txt")
-gt_centroids = np.loadtxt(dname + "s3-cb.txt")
-labels_true =  np.loadtxt(dname + "s3-label.txt").astype('i8')
+points = np.loadtxt(os.path.join(dir_path ,'s3.txt'))
+gt_centroids = np.loadtxt(os.path.join(dir_path ,'s3-cb.txt'))
+labels_true =  np.loadtxt(os.path.join(dir_path ,'s3-label.txt')).astype('i8')
 labels_true = labels_true - 1
 
 points_orig = points.copy()
@@ -62,7 +64,6 @@ klabels = kmeans.labels_
 timings['kmeans++'] = kmeans_time
 tmp = 0
 print(kcentroids.shape)
-pl.scatter(points[:, 0], points[:, 1], alpha=0.5)
 
 theta_range_plot = False
 metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
@@ -87,8 +88,8 @@ else:
     pl.plot(np.sort(sizes)[::-1], '-o')
     pl.show
     data = np.array(np.sort(sizes)[::-1])
-    np.savetxt('C:/Users/nasim/OneDrive/Desktop/MyResearch/s3_centroids_size.dat', data)
-    pl.savefig("C:/Users/nasim/OneDrive/Desktop/MyResearch/s3_clusters_sizes_vs_numbers.png", dpi=300)
+    np.savetxt(os.path.join(dir_path,'s3_centroids_size.dat'), data)
+    pl.savefig(os.path.join(dir_path,'s3_clusters_sizes_vs_numbers.png'), dpi=300)
     big_idx = np.argsort(sizes)[::-1][:15]
     big_centroids = centroids[big_idx]
     labels = assign(points, big_centroids)
