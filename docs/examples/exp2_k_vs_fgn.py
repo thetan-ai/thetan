@@ -132,7 +132,8 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.close(fig)
 
 
-exp_type = 'easy'
+#exp_type = 'easy'
+exp_type = 'hard'
 if exp_type == 'easy':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
     #methods = ['birch']
@@ -446,7 +447,7 @@ if exp_type == 'easy':
     pl.xticks(x_tmp, timings.keys())
     pl.savefig('easy_Timing.png', dpi=300)
     pl.close(fig)
-
+    print('easy timings', timings)
 
     t = 1
 exp_type = 'hard'
@@ -774,3 +775,5 @@ if exp_type == 'hard':
     pl.xticks(x_tmp, timings.keys())
     pl.savefig('hard_Timing.png', dpi=300)
     pl.close(fig)
+
+    print('hard timings', timings)

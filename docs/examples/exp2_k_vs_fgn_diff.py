@@ -141,7 +141,7 @@ if exp_type == 'easy':
     verbose = True
     show_thr = False
     radius = 4
-    max_samples = 50
+    max_samples = 100
     blob_dis = 33
     cluster_per_dim = 10
     scores = {}
@@ -353,7 +353,7 @@ if exp_type == 'easy':
     pl.xticks(x_tmp, timings.keys())
     pl.savefig('diff_easy_Timing.png', dpi=300)
     pl.close(fig)
-
+    print('easy timings', timings)
 
     t = 1
 exp_type = 'hard'
@@ -365,7 +365,7 @@ if exp_type == 'hard':
     verbose = True
     show_thr = False
     radius = 4
-    max_samples = 50
+    max_samples = 100
     blob_dis = 33
     cluster_per_dim = 10
     scores = {}
@@ -585,3 +585,4 @@ if exp_type == 'hard':
     pl.xticks(x_tmp, timings.keys())
     pl.savefig('diff_hard_Timing.png', dpi=300)
     pl.close(fig)
+    print('hard timings', timings)
