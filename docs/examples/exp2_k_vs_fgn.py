@@ -88,7 +88,7 @@ def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=N
 
         closest = np.min(D, axis=1)
         count = np.sum(closest < thr)
-        score = count / len(centroids)
+        score = count / len(ecentroids)
 
     elif mode == 'NMI':
         score = normalized_mutual_info_score(true_label, label)
@@ -128,7 +128,7 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
     if initial_centroids is not None:
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
-    pl.savefig(exp_type+'_'+title+'.png', dpi=300)
+    pl.savefig('2_'+exp_type+'_'+title+'.png', dpi=300)
     pl.close(fig)
 
 
@@ -441,11 +441,11 @@ if exp_type == 'easy':
 
 
     fig = pl.figure()
-    pl.title('Timings')
+    pl.title('2_'+'Timings')
     x_tmp = np.arange(len(timings.values()))
     pl.bar(x_tmp, timings.values(), color=(1, 0, 0., 0.7))
     pl.xticks(x_tmp, timings.keys())
-    pl.savefig('easy_Timing.png', dpi=300)
+    pl.savefig('2_'+'easy_Timing.png', dpi=300)
     pl.close(fig)
     print('easy timings', timings)
 
