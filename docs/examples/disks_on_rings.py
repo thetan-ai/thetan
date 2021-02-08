@@ -1,5 +1,5 @@
 import numpy as np
-from pylab import plot, show, scatter, figure, title, savefig
+from pylab import plot, show, scatter, figure, title, savefig, axis
 
 
 def disks_on_a_circle(n_samples=15, inner_radius=60, outer_radius=15,
@@ -56,6 +56,7 @@ def show_clusters(method, centroids, labels):
     for i in range(X.shape[0]):
         colors[i] = unique_colors[labels[i]]
         colors[:, 3] = 1
+    axis('equal')
     scatter(X[:, 0], X[:, 1], c=colors)
     # scatter(scentroids[:, 0], scentroids[:, 1], c=np.array([0.6, .6, .6]))
     scatter(centroids[:, 0], centroids[:, 1])
@@ -66,7 +67,7 @@ if __name__ == "__main__":
 
 
     from robotikos.theta import theta_g1, assign
-    from theta_machines_tests import theta_g2, labels_to_centroids
+    from theta_machines_tests import theta_g2, theta_g2x, labels_to_centroids
     from robotikos.fgm import fgn_shuffles
 
     from robotikos.metric import IdentityFeature
@@ -80,11 +81,21 @@ if __name__ == "__main__":
 
     # notice that n_disks=15 challenging for theta_g2
 
+    n_disks = 15
+    X = disks_on_a_circle(n_samples=n_disks, inner_radius=60, outer_radius=15, density=500)
+
+    # n_disks = 15
+    # X2 = disks_on_a_circle(n_samples=n_disks, inner_radius=120, outer_radius=15, density=500)
+
+    # n_disks = 15 * 2
+
+    # X = np.concatenate((X, X2))
+
     # n_disks = 12
     # X = disks_on_a_circle(n_samples=n_disks, inner_radius=60, outer_radius=15, density=500)
 
-    n_disks = 120
-    X = disks_on_a_circle(n_samples=n_disks, inner_radius=600, outer_radius=15, density=500)
+    # n_disks = 120
+    # X = disks_on_a_circle(n_samples=n_disks, inner_radius=600, outer_radius=15, density=500)
 
     print('Shape of X', X.shape)
 
@@ -102,6 +113,11 @@ if __name__ == "__main__":
 
             centroids, labels = theta_g2(X, theta=theta, num_shuffles=50)
             show_clusters('t_g2', centroids, labels)
+
+            centroids, labels, interm_centroids = theta_g2x(X, theta=theta, num_partitions=10, num_centroid_shuffles=10)
+            show_clusters('t_g2x', centroids, labels)
+            show_clusters('t_g2x_interm', interm_centroids, labels)
+
 
         if 'fgn_shuffles' in methods:
 
