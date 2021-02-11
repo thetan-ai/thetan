@@ -3,7 +3,7 @@ from copy import deepcopy
 import sys
 import platform
 import versioneer
-import robotikos.__info__ as info
+import thetan.__info__ as info
 
 
 # NOTE: This file must remain Python 2 compatible for the foreseeable future,
@@ -116,7 +116,7 @@ if not sys.maxsize > 2 ** 32:
 
 flag_defines = msc_flag_defines if 'msc' in platform.python_compiler().lower() else gcc_flag_defines
 
-extbuilder = add_flag_checking(build_ext, flag_defines, 'robotikos')
+extbuilder = add_flag_checking(build_ext, flag_defines, 'thetan')
 
 # Use ext builder to add np.get_include() at build time, not during setup.py
 # execution.
