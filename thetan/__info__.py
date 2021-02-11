@@ -22,9 +22,9 @@ description = 'Thetan: Python package for ThetA'
 # README.txt, so that it shows up nicely on PyPI.  So please remember to edit
 # it only in one place and sync it correctly.
 long_description = """========================================================
-Thetan: Python package for advanced A.I., ML and Network architectures
+Thetan: Python package for ThetA (Theta Algorithms)
 ==============================================================================
-Fast and robust algorithms for artificial intelligence.
+Fast and robust algorithms for advanced A.I.
 """
 
 # versions
@@ -40,9 +40,9 @@ __license__ = 'MIT'
 __status__ = 'Pre-Alpha'
 __description__ = description
 __longdesc__ = long_description
-__url__ = 'https://gitlab.com/Garyfallidis/Robotikos.git'
+__url__ = 'https://gitlab.com/Anonymous/thetan.git'
 
-DOWNLOAD_URL = ('https://gitlab.com/Garyfallidis/Robotikos/{name}/archives/{ver}.tar.gz'.format(
+DOWNLOAD_URL = ('https://gitlab.com/Anonymous/thetan/{name}/archives/{ver}.tar.gz'.format(
     name=__packagename__, ver=__version__))
 
 __version__ = '0.1.0'
