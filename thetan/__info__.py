@@ -24,7 +24,7 @@ description = 'Thetan: Python package for ThetA'
 long_description = """========================================================
 Thetan: Python package for advanced A.I., ML and Network architectures
 ==============================================================================
-Fast and smart algorithms to make machines think better than humans.
+Fast and robust algorithms for artificial intelligence.
 """
 
 # versions
