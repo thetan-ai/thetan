@@ -79,13 +79,8 @@ EXTS = []
 ext_kwargs = {'include_dirs': ['src']}  # We add np.get_include() later
 
 for modulename, other_sources, language in (
-        ('robotikos.cythonutils', [], 'c'),
-        ('robotikos.theta', [], 'c'),
-        ('robotikos.featurespeed', [], 'c'),
-        ('robotikos.metricspeed', [], 'c'),
-        ('robotikos.clusteringspeed', [], 'c'),
-        ('robotikos.clustering_algorithms', [], 'c'),
-        ('robotikos.streamlinespeed', [], 'c')):
+        ('thetan.cythonutils', [], 'c'),
+        ('thetan.theta', [], 'c')):
     pyx_src = pjoin(*modulename.split('.')) + '.pyx'
     EXTS.append(Extension(modulename, [pyx_src] + other_sources,
                           language=language,
@@ -97,7 +92,7 @@ for modulename, other_sources, language in (
 # things, like building, rather than unconditionally in the setup.py import or
 # exec We may make tripwire versions of build_ext, build_py, install
 need_cython = True
-pybuilder = get_comrec_build('robotikos')
+pybuilder = get_comrec_build('thetan')
 # Cython is a dependency for building extensions, iff we don't have stamped
 # up pyx and c files.
 build_ext, need_cython = cyproc_exts(EXTS,
@@ -155,7 +150,7 @@ setup(
     maintainer_email=info.__email__,
     url=info.__url__,
     license=info.__license__,
-    packages=['robotikos', 'robotikos.tests'],
+    packages=['thetan', 'thetan.tests'],
     entry_points={
         'console_scripts': [
             # 'some.module:some_function',
@@ -163,7 +158,7 @@ setup(
         },
     include_package_data=True,
     package_data={
-        'robotikos': [
+        'thetan': [
             # When adding files here, remember to update MANIFEST.in as well,
             # or else they will not be included in the distribution on PyPI!
             # 'path/to/data_file',

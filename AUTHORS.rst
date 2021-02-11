@@ -5,7 +5,7 @@ Credits
 Maintainer
 ----------
 
-* Eleftherios Garyfallidis <garyfallidis@gmail.com>
+* Anonymous Anom <anom@gmail.com>
 
 Contributors
 ------------

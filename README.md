@@ -1,2 +1,3 @@
-# Do not share without permission from Eleftherios Garyfallidis
+Theta Algorithms (ThetA)
+
 

@@ -2,4 +2,4 @@
 Contributing
 ============
 
-Contributions are not welcome.
+Contributions are welcome.
