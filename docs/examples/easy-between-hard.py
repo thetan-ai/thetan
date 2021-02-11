@@ -13,46 +13,12 @@ from sklearn.datasets import make_blobs
 import pylab as pl
 from sklearn.cluster import Birch, MiniBatchKMeans
 from sklearn.mixture import GaussianMixture
-from robotikos.fgm import fgn_shuffles, fgn_ma
-from robotikos.metric import IdentityFeature
-from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric)
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score, adjusted_rand_score
-from robotikos.metricspeed import distance_matrix
 from theta_machines_tests import theta_g1, theta_g2, theta_g2x, labels_to_centroids
 import seaborn as sns
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
-    if mode == 'SSD':
-        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-        D = np.sqrt(distance_matrix(metric,
-                                    np.ascontiguousarray(ecentroids[:, None, :]),
-                                    np.ascontiguousarray(centroids[:, None, :])))
-
-        closest = np.min(D, axis=1)
-        count = np.sum(closest < thr)
-        score = count / len(centroids)
-
-    elif mode == 'NMI':
-        score = normalized_mutual_info_score(true_label, label)
-
-    elif mode == 'SIL':
-        score = silhouette_score(X, label)
-
-    elif mode == 'FMS':
-        score = fowlkes_mallows_score(true_label, label)
-
-    elif mode == 'RAI':
-        score = adjusted_rand_score(true_label, label)
-
-    else:
-        print('no mode')
-        score = 0
-
-    print('>>>>> ', score)
-    return score
 
 
 def plot_centroids_clusters(data, centroids, labels, title, initial_centroids=None):
@@ -210,7 +176,7 @@ for theta_t in theta_range:
     ext = str(np.round(theta_t, 2))
     if not show_thr:
         ext = ''
-    if theta_t == 4:
+    if theta_t == 25:
         plot_centroids_clusters(points, centroids, labels, 'tg ' + ext, initial_centroids=gt_centroids)
     timings['tg ' + ext] = tg_time
 

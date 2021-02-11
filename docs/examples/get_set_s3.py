@@ -3,16 +3,13 @@ import numpy as np
 import string
 import os
 from numpy import testing as npt
-from robotikos.theta import theta_g1, assign
-from robotikos.fgm import fgn_shuffles, fgn
-from robotikos.metric import IdentityFeature
+from thetan.theta import theta_g1, assign
 import matplotlib.pyplot as pl
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.metrics.cluster import adjusted_mutual_info_score
 from sklearn.metrics.cluster import normalized_mutual_info_score
-from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric)
+
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 dir_path = os.path.join(dir_path, 'S-sets')
@@ -65,39 +62,24 @@ timings['kmeans++'] = kmeans_time
 tmp = 0
 print(kcentroids.shape)
 
-theta_range_plot = False
-metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-if theta_range_plot:
-    range_theta = range(145000, 160000, 500)
-    num_clusters = []
-    for theta_t in range_theta:
-        res = fgn_shuffles(points[:, None, :], thresholds=[(theta_t**2) / 2.0],
-                           metric=metric,
-                           num_shuffles=10, mode='fgn_ma', verbose=True)
-        centroids = res[1]['centroids']
-        num_clusters.append(len(centroids))
-    pl.figure()
-    pl.plot(range_theta, num_clusters)
-    pl.plot(range_theta, num_clusters, 'o')
-    pl.grid()
-else:
-    # centroids, labels = theta_g1(points, theta=145000)
-    centroids, labels = theta_g2(points, theta=100000, num_shuffles=3000) ####s3
-    unique_labels, sizes = np.unique(labels, return_counts=True)
-    pl.figure()
-    pl.plot(np.sort(sizes)[::-1], '-o')
-    pl.show
-    data = np.array(np.sort(sizes)[::-1])
-    np.savetxt(os.path.join(dir_path,'s3_centroids_size.dat'), data)
-    pl.savefig(os.path.join(dir_path,'s3_clusters_sizes_vs_numbers.png'), dpi=300)
-    big_idx = np.argsort(sizes)[::-1][:15]
-    big_centroids = centroids[big_idx]
-    labels = assign(points, big_centroids)
-    show_clusters(points_orig, 'S3: Compare gt labels with K-means++ and ThetA', gt_centroids, labels_true, kcentroids, big_centroids)
-    labels.sort()
-    klabels.sort()
-    print('adjusted_rand_score for labels: ',adjusted_rand_score(labels_true, labels))
-    print('normalized_mutual_info_score (labels_true, labels): ' , normalized_mutual_info_score (labels_true, labels))
 
-    print('adjusted_rand_score for klabels: ',adjusted_rand_score(labels_true, klabels))
-    print('normalized_mutual_info_score (labels_true, klabels): ' , normalized_mutual_info_score (labels_true, klabels))
+# centroids, labels = theta_g1(points, theta=145000)
+centroids, labels = theta_g2(points, theta=100000, num_shuffles=3000) ####s3
+unique_labels, sizes = np.unique(labels, return_counts=True)
+pl.figure()
+pl.plot(np.sort(sizes)[::-1], '-o')
+pl.show
+data = np.array(np.sort(sizes)[::-1])
+np.savetxt(os.path.join(dir_path,'s3_centroids_size.dat'), data)
+pl.savefig(os.path.join(dir_path,'s3_clusters_sizes_vs_numbers.png'), dpi=300)
+big_idx = np.argsort(sizes)[::-1][:15]
+big_centroids = centroids[big_idx]
+labels = assign(points, big_centroids)
+show_clusters(points_orig, 'S3: Compare gt labels with K-means++ and ThetA', gt_centroids, labels_true, kcentroids, big_centroids)
+labels.sort()
+klabels.sort()
+print('adjusted_rand_score for labels: ',adjusted_rand_score(labels_true, labels))
+print('normalized_mutual_info_score (labels_true, labels): ' , normalized_mutual_info_score (labels_true, labels))
+
+print('adjusted_rand_score for klabels: ',adjusted_rand_score(labels_true, klabels))
+print('normalized_mutual_info_score (labels_true, klabels): ' , normalized_mutual_info_score (labels_true, klabels))

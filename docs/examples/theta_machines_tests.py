@@ -1,11 +1,7 @@
 from time import time
 import numpy as np
 from numpy import testing as npt
-from robotikos.theta import theta_g1, assign
-from robotikos.fgm import fgn_shuffles, fgn
-from robotikos.metric import IdentityFeature
-from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric)
+from thetan.theta import theta_g1, assign
 
 # summs, clusters_sizes, indices = theta_g1(X, theta=1000.0)
 
