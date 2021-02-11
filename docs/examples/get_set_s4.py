@@ -47,7 +47,7 @@ labels_true = labels_true - 1
 # pl.xlabel('Number of Clusters')
 # pl.ylabel('Size of Clusters')
 # pl.grid()
-# pl.savefig("C:/Users/nasim/OneDrive/Desktop/MyResearch/num_clusters_vs_size.png", dpi=300)
+# pl.savefig("num_clusters_vs_size.png", dpi=300)
 
 points_orig = points.copy()
 
