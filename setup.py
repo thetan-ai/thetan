@@ -12,7 +12,7 @@ import thetan.__info__ as info
 min_version = (3, 4)
 if sys.version_info < min_version:
     error = """
-robotikos does not support Python {0}.{1}.
+thetan does not support Python {0}.{1}.
 Python {2}.{3} and above is required. Check your Python version like so:
 
 python3 --version
