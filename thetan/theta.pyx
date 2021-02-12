@@ -84,7 +84,7 @@ cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) nogil:
     return result / D
 
 
-def distance_matric(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
+def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
     cdef:
         cnp.npy_intp i = 0

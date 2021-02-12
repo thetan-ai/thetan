@@ -12,13 +12,11 @@ from sklearn.datasets import make_blobs
 import pylab as pl
 from sklearn.cluster import Birch, MiniBatchKMeans
 from sklearn.mixture import GaussianMixture
-from robotikos.metric import IdentityFeature
-from robotikos.metric import (NormalizedSumSquaredDiffMetric,
-                              NormalizedSumAbsDiffMetric)
-from robotikos.theta import theta_g1, assign
+from thetan.theta import theta_g1, assign
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
-from robotikos.metricspeed import distance_matrix
+# from robotikos.metricspeed import distance_matrix
+from thetan.theta import distance_matrix as tdm
 
 import seaborn as sns
 
@@ -26,7 +24,7 @@ def labels_to_centroids(data, labels):
 
     unique_labels, unique_counts = np.unique(labels,
                                              return_counts=True)
-    
+
     centroids = np.zeros((len(unique_labels), data.shape[1]))
 
     for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
@@ -48,7 +46,7 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
         centroids, _ = theta_g1(X_work_cp, theta=theta, metric=metric)
-        t2 = time()        
+        t2 = time()
         timings.append(t2-t1)
 
         all_centroids[s] = centroids
@@ -65,13 +63,13 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
 
         X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
         offset += all_centroids[s].shape[0]
-    
+
     t1 = time()
     new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
     t2 = time()
     sum_of_time += t2 - t1
     print('Time for tg1 on centroids', t2 - t1)
-    
+
 
     t1 = time()
     final_indices = assign(X, new_centroids, metric=metric)
@@ -85,10 +83,13 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
 
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
-        metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
-        D = np.sqrt(distance_matrix(metric,
-                                    np.ascontiguousarray(ecentroids[:, None, :]),
-                                    np.ascontiguousarray(centroids[:, None, :])))
+        # metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
+        # D = np.sqrt(distance_matrix(metric,
+        #                             np.ascontiguousarray(ecentroids[:, None, :]),
+        #                             np.ascontiguousarray(centroids[:, None, :])))
+
+        D = np.sqrt(tdm(ecentroids, centroids))
+
 
         closest = np.min(D, axis=1)
         count = np.sum(closest < thr)
@@ -99,16 +100,16 @@ def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=N
 
     elif mode == 'SIL':
         score = silhouette_score(X, label)
-    
+
     elif mode == 'FMS':
         score = fowlkes_mallows_score(true_label, label)
 
     else:
         print('no mode')
         score = 0
-    
-    
-    
+
+
+
     print('>>>>> ', score)
     return score
 
