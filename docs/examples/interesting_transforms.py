@@ -3,7 +3,7 @@ import numpy as np
 import string
 import os
 from numpy import testing as npt
-from thetan.theta import theta_g1, assign
+from thetan.theta import theta_g1, assign, gravity
 import matplotlib.pyplot as pl
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
@@ -15,56 +15,113 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 dir_path = os.path.join(dir_path, 'S-sets')
 
 
+def labels_to_centroids(data, labels):
+
+    unique_labels, unique_counts = np.unique(labels,
+                                             return_counts=True)
+
+    centroids = np.zeros((len(unique_labels), data.shape[1]))
+
+    for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
+        centroids[i] = np.sum(data[labels == u], axis=0) / c
+
+    return centroids
+
+
+def grid_of_gaussians(n_local_samples, blob_dis=5):
+    cluster_x = 10
+    cluster_y = 10
+    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
+    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+
+    xx, yy = np.meshgrid(xx, yy)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
+                           np.ravel(yy)[:, np.newaxis]))
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+
+        local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    gt_centroids = np.array(gt_centroids)
+
+    return X, gt_centroids
+
+
 def show_clusters(X, method, gt_centroids, labels, kcentroids, centroids):
     pl.figure()
     pl.title('Method is ' + method)
-    unique_colors = np.random.rand(gt_centroids.shape[0], 3)
+    # unique_colors = np.random.rand(np.unique(labels).shape[0], 3)
+    # Tricky point here if there if some labels are missing
+    unique_colors = np.random.rand(labels.max() + 1, 3)
 
     colors = np.zeros((labels.shape[0], 3), dtype='f8')
     for i in range(X.shape[0]):
         colors[i] = unique_colors[labels[i]]
     pl.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
     pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'ko')
-    pl.plot(kcentroids[:, 0], kcentroids[:, 1], 'r^')
+    # pl.plot(kcentroids[:, 0], kcentroids[:, 1], 'r^')
     pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
-    pl.xlim([0 , 1000000])
-    pl.savefig(os.path.join(dir_path,'s1_compare_GT_TethA_KM++.png'), dpi=300)
-    pl.show()
+    # pl.xlim([0 , 1000000])
+    # pl.savefig(os.path.join(dir_path,'s1_compare_GT_TethA_KM++.png'), dpi=300)
+    # pl.show()
 
-def show_points(X):
+
+def show_points(X, title='initial'):
     pl.figure()
     pl.axis('equal')
-    pl.title('Initial Data')
-    pl.scatter(X[:, 0], X[:, 1], alpha=0.5)
-    
-def show_points_two(X, Y):
+    pl.title(title)
+    pl.scatter(X[:, 0], X[:, 1], alpha=0.1)
+
+
+def show_points_two(X, Y, title='overlap'):
     pl.figure()
     pl.axis('equal')
-    pl.title('Initial Data')
-    pl.scatter(X[:, 0], X[:, 1], color='b', alpha=0.25)
-    pl.scatter(Y[:, 0], Y[:, 1], color='g', alpha=0.25)
-
-from pathlib import Path
-points = np.loadtxt(os.path.join(dir_path,'s1.txt'))
-
-show_points(points)
+    pl.title(title)
+    pl.scatter(X[:, 0], X[:, 1], color='b', alpha=0.1)
+    pl.scatter(Y[:, 0], Y[:, 1], color='g', alpha=0.1)
 
 
-print(points.shape)
+# X = np.loadtxt(os.path.join(dir_path, 's3.txt'))
 
-normal = np.random.normal(loc=0.0, scale=0.5, size=points.shape)
+X, gt_c = grid_of_gaussians(250, blob_dis=5)
 
-points2 = points * normal
+np.random.shuffle(X)
 
-points3 = points - 0.01 * points2
+# X = np.ascontiguousarray(X)
 
+# show_points(X)
 
-# show_points(points2)
+theta = 5
 
-show_points(points3)
+centroids, labels, summs, clusters_sizes = theta_g1(X, theta=theta,
+                                                    metric='euclidean',
+                                                    all_out=True)
 
-# show_points(points4)
+show_clusters(X, 'TSG', gt_c, labels, None, centroids)
 
-show_points_two(points, points3)
+final_labels = gravity(X, centroids, clusters_sizes, theta/2., metric='euclidean')
+
+def labels_to_centroids(data, labels):
+
+    unique_labels, unique_counts = np.unique(labels,
+                                             return_counts=True)
+
+    centroids = np.zeros((len(unique_labels), data.shape[1]))
+
+    for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
+        centroids[i] = np.sum(data[labels == u], axis=0) / c
+
+    return centroids
+
+final_centroids = labels_to_centroids(X, final_labels)
+
+show_clusters(X, 'TSG-G', gt_c, final_labels, None, final_centroids)
 
 pl.show()

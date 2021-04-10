@@ -24,7 +24,7 @@ To run the examples with ThetA (TSG, TDG) go to thetan/docs/examples
     python filename.py
 
     exp_2d_blobs.py
-    python exp_ndim_hard.py
+    exp_ndim_hard.py
     get_S1.py
     get_S2.py
     get_S3.py
