@@ -242,3 +242,48 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
     return final_indices
 
 
+def gravity(double[:, ::1] X, double[:, ::1] centroids,
+            cnp.npy_intp[:] sizes, double theta, metric='euclidean'):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0
+        cnp.npy_intp k = 0, K = centroids.shape[0]
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+
+        cnp.npy_intp maximum = 0
+        cnp.npy_intp argmax = -1
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+    with nogil:
+
+        for i in range(N):
+            maximum = 0
+            argmax = -1
+            for k in range(K):
+
+                dist = metric_func(&X[i, 0], &centroids[k, 0], D)
+                if dist < theta:
+                    if sizes[k] > maximum:
+                        maximum = sizes[k]
+                        argmax = k
+
+            indices[i] = argmax
+
+    final_indices = np.asarray(indices)
+
+    return final_indices
+

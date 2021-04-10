@@ -219,9 +219,7 @@ if exp_type == 'easy':
 
         xx, yy = np.meshgrid(xx, yy)
         n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
-                            np.ravel(yy)[:, np.newaxis]))
-
-
+                               np.ravel(yy)[:, np.newaxis]))
 
         gt_centroids = []
         X = np.zeros((n_local_samples * n_centres.shape[0], 2))

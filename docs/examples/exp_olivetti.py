@@ -38,12 +38,12 @@ face0 = faces[0].reshape((64, 64))
 target0 = target[0]
 faces_orig = faces.copy()
 n_samples, n_features = faces.shape
-faces = faces - faces.mean(axis=0)
+# faces = faces - faces.mean(axis=0)
 test = 1
 
 #######################K-means++##########################
 from theta_machines_tests import theta_g1, theta_g2, theta_g2x
-methods = ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
+methods = [] # ['kmeans', 'kmeans++', 'fgn_ma', 'birch', 'mb_kmeans', 'gmm']
 if 'kmeans++' in methods:
     timings = {}
     evaluation_thr = 0.5
@@ -58,18 +58,61 @@ if 'kmeans++' in methods:
     klabels = kmeans.labels_
     timings['kmeans++'] = kmeans_time
     tmp = 0
-test_fig = kcentroids.reshape(40,64,64)
+    test_fig = kcentroids.reshape(40,64,64)
+
 t = 1
 ########################################################
 samples_total = 400
-patches_size = 11
+patches_size = 25
 # all_small_c = np.zeros((samples_total, 291 * patches_size*patches_size), dtype='f8')
 all_small_c = []
 list_centroids = []
 verbose = False
+random_patches = 100
+total_random_patches = samples_total * random_patches
 
-for i in range (samples_total):
-    patch_sz = (patches_size, patches_size)
+patch_sz = (patches_size, patches_size)
+
+all_patches = np.zeros((total_random_patches, patches_size*patches_size))
+
+for i in range(samples_total):
+
+    patches = extract_patches_2d(faces[i].reshape(64, 64), patch_sz, max_patches=random_patches, random_state=42)
+    patches = patches.reshape(random_patches, patches_size*patches_size)
+    all_patches[i*random_patches: i*random_patches + random_patches] = patches
+
+# centroids, labels = theta_g2(all_patches, theta=.6, num_shuffles=5)
+t1 = time()
+centroids, labels = theta_g1(all_patches, theta=4.3)
+unique_labels, sizes = np.unique(labels, return_counts=True)
+t2 = time()
+print('Duration for one run', t2 - t1)
+
+verbose = False
+
+if verbose:
+    num_clusters = []
+    # range_theta = np.arange(0.1, 5, 0.1)
+    range_theta = np.arange(4, 5, 0.1)
+    cnt = 0
+    for theta_t in range_theta:
+        print(cnt)
+        centroids, labels = theta_g1(all_patches, theta=theta_t) #labels.shape:(3903,)
+        num_clusters.append(len(centroids))
+        cnt += 1
+
+
+    pl.figure()
+    num_clusters = np.asarray(num_clusters)
+    pl.plot(range_theta, num_clusters)
+    pl.plot(range_theta, num_clusters, 'o')
+    pl.show()
+
+
+t = 1
+
+for i in range(samples_total):
+
     patches = extract_patches_2d(faces[i].reshape(64, 64), patch_sz, max_patches=0.1, random_state=42)
     patches = patches.reshape(291, patches_size*patches_size)
     centroids, labels = theta_g2(patches, theta=.6, num_shuffles=5)
