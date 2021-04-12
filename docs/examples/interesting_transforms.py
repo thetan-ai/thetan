@@ -3,7 +3,7 @@ import numpy as np
 import string
 import os
 from numpy import testing as npt
-from thetan.theta import theta_g1, assign, gravity
+from thetan.theta import theta_g1, assign, gravity, calibrate, theta_ksi
 import matplotlib.pyplot as pl
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
@@ -92,13 +92,13 @@ def show_points_two(X, Y, title='overlap'):
 
 X, gt_c = grid_of_gaussians(250, blob_dis=5)
 
-np.random.shuffle(X)
+# np.random.shuffle(X)
 
 # X = np.ascontiguousarray(X)
 
 # show_points(X)
 
-theta = 5
+theta = 4
 
 centroids, labels, summs, clusters_sizes = theta_g1(X, theta=theta,
                                                     metric='euclidean',
@@ -106,7 +106,7 @@ centroids, labels, summs, clusters_sizes = theta_g1(X, theta=theta,
 
 show_clusters(X, 'TSG', gt_c, labels, None, centroids)
 
-final_labels = gravity(X, centroids, clusters_sizes, theta/2., metric='euclidean')
+# final_labels = gravity(X, centroids, clusters_sizes, theta/2., metric='euclidean')
 
 def labels_to_centroids(data, labels):
 
@@ -120,8 +120,99 @@ def labels_to_centroids(data, labels):
 
     return centroids
 
+# final_centroids = labels_to_centroids(X, final_labels)
+
+# show_clusters(X, 'TSG-G', gt_c, final_labels, None, final_centroids)
+
+
+def cluster_distribution(X, centroids, labels, clusters_sizes):
+
+    distr = {}
+    sumd = []
+    sigd = []
+
+    for c in range(centroids.shape[0]):
+        distr[c] = []
+
+    for i, l in enumerate(labels):
+        distr[l].append(np.linalg.norm(X[i] - centroids[labels[i]]))
+
+    pl.figure()
+    pl.title('distr')
+    max_length = 0
+    for c in range(centroids.shape[0]):
+        distr[c] = np.sort(distr[c])[::-1]
+        current_length = len(distr[c])
+        if current_length > max_length:
+            max_length = current_length
+
+    fdistr = np.zeros((centroids.shape[0], max_length), 'f8')
+    integrals = []
+
+    for c in range(centroids.shape[0]):
+        tmp = np.zeros(max_length, 'f8')
+        current_length = len(distr[c])
+        tmp[:current_length] = distr[c]
+        sumd.append(np.mean(distr[c]))
+        sigd.append(np.std(distr[c]))
+        distr[c] = tmp.copy()
+        fdistr[c] = tmp.copy()
+        integrals.append(np.sum(tmp))
+        pl.plot(distr[c], alpha=0.2)
+        # print(c, distr)
+
+    pl.figure()
+    pl.title('integrals')
+    pl.plot(integrals, '.')
+
+    return distr, sumd, fdistr, integrals
+
+
+distr, sumd, fdistr, integrals = cluster_distribution(X, centroids, labels, clusters_sizes)
+
+theta2 = theta
+
+centroids2, labels2, summs2, clusters_sizes2 = theta_g1(fdistr, theta=theta2,
+                                                        metric='euclidean',
+                                                        all_out=True)
+print('Centroids2',  centroids2.shape)
+print('Fdistr',  fdistr.shape)
+
+integrals = np.array(integrals)[:, None]
+
+theta3 = np.mean(integrals) / 4
+
+centroids3, labels3, summs3, clusters_sizes3 = theta_g1(integrals, theta=theta3,
+                                                        metric='euclidean',
+                                                        all_out=True)
+print('Centroids3',  centroids3.shape)
+print('Labels3',  labels3.shape)
+print('Clusters_sizes3',  clusters_sizes3.shape)
+
+small_clusters_indices = np.where(clusters_sizes3 < np.mean(clusters_sizes3) / 2)[0]
+
+flagged = np.zeros(labels.shape, 'i8')
+for si in small_clusters_indices:
+    flagged[labels == si] = 1
+
+final_labels = calibrate(X, centroids, labels,
+                         flagged, metric='euclidean')
+
 final_centroids = labels_to_centroids(X, final_labels)
 
-show_clusters(X, 'TSG-G', gt_c, final_labels, None, final_centroids)
+show_clusters(X, 'TSG', gt_c, final_labels, None, final_centroids)
 
+
+theta = 4
+
+centroids5, labels5, summs5, clusters_sizes5, integrals5 = theta_ksi(X, theta=theta,
+                                                                     metric='euclidean',
+                                                                     ksi=4,
+                                                                     all_out=True)
+
+pl.figure()
+pl.title('integrals5')
+# pl.plot(integrals5, '.')
+pl.hist(integrals5)
+test = 1
 pl.show()
