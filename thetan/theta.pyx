@@ -1,4 +1,4 @@
-# distutils: language = c
+# distutils: language = c++
 # cython: wraparound=False, cdivision=True, boundscheck=False, initializedcheck=False
 
 cimport cython
