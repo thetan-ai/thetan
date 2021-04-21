@@ -3,7 +3,7 @@ import numpy as np
 import string
 import os
 from numpy import testing as npt
-from thetan.theta import theta_g1, assign, gravity, calibrate, theta_ksi
+from thetan.theta import theta_g1, assign, gravity, calibrate
 import matplotlib.pyplot as pl
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
@@ -92,7 +92,11 @@ def show_points_two(X, Y, title='overlap'):
 
 X, gt_c = grid_of_gaussians(250, blob_dis=5)
 
-# np.random.shuffle(X)
+np.random.shuffle(X)
+
+X2 = X.copy()
+
+X = X[:int(0.1 * len(X))]
 
 # X = np.ascontiguousarray(X)
 
@@ -121,7 +125,6 @@ def labels_to_centroids(data, labels):
     return centroids
 
 # final_centroids = labels_to_centroids(X, final_labels)
-
 # show_clusters(X, 'TSG-G', gt_c, final_labels, None, final_centroids)
 
 
@@ -168,51 +171,75 @@ def cluster_distribution(X, centroids, labels, clusters_sizes):
     return distr, sumd, fdistr, integrals
 
 
-distr, sumd, fdistr, integrals = cluster_distribution(X, centroids, labels, clusters_sizes)
+def cluster_distribution_hist(X, centroids, labels, theta):
 
-theta2 = theta
+    distr = {}
 
-centroids2, labels2, summs2, clusters_sizes2 = theta_g1(fdistr, theta=theta2,
-                                                        metric='euclidean',
-                                                        all_out=True)
-print('Centroids2',  centroids2.shape)
-print('Fdistr',  fdistr.shape)
+    for c in range(centroids.shape[0]):
+        distr[c] = []
 
-integrals = np.array(integrals)[:, None]
+    for i, l in enumerate(labels):
+        distr[l].append(np.linalg.norm(X[i] - centroids[labels[i]]))
 
-theta3 = np.mean(integrals) / 4
+    pl.figure()
+    pl.title('distr - corrected')
+    for c in range(centroids.shape[0]):
+        distr[c], b = np.histogram(distr[c], bins=10, range=(0, 2*theta))
+        # pl.plot(b[:-1], distr[c], alpha=0.2,)
 
-centroids3, labels3, summs3, clusters_sizes3 = theta_g1(integrals, theta=theta3,
-                                                        metric='euclidean',
-                                                        all_out=True)
-print('Centroids3',  centroids3.shape)
-print('Labels3',  labels3.shape)
-print('Clusters_sizes3',  clusters_sizes3.shape)
+        # pl.hist(distr[c], bins=50, range=(0, theta))
+        # pl.show()
 
-small_clusters_indices = np.where(clusters_sizes3 < np.mean(clusters_sizes3) / 2)[0]
+    arr = np.zeros((len(distr), distr[0].shape[0]))
+    for c in range(centroids.shape[0]):
+        arr[c] = distr[c]
 
-flagged = np.zeros(labels.shape, 'i8')
-for si in small_clusters_indices:
-    flagged[labels == si] = 1
-
-final_labels = calibrate(X, centroids, labels,
-                         flagged, metric='euclidean')
-
-final_centroids = labels_to_centroids(X, final_labels)
-
-show_clusters(X, 'TSG', gt_c, final_labels, None, final_centroids)
+    pl.figure()
+    pl.title('distr - image')
+    pl.imshow(arr)
+    return distr, arr
 
 
-theta = 4
+distr, arr = cluster_distribution_hist(X, centroids, labels, theta)
 
-centroids5, labels5, summs5, clusters_sizes5, integrals5 = theta_ksi(X, theta=theta,
-                                                                     metric='euclidean',
-                                                                     ksi=4,
-                                                                     all_out=True)
 
-pl.figure()
-pl.title('integrals5')
-# pl.plot(integrals5, '.')
-pl.hist(integrals5)
-test = 1
+# distr, sumd, fdistr, integrals = cluster_distribution(X, centroids, labels, clusters_sizes)
+
+# theta2 = theta
+
+# centroids2, labels2, summs2, clusters_sizes2 = theta_g1(fdistr, theta=theta2,
+#                                                         metric='euclidean',
+#                                                         all_out=True)
+# print('Centroids2',  centroids2.shape)
+# print('Fdistr',  fdistr.shape)
+
+# integrals = np.array(integrals)[:, None]
+
+# theta3 = np.mean(integrals) / 4
+
+# centroids3, labels3, summs3, clusters_sizes3 = theta_g1(integrals, theta=theta3,
+#                                                         metric='euclidean',
+#                                                         all_out=True)
+# print('Centroids3',  centroids3.shape)
+# print('Labels3',  labels3.shape)
+# print('Clusters_sizes3',  clusters_sizes3.shape)
+
+# small_clusters_indices = np.where(clusters_sizes3 < np.mean(clusters_sizes3) / 2)[0]
+
+# flagged = np.zeros(labels.shape, 'i8')
+# for si in small_clusters_indices:
+#     flagged[labels == si] = 1
+
+# final_labels = calibrate(X, centroids, labels,
+#                          flagged, metric='euclidean')
+
+# final_centroids = labels_to_centroids(X, final_labels)
+
+# show_clusters(X, 'TSG', gt_c, final_labels, None, final_centroids)
+
+
+
+
 pl.show()
+
+bkp = 1

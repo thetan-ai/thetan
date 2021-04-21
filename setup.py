@@ -80,7 +80,7 @@ ext_kwargs = {'include_dirs': ['src']}  # We add np.get_include() later
 
 for modulename, other_sources, language in (
         ('thetan.cythonutils', [], 'c'),
-        ('thetan.theta', [], 'c++')):
+        ('thetan.theta', [], 'c')):
     pyx_src = pjoin(*modulename.split('.')) + '.pyx'
     EXTS.append(Extension(modulename, [pyx_src] + other_sources,
                           language=language,
