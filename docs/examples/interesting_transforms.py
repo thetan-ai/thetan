@@ -96,7 +96,7 @@ np.random.shuffle(X)
 
 X2 = X.copy()
 
-X = X[:int(0.1 * len(X))]
+# X = X[:int(0.1 * len(X))]
 
 # X = np.ascontiguousarray(X)
 
@@ -184,7 +184,7 @@ def cluster_distribution_hist(X, centroids, labels, theta):
     pl.figure()
     pl.title('distr - corrected')
     for c in range(centroids.shape[0]):
-        distr[c], b = np.histogram(distr[c], bins=10, range=(0, 2*theta))
+        distr[c], b = np.histogram(distr[c], bins=50, range=(0, 2*theta))
         # pl.plot(b[:-1], distr[c], alpha=0.2,)
 
         # pl.hist(distr[c], bins=50, range=(0, theta))
