@@ -67,6 +67,7 @@ def show_clusters(X, method, gt_centroids, labels, centroids):
     pl.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
     pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'ko')
     pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
+    # pl.legend()
     # pl.xlim([0 , 1000000])
     # pl.savefig(os.path.join(dir_path,'s1_compare_GT_TethA_KM++.png'), dpi=300)
     # pl.show()
@@ -87,10 +88,10 @@ def show_points_two(X, Y, title='overlap'):
     pl.scatter(Y[:, 0], Y[:, 1], color='g', alpha=0.1)
 
 
-X = np.loadtxt(os.path.join(dir_path, 's3.txt'))
-gt_c = np.loadtxt(os.path.join(dir_path, 's3-cb.txt'))
+# X = np.loadtxt(os.path.join(dir_path, 's4.txt'))
+# gt_c = np.loadtxt(os.path.join(dir_path, 's4-cb.txt'))
 
-# X, gt_c = grid_of_gaussians(250, blob_dis=5)
+X, gt_c = grid_of_gaussians(250, blob_dis=5)
 
 np.random.shuffle(X)
 
@@ -102,8 +103,8 @@ X2 = X.copy()
 
 # show_points(X)
 
-theta = 3.5
-theta = 130000
+# theta = 4
+theta = 100000
 
 centroids, labels, summs, clusters_sizes = theta_g1(X, theta=theta,
                                                     metric='euclidean',
@@ -185,12 +186,16 @@ def cluster_distribution_hist(X, centroids, labels, theta):
     for c in range(centroids.shape[0]):
         distr[c], b = np.histogram(distr[c], bins=50, range=(0, 2*theta))
 
+    # pl.figure()
+    # pl.title('distr - plot')
     arr = np.zeros((len(distr), distr[0].shape[0]))
     proj = np.zeros(arr.shape[0])
-    tmp = np.log(np.arange(arr.shape[1]) + 2)
+    tmp = np.log(np.arange(arr.shape[1]) + 2)[::-1]
     for c in range(centroids.shape[0]):
         arr[c] = distr[c]
         proj[c] = np.sum(arr[c] * tmp)
+    #     pl.plot(arr[c], label=c, alpha=0.5)
+    # pl.legend()
 
     pl.figure()
     pl.title('distr - image')
@@ -200,8 +205,12 @@ def cluster_distribution_hist(X, centroids, labels, theta):
     pl.title('projections')
     pl.plot(proj, '.')
 
-    return distr, arr, proj
+    pl.figure()
+    pl.title('sorted projections')
+    pl.grid()
+    pl.plot(np.sort(proj)[::-1], '.')
 
+    return distr, arr, proj
 
 
 # distr, sumd, fdistr, integrals = cluster_distribution(X, centroids, labels, clusters_sizes)
@@ -209,7 +218,7 @@ def cluster_distribution_hist(X, centroids, labels, theta):
 distrh, arrh, projh = cluster_distribution_hist(X, centroids, labels, theta)
 
 labels_proj = np.zeros(X.shape[0], dtype='i8')
-res_bool = projh < 400
+res_bool = projh > 600
 for i, l in enumerate(labels):
 
     if res_bool[l]:
@@ -218,6 +227,16 @@ for i, l in enumerate(labels):
         labels_proj[i] = 1
 
 show_clusters(X, 'projection', gt_c, labels_proj, centroids)
+
+
+pl.figure()
+pl.title('Sizes of clusters')
+pl.plot(clusters_sizes, '.')
+
+pl.figure()
+pl.title('Sorted sizes of clusters')
+pl.grid()
+pl.plot(np.sort(clusters_sizes)[::-1], '.')
 
 
 # theta2 = theta
@@ -252,9 +271,7 @@ show_clusters(X, 'projection', gt_c, labels_proj, centroids)
 
 # show_clusters(X, 'TSG', gt_c, final_labels, None, final_centroids)
 
-
-
-
 pl.show()
+
 
 bkp = 1
