@@ -54,7 +54,7 @@ def grid_of_gaussians(n_local_samples, blob_dis=5):
     return X, gt_centroids
 
 
-def show_clusters(X, method, gt_centroids, labels, kcentroids, centroids):
+def show_clusters(X, method, gt_centroids, labels, centroids):
     pl.figure()
     pl.title('Method is ' + method)
     # unique_colors = np.random.rand(np.unique(labels).shape[0], 3)
@@ -66,7 +66,6 @@ def show_clusters(X, method, gt_centroids, labels, kcentroids, centroids):
         colors[i] = unique_colors[labels[i]]
     pl.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
     pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'ko')
-    # pl.plot(kcentroids[:, 0], kcentroids[:, 1], 'r^')
     pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
     # pl.xlim([0 , 1000000])
     # pl.savefig(os.path.join(dir_path,'s1_compare_GT_TethA_KM++.png'), dpi=300)
@@ -88,9 +87,10 @@ def show_points_two(X, Y, title='overlap'):
     pl.scatter(Y[:, 0], Y[:, 1], color='g', alpha=0.1)
 
 
-# X = np.loadtxt(os.path.join(dir_path, 's3.txt'))
+X = np.loadtxt(os.path.join(dir_path, 's3.txt'))
+gt_c = np.loadtxt(os.path.join(dir_path, 's3-cb.txt'))
 
-X, gt_c = grid_of_gaussians(250, blob_dis=5)
+# X, gt_c = grid_of_gaussians(250, blob_dis=5)
 
 np.random.shuffle(X)
 
@@ -102,13 +102,14 @@ X2 = X.copy()
 
 # show_points(X)
 
-theta = 4
+theta = 3.5
+theta = 130000
 
 centroids, labels, summs, clusters_sizes = theta_g1(X, theta=theta,
                                                     metric='euclidean',
                                                     all_out=True)
 
-show_clusters(X, 'TSG', gt_c, labels, None, centroids)
+show_clusters(X, 'TSG', gt_c, labels, centroids)
 
 # final_labels = gravity(X, centroids, clusters_sizes, theta/2., metric='euclidean')
 
@@ -179,31 +180,45 @@ def cluster_distribution_hist(X, centroids, labels, theta):
         distr[c] = []
 
     for i, l in enumerate(labels):
-        distr[l].append(np.linalg.norm(X[i] - centroids[labels[i]]))
+        distr[l].append(np.linalg.norm(X[i] - centroids[l]))
 
-    pl.figure()
-    pl.title('distr - corrected')
     for c in range(centroids.shape[0]):
         distr[c], b = np.histogram(distr[c], bins=50, range=(0, 2*theta))
-        # pl.plot(b[:-1], distr[c], alpha=0.2,)
-
-        # pl.hist(distr[c], bins=50, range=(0, theta))
-        # pl.show()
 
     arr = np.zeros((len(distr), distr[0].shape[0]))
+    proj = np.zeros(arr.shape[0])
+    tmp = np.log(np.arange(arr.shape[1]) + 2)
     for c in range(centroids.shape[0]):
         arr[c] = distr[c]
+        proj[c] = np.sum(arr[c] * tmp)
 
     pl.figure()
     pl.title('distr - image')
     pl.imshow(arr)
-    return distr, arr
 
+    pl.figure()
+    pl.title('projections')
+    pl.plot(proj, '.')
 
-distr, arr = cluster_distribution_hist(X, centroids, labels, theta)
+    return distr, arr, proj
+
 
 
 # distr, sumd, fdistr, integrals = cluster_distribution(X, centroids, labels, clusters_sizes)
+
+distrh, arrh, projh = cluster_distribution_hist(X, centroids, labels, theta)
+
+labels_proj = np.zeros(X.shape[0], dtype='i8')
+res_bool = projh < 400
+for i, l in enumerate(labels):
+
+    if res_bool[l]:
+        labels_proj[i] = 0
+    else:
+        labels_proj[i] = 1
+
+show_clusters(X, 'projection', gt_c, labels_proj, centroids)
+
 
 # theta2 = theta
 
