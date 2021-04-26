@@ -3,7 +3,7 @@ import numpy as np
 import string
 import os
 from numpy import testing as npt
-from thetan.theta import theta_g1, assign, gravity, calibrate
+from thetan.theta import theta_g1, assign, gravity, calibrate, theta_g1t
 import matplotlib.pyplot as pl
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
@@ -54,6 +54,27 @@ def grid_of_gaussians(n_local_samples, blob_dis=5):
     return X, gt_centroids
 
 
+def random_md_gaussians(n_local_samples=250, rcenters=100, scenters=10, scov=1, ndim=10):
+
+    pos = scenters * np.random.rand(rcenters, ndim)
+    gt_centroids = []
+    X = np.zeros((n_local_samples * pos.shape[0], ndim))
+    y = np.zeros((n_local_samples * pos.shape[0]), dtype=np.int64)
+
+    for i in range(pos.shape[0]):
+        cpos = pos[i]
+        mnormal = np.random.multivariate_normal(np.zeros(ndim), scov*np.eye(ndim),
+                                                size=n_local_samples)
+        local_X = cpos + mnormal
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    gt_centroids = np.array(gt_centroids)
+
+    return X, gt_centroids
+
+
 def show_clusters(X, method, gt_centroids, labels, centroids):
     pl.figure()
     pl.title('Method is ' + method)
@@ -66,7 +87,8 @@ def show_clusters(X, method, gt_centroids, labels, centroids):
         colors[i] = unique_colors[labels[i]]
     pl.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
     pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'ko')
-    pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
+    if centroids is not None:
+        pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
     # pl.legend()
     # pl.xlim([0 , 1000000])
     # pl.savefig(os.path.join(dir_path,'s1_compare_GT_TethA_KM++.png'), dpi=300)
@@ -91,7 +113,13 @@ def show_points_two(X, Y, title='overlap'):
 # X = np.loadtxt(os.path.join(dir_path, 's4.txt'))
 # gt_c = np.loadtxt(os.path.join(dir_path, 's4-cb.txt'))
 
-X, gt_c = grid_of_gaussians(250, blob_dis=5)
+# X, gt_c = grid_of_gaussians(250, blob_dis=5)
+
+show_c = False
+
+X, gt_c = random_md_gaussians(2500, 100, 200, 40, 40)
+
+print(X.shape)
 
 np.random.shuffle(X)
 
@@ -103,14 +131,15 @@ X2 = X.copy()
 
 # show_points(X)
 
-# theta = 4
-theta = 100000
-
-centroids, labels, summs, clusters_sizes = theta_g1(X, theta=theta,
-                                                    metric='euclidean',
-                                                    all_out=True)
-
-show_clusters(X, 'TSG', gt_c, labels, centroids)
+theta = 5 * 10 * 2
+# theta = 100000
+print('starting')
+centroids, labels, summs, clusters_sizes, dtravel = theta_g1t(X, theta=theta,
+                                                              metric='euclidean',
+                                                              all_out=True)
+print('done')
+if show_c:
+    show_clusters(X, 'TSG', gt_c, labels, centroids)
 
 # final_labels = gravity(X, centroids, clusters_sizes, theta/2., metric='euclidean')
 
@@ -226,8 +255,8 @@ for i, l in enumerate(labels):
     else:
         labels_proj[i] = 1
 
-show_clusters(X, 'projection', gt_c, labels_proj, centroids)
-
+if show_c:
+    show_clusters(X, 'projection', gt_c, labels_proj, centroids)
 
 pl.figure()
 pl.title('Sizes of clusters')
@@ -238,6 +267,27 @@ pl.title('Sorted sizes of clusters')
 pl.grid()
 pl.plot(np.sort(clusters_sizes)[::-1], '.')
 
+
+pl.figure()
+pl.title('dtravel')
+pl.grid()
+pl.plot(dtravel, '.')
+
+pl.figure()
+pl.title('Sorted dtravel')
+pl.grid()
+pl.plot(np.sort(dtravel)[::-1], '.')
+
+pl.figure()
+pl.title('dtravel normalized')
+pl.grid()
+pl.plot(dtravel/clusters_sizes, '.')
+
+
+if show_c:
+    from sklearn.cluster import DBSCAN
+    db = DBSCAN(eps=.8, min_samples=10).fit(X)
+    show_clusters(X, 'dbscan', gt_c, db.labels_, None)
 
 # theta2 = theta
 
@@ -272,6 +322,13 @@ pl.plot(np.sort(clusters_sizes)[::-1], '.')
 # show_clusters(X, 'TSG', gt_c, final_labels, None, final_centroids)
 
 pl.show()
+
+from scipy.spatial import distance_matrix
+
+D = distance_matrix(centroids, gt_c)
+
+minD = np.min(D, axis=1)
+print(np.max(minD))
 
 
 bkp = 1
