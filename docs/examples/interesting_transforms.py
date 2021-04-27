@@ -56,7 +56,7 @@ def grid_of_gaussians(n_local_samples, blob_dis=5):
 
 def random_md_gaussians(n_local_samples=250, rcenters=100, scenters=10, scov=1, ndim=10):
 
-    pos = scenters * np.random.rand(rcenters, ndim)
+    pos = scenters * (np.random.rand(rcenters, ndim) - 0.5)
     gt_centroids = []
     X = np.zeros((n_local_samples * pos.shape[0], ndim))
     y = np.zeros((n_local_samples * pos.shape[0]), dtype=np.int64)
@@ -117,7 +117,10 @@ def show_points_two(X, Y, title='overlap'):
 
 show_c = False
 
-X, gt_c = random_md_gaussians(2500, 100, 200, 40, 40)
+X, gt_c = random_md_gaussians(n_local_samples=250,
+                              rcenters=100,
+                              scenters=60,
+                              scov=40, ndim=80)
 
 print(X.shape)
 
@@ -131,7 +134,9 @@ X2 = X.copy()
 
 # show_points(X)
 
-theta = 5 * 10 * 2
+theta = 4 * 5 * 4 * 2
+
+# theta = 5 * 10 * 2
 # theta = 100000
 print('starting')
 centroids, labels, summs, clusters_sizes, dtravel = theta_g1t(X, theta=theta,
