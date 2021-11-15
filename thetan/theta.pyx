@@ -28,6 +28,12 @@ cdef extern from "float.h":
 
 ctypedef double (*metricp)(double *, double *, cnp.npy_intp) nogil
 
+ctypedef struct Linkedlist:
+
+    cnp.npy_intp data
+
+    Linkedlist * next
+
 
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     cdef:
@@ -111,6 +117,133 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
             distance_matrix[i, j] = metric_func(&X1[i, 0], &X2[j, 0], D)
 
     return np.asarray(distance_matrix)
+
+
+def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = 0
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        
+        cnp.npy_intp [:] counts = np.zeros(N, dtype='i8')
+        cnp.npy_intp counts_prev
+        Linkedlist ** near_clusters = <Linkedlist **> malloc(<size_t> N * sizeof(Linkedlist*))
+        Linkedlist ** last_node = <Linkedlist **> malloc(<size_t> N * sizeof(Linkedlist*))
+        Linkedlist * element = NULL
+        Linkedlist * current = NULL
+
+
+        double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> D * sizeof(double))
+        double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+    with nogil:
+
+        # first point becomes first cluster
+        indices[0] = 0
+        for d in range(D):
+            summs[d] = X[0, d]
+            centroids[d] = X[0, d]
+        K = 1
+        clusters_sizes[0] = 1.0
+        counts[0] = 1
+        near_clusters[0]
+        near_clusters[0] = <Linkedlist *> malloc(sizeof(Linkedlist))
+        near_clusters[0].data = k
+        near_clusters[0].next = NULL
+        last_node[0] = <Linkedlist *> near_clusters[0]
+
+        for i in range(1, N):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            counts_prev = counts[i]
+
+            for k in range(K):
+
+                dist = metric_func(&X[i, 0], &centroids[k * D], D)
+
+                if dist < theta:
+
+                    if dist < minimum:
+                        minimum = dist
+                        argmin = k
+                    
+                    for d in range(D):
+                        summs[k * D + d] += X[i, d]
+                    clusters_sizes[k] += 1.0
+                    for d in range(D):
+                        centroids[k * D + d] = summs[k * D + d] / clusters_sizes[k]
+                    indices[i] = argmin
+                    counts[i] += 1
+                    if counts[i] == 1:
+                        near_clusters[i] = <Linkedlist *> malloc(sizeof(Linkedlist))
+                        near_clusters[i].data = k
+                        near_clusters[i].next = NULL
+                        last_node[i] = <Linkedlist *> near_clusters[i]
+                    else:
+                        element = <Linkedlist *> malloc(sizeof(Linkedlist))
+                        element.data = k 
+                        element.next = NULL
+                        last_node[i].next = element
+
+
+            # create new cluster
+            if counts[i] == counts_prev:
+
+                summs = <double *> realloc(summs, <size_t> D * (K + 1) * sizeof(double))
+                clusters_sizes = <double *> realloc(clusters_sizes, <size_t> (K + 1) * sizeof(double))
+                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double))
+                indices[i] = K
+                for d in range(D):
+                    summs[K * D + d] = X[i, d]
+                clusters_sizes[K] = 1.0
+                for d in range(D):
+                    centroids[K * D + d] = summs[K * D + d]
+                counts[i] += 1
+                near_clusters[i] = <Linkedlist *> malloc(sizeof(Linkedlist))
+                near_clusters[i].data = K
+                near_clusters[i].next = NULL
+                last_node[i] = <Linkedlist *> near_clusters[i]
+                K += 1
+
+
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    final_indices = np.asarray(indices)
+
+    for i in range(0, N):
+        current = near_clusters[i]
+        while current != NULL:
+            next = current.next
+            free(current)
+            current = next
+    free(near_clusters)
+
+    if all_out:
+        final_summs = np.asarray(<double[:K, :D]> summs)
+        final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+        final_counts = np.asarray(counts)
+        return final_centroids, final_indices, final_summs, final_clusters_sizes, final_counts
+    else:
+        free(summs)
+        free(clusters_sizes)
+        return final_centroids, final_indices
 
 
 def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
