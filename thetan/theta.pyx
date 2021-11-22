@@ -32,6 +32,8 @@ ctypedef struct Linkedlist:
 
     cnp.npy_intp value
 
+    double dist
+
     Linkedlist * next
 
 
@@ -139,6 +141,9 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         double * summs = <double *> malloc(<size_t> D * sizeof(double))
         double * centroids = <double *> malloc(<size_t> D * sizeof(double))
         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
+        cnp.npy_intp * nearc_value = NULL
+        double * nearc_dist = NULL
+        cnp.npy_intp cnt = 0
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
@@ -165,6 +170,7 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         near_clusters[0]
         near_clusters[0] = <Linkedlist *> malloc(sizeof(Linkedlist))
         near_clusters[0].value = 0
+        near_clusters[0].dist = 0
         near_clusters[0].next = NULL
         last_node[0] = <Linkedlist *> near_clusters[0]
 
@@ -189,11 +195,13 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
                     if counts[i] == 1:
                         near_clusters[i] = <Linkedlist *> malloc(sizeof(Linkedlist))
                         near_clusters[i].value = k
+                        near_clusters[i].dist = dist
                         near_clusters[i].next = NULL
                         last_node[i] = <Linkedlist *> near_clusters[i]
                     else:
                         element = <Linkedlist *> malloc(sizeof(Linkedlist))
-                        element.value = k 
+                        element.value = k
+                        element.dist = dist 
                         element.next = NULL
                         last_node[i].next = element
             
@@ -221,6 +229,7 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
                 counts[i] += 1
                 near_clusters[i] = <Linkedlist *> malloc(sizeof(Linkedlist))
                 near_clusters[i].value = K
+                near_clusters[i].dist = 0
                 near_clusters[i].next = NULL
                 last_node[i] = <Linkedlist *> near_clusters[i]
                 K += 1
@@ -228,29 +237,41 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
 
     final_centroids = np.asarray(<double[:K, :D]> centroids)
     final_indices = np.asarray(indices)
+    final_counts = np.asarray(counts)
+    final_counts_sum = final_counts.sum()
+
+    nearc_dist = <double *> malloc(<size_t> final_counts_sum * sizeof(double))
+    nearc_value = <cnp.npy_intp *> malloc(<size_t> final_counts_sum * sizeof(cnp.npy_intp))
+    
 
     # TODO
     # Find clusters with largest percentage of ambiguous points
     # Empty these clusters and reassign the points of these clusters to second closest
     # The best overall result should minimize the total L2 sum of distances from points to their centroids
 
-
+    cnt = 0
     for i in range(0, N):
         current = near_clusters[i]
         while current != NULL:
+            nearc_dist[cnt] = current.dist
+            nearc_value[cnt] = current.value
             next = current.next
             free(current)
             current = next
+            cnt += 1
     free(near_clusters)
 
     if all_out:
         final_summs = np.asarray(<double[:K, :D]> summs)
         final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
-        final_counts = np.asarray(counts)
-        return final_centroids, final_indices, final_summs, final_clusters_sizes, final_counts
+        final_nearc_value = np.asarray(<cnp.npy_intp[:final_counts_sum]> nearc_value).astype('i8')
+        final_nearc_dist = np.asarray(<double[:final_counts_sum]> nearc_dist).astype('f8')
+        return final_centroids, final_indices, final_summs, final_clusters_sizes, final_counts, final_nearc_value, final_nearc_dist
     else:
         free(summs)
         free(clusters_sizes)
+        free(nearc_dist)
+        free(nearc_value)
         return final_centroids, final_indices
 
 

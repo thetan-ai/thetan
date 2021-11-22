@@ -659,7 +659,7 @@ if exp_type == 'hard':
         print('tm ', tm_time)
         print('Speedup', kmeans_time/tm_time)
 
-        final_centroids, final_indices, final_summs, final_clusters_sizes, final_counts = thetan(points, theta=theta, all_out=True)
+        final_centroids, final_indices, final_summs, final_clusters_sizes, final_counts, final_nearc_value, final_nearc_dist = thetan(points, theta=theta, all_out=True)
         print('thetan')
         
 
