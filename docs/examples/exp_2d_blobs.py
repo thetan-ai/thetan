@@ -664,7 +664,7 @@ if exp_type == 'hard':
         
 
         if verbose:
-            plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
+            # plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
             plot_centroids_clusters(points, final_centroids, final_indices, 'thetan', exp_type, initial_centroids=centroids)
             test_tmp = True
         timings['tm'] = tm_time

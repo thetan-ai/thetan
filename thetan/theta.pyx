@@ -30,7 +30,7 @@ ctypedef double (*metricp)(double *, double *, cnp.npy_intp) nogil
 
 ctypedef struct Linkedlist:
 
-    cnp.npy_intp data
+    cnp.npy_intp value
 
     Linkedlist * next
 
@@ -164,7 +164,7 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         counts[0] = 1
         near_clusters[0]
         near_clusters[0] = <Linkedlist *> malloc(sizeof(Linkedlist))
-        near_clusters[0].data = k
+        near_clusters[0].value = 0
         near_clusters[0].next = NULL
         last_node[0] = <Linkedlist *> near_clusters[0]
 
@@ -185,24 +185,26 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
                         minimum = dist
                         argmin = k
                     
-                    for d in range(D):
-                        summs[k * D + d] += X[i, d]
-                    clusters_sizes[k] += 1.0
-                    for d in range(D):
-                        centroids[k * D + d] = summs[k * D + d] / clusters_sizes[k]
-                    indices[i] = argmin
                     counts[i] += 1
                     if counts[i] == 1:
                         near_clusters[i] = <Linkedlist *> malloc(sizeof(Linkedlist))
-                        near_clusters[i].data = k
+                        near_clusters[i].value = k
                         near_clusters[i].next = NULL
                         last_node[i] = <Linkedlist *> near_clusters[i]
                     else:
                         element = <Linkedlist *> malloc(sizeof(Linkedlist))
-                        element.data = k 
+                        element.value = k 
                         element.next = NULL
                         last_node[i].next = element
-
+            
+            # add in argmin cluster
+            if counts[i] > counts_prev:
+                indices[i] = argmin
+                for d in range(D):
+                    summs[argmin * D + d] += X[i, d]
+                clusters_sizes[argmin] += 1.0
+                for d in range(D):
+                    centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
 
             # create new cluster
             if counts[i] == counts_prev:
@@ -218,7 +220,7 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
                     centroids[K * D + d] = summs[K * D + d]
                 counts[i] += 1
                 near_clusters[i] = <Linkedlist *> malloc(sizeof(Linkedlist))
-                near_clusters[i].data = K
+                near_clusters[i].value = K
                 near_clusters[i].next = NULL
                 last_node[i] = <Linkedlist *> near_clusters[i]
                 K += 1
@@ -226,6 +228,12 @@ def thetan(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
 
     final_centroids = np.asarray(<double[:K, :D]> centroids)
     final_indices = np.asarray(indices)
+
+    # TODO
+    # Find clusters with largest percentage of ambiguous points
+    # Empty these clusters and reassign the points of these clusters to second closest
+    # The best overall result should minimize the total L2 sum of distances from points to their centroids
+
 
     for i in range(0, N):
         current = near_clusters[i]
