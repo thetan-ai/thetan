@@ -143,7 +143,7 @@ if exp_type == 'easy':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
-    verbose = True
+    verbose = False
     show_thr = False
     radius = 4
     n_local_samples = 30
@@ -442,7 +442,7 @@ if exp_type == 'hard':
 
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
-    verbose = True
+    verbose = False
     show_thr = False
     radius = 4
     n_local_samples = 30
@@ -663,10 +663,10 @@ if exp_type == 'hard':
         print('thetan')
         
 
-        if verbose:
-            # plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
-            plot_centroids_clusters(points, final_centroids, final_indices, 'thetan', exp_type, initial_centroids=centroids)
-            test_tmp = True
+        # if verbose:
+        # plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
+        plot_centroids_clusters(points, final_centroids, final_indices, 'thetan', exp_type, initial_centroids=centroids)
+        test_tmp = True
         timings['tm'] = tm_time
 
 
