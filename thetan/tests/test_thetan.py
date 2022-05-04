@@ -1,6 +1,11 @@
 import numpy as np
 import numpy.testing as npt
-from thetan import thetan_oic, reorder_labels
+from thetan.theta import thetan_oic, reorder_labels
+
+
+
+def test_build_nice():
+    pass
 
 
 def test_reorder_labels():

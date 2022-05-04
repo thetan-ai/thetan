@@ -484,9 +484,9 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
 
 def build_nice(centroids, labels):
     nice = np.ones(labels.shape[0], dtype=labels.dtype)
-    clusters = np.empty((c_centroids.shape[0], 0)).tolist()
-    for i in range(c_labels.shape[0]):
-        clusters[c_labels[i]].append(i)
+    clusters = np.empty((centroids.shape[0], 0)).tolist()
+    for i in range(labels.shape[0]):
+        clusters[labels[i]].append(i)
 
     candidates = []
     for c in clusters:
@@ -665,11 +665,11 @@ def thetan_oic(double[:, ::1] X, double theta, metric='euclidean', all_out=False
     if all_out:
         final_summs = np.asarray(<double[:K, :D]> summs)
         final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
-        return final_centroids, final_indices, final_summs, final_clusters_sizes
+        return initial_centroids, initial_indices, final_summs, final_clusters_sizes
     else:
         free(summs)
         free(clusters_sizes)
-        return final_centroids, final_indices
+        return initial_centroids, initial_indices
 
 
 
