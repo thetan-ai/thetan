@@ -1,11 +1,48 @@
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import thetan_oic, reorder_labels
+from thetan.theta import thetan_oic, reorder_labels, build_nice
 
+
+def build_nice2(centroids, labels):
+    nice = np.ones(labels.shape[0], dtype=labels.dtype)
+    clusters = np.empty((centroids.shape[0], 0)).tolist()
+    # clusters = {}
+    for i in range(labels.shape[0]):
+        clusters[labels[i]].append(i)
+
+    candidates = []
+    for c in clusters:
+        if len(c) > 1:
+            maxc = np.max(c)
+            candidates.append(maxc)
+
+    # deleting will change the labels of other Xs too which is not ideal
+    # centroids_reduced = np.delete(final_centroids, candidates, axis=0)
+
+    for i, f in enumerate(labels):
+        for can in candidates:
+            if labels[i] == can:
+                nice[i] = 0
+
+    return nice, candidates, clusters
 
 
 def test_build_nice():
-    pass
+
+    centroids = np.array([[0, 0, 0],
+                          [0.2, 0, 0],
+                          [3, 3, 3.],
+                          [4, 4, 4.],
+                          [5, 5, 5.], 
+                          [6, 6, 6],
+                          [6.2, 6, 6]])
+
+    labels = np.array([0, 0, 1, 2, 3, 4, 4, 4])
+
+    nice, candidates, clusters = build_nice2(centroids, labels)
+    
+    
+    t = 1
 
 
 def test_reorder_labels():
@@ -41,8 +78,7 @@ def test_thetan_oic():
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
 
     xx, yy = np.meshgrid(xx, yy)
-    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
-                        np.ravel(yy)[:, np.newaxis]))
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis]))
 
     gt_centroids = []
     X = np.zeros((n_local_samples * n_centres.shape[0], 2))
@@ -73,11 +109,10 @@ def test_thetan_oic():
 
 
 
-
-
 if __name__ == '__main__':
 
     # test_thetan_oic()
-    test_reorder_labels()
+    # test_reorder_labels()
+    test_build_nice()
 
     pass

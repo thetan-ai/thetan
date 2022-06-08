@@ -502,7 +502,7 @@ def build_nice(centroids, labels):
             if labels[i] == can:
                 nice[i] = 0
 
-    return nice, candidates
+    return nice, candidates, clusters
 
 
 def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
@@ -660,7 +660,15 @@ def thetan_oic(double[:, ::1] X, double theta, metric='euclidean', all_out=False
 
         nice, candidates = build_nice(c_centroids, c_labels)
 
+        even_centroids = np.delete(initial_centroids, candidates)
 
+        new_data = np.concatenate((even_centroids, np.asarray(<double>[:X.shape[0], :X.shape[1]] X)))
+
+        return thetan_oic(new_data, theta=theta, metric=metric, ccentroids=False)
+
+        # or
+
+        # assign_to_centroids
 
     if all_out:
         final_summs = np.asarray(<double[:K, :D]> summs)
