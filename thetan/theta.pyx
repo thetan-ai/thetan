@@ -654,15 +654,19 @@ def thetan_oic(double[:, ::1] X, double theta, metric='euclidean', all_out=False
 
     if ccentroids:
         # identify close centroids
+        print('ic', initial_centroids.shape)
         c_centroids, c_labels = thetan_oic(initial_centroids, theta=theta,
                                            metric=metric, all_out=False,
                                            ccentroids=False)
 
-        nice, candidates = build_nice(c_centroids, c_labels)
+        nice, candidates, _clusters = build_nice(c_centroids, c_labels)
 
-        even_centroids = np.delete(initial_centroids, candidates)
+        even_centroids = np.delete(initial_centroids, candidates, axis=0)
+        print('ec', even_centroids.shape)
 
-        new_data = np.concatenate((even_centroids, np.asarray(<double>[:X.shape[0], :X.shape[1]] X)))
+        new_data = np.concatenate((even_centroids, np.asarray(X)))
+        new_data = np.ascontiguousarray(new_data)
+        print('nd', new_data.shape)
 
         return thetan_oic(new_data, theta=theta, metric=metric, ccentroids=False)
 

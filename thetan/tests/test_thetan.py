@@ -1,6 +1,52 @@
 import numpy as np
 import numpy.testing as npt
 from thetan.theta import thetan_oic, reorder_labels, build_nice
+import pylab as pl
+
+
+def plot_centroids_clusters(data, centroids, labels, title=None, exp_type=None, gt_centroids=None,
+                            uncertain_data=None, final_counts=None, final_nearc_value=None,
+                            merged_centroids=None, show=True):
+
+    new_colors = np.zeros((len(data), 3))
+    no_clusters = len(centroids)
+    cluster_colors = np.random.rand(no_clusters, 3)
+
+    for ind in range(len(data)):
+        new_colors[ind] = cluster_colors[labels[ind]]
+
+    fig = pl.figure()
+    pl.title(title)
+    pl.axis('equal')
+    pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
+
+    if centroids is not None:
+
+        pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
+
+        for c in range(centroids.shape[0]):
+            pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
+
+    if gt_centroids is not None:
+        pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'bx')
+
+    if uncertain_data is not None:
+        pl.plot(uncertain_data[:, 0], uncertain_data[:, 1], 'g.')
+
+    cnt = 0
+    if final_counts is not None:
+        for i in range(final_counts.shape[0]):
+            prev = cnt
+            cnt += final_counts[i]
+            if final_counts[i] > 1:
+                pl.text(data[i, 0], data[i, 1], str(final_nearc_value[prev: cnt]) + ' ' + str(labels[i]), fontsize=8)
+
+    if merged_centroids is not None:
+        pl.plot(merged_centroids[:, 0], merged_centroids[:, 1], 'mo')
+
+    if show:
+        pl.show()
+
 
 
 def build_nice2(centroids, labels):
@@ -107,12 +153,16 @@ def test_thetan_oic():
 
     centroids = gt_centroids
 
+    p_centroids, p_labels = thetan_oic(X, theta=3.6, ccentroids=True)
 
+    plot_centroids_clusters(X, p_centroids, p_labels)
+
+    t = 1
 
 if __name__ == '__main__':
 
-    # test_thetan_oic()
+    test_thetan_oic()
     # test_reorder_labels()
-    test_build_nice()
+    # test_build_nice()
 
     pass
