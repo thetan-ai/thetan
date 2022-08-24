@@ -199,6 +199,7 @@ def test_thetan_oic():
 
     # even_centroids = reduce_centroids(c_centroids, c_labels, initial_centroids)
 
+    # This second shuffle resolves problems with centroids between clusters
     np.random.shuffle(points)
 
     new_data = np.concatenate((even_centroids, points))
@@ -237,10 +238,12 @@ def test_thetan_oic():
 if __name__ == '__main__':
 
     ecs = []
-    for i in range(1000):
+    for i in range(100):
         ecs.append(test_thetan_oic())
 
     print(ecs)
+
+    ecs = np.asarray(ecs)
 
     print(np.sum(ecs == 100))
     print(np.sum(ecs > 100))
