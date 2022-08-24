@@ -1,6 +1,6 @@
 from random import uniform
 import numpy as np
-from thetan.theta import thetan, thetan_density
+
 from thetan.theta import theta_g1, assign, theta_g1w
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_delta

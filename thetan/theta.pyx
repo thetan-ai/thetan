@@ -665,8 +665,9 @@ def thetan_oic(double[:, ::1] X, double theta, metric='euclidean', all_out=False
         print('ec', even_centroids.shape)
 
         new_data = np.concatenate((even_centroids, np.asarray(X)))
+        print('nd1', new_data.shape)
         new_data = np.ascontiguousarray(new_data)
-        print('nd', new_data.shape)
+        print('nd2', new_data.shape)
 
         return thetan_oic(new_data, theta=theta, metric=metric, ccentroids=False)
 
