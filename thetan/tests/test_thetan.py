@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import thetan_oic, reorder_labels, build_nice, theta_g1
+from thetan.theta import reorder_labels, del_max_label, theta_g1, theta_means
 import pylab as pl
 
 
@@ -109,6 +109,9 @@ def test_reorder_labels():
 def test_thetan_oic():
 
     n_local_samples = 400
+    # n_local_samples = 1000
+
+    dims = 2
 
     blob_dis = 5
     cluster_x = 10
@@ -130,19 +133,19 @@ def test_thetan_oic():
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis]))
 
     gt_centroids = []
-    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    X = np.zeros((n_local_samples * n_centres.shape[0], dims))
     y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
 
     for i in range(n_centres.shape[0]):
         cpos = n_centres[i]
 
         if normal_distribution:
-            local_X = cpos + np.random.normal(0, normal_sigma, (n_local_samples, 2))
+            local_X = cpos + np.random.normal(0, normal_sigma, (n_local_samples, dims))
 
         if uniform_distribution:
             local_X = cpos + np.random.uniform(uniform_low,
                                                uniform_high,
-                                               (n_local_samples, 2))
+                                               (n_local_samples, dims))
 
         X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
         y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -159,7 +162,7 @@ def test_thetan_oic():
 
     np.random.shuffle(points)
 
-    t=2
+    t = 2
 
     # p_centroids, p_labels = thetan_oic(X, theta=3.6, ccentroids=True)
 
@@ -175,7 +178,7 @@ def test_thetan_oic():
     c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value,
                                            all_out=True)
 
-    nice, candidates, _clusters = build_nice(c_centroids, c_labels)
+    nice, candidates, _clusters = del_max_label(c_centroids, c_labels)
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
     print('ec', even_centroids.shape)
 
@@ -207,32 +210,38 @@ def test_thetan_oic():
     new_data = np.ascontiguousarray(new_data)
     print('nd2', new_data.shape)
 
-    p_centroids, p_labels, _, _ = theta_g1(new_data, theta=theta_value,
-                                           all_out=True)
+    # p_centroids, p_labels, _, _ = theta_g1(new_data, theta=theta_value,
+    #                                        all_out=True)
+    p_centroids, p_labels, _, _ = theta_means(points, even_centroids, theta=theta_value,
+                                              all_out=True)
 
     print('p_centroids', p_centroids.shape)
 
     show_plots = False
 
-    if show_plots:
-
-        plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
-        plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
-        plot_centroids_clusters(points, p_centroids, None, title='pc' + str(p_centroids.shape), show=False)
-
-    c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
+    c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value, # + 0.1 * theta_value,
                                              all_out=True)
 
-    nice2, candidates2, _clusters2 = build_nice(c_centroids2, c_labels2)
+    nice2, candidates2, _clusters2 = del_max_label(c_centroids2, c_labels2)
     even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
     print('>>> ec2', even_centroids2.shape)
 
-    if show_plots:
-        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=True)
+    # c_centroids3, c_labels3, _, _ = theta_g1(even_centroids2, theta=theta_value,
+    #                                          all_out=True)
+    # print('>>> c3', c_centroids3.shape)
 
-    t = 1
+    if show_plots:
+    # if even_centroids2.shape[0] > 100:
+
+        plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+        plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=True)
+    #     plot_centroids_clusters(points, c_centroids3, None, title='c3' + str(c_centroids3.shape), show=True)
+    #     t = 1
 
     return even_centroids2.shape[0]
+    # return c_centroids3.shape[0]
 
 
 if __name__ == '__main__':
