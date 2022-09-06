@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import reorder_labels, del_max_label, theta_g1, theta_means
+from thetan.theta import reorder_labels, del_max_label, theta_g1, theta_means, reassign_uncertain_update_labels
 import pylab as pl
 
 
@@ -178,69 +178,87 @@ def test_thetan_oic():
     c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value,
                                            all_out=True)
 
-    nice, candidates, _clusters = del_max_label(c_centroids, c_labels)
+    nice, candidates, _clusters, updated_labels = del_max_label(c_centroids, c_labels, initial_labels)
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
     print('ec', even_centroids.shape)
 
-    # def reduce_centroids(centroids, labels, centroids_prev):
-    #     # when two centroids are too close keep the one with a smaller index
-    #     clusters = np.empty((centroids.shape[0], 0)).tolist()
-    #     for i in range(labels.shape[0]):
-    #         clusters[labels[i]].append(i)
+    t = 0
 
-    #     candidates = []
-    #     for c in clusters:
-    #         if len(c) > 1:
-    #             print('yo', c)
-    #             maxc = np.max(c)
-    #             candidates.append(maxc)
+    updated_labels2 = reassign_uncertain_update_labels(points, even_centroids,
+                                                       updated_labels, nice,
+                                                       metric='euclidean')
+    t = 1
 
-    #     # centroids2 = np.empty((labels.max() + 1, centroids.shape[1]))
-    #     centroids_reduced = np.delete(centroids_prev, candidates, axis=0)
+    def centroids_from_labels(points, labels):
 
-    #     return centroids_reduced
+        new_centroids = []
+        for i, l in enumerate(range(labels.max())):
+            # print(i)
+            avg = np.average(points[labels==l], axis=0)
+            new_centroids.append(avg)
 
-    # even_centroids = reduce_centroids(c_centroids, c_labels, initial_centroids)
+        t = 0
+        return np.ascontiguousarray(new_centroids)
+
+
+    even_centroids_ex = centroids_from_labels(points, updated_labels2)
+
+    t = 2
 
     # This second shuffle resolves problems with centroids between clusters
     np.random.shuffle(points)
 
-    new_data = np.concatenate((even_centroids, points))
-    print('nd1', new_data.shape)
-    new_data = np.ascontiguousarray(new_data)
-    print('nd2', new_data.shape)
+    # new_data = np.concatenate((even_centroids, points))
+    # print('nd1', new_data.shape)
+    # new_data = np.ascontiguousarray(new_data)
+    # print('nd2', new_data.shape)
 
     # p_centroids, p_labels, _, _ = theta_g1(new_data, theta=theta_value,
     #                                        all_out=True)
-    p_centroids, p_labels, _, _ = theta_means(points, even_centroids, theta=theta_value,
+    p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex, theta=theta_value,
                                               all_out=True)
 
     print('p_centroids', p_centroids.shape)
 
-    show_plots = False
-
     c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value, # + 0.1 * theta_value,
                                              all_out=True)
 
-    nice2, candidates2, _clusters2 = del_max_label(c_centroids2, c_labels2)
+    # nice2, candidates2, _clusters2 = del_max_label(c_centroids2, c_labels2)
+    # even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
+    # print('>>> ec2', even_centroids2.shape)
+
+    nice2, candidates2, _clusters2, updated_labels2x = del_max_label(c_centroids2, c_labels2, p_labels)
     even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
-    print('>>> ec2', even_centroids2.shape)
+    print('>> ec2 ', even_centroids2.shape)
+
+    updated_labels2 = reassign_uncertain_update_labels(points, even_centroids2,
+                                                       updated_labels2x, nice2,
+                                                       metric='euclidean')
+
+    even_centroids_ex2 = centroids_from_labels(points, updated_labels2)
 
     # c_centroids3, c_labels3, _, _ = theta_g1(even_centroids2, theta=theta_value,
     #                                          all_out=True)
     # print('>>> c3', c_centroids3.shape)
+
+    show_plots = True
 
     if show_plots:
     # if even_centroids2.shape[0] > 100:
 
         plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
         plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
         plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
-        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=True)
+        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
+        plot_centroids_clusters(points, even_centroids_ex2, None, title='ecx2' + str(even_centroids_ex2.shape), show=True)
     #     plot_centroids_clusters(points, c_centroids3, None, title='c3' + str(c_centroids3.shape), show=True)
     #     t = 1
 
     return even_centroids2.shape[0]
+    # return even_centroids_ex.shape[0]
+    # return even_centroids_ex2.shape[0]
+    # return even_centroids2.shape[0]
     # return c_centroids3.shape[0]
 
 

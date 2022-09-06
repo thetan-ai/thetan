@@ -482,8 +482,59 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         return final_centroids, final_indices
 
 
-def del_max_label(centroids, labels):
-    nice = np.ones(labels.shape[0], dtype=labels.dtype)
+def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
+                                     cnp.npy_intp[::1] labels, cnp.npy_intp[::1] nice,
+                                     metric='euclidean'):
+    # Caution should be re-examined or deleted
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0
+        cnp.npy_intp k = 0, K = centroids.shape[0]
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+    with nogil:
+
+        for i in range(N):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            if labels[i] < 0:
+
+                for k in range(K):
+
+                    dist = metric_func(&X[i, 0], &centroids[k, 0], D)
+
+                    if dist < minimum:
+                        minimum = dist
+                        argmin = k
+
+                indices[i] = argmin
+            else:
+                indices[i] = labels[i]
+
+    reassigned_indices = np.asarray(indices)
+
+    return reassigned_indices
+
+
+def del_max_label(centroids, labels, initial_labels):
+    nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
+    updated_labels = initial_labels.copy()
     clusters = np.empty((centroids.shape[0], 0)).tolist()
     for i in range(labels.shape[0]):
         clusters[labels[i]].append(i)
@@ -500,17 +551,31 @@ def del_max_label(centroids, labels):
             cs = np.sort(c)
             candidates.extend(cs[1:])
 
+    # caution here, deleting will change the labels of other Xs too which is not ideal
+    # centroids_reduced = np.delete(centroids, candidates, axis=0)
 
-
-    # deleting will change the labels of other Xs too which is not ideal
-    # centroids_reduced = np.delete(final_centroids, candidates, axis=0)
-
-    for i, f in enumerate(labels):
+    for i, l in enumerate(initial_labels):
         for can in candidates:
-            if labels[i] == can:
+            if l == can:
                 nice[i] = 0
+                updated_labels[i] = -1
 
-    return nice, candidates, clusters
+    for i, l in enumerate(updated_labels):
+        for can in candidates:
+            if l > can:
+                updated_labels[i] =- 1
+
+
+
+    # points with nice = 0 will have to be reassigned in different centroids
+    # those who are not candidates for removal
+    # labels should be updated
+    # reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
+    #                                  cnp.npy_intp[::1] labels, cnp.npy_intp[::1] nice,
+    #                                  metric='euclidean')
+
+
+    return nice, candidates, clusters, updated_labels
 
 
 def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metric='euclidean', all_out=False):
@@ -645,13 +710,10 @@ def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metri
         return final_centroids, final_indices
 
 
-
-
-
-
 def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
                        cnp.npy_intp[::1] labels, cnp.npy_intp[::1] nice,
                        metric='euclidean'):
+    # Caution should be re-examined or deleted
 
     cdef:
         cnp.npy_intp N = X.shape[0]
@@ -699,6 +761,7 @@ def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
 
 
 def reorder_labels(centroids, labels, nice, candidates):
+    # Needs to be tested
 
     current_cidx = np.arange(centroids.shape[0])
     updated_cidx = current_cidx.copy()
