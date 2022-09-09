@@ -560,10 +560,10 @@ def del_max_label(centroids, labels, initial_labels):
                 nice[i] = 0
                 updated_labels[i] = -1
 
-    for i, l in enumerate(updated_labels):
+    for i, l in enumerate(initial_labels):
         for can in candidates:
             if l > can:
-                updated_labels[i] =- 1
+                updated_labels[i] -= 1
 
 
 

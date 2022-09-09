@@ -192,7 +192,7 @@ def test_thetan_oic():
     def centroids_from_labels(points, labels):
 
         new_centroids = []
-        for i, l in enumerate(range(labels.max())):
+        for i, l in enumerate(range(labels.max() + 1)):
             # print(i)
             avg = np.average(points[labels==l], axis=0)
             new_centroids.append(avg)
@@ -241,7 +241,7 @@ def test_thetan_oic():
     #                                          all_out=True)
     # print('>>> c3', c_centroids3.shape)
 
-    show_plots = True
+    show_plots = 0
 
     if show_plots:
     # if even_centroids2.shape[0] > 100:
@@ -255,9 +255,9 @@ def test_thetan_oic():
     #     plot_centroids_clusters(points, c_centroids3, None, title='c3' + str(c_centroids3.shape), show=True)
     #     t = 1
 
-    return even_centroids2.shape[0]
+    # return even_centroids2.shape[0]
     # return even_centroids_ex.shape[0]
-    # return even_centroids_ex2.shape[0]
+    return even_centroids_ex2.shape[0]
     # return even_centroids2.shape[0]
     # return c_centroids3.shape[0]
 
