@@ -167,14 +167,15 @@ def berserker(points, theta_value, all_out=True, verbose=True):
     even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
     print('ec2x ', even_centroids_ex2.shape)
 
+    # if even_centroids_ex2.shape[0] == 101:
 
     if verbose:
 
-        # plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
-        # plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+        plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
         plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
-        # plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
-        # plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
+        plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
         plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
 
 
@@ -240,7 +241,7 @@ def test_thetan_oic():
     centroids = gt_centroids
 
 
-    res = berserker(points, theta_value, all_out=True, verbose=False)
+    res = berserker(points, theta_value, all_out=True, verbose=True)
 
     t = 1
 
@@ -259,6 +260,7 @@ if __name__ == '__main__':
 
     print(np.sum(ecs == 100))
     print(np.sum(ecs > 100))
+    print(np.sum(ecs > 101))
     print(np.sum(ecs < 100))
 
 
