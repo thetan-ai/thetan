@@ -177,7 +177,7 @@ def test_thetan_oic():
 
     t = 1
 
-    return res[0].shape[0]
+    return even_centroids_ex2.shape[0]
 
 
 if __name__ == '__main__':
