@@ -532,7 +532,9 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
     return reassigned_indices
 
 
-def del_max_label(centroids, labels, initial_labels):
+def candidate_labels(centroids, labels, initial_labels):
+    """ Find labels for removal in cases of conflict
+    """
     nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
     updated_labels = initial_labels.copy()
     clusters = np.empty((centroids.shape[0], 0)).tolist()
