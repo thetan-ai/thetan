@@ -1,7 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import reorder_labels, candidate_labels, theta_g1, theta_means, reassign_uncertain_update_labels
-from thetan.berseker import berserker
+from thetan.theta import reorder_labels, candidate_labels, theta_g1, theta_means, reassign_uncertain_update_labels, berserker
 import pylab as pl
 
 
@@ -10,8 +9,10 @@ def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=N
                             merged_centroids=None, show=True):
 
     new_colors = np.zeros((len(data), 3))
-    no_clusters = len(centroids)
-    cluster_colors = np.random.rand(no_clusters, 3)
+
+    if centroids is not None:
+        no_clusters = len(centroids)
+        cluster_colors = np.random.rand(no_clusters, 3)
 
 
     if labels is not None:
@@ -107,7 +108,7 @@ def test_reorder_labels():
                      np.array([0, 0, 1, 2, 3, 4, 4, 4]))
 
 
-def test_thetan_oic():
+def test_thetan_normal_uniform_grid():
 
     n_local_samples = 400
     # n_local_samples = 1000
@@ -163,7 +164,7 @@ def test_thetan_oic():
 
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
 
-    verbose = True
+    verbose = False
 
     if verbose:
 
@@ -180,11 +181,163 @@ def test_thetan_oic():
     return even_centroids_ex2.shape[0]
 
 
+
+def generate_circles(n_samples=15, inner_radius=60, outer_radius=15,
+                     density=500, size=(200, 200), labellize=False,
+                     return_coord=True):
+    """Generate small circle on a bigger one.
+
+    Parameters
+    ----------
+    n_samples: int
+        number of outer circle
+
+    inner_radius: int
+        radius of the bigger circle
+
+    outer_radius: int
+        radius of the small circle
+
+    density: int
+        number of point on each circle uniformly distributed
+
+    size: tuple
+        2d image size
+
+    labellize: bool
+        Switch on/off if you want to labellize each circle or not
+
+    Returns
+    -------
+    arr: 2d array
+        numpy array containing the drawing
+
+    """
+    arr = np.zeros(size)
+    label_value = 1
+    coord_list = []
+    for theta in np.linspace(0, 2*np.pi, n_samples, endpoint=False):
+        x = int(size[1]//2 + inner_radius * np.cos(theta))
+        y = int(size[0]//2 + inner_radius * np.sin(theta))
+        # arr[y, x] = 1
+        if labellize:
+            label_value += 1
+        for _ in range(density):
+            r = outer_radius * np.sqrt(np.random.random())
+            theta = np.random.random() * 2 * np.pi
+            x1 = x + r * np.cos(theta)
+            y1 = y + r * np.sin(theta)
+            if return_coord:
+                coord_list.append([y1, x1])
+            arr[int(y1), int(x1)] = label_value
+
+    if return_coord:
+        return arr, coord_list
+    return arr
+
+
+def test_grid_of_disks():
+
+    # np.random.seed(0)
+    sz = (50, 6)
+
+    coords = []
+    centroids = []
+
+    for x, y in np.ndindex(sz):
+
+        for d in range(100):
+            r = np.sqrt(np.random.random())
+            theta = np.random.random() * 2 * np.pi
+            x1 = 5 * x + r * np.cos(theta)
+            y1 = 5 * y + r * np.sin(theta)
+            coords.append([x1, y1])
+
+        centroids.append([5 * x, 5 * y])
+
+    points = np.array(coords)
+    print(points.shape[0])
+    centroids = np.array(centroids, dtype='f8')
+    print(centroids.shape[0])
+
+    theta_value = 2.0
+
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
+
+    print(even_centroids_ex2.shape[0])
+
+    plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
+
+
+def test_ring_of_disks():
+
+
+    # Note: After outer_radius 13 the problem becomes much harder. An iterative version of berserker could resolve this issue
+
+    _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=20,
+                                 density=500, size=(200, 200), labellize=False,
+                                 return_coord=True)
+    points = np.asarray(points)
+
+    print(points.shape)
+    range_of_thr = np.arange(21, 23, 0.5)
+
+    for theta_value in range_of_thr:
+
+        print('theta value', theta_value)
+
+        even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
+
+        print(even_centroids_ex2.shape[0])
+
+
+        plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
+        plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
+        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
+
+
+def points_on_triangle(v, n):
+    """ Give n random points uniformly on a triangle.
+
+    The vertices of the triangle are given by the shape
+    (2, 3) array *v*: one vertex per row.
+    """
+    x = np.sort(np.random.rand(2, n), axis=0)
+    return np.column_stack([x[0], x[1]-x[0], 1.0-x[1]]) @ v
+
+
+
+def test_two_triangles():
+    v = np.array([(-0.5, 0.5), (-0.5, -0.5), (0.5, 0)])
+    points = points_on_triangle(v, 2000)
+
+    inbetween_distance = 0.5
+
+    v = np.array([(inbetween_distance + 0.5, 0.5), (inbetween_distance + 0.5, -0.5), (inbetween_distance - 0.5, 0)])
+    points2 = points_on_triangle(v, 2000)
+
+    points = np.concatenate((points, points2), axis=0)
+
+    theta_value = .75
+
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
+    plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
+    plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+    plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
+    plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
+    plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
+    plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
+
+
 if __name__ == '__main__':
 
     ecs = []
     for i in range(100):
-        ecs.append(test_thetan_oic())
+        # ecs.append(test_thetan_normal_uniform_grid())
+        pass
 
     print(ecs)
 
@@ -194,6 +347,11 @@ if __name__ == '__main__':
     print(np.sum(ecs > 100))
     print(np.sum(ecs > 101))
     print(np.sum(ecs < 100))
+
+
+    # test_grid_of_disks()
+    # test_ring_of_disks()
+    test_two_triangles()
 
 
     # test_reorder_labels()
