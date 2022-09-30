@@ -197,6 +197,120 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         free(clusters_sizes)
         return final_centroids, final_indices
 
+def theta_g1m(X_orig, double theta, marker = None, metric='euclidean', all_out=False):
+    cdef cnp.npy_intp init_n
+    cdef cnp.npy_intp [:] marker_view
+    cdef double[:, :] X = X_orig
+    if isinstance(marker, np.ndarray):
+        init_n = np.max(marker)
+        marker_view = marker.astype('i8')
+    else:
+        init_n = 0
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp idx
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = 0
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double * summs = <double *> malloc(<size_t> D * (init_n) * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> D * (init_n) * sizeof(double))
+        double * clusters_sizes = <double *> malloc(<size_t> (init_n) * sizeof(double))
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+        list temp_list
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+
+    for i in range(init_n):
+        clusters_sizes[i] = 0
+        for d in range(D):
+            summs[i*D + d] = 0
+            centroids[i*D + d] = 0
+
+    if isinstance(marker, np.ndarray):
+        temp_list = []
+        for idx in range(N):
+            if marker_view[idx] != 0:
+                indices[idx] = marker_view[idx]-1
+                for d in range(D):
+                    summs[(marker_view[idx]-1)*D+d] += X[idx, d]
+                    clusters_sizes[marker_view[idx]-1] += 1
+            else:
+                temp_list.append(idx)
+        for i in range(init_n):
+            for d in range(D):
+                centroids[i*D+d] = summs[i*D+d] / clusters_sizes[i]
+        K = init_n
+    # first point becomes first cluster
+    else:
+        indices[0] = 0
+        for d in range(D):
+            summs[d] = X[0, d]
+            centroids[d] = X[0, d]
+        K = 1
+        clusters_sizes[0] = 1.0
+        temp_list = [i for i in range(1, N)]
+    
+    for i in temp_list:
+
+        minimum = DBL_MAX
+        argmin = -1
+        with nogil:
+            for k in range(K):
+
+                dist = metric_func(&X[i, 0], &centroids[k * D], D)
+
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
+
+            # add in existing
+            if minimum < theta:
+
+                for d in range(D):
+                    summs[argmin * D + d] += X[i, d]
+                clusters_sizes[argmin] += 1.0
+                for d in range(D):
+                    centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
+                indices[i] = argmin
+
+            # create new cluster
+            else:
+
+                summs = <double *> realloc(summs, <size_t> D * (K + 1) * sizeof(double))
+                clusters_sizes = <double *> realloc(clusters_sizes, <size_t> (K + 1) * sizeof(double))
+                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double))
+                indices[i] = K
+                for d in range(D):
+                    summs[K * D + d] = X[i, d]
+                clusters_sizes[K] = 1.0
+                for d in range(D):
+                    centroids[K * D + d] = summs[K * D + d]
+                K += 1
+
+
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    final_indices = np.asarray(indices)
+
+    if all_out:
+        final_summs = np.asarray(<double[:K, :D]> summs)
+        final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+        return final_centroids, final_indices, final_summs, final_clusters_sizes
+    else:
+        free(summs)
+        free(clusters_sizes)
+        return final_centroids, final_indices
+
 
 def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
 
