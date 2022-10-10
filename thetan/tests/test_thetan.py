@@ -2,6 +2,8 @@ import numpy as np
 import numpy.testing as npt
 from thetan.theta import reorder_labels, candidate_labels, theta_g1, theta_means, reassign_uncertain_update_labels, berserker
 import pylab as pl
+from thetan.theta import distance_matrix as tdm
+
 
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
@@ -108,7 +110,7 @@ def test_reorder_labels():
                      np.array([0, 0, 1, 2, 3, 4, 4, 4]))
 
 
-def test_thetan_normal_uniform_grid():
+def test_thetan_normal_uniform_grid(verbose=False):
 
     n_local_samples = 400
     # n_local_samples = 1000
@@ -163,8 +165,6 @@ def test_thetan_normal_uniform_grid():
 
 
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
-
-    verbose = False
 
     if verbose:
 
@@ -274,7 +274,7 @@ def test_ring_of_disks():
 
     # Note: After outer_radius 13 the problem becomes much harder. An iterative version of berserker could resolve this issue
 
-    _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=20,
+    _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=14,
                                  density=500, size=(200, 200), labellize=False,
                                  return_coord=True)
     points = np.asarray(points)
@@ -309,34 +309,159 @@ def points_on_triangle(v, n):
     return np.column_stack([x[0], x[1]-x[0], 1.0-x[1]]) @ v
 
 
-
-def test_two_triangles():
+def test_two_triangles(verbose=False):
     v = np.array([(-0.5, 0.5), (-0.5, -0.5), (0.5, 0)])
     points = points_on_triangle(v, 2000)
 
-    inbetween_distance = 0.5
+    inbetween_distance = 0.3
 
     v = np.array([(inbetween_distance + 0.5, 0.5), (inbetween_distance + 0.5, -0.5), (inbetween_distance - 0.5, 0)])
     points2 = points_on_triangle(v, 2000)
 
     points = np.concatenate((points, points2), axis=0)
 
-    theta_value = .75
+    theta_value = .6
 
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
-    plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
-    plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
-    plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
-    plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
-    plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
-    plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
+
+    if verbose:
+        plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
+        plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
+        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
+        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
+
+    npt.assert_almost_equal(even_centroids_ex2.shape[0], 2)
+
+
+def test_hd_data(verbose=False):
+
+    n_local_samples = 400
+    # n_local_samples = 1000
+
+    dims = 3
+
+    blob_dis = 5 # 10
+    cluster_x = 10 # 10
+    cluster_y = 10 # 10
+    cluster_z = 10 # 10
+
+    normal_distribution = True
+    uniform_distribution = False
+
+    normal_sigma = 1.0
+    uniform_low = -2.
+    uniform_high = 2.
+
+    theta_value = 3.6
+
+    xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
+    yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
+    zz = np.arange(-1 * blob_dis*cluster_z // 2, blob_dis * cluster_z // 2, blob_dis)
+
+
+    xx, yy, zz = np.meshgrid(xx, yy, zz)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis], np.ravel(zz)[:, np.newaxis]))
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], dims))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+
+
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+
+        if normal_distribution:
+            local_X = cpos + np.random.normal(0, normal_sigma, (n_local_samples, dims))
+
+        if uniform_distribution:
+            local_X = cpos + np.random.uniform(uniform_low,
+                                               uniform_high,
+                                               (n_local_samples, dims))
+
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    gt_centroids = np.array(gt_centroids)
+
+    points = X
+    labels = y
+    sz = len(n_centres)
+
+    centroids = gt_centroids
+
+    from time import time
+
+
+    t1 = time()
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
+    t2 = time()
+
+    berserker_time = t2 - t1
+
+    print('Total berserker time ', berserker_time)
+
+    from sklearn.cluster import KMeans
+
+    t1 = time()
+    kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+                    max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+    t2 = time()
+
+    kmeans_time = t2 - t1
+    print('Total kmeans++ time ', kmeans_time)
+
+    kcentroids = kmeans.cluster_centers_
+    klabels = kmeans.labels_
+
+
+    thr = 0.4
+
+    D = np.sqrt(tdm(even_centroids_ex2, centroids))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+
+    print('berserker count ',  count)
+    even_centroids_ex2_score = count / len(even_centroids_ex2)
+    print('berserker score ',  even_centroids_ex2_score)
+
+    D = np.sqrt(tdm(kcentroids, centroids))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+
+    print('kmeans++ count ',  count)
+    kscore = count / len(kcentroids)
+    print('kmeans++ score ',  kscore)
+
+
+    if verbose:
+
+        from fury import actor, window
+
+        act = actor.dots(centroids, color=(0.0, 0., 1.), opacity=1)
+        act2 = actor.dots(points, color=(0, 1.0, 0), opacity=0.1)
+        act3 = actor.dots(even_centroids_ex2, color=(1.0, 0.0, 0), opacity=1)
+        act4 = actor.dots(kcentroids, color=(1.0, 1.0, 0), opacity=1)
+
+        scene = window.Scene()
+        scene.add(act)
+        scene.add(act2)
+        scene.add(act3)
+        scene.add(act4)
+        show_manager = window.ShowManager(scene)
+        show_manager.start()
+
+    t = 1
+
 
 
 if __name__ == '__main__':
 
     ecs = []
     for i in range(100):
-        # ecs.append(test_thetan_normal_uniform_grid())
+        # ecs.append(test_thetan_normal_uniform_grid(verbose=True))
         pass
 
     print(ecs)
@@ -351,8 +476,8 @@ if __name__ == '__main__':
 
     # test_grid_of_disks()
     # test_ring_of_disks()
-    test_two_triangles()
-
+    # test_two_triangles(True)
+    test_hd_data(verbose=True)
 
     # test_reorder_labels()
     # test_build_nice()
