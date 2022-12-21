@@ -440,10 +440,10 @@ def test_hd_data(verbose=False):
 
         from fury import actor, window
 
-        act = actor.dots(centroids, color=(0.0, 0., 1.), opacity=1)
-        act2 = actor.dots(points, color=(0, 1.0, 0), opacity=0.1)
-        act3 = actor.dots(even_centroids_ex2, color=(1.0, 0.0, 0), opacity=1)
-        act4 = actor.dots(kcentroids, color=(1.0, 1.0, 0), opacity=1)
+        act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
+        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
 
         scene = window.Scene()
         scene.add(act)
