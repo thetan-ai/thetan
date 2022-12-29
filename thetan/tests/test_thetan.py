@@ -1,9 +1,9 @@
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import reorder_labels, candidate_labels, theta_g1, theta_means, reassign_uncertain_update_labels, berserker
+from thetan.theta import reorder_labels, candidate_labels, theta_g1, theta_means, reassign_uncertain_update_labels
 import pylab as pl
 from thetan.theta import distance_matrix as tdm
-
+from thetan.berserker import berserker
 
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
@@ -403,11 +403,24 @@ def test_hd_data(verbose=False):
 
     print('Total berserker time ', berserker_time)
 
+
+
+    # delete centroids and reassign
+    # or better
+    # run TS on even_centroids_ex2 and call candidate_labels
+    # if candidate centroids are close to existing centroids then assign their clusters to these and update everything
+    # 
+    #  
+
+
     from sklearn.cluster import KMeans
 
     t1 = time()
+    # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+    #                 max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+
     kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
-                    max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+                    max_iter=300, tol=0.0001, random_state=0).fit(points)
     t2 = time()
 
     kmeans_time = t2 - t1
@@ -441,13 +454,13 @@ def test_hd_data(verbose=False):
         from fury import actor, window
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
         act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
         act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
 
         scene = window.Scene()
         scene.add(act)
-        scene.add(act2)
+        # scene.add(act2)
         scene.add(act3)
         scene.add(act4)
         show_manager = window.ShowManager(scene)
