@@ -86,10 +86,22 @@ def berserker(points, theta_value, all_out=True, verbose=True):
     print('ec2x ', even_centroids_ex2.shape)
 
 
+    # Peripheral
+    # Solution 1: threshold on cluster sizes and reassign
+
     unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                      return_counts=True)
-
     
+
+    # Solution 2: find close clusters - merge smaller to larger
+    # even_centroids_ex3, even_labels_ex3, _, _ = theta_g1(even_centroids_ex2, theta=theta_value + 0.3 * theta_value,
+    #                                                      all_out=True)
+
+
+    # Solution 3: study and plot the labels of the centroid indices. Any patterns?
+
+    # Solution 4: after theta_means remove all new clusters. So shape at the end should be equal to even_centroids_ex
+
 
     # if even_centroids_ex2.shape[0] == 101:
 
