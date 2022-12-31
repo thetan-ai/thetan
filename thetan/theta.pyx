@@ -533,54 +533,6 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
     return reassigned_indices
 
 
-def candidate_labels(centroids, labels, initial_labels):
-    """ Find labels for removal in cases of conflict
-    """
-    nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
-    updated_labels = initial_labels.copy()
-    clusters = np.empty((centroids.shape[0], 0)).tolist()
-    for i in range(labels.shape[0]):
-        clusters[labels[i]].append(i)
-
-    candidates = []
-    # for c in clusters:
-    #     if len(c) > 1:
-    #         maxc = np.max(c)
-    #         candidates.append(maxc)
-
-    for c in clusters:
-        if len(c) > 1:
-            # maxc = np.max(c)
-            cs = np.sort(c)
-            candidates.extend(cs[1:])
-
-    # caution here, deleting will change the labels of other Xs too which is not ideal
-    # centroids_reduced = np.delete(centroids, candidates, axis=0)
-
-    for i, l in enumerate(initial_labels):
-        for can in candidates:
-            if l == can:
-                nice[i] = 0
-                updated_labels[i] = -1
-
-    for i, l in enumerate(initial_labels):
-        for can in candidates:
-            if l > can:
-                updated_labels[i] -= 1
-
-
-
-    # points with nice = 0 will have to be reassigned in different centroids
-    # those who are not candidates for removal
-    # labels should be updated
-    # reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
-    #                                  cnp.npy_intp[::1] labels, cnp.npy_intp[::1] nice,
-    #                                  metric='euclidean')
-
-
-    return nice, candidates, clusters, updated_labels
-
-
 def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metric='euclidean', all_out=False):
 
     cdef:

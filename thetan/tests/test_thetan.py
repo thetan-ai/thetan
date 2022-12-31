@@ -1,9 +1,9 @@
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import reorder_labels, candidate_labels, theta_g1, theta_means, reassign_uncertain_update_labels
+from thetan.theta import reorder_labels, theta_g1, theta_means, reassign_uncertain_update_labels
 import pylab as pl
 from thetan.theta import distance_matrix as tdm
-from thetan.berserker import berserker
+from thetan.berserker import berserker, candidate_labels
 
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
@@ -268,13 +268,15 @@ def test_grid_of_disks():
 
     plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
 
+    t = 1
+
 
 def test_ring_of_disks():
 
 
     # Note: After outer_radius 13 the problem becomes much harder. An iterative version of berserker could resolve this issue
 
-    _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=14,
+    _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=12,
                                  density=500, size=(200, 200), labellize=False,
                                  return_coord=True)
     points = np.asarray(points)
@@ -298,6 +300,7 @@ def test_ring_of_disks():
         plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
         plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
 
+        t = 1
 
 def points_on_triangle(v, n):
     """ Give n random points uniformly on a triangle.
@@ -455,16 +458,26 @@ def test_hd_data(verbose=False):
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
         # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
-        act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
-        act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
+        act3 = actor.dot(even_centroids_ex, colors=(1.0, 0.0, 0), opacity=1)
+        # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
+        # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        # act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
 
         scene = window.Scene()
         scene.add(act)
         # scene.add(act2)
         scene.add(act3)
-        scene.add(act4)
+        # scene.add(act4)
         show_manager = window.ShowManager(scene)
         show_manager.start()
+
+        from pylab import plot, show, grid
+        unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+        plot(np.sort(unique_counts_ex2), '*-')
+        grid()
+        
+
+
 
     t = 1
 
