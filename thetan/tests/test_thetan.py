@@ -357,7 +357,7 @@ def test_hd_data(verbose=False):
     uniform_low = -2.
     uniform_high = 2.
 
-    theta_value = 3.6
+    theta_value = 3.6 # 3.8 looks good too
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
@@ -458,9 +458,9 @@ def test_hd_data(verbose=False):
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
         # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
-        act3 = actor.dot(even_centroids_ex, colors=(1.0, 0.0, 0), opacity=1)
+        # act3 = actor.dot(even_centroids_ex, colors=(1.0, 0.0, 0), opacity=1)
         # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
-        # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
         # act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
 
         scene = window.Scene()
@@ -475,7 +475,7 @@ def test_hd_data(verbose=False):
         unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
         plot(np.sort(unique_counts_ex2), '*-')
         grid()
-        
+
 
 
 
