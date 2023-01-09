@@ -457,7 +457,7 @@ def test_hd_data(verbose=False):
         from fury import actor, window
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
         # act3 = actor.dot(even_centroids_ex, colors=(1.0, 0.0, 0), opacity=1)
         # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
         act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
