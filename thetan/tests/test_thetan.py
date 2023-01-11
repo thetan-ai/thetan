@@ -352,6 +352,7 @@ def test_hd_data(verbose=False):
 
     normal_distribution = True
     uniform_distribution = False
+    compare_with_kmeans = False
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -406,6 +407,15 @@ def test_hd_data(verbose=False):
 
     print('Total berserker time ', berserker_time)
 
+    unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
+                                                     return_counts=True)
+
+    main_indices = unique_counts_ex2 > 50
+    extra_indices = unique_counts_ex2 <= 50
+
+    res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices])
+    res_min = np.min(res, axis=1)
+
 
 
     # delete centroids and reassign
@@ -415,41 +425,41 @@ def test_hd_data(verbose=False):
     # 
     #  
 
+    if compare_with_kmeans:
+        from sklearn.cluster import KMeans
 
-    from sklearn.cluster import KMeans
+        t1 = time()
+        # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+        #                 max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
 
-    t1 = time()
-    # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
-    #                 max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+        kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+                        max_iter=300, tol=0.0001, random_state=0).fit(points)
+        t2 = time()
 
-    kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
-                    max_iter=300, tol=0.0001, random_state=0).fit(points)
-    t2 = time()
+        kmeans_time = t2 - t1
+        print('Total kmeans++ time ', kmeans_time)
 
-    kmeans_time = t2 - t1
-    print('Total kmeans++ time ', kmeans_time)
-
-    kcentroids = kmeans.cluster_centers_
-    klabels = kmeans.labels_
+        kcentroids = kmeans.cluster_centers_
+        klabels = kmeans.labels_
 
 
-    thr = 0.4
+        thr = 0.4
 
-    D = np.sqrt(tdm(even_centroids_ex2, centroids))
-    closest = np.min(D, axis=1)
-    count = np.sum(closest < thr)
+        D = np.sqrt(tdm(even_centroids_ex2, centroids))
+        closest = np.min(D, axis=1)
+        count = np.sum(closest < thr)
 
-    print('berserker count ',  count)
-    even_centroids_ex2_score = count / len(even_centroids_ex2)
-    print('berserker score ',  even_centroids_ex2_score)
+        print('berserker count ',  count)
+        even_centroids_ex2_score = count / len(even_centroids_ex2)
+        print('berserker score ',  even_centroids_ex2_score)
 
-    D = np.sqrt(tdm(kcentroids, centroids))
-    closest = np.min(D, axis=1)
-    count = np.sum(closest < thr)
+        D = np.sqrt(tdm(kcentroids, centroids))
+        closest = np.min(D, axis=1)
+        count = np.sum(closest < thr)
 
-    print('kmeans++ count ',  count)
-    kscore = count / len(kcentroids)
-    print('kmeans++ score ',  kscore)
+        print('kmeans++ count ',  count)
+        kscore = count / len(kcentroids)
+        print('kmeans++ score ',  kscore)
 
 
     if verbose:
@@ -460,21 +470,26 @@ def test_hd_data(verbose=False):
         act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
         # act3 = actor.dot(even_centroids_ex, colors=(1.0, 0.0, 0), opacity=1)
         # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
-        act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        act3m = actor.dot(even_centroids_ex2[main_indices], colors=(1.0, 0.0, 0), opacity=1)
+        act3e = actor.dot(even_centroids_ex2[extra_indices], colors=(1.0, 1.0, 0), opacity=1)
         # act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
 
         scene = window.Scene()
         scene.add(act)
         # scene.add(act2)
-        scene.add(act3)
+        # scene.add(act3)
+        scene.add(act3m)
+        scene.add(act3e)
         # scene.add(act4)
         show_manager = window.ShowManager(scene)
         show_manager.start()
 
         from pylab import plot, show, grid
-        unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+        # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
         plot(np.sort(unique_counts_ex2), '*-')
         grid()
+        show()
 
 
 

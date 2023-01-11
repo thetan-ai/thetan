@@ -180,9 +180,11 @@ def berserker(points, theta_value, all_out=True, verbose=True):
     # Solution 2: find close clusters - merge smaller to larger
     even_centroids_ex3, even_labels_ex3, _, _ = theta_g1(even_centroids_ex2, theta=theta_value,
                                                          all_out=True)
-
+ 
     # Solution 3: study and plot the labels of the centroid indices. Any patterns?
    
+
+
 
     print('Times')
     print(info_dict)
