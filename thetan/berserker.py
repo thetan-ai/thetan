@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from thetan.theta import theta_g1, candidate_labels, reassign_uncertain_update_labels, centroids_from_labels
+from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means
 
 
@@ -126,7 +126,7 @@ def berserker(points, theta_value, all_out=True, verbose=True):
 
     p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex, theta=theta_value,
                                               all_out=True)
-    
+
     t11 = time()
     print('p_centroids', p_centroids.shape)
 
@@ -134,12 +134,12 @@ def berserker(points, theta_value, all_out=True, verbose=True):
 
 
     t12 = time()
-    c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value, 
+    c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
                                              all_out=True)
 
     t13 = time()
 
-    
+
     info_dict['Shuffle 2 TG1 PC'] = t13 - t12
 
     nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
@@ -153,7 +153,7 @@ def berserker(points, theta_value, all_out=True, verbose=True):
 
     t15 = time()
     print('ec2 ', even_centroids2.shape)
-    
+
     info_dict['Shuffle 2 DEL'] = t15 - t14
 
     updated_labels_ex2 = reassign_uncertain_update_labels(points, even_centroids2,
@@ -172,17 +172,17 @@ def berserker(points, theta_value, all_out=True, verbose=True):
 
     # Peripheral
     # Solution 1: if small clusters and close to another cluster reassign
-    
+
     unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                      return_counts=True)
-    
+
 
     # Solution 2: find close clusters - merge smaller to larger
     even_centroids_ex3, even_labels_ex3, _, _ = theta_g1(even_centroids_ex2, theta=theta_value,
                                                          all_out=True)
- 
+
     # Solution 3: study and plot the labels of the centroid indices. Any patterns?
-   
+
 
 
 

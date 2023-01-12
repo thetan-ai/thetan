@@ -410,8 +410,8 @@ def test_hd_data(verbose=False):
     unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                      return_counts=True)
 
-    main_indices = unique_counts_ex2 > 50
-    extra_indices = unique_counts_ex2 <= 50
+    main_indices = unique_counts_ex2 > 60
+    extra_indices = unique_counts_ex2 <= 60
 
     res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices])
     res_min = np.min(res, axis=1)
@@ -422,8 +422,6 @@ def test_hd_data(verbose=False):
     # or better
     # run TS on even_centroids_ex2 and call candidate_labels
     # if candidate centroids are close to existing centroids then assign their clusters to these and update everything
-    # 
-    #  
 
     if compare_with_kmeans:
         from sklearn.cluster import KMeans
@@ -468,7 +466,11 @@ def test_hd_data(verbose=False):
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
         act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
-        # act3 = actor.dot(even_centroids_ex, colors=(1.0, 0.0, 0), opacity=1)
+
+        labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
+
+        act3 = actor.dot(points[np.in1d(updated_labels_ex2, labels_of_interest)], colors=(1.0, 1., 1.0), opacity=.5)
+
         # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
         # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
         act3m = actor.dot(even_centroids_ex2[main_indices], colors=(1.0, 0.0, 0), opacity=1)
