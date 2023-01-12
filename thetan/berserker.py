@@ -57,8 +57,36 @@ def candidate_labels(centroids, labels, initial_labels):
     return nice, candidates, clusters, updated_labels
 
 
+def candidate_labels_outliers(centroids, candidates, initial_labels):
+    """ Find labels for removal in cases of outliers
+    """
+    nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
+    updated_labels = initial_labels.copy()
 
-def berserker(points, theta_value, all_out=True, verbose=True):
+    # caution here, deleting will change the labels of other Xs too which is not ideal
+    # centroids_reduced = np.delete(centroids, candidates, axis=0)
+
+    for i, l in enumerate(initial_labels):
+        for can in candidates:
+            if l == can:
+                nice[i] = 0
+                updated_labels[i] = -1
+
+    # The above can be written in this way too
+    # can_mask = np.in1d(initial_labels, candidates)
+    # nice[can_mask] = 0
+    # updated_labels[can_mask] = -1
+
+    for i, l in enumerate(initial_labels):
+        for can in candidates:
+            if l > can:
+                updated_labels[i] -= 1
+
+    return nice, updated_labels
+
+
+
+def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=True):
 
 
     info_dict = {}
@@ -170,20 +198,26 @@ def berserker(points, theta_value, all_out=True, verbose=True):
     info_dict['Shuffle 2 CEN_LA'] = t17 - t16
 
 
-    # Peripheral
-    # Solution 1: if small clusters and close to another cluster reassign
+    if manage_outliers:
 
-    unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
-                                                     return_counts=True)
+        unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
+                                                         return_counts=True)
 
+        nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, unique_labels_ex2[unique_counts_ex2 <= 60], updated_labels_ex2)
 
-    # Solution 2: find close clusters - merge smaller to larger
-    even_centroids_ex3, even_labels_ex3, _, _ = theta_g1(even_centroids_ex2, theta=theta_value,
-                                                         all_out=True)
+        updated_labels_ex3 = reassign_uncertain_update_labels(points, even_centroids_ex2, updated_labels3, nice3)
 
-    # Solution 3: study and plot the labels of the centroid indices. Any patterns?
+        even_centroids_ex3 = centroids_from_labels(points, updated_labels_ex3)
 
+        even_centroids_ex2 = even_centroids_ex3
 
+        updated_labels_ex2 = updated_labels_ex3
+
+        t18 = time()
+
+        info_dict['Manage Outliers'] = t18 - t17
+
+        print('Final Shape:', even_centroids_ex2.shape)
 
 
     print('Times')
