@@ -346,19 +346,19 @@ def test_hd_data(verbose=False):
     dims = 3
 
     blob_dis = 5 # 10
-    cluster_x = 10 # 10
+    cluster_x = 20 # 10
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
     normal_distribution = True
     uniform_distribution = False
-    compare_with_kmeans = False
+    compare_with_kmeans = True
 
     normal_sigma = 1.0
     uniform_low = -2.
     uniform_high = 2.
 
-    theta_value = 3.6 # 3.8 looks good too
+    theta_value = 3.6 # 3.8 looks ok too
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
@@ -465,24 +465,24 @@ def test_hd_data(verbose=False):
         from fury import actor, window
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
 
         labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
 
-        act3 = actor.dot(points[np.in1d(updated_labels_ex2, labels_of_interest)], colors=(1.0, 1., 1.0), opacity=.5)
+        #act3 = actor.dot(points[np.in1d(updated_labels_ex2, labels_of_interest)], colors=(1.0, 1., 1.0), opacity=.5)
 
         # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
-        # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
-        act3m = actor.dot(even_centroids_ex2[main_indices], colors=(1.0, 0.0, 0), opacity=1)
-        act3e = actor.dot(even_centroids_ex2[extra_indices], colors=(1.0, 1.0, 0), opacity=1)
+        act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        # act3m = actor.dot(even_centroids_ex2[main_indices], colors=(1.0, 0.0, 0), opacity=1)
+        # act3e = actor.dot(even_centroids_ex2[extra_indices], colors=(1.0, 1.0, 0), opacity=1)
         # act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
 
         scene = window.Scene()
         scene.add(act)
         # scene.add(act2)
-        # scene.add(act3)
-        scene.add(act3m)
-        scene.add(act3e)
+        scene.add(act3)
+        # scene.add(act3m)
+        # scene.add(act3e)
         # scene.add(act4)
         show_manager = window.ShowManager(scene)
         show_manager.start()

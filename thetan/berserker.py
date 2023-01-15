@@ -203,15 +203,19 @@ def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=T
         unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                          return_counts=True)
 
-        nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, unique_labels_ex2[unique_counts_ex2 <= 60], updated_labels_ex2)
+        candidates3 = unique_labels_ex2[unique_counts_ex2 <= 60]
 
-        updated_labels_ex3 = reassign_uncertain_update_labels(points, even_centroids_ex2, updated_labels3, nice3)
+        nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
 
-        even_centroids_ex3 = centroids_from_labels(points, updated_labels_ex3)
+        even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
+        
+        updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3)
 
-        even_centroids_ex2 = even_centroids_ex3
+        even_centroids_ex4 = centroids_from_labels(points, updated_labels_ex4)
 
-        updated_labels_ex2 = updated_labels_ex3
+        even_centroids_ex2 = even_centroids_ex4
+
+        updated_labels_ex2 = updated_labels_ex4
 
         t18 = time()
 
