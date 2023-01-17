@@ -59,7 +59,7 @@ evaluation_thr = 0.5
 np.random.seed(0)
 t1 = time()
 kmeans = KMeans(n_clusters=15, init='k-means++', n_init=10,
-                max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+                max_iter=300, tol=0.0001, random_state=0).fit(points)
 t2 = time()
 kmeans_time = t2 - t1
 print('kmeans++ ', kmeans_time)
@@ -71,7 +71,11 @@ print(kcentroids.shape)
 
 
 # centroids, labels = theta_g1(points, theta=145000)
-centroids, labels = theta_g2(points, theta=110000, num_shuffles=2000) ####s4
+# centroids, labels = theta_g2(points, theta=110000, num_shuffles=2000) ####s4
+from thetan.berserker import berserker
+
+centroids, labels, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, 105000, all_out=True, verbose=True)
+
 unique_labels, sizes = np.unique(labels, return_counts=True)
 pl.figure()
 pl.plot(np.sort(sizes)[::-1], '-o')
@@ -82,7 +86,7 @@ pl.savefig(os.path.join(dir_path,'s4_clusters_sizes_vs_numbers.png'), dpi=300)
 big_idx = np.argsort(sizes)[::-1][:15]
 big_centroids = centroids[big_idx]
 labels = assign(points, big_centroids)
-show_clusters(points_orig, 'S4: Compare gt labels with K-means++ and ThetA', gt_centroids, labels_true, kcentroids, big_centroids)
+show_clusters(points_orig, 'S4: Compare gt labels with K-means++ and Thetan Berserker', gt_centroids, labels_true, kcentroids, big_centroids)
 labels.sort()
 klabels.sort()
 print('adjusted_rand_score for labels: ',adjusted_rand_score(labels_true, labels))
