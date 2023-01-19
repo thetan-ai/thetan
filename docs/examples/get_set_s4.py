@@ -4,7 +4,7 @@ import string
 import os
 from numpy import testing as npt
 from thetan.theta import theta_g1, assign
-import matplotlib.pyplot as pl
+import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.metrics.cluster import adjusted_mutual_info_score
@@ -12,21 +12,24 @@ from sklearn.metrics.cluster import normalized_mutual_info_score
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 dir_path = os.path.join(dir_path, 'S-sets')
+
+
 def show_clusters(X, method, gt_centroids, labels, kcentroids, centroids):
-    pl.figure()
-    pl.title('Method is ' + method)
+    fig, ax = plt.subplots()
+    # ax.title('Method is ' + method)
     unique_colors = np.random.rand(gt_centroids.shape[0], 3)
 
     colors = np.zeros((labels.shape[0], 3), dtype='f8')
     for i in range(X.shape[0]):
         colors[i] = unique_colors[labels[i]]
-    pl.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
-    pl.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'ko')
-    pl.plot(kcentroids[:, 0], kcentroids[:, 1], 'r^')
-    pl.plot(centroids[:, 0], centroids[:, 1], 'b^')
-    pl.xlim([0 , 1000000])
-    pl.savefig(os.path.join(dir_path,'s4_compare_GT_Tetha_KM++.png'), dpi=300)
-    pl.show()
+    ax.scatter(X[:, 0], X[:, 1], c=colors, alpha=0.5)
+    a1, = ax.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'ko', label='gt')
+    a2, = ax.plot(kcentroids[:, 0], kcentroids[:, 1], 'r^', label='kmeans')
+    a3, = ax.plot(centroids[:, 0], centroids[:, 1], 'b^', label='thetan')
+    ax.legend(handles=[a1, a2, a3])
+    plt.xlim([0 , 1000000])
+    plt.savefig(os.path.join(dir_path,'s4_compare_GT_Tetha_KM++.png'), dpi=300)
+    plt.show()
 
 
 from pathlib import Path
@@ -77,12 +80,12 @@ from thetan.berserker import berserker
 centroids, labels, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, 105000, all_out=True, verbose=True)
 
 unique_labels, sizes = np.unique(labels, return_counts=True)
-pl.figure()
-pl.plot(np.sort(sizes)[::-1], '-o')
-pl.show
+plt.figure()
+plt.plot(np.sort(sizes)[::-1], '-o')
+plt.show
 data = np.array(np.sort(sizes)[::-1])
 np.savetxt(os.path.join(dir_path,'s3_centroids_size.dat'), data)
-pl.savefig(os.path.join(dir_path,'s4_clusters_sizes_vs_numbers.png'), dpi=300)
+plt.savefig(os.path.join(dir_path,'s4_clusters_sizes_vs_numbers.png'), dpi=300)
 big_idx = np.argsort(sizes)[::-1][:15]
 big_centroids = centroids[big_idx]
 labels = assign(points, big_centroids)
