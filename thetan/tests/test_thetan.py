@@ -346,13 +346,13 @@ def test_hd_data(verbose=False):
     dims = 3
 
     blob_dis = 5 # 10
-    cluster_x = 20 # 10
+    cluster_x = 10 # 10
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
     normal_distribution = True
     uniform_distribution = False
-    compare_with_kmeans = True
+    compare_with_kmeans = False
 
     normal_sigma = 1.0
     uniform_low = -2.

@@ -25,8 +25,7 @@ def candidate_labels(centroids, labels, initial_labels):
     #         candidates.append(maxc)
 
     for c in clusters:
-        if len(c) > 1:
-            # maxc = np.max(c)
+        if len(c) > 1:             
             cs = np.sort(c)
             candidates.extend(cs[1:])
 
