@@ -25,7 +25,7 @@ def candidate_labels(centroids, labels, initial_labels):
     #         candidates.append(maxc)
 
     for c in clusters:
-        if len(c) > 1:             
+        if len(c) > 1:
             cs = np.sort(c)
             candidates.extend(cs[1:])
 
@@ -42,15 +42,6 @@ def candidate_labels(centroids, labels, initial_labels):
         for can in candidates:
             if l > can:
                 updated_labels[i] -= 1
-
-
-
-    # points with nice = 0 will have to be reassigned in different centroids
-    # those who are not candidates for removal
-    # labels should be updated
-    # reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
-    #                                  cnp.npy_intp[::1] labels, cnp.npy_intp[::1] nice,
-    #                                  metric='euclidean')
 
 
     return nice, candidates, clusters, updated_labels
@@ -207,7 +198,7 @@ def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=T
         nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
 
         even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
-        
+
         updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3)
 
         even_centroids_ex4 = centroids_from_labels(points, updated_labels_ex4)
