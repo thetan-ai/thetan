@@ -386,6 +386,11 @@ def test_candidate_labels():
 
     nice2, candidates2, clusters2, updated_labels2 = candidate_labels_c(centroids, labels, initial_labels)
 
+
+    npt.assert_array_almost_equal(nice, nice2)
+    npt.assert_array_almost_equal(candidates, candidates2)
+    npt.assert_array_almost_equal(updated_labels, updated_labels2)
+
     t = 1
 
 

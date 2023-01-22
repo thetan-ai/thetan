@@ -493,7 +493,7 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
     """ Find labels for removal in cases of conflict and return
     """
 
-    cdef :
+    cdef:
 
         cnp.npy_intp N = initial_labels.shape[0]        
         cnp.npy_intp i = 0, j = 0, cnt = 0
@@ -505,86 +505,69 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
         cnp.npy_intp minc = INT_MAX
         
 
-    for i in range(K):
-        clusters[i].sz = 0
-        clusters[i].elements = NULL
+    with nogil:
 
-    for i in range(K):
+        for i in range(K):
 
-        print(i)
-       
-        clusters[labels[i]].sz += 1
-        clusters[labels[i]].elements = <cnp.npy_intp *> realloc(clusters[labels[i]].elements, <size_t> clusters[labels[i]].sz * sizeof(cnp.npy_intp))
-        clusters[labels[i]].elements[clusters[labels[i]].sz - 1] = i
+            clusters[i].sz = 0
+            clusters[i].elements = NULL
 
+        for i in range(K):
 
-    print('>>>>')
-
-    for i in range(K):
-        # print(i)        
-        for j in range(clusters[i].sz):
-            # print(j)
-            print(i, j, clusters[i].elements[j])
-            # clusters2[i].append(clusters[i].elements[j])
-
-    # print(clusters2)
-
-    cnt = 0
-    for i in range(K):
-        minc = INT_MAX
-
-        for j in range(clusters[i].sz):
-
-            if clusters[i].element[j] < minc:
-                minc = clusters[i].element[j]
-
-        for j in range(clusters[i].sz):
-            
-            if clusters[i].element[j] > minc:
-                candidates = <cnp.npy_intp *> realloc(candidates, <size_t> (cnt + 1) * sizeof(cnp.npy_intp))
-                candidates[cnt] = clusters[i].element[j]
-                cnt += 1
+            clusters[labels[i]].sz += 1
+            clusters[labels[i]].elements = <cnp.npy_intp *> realloc(clusters[labels[i]].elements, <size_t> clusters[labels[i]].sz * sizeof(cnp.npy_intp))
+            clusters[labels[i]].elements[clusters[labels[i]].sz - 1] = i
 
 
-    for i in range(K):
-        free(clusters[i].elements)
-    free(clusters)
+        
+        # for i in range(K):
+        #    for j in range(clusters[i].sz):
+        #        print(i, j, clusters[i].elements[j])
+        
+
+        cnt = 0
+        for i in range(K):
+            minc = INT_MAX
+
+            for j in range(clusters[i].sz):
+
+                if clusters[i].elements[j] < minc:
+                    minc = clusters[i].elements[j]
+
+            for j in range(clusters[i].sz):
+                
+                if clusters[i].elements[j] > minc:
+                    candidates = <cnp.npy_intp *> realloc(candidates, <size_t> (cnt + 1) * sizeof(cnp.npy_intp))
+                    candidates[cnt] = clusters[i].elements[j]
+                    cnt += 1
+
+
+        for i in range(K):
+            free(clusters[i].elements)
+        free(clusters)
+
+        for i in range(N):
+            for j in range(cnt):
+                if initial_labels[i] == candidates[j]:
+                    nice[i] = 0
+                    updated_labels[i] = -1
+
+
+        for i in range(N):
+            for j in range(cnt):
+                if initial_labels[i] > candidates[j]:                
+                    updated_labels[i] -= 1
+
 
 
     final_candidates = np.asarray(<cnp.npy_intp[:cnt]> candidates)
-    
-
-    # 1/0
-
-    # clusters = np.empty((centroids.shape[0], 0)).tolist()
-    # for i in range(labels.shape[0]):
-    #    clusters[labels[i]].append(i)
-
-
-    # candidates = []
-
-    # for c in clusters:
-    #     if len(c) > 1:
-    #         cs = np.sort(c)
-    #         candidates.extend(cs[1:])
-
-    # caution here, deleting will change the labels of other Xs too which is not ideal
- 
-    # for i, l in enumerate(initial_labels):
-    #     for can in candidates:
-    #         if l == can:
-    #             nice[i] = 0
-    #             updated_labels[i] = -1
-
-    # for i, l in enumerate(initial_labels):
-    #     for can in candidates:
-    #         if l > can:
-    #             updated_labels[i] -= 1
+    final_nice = np.asarray(nice)
+    final_updated_labels = np.asarray(updated_labels)
 
     clusters2 = None
-    candidates = None
+    # candidates = None
 
-    return nice, candidates, clusters2, updated_labels
+    return final_nice, final_candidates, clusters2, final_updated_labels
 
 
 
