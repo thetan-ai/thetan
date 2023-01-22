@@ -338,6 +338,57 @@ def test_two_triangles(verbose=False):
     npt.assert_almost_equal(even_centroids_ex2.shape[0], 2)
 
 
+
+def candidate_labels(centroids, labels, initial_labels):
+    """ Find labels for removal in cases of conflict
+    """
+    nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
+    updated_labels = initial_labels.copy()
+    clusters = np.empty((centroids.shape[0], 0)).tolist()
+    for i in range(labels.shape[0]):
+        clusters[labels[i]].append(i)
+
+    candidates = []
+    for c in clusters:
+        if len(c) > 1:
+            cs = np.sort(c)
+            candidates.extend(cs[1:])
+
+    # caution here, deleting will change the labels of other Xs too which is not ideal   
+
+    for i, l in enumerate(initial_labels):
+        for can in candidates:
+            if l == can:
+                nice[i] = 0
+                updated_labels[i] = -1
+
+    for i, l in enumerate(initial_labels):
+        for can in candidates:
+            if l > can:
+                updated_labels[i] -= 1
+
+
+    return nice, candidates, clusters, updated_labels
+
+
+def test_candidate_labels():
+
+
+    centroids = np.random.rand(5, 3)
+
+    labels = np.array([0, 2, 2, 1, 3, 3], dtype=np.intp)
+
+    initial_labels = np.array([0, 2, 5, 1, 3, 4], dtype=np.intp)
+
+    nice, candidates, clusters, updated_labels = candidate_labels(centroids, labels, initial_labels)
+
+    from thetan.theta import candidate_labels_c
+
+    nice2, candidates2, clusters2, updated_labels2 = candidate_labels_c(centroids, labels, initial_labels)
+
+    t = 1
+
+
 def test_hd_data(verbose=False):
 
     n_local_samples = 400
@@ -520,7 +571,9 @@ if __name__ == '__main__':
     # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    test_hd_data(verbose=True)
+    # test_hd_data(verbose=True)
+
+    test_candidate_labels()
 
     # test_reorder_labels()
     # test_build_nice()

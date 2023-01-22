@@ -38,6 +38,12 @@ ctypedef struct Linkedlist:
     Linkedlist * next
 
 
+ctypedef struct Node:
+    cnp.npy_intp sz
+    cnp.npy_intp * elements
+
+
+
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     cdef:
         cnp.npy_intp d
@@ -483,50 +489,102 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         return final_centroids, final_indices
 
 
-def candidate_labels_c(centroids, labels, initial_labels):
+def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy_intp[:] initial_labels):
     """ Find labels for removal in cases of conflict and return
     """
 
-    cdef:
-        cnp.npy_intp N = initial_labels.shape[0]
-        cnp.npy_intp D = centroids.shape[1]
-        cnp.npy_intp i = 0
+    cdef :
+
+        cnp.npy_intp N = initial_labels.shape[0]        
+        cnp.npy_intp i = 0, j = 0, cnt = 0
         cnp.npy_intp K = labels.shape[0]
         cnp.npy_intp [:] updated_labels = initial_labels.copy()
-        cnp.npy_intp [:] nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
-        cnp.npy_intp * clusters = None
+        cnp.npy_intp [:] nice = np.ones(initial_labels.shape[0], dtype=np.intp)
+        Node * clusters = <Node *> malloc(<size_t> K * sizeof(Node))
+        cnp.npy_intp * candidates = NULL
+        cnp.npy_intp minc = INT_MAX
+        
 
+    for i in range(K):
+        clusters[i].sz = 0
+        clusters[i].elements = NULL
+
+    for i in range(K):
+
+        print(i)
+       
+        clusters[labels[i]].sz += 1
+        clusters[labels[i]].elements = <cnp.npy_intp *> realloc(clusters[labels[i]].elements, <size_t> clusters[labels[i]].sz * sizeof(cnp.npy_intp))
+        clusters[labels[i]].elements[clusters[labels[i]].sz - 1] = i
+
+
+    print('>>>>')
+
+    for i in range(K):
+        # print(i)        
+        for j in range(clusters[i].sz):
+            # print(j)
+            print(i, j, clusters[i].elements[j])
+            # clusters2[i].append(clusters[i].elements[j])
+
+    # print(clusters2)
+
+    cnt = 0
+    for i in range(K):
+        minc = INT_MAX
+
+        for j in range(clusters[i].sz):
+
+            if clusters[i].element[j] < minc:
+                minc = clusters[i].element[j]
+
+        for j in range(clusters[i].sz):
+            
+            if clusters[i].element[j] > minc:
+                candidates = <cnp.npy_intp *> realloc(candidates, <size_t> (cnt + 1) * sizeof(cnp.npy_intp))
+                candidates[cnt] = clusters[i].element[j]
+                cnt += 1
+
+
+    for i in range(K):
+        free(clusters[i].elements)
+    free(clusters)
+
+
+    final_candidates = np.asarray(<cnp.npy_intp[:cnt]> candidates)
+    
+
+    # 1/0
 
     # clusters = np.empty((centroids.shape[0], 0)).tolist()
-    for i in range(labels.shape[0]):
-        clusters[labels[i]].append(i)
+    # for i in range(labels.shape[0]):
+    #    clusters[labels[i]].append(i)
 
-    candidates = []
+
+    # candidates = []
+
     # for c in clusters:
     #     if len(c) > 1:
-    #         maxc = np.max(c)
-    #         candidates.append(maxc)
-
-    for c in clusters:
-        if len(c) > 1:
-            cs = np.sort(c)
-            candidates.extend(cs[1:])
+    #         cs = np.sort(c)
+    #         candidates.extend(cs[1:])
 
     # caution here, deleting will change the labels of other Xs too which is not ideal
-    # centroids_reduced = np.delete(centroids, candidates, axis=0)
+ 
+    # for i, l in enumerate(initial_labels):
+    #     for can in candidates:
+    #         if l == can:
+    #             nice[i] = 0
+    #             updated_labels[i] = -1
 
-    for i, l in enumerate(initial_labels):
-        for can in candidates:
-            if l == can:
-                nice[i] = 0
-                updated_labels[i] = -1
+    # for i, l in enumerate(initial_labels):
+    #     for can in candidates:
+    #         if l > can:
+    #             updated_labels[i] -= 1
 
-    for i, l in enumerate(initial_labels):
-        for can in candidates:
-            if l > can:
-                updated_labels[i] -= 1
+    clusters2 = None
+    candidates = None
 
-    return nice, candidates, clusters, updated_labels
+    return nice, candidates, clusters2, updated_labels
 
 
 
