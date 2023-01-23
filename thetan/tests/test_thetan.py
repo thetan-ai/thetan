@@ -354,7 +354,7 @@ def candidate_labels(centroids, labels, initial_labels):
             cs = np.sort(c)
             candidates.extend(cs[1:])
 
-    # caution here, deleting will change the labels of other Xs too which is not ideal   
+    # caution here, deleting will change the labels of other Xs too which is not ideal
 
     for i, l in enumerate(initial_labels):
         for can in candidates:
@@ -521,11 +521,11 @@ def test_hd_data(verbose=False):
         from fury import actor, window
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
 
         labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
 
-        #act3 = actor.dot(points[np.in1d(updated_labels_ex2, labels_of_interest)], colors=(1.0, 1., 1.0), opacity=.5)
+        # act3 = actor.dot(points[np.in1d(updated_labels_ex2, labels_of_interest)], colors=(1.0, 1., 1.0), opacity=.5)
 
         # act3 = actor.dot(p_centroids, colors=(1.0, 0.0, 0), opacity=1)
         act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
@@ -535,7 +535,7 @@ def test_hd_data(verbose=False):
 
         scene = window.Scene()
         scene.add(act)
-        # scene.add(act2)
+        scene.add(act2)
         scene.add(act3)
         # scene.add(act3m)
         # scene.add(act3e)
