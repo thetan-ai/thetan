@@ -1,7 +1,7 @@
 from time import time
 import numpy as np
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
-from thetan.theta import theta_means
+from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 
 
 def check_module_load():
@@ -106,7 +106,8 @@ def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=T
 
     t5 = time()
 
-    nice, candidates, _clusters, updated_labels = candidate_labels(c_centroids, c_labels, initial_labels)
+    # nice, candidates, _clusters, updated_labels = candidate_labels(c_centroids, c_labels, initial_labels)
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
 
     t6 = time()
 
@@ -160,7 +161,8 @@ def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=T
 
     info_dict['Shuffle 2 TG1 PC'] = t13 - t12
 
-    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
+    # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
+    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
 
     t14 = time()
 
@@ -195,7 +197,8 @@ def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=T
 
         candidates3 = unique_labels_ex2[unique_counts_ex2 <= 60]
 
-        nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
+        # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
+        nice3, updated_labels3 = candidate_labels_outliers_c(even_centroids_ex2, candidates3, updated_labels_ex2)
 
         even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
 

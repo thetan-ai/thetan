@@ -519,7 +519,7 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
             clusters[labels[i]].elements[clusters[labels[i]].sz - 1] = i
 
 
-        
+        # print if you need to print
         # for i in range(K):
         #    for j in range(clusters[i].sz):
         #        print(i, j, clusters[i].elements[j])
@@ -570,6 +570,33 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
     return final_nice, final_candidates, clusters2, final_updated_labels
 
 
+def candidate_labels_outliers_c(double[:, ::1] centroids, cnp.npy_intp[:] candidates, cnp.npy_intp[:] initial_labels):
+    """ Find labels for removal in cases of outliers
+    """
+
+    cdef:
+
+        cnp.npy_intp N = initial_labels.shape[0]        
+        cnp.npy_intp i = 0, j = 0, cnt = 0
+        cnp.npy_intp N2 = candidates.shape[0]        
+        cnp.npy_intp [:] updated_labels = initial_labels.copy()
+        cnp.npy_intp [:] nice = np.ones(initial_labels.shape[0], dtype=np.intp)
+        
+    with nogil:
+    
+        for i in range(N):
+            for j in range(N2):
+                if initial_labels[i] == candidates[j]:
+                    nice[i] = 0
+                    updated_labels[i] = -1
+
+        for i in range(N):
+            for j in range(N2):
+                if initial_labels[i] > candidates[j]:                
+                    updated_labels[i] -= 1
+
+
+    return np.asarray(nice), np.asarray(updated_labels)
 
 
 def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,

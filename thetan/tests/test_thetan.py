@@ -408,7 +408,7 @@ def test_hd_data(verbose=False):
 
     normal_distribution = True
     uniform_distribution = False
-    compare_with_kmeans = False
+    compare_with_kmeans = True
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -576,9 +576,9 @@ if __name__ == '__main__':
     # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    # test_hd_data(verbose=True)
+    test_hd_data(verbose=True)
 
-    test_candidate_labels()
+    # test_candidate_labels()
 
     # test_reorder_labels()
     # test_build_nice()
