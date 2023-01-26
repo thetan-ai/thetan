@@ -548,11 +548,8 @@ def test_3d_data(verbose=False):
         from pylab import plot, show, grid, figure, title
         # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
         figure()
-        title('Thetan Berserker')
+        title('Thetan Berserker vs Kmeans++')
         plot(np.sort(unique_counts_ex2), '*-')
-        grid()
-
-        title('Kmeans++')
         plot(np.sort(unique_counts_kmeans), '*-')
         grid()
         show()
