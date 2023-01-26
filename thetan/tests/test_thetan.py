@@ -1,3 +1,4 @@
+from time import time
 import numpy as np
 import numpy.testing as npt
 from thetan.theta import reorder_labels, theta_g1, theta_means, reassign_uncertain_update_labels
@@ -123,12 +124,13 @@ def test_2d_data(verbose=False):
 
     normal_distribution = False
     uniform_distribution = True
+    compare_with_meanshift = True
 
     normal_sigma = 1.0
     uniform_low = -2.
     uniform_high = 2.
 
-    theta_value = 3.6
+    theta_value = 3.6 # 3.0 still okay for uniform distributions with inf_norm
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
@@ -164,7 +166,11 @@ def test_2d_data(verbose=False):
     centroids = gt_centroids
 
 
-    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
+    # even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='inf_norm', all_out=True, verbose=True)
+    t0 = time()
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True)
+    t1 = time()
+    print('Total Thetan Berserker Time: ', t1 - t0)
 
     if verbose:
 
@@ -173,7 +179,27 @@ def test_2d_data(verbose=False):
         # plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
         # plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
         # plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
-        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
+        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='Thetan Berserker ' + str(even_centroids_ex2.shape) + ' theta ' + str(theta_value), show=True)
+
+    if compare_with_meanshift:
+
+        from sklearn.cluster import MeanShift, estimate_bandwidth
+
+        bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
+
+        for step in np.arange(2.5, 3.5, step=0.25/2):
+            t0 = time()
+            ms = MeanShift(bandwidth=step, bin_seeding=True)
+            ms.fit(points)
+            t1 = time()
+
+
+            meanshift_labels = ms.labels_
+            meanshift_centers = ms.cluster_centers_
+            print('Final shape:', meanshift_centers.shape[0])
+            print('Total Mean Shift Time:', t1 - t0)
+
+            plot_centroids_clusters(points, meanshift_centers, meanshift_labels, title='Meanshift ' + str(meanshift_centers.shape) + ' bandwidth ' + str(step), show=True)
 
 
     t = 1
