@@ -26,6 +26,7 @@ cdef extern from "limits.h":
 
 cdef extern from "float.h":
     cdef double DBL_MAX
+    cdef double DBL_MIN
 
 ctypedef double (*metricp)(double *, double *, cnp.npy_intp) nogil
 
@@ -53,6 +54,20 @@ cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
         summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
 
     return sqrt(summ)
+
+
+cdef double inf_norm(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
+    cdef:
+        cnp.npy_intp d
+        double overall_max = DBL_MIN
+        double tmp_max
+
+    for d in range(D):
+        tmp_max = fabs(ptr1[d] - ptr2[d])
+        if tmp_max > overall_max:
+            overall_max = tmp_max
+
+    return overall_max
 
 
 cdef double norm_ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
@@ -114,6 +129,8 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -158,6 +175,8 @@ def thetan_neighb(double[:, ::1] X, double theta, metric='euclidean', all_out=Fa
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -301,6 +320,8 @@ def thetan_density(double[:, ::1] X, double theta, cnp.npy_intp B, double ratio,
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -620,6 +641,8 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -673,6 +696,8 @@ def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metri
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -803,6 +828,8 @@ def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -889,6 +916,8 @@ def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, 
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -976,6 +1005,8 @@ def theta_delta(double[:, ::1] X, double theta, metric='euclidean', double w=1.0
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -1070,6 +1101,8 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -1118,6 +1151,8 @@ def gravity(double[:, ::1] X, double[:, ::1] centroids,
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -1160,6 +1195,8 @@ def calibrate(double[:, ::1] X, double[:, ::1] centroids, cnp.npy_intp[:] indice
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
@@ -1212,6 +1249,8 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
 
     if metric == 'euclidean':
         metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':

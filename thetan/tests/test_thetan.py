@@ -168,11 +168,11 @@ def test_thetan_normal_uniform_grid(verbose=False):
 
     if verbose:
 
-        plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
-        plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
-        plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
-        plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
-        plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
+        # plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
+        # plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
+        # plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
+        # plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
+        # plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
         plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
 
 
@@ -469,7 +469,7 @@ def test_3d_data(verbose=False):
     # main_indices = unique_counts_ex2 > 60
     # extra_indices = unique_counts_ex2 <= 60
 
-    # res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices])
+    # res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices], metric='euclidean')
     # res_min = np.min(res, axis=1)
 
 
@@ -501,7 +501,7 @@ def test_3d_data(verbose=False):
 
         thr = 0.4
 
-        D = np.sqrt(tdm(even_centroids_ex2, centroids))
+        D = np.sqrt(tdm(even_centroids_ex2, centroids, metric='euclidean'))
         closest = np.min(D, axis=1)
         count = np.sum(closest < thr)
 
@@ -509,7 +509,7 @@ def test_3d_data(verbose=False):
         even_centroids_ex2_score = count / len(even_centroids_ex2)
         print('berserker score ',  even_centroids_ex2_score)
 
-        D = np.sqrt(tdm(kcentroids, centroids))
+        D = np.sqrt(tdm(kcentroids, centroids, metric='euclidean'))
         closest = np.min(D, axis=1)
         count = np.sum(closest < thr)
 
