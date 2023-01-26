@@ -76,7 +76,7 @@ def candidate_labels_outliers(centroids, candidates, initial_labels):
 
 
 
-def berserker(points, theta_value, all_out=True, verbose=True,
+def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
               manage_outliers={'mode':'min_size', 'size_limit':60}):
 
 
@@ -88,7 +88,7 @@ def berserker(points, theta_value, all_out=True, verbose=True,
     t1 = time()
     info_dict['Shuffle 1 X'] = t1 - t0
 
-    initial_centroids, initial_labels, _, _ = theta_g1(points, theta=theta_value,
+    initial_centroids, initial_labels, _, _ = theta_g1(points, theta=theta_value, metric=metric,
                                                        all_out=True)
 
     t2 = time()
@@ -98,7 +98,7 @@ def berserker(points, theta_value, all_out=True, verbose=True,
     print('ic', initial_centroids.shape)
 
     t3 = time()
-    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value,
+    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric
                                            all_out=True)
 
     t4 = time()
@@ -124,7 +124,7 @@ def berserker(points, theta_value, all_out=True, verbose=True,
 
     updated_labels2 = reassign_uncertain_update_labels(points, even_centroids,
                                                        updated_labels, nice,
-                                                       metric='euclidean')
+                                                       metric=metric)
 
     t8 = time()
 
@@ -145,6 +145,7 @@ def berserker(points, theta_value, all_out=True, verbose=True,
     info_dict['Shuffle 2 X'] = t10 - t9
 
     p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex, theta=theta_value,
+                                              metric=metric,
                                               all_out=True)
 
     t11 = time()
@@ -155,7 +156,7 @@ def berserker(points, theta_value, all_out=True, verbose=True,
 
     t12 = time()
     c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
-                                             all_out=True)
+                                             metric=metric, all_out=True)
 
     t13 = time()
 
@@ -179,7 +180,7 @@ def berserker(points, theta_value, all_out=True, verbose=True,
 
     updated_labels_ex2 = reassign_uncertain_update_labels(points, even_centroids2,
                                                           updated_labels2x, nice2,
-                                                          metric='euclidean')
+                                                          metric=metric)
     t16 = time()
 
     info_dict['Shuffle 2 REA X'] = t16 - t15
@@ -203,7 +204,8 @@ def berserker(points, theta_value, all_out=True, verbose=True,
 
         even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
 
-        updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3)
+        updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3,
+                                                              metric=metric)
 
         even_centroids_ex4 = centroids_from_labels(points, updated_labels_ex4)
 
