@@ -110,7 +110,7 @@ def test_reorder_labels():
                      np.array([0, 0, 1, 2, 3, 4, 4, 4]))
 
 
-def test_thetan_normal_uniform_grid(verbose=False):
+def test_2d_data(verbose=False):
 
     n_local_samples = 400
     # n_local_samples = 1000
@@ -583,7 +583,7 @@ if __name__ == '__main__':
     # test_ring_of_disks()
     # test_two_triangles(True)
     # test_3d_data(verbose=True)
-    test_thetan_normal_uniform_grid(verbose=True)
+    test_2d_data(verbose=True)
 
 
     # test_candidate_labels()

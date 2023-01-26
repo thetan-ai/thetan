@@ -98,7 +98,7 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
     print('ic', initial_centroids.shape)
 
     t3 = time()
-    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric
+    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric,
                                            all_out=True)
 
     t4 = time()
