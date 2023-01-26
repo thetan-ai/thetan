@@ -76,7 +76,8 @@ def candidate_labels_outliers(centroids, candidates, initial_labels):
 
 
 
-def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=True):
+def berserker(points, theta_value, all_out=True, verbose=True,
+              manage_outliers={'mode':'min_size', 'size_limit':60}):
 
 
     info_dict = {}
@@ -190,12 +191,12 @@ def berserker(points, theta_value, all_out=True, verbose=True, manage_outliers=T
     info_dict['Shuffle 2 CEN_LA'] = t17 - t16
 
 
-    if manage_outliers:
+    if manage_outliers['mode'] == 'min_size':
 
         unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                          return_counts=True)
 
-        candidates3 = unique_labels_ex2[unique_counts_ex2 <= 60]
+        candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
 
         # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
         nice3, updated_labels3 = candidate_labels_outliers_c(even_centroids_ex2, candidates3, updated_labels_ex2)

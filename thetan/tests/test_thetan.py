@@ -394,7 +394,7 @@ def test_candidate_labels():
     t = 1
 
 
-def test_hd_data(verbose=False):
+def test_3d_data(verbose=False):
 
     n_local_samples = 400
     # n_local_samples = 1000
@@ -496,6 +496,8 @@ def test_hd_data(verbose=False):
         kcentroids = kmeans.cluster_centers_
         klabels = kmeans.labels_
 
+        unique_labels_kmeans, unique_counts_kmeans = np.unique(klabels,
+                                                               return_counts=True)
 
         thr = 0.4
 
@@ -511,9 +513,9 @@ def test_hd_data(verbose=False):
         closest = np.min(D, axis=1)
         count = np.sum(closest < thr)
 
-        print('kmeans++ count ',  count)
+        print('kmeans++ count ', count)
         kscore = count / len(kcentroids)
-        print('kmeans++ score ',  kscore)
+        print('kmeans++ score ', kscore)
 
 
     if verbose:
@@ -543,9 +545,15 @@ def test_hd_data(verbose=False):
         show_manager = window.ShowManager(scene)
         show_manager.start()
 
-        from pylab import plot, show, grid
+        from pylab import plot, show, grid, figure, title
         # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+        figure()
+        title('Thetan Berserker')
         plot(np.sort(unique_counts_ex2), '*-')
+        grid()
+
+        title('Kmeans++')
+        plot(np.sort(unique_counts_kmeans), '*-')
         grid()
         show()
 
@@ -576,7 +584,7 @@ if __name__ == '__main__':
     # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    test_hd_data(verbose=True)
+    test_3d_data(verbose=True)
 
     # test_candidate_labels()
 
