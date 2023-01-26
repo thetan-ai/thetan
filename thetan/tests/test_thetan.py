@@ -406,8 +406,8 @@ def test_3d_data(verbose=False):
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
-    normal_distribution = True
-    uniform_distribution = False
+    normal_distribution = False
+    uniform_distribution = True
     compare_with_kmeans = True
 
     normal_sigma = 1.0
@@ -466,11 +466,11 @@ def test_3d_data(verbose=False):
     unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                      return_counts=True)
 
-    main_indices = unique_counts_ex2 > 60
-    extra_indices = unique_counts_ex2 <= 60
+    # main_indices = unique_counts_ex2 > 60
+    # extra_indices = unique_counts_ex2 <= 60
 
-    res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices])
-    res_min = np.min(res, axis=1)
+    # res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices])
+    # res_min = np.min(res, axis=1)
 
 
 
