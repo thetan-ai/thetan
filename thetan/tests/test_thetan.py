@@ -406,8 +406,8 @@ def test_3d_data(verbose=False):
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
-    normal_distribution = False
-    uniform_distribution = True
+    normal_distribution = True
+    uniform_distribution = False
     compare_with_kmeans = True
 
     normal_sigma = 1.0
