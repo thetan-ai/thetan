@@ -495,7 +495,7 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
 
     cdef:
 
-        cnp.npy_intp N = initial_labels.shape[0]        
+        cnp.npy_intp N = initial_labels.shape[0]
         cnp.npy_intp i = 0, j = 0, cnt = 0
         cnp.npy_intp K = labels.shape[0]
         cnp.npy_intp [:] updated_labels = initial_labels.copy()
@@ -503,7 +503,7 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
         Node * clusters = <Node *> malloc(<size_t> K * sizeof(Node))
         cnp.npy_intp * candidates = NULL
         cnp.npy_intp minc = INT_MAX
-        
+
 
     with nogil:
 
@@ -523,7 +523,7 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
         # for i in range(K):
         #    for j in range(clusters[i].sz):
         #        print(i, j, clusters[i].elements[j])
-        
+
 
         cnt = 0
         for i in range(K):
@@ -535,7 +535,7 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
                     minc = clusters[i].elements[j]
 
             for j in range(clusters[i].sz):
-                
+
                 if clusters[i].elements[j] > minc:
                     candidates = <cnp.npy_intp *> realloc(candidates, <size_t> (cnt + 1) * sizeof(cnp.npy_intp))
                     candidates[cnt] = clusters[i].elements[j]
@@ -546,21 +546,25 @@ def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy
             free(clusters[i].elements)
         free(clusters)
 
-        for i in range(N):
-            for j in range(cnt):
-                if initial_labels[i] == candidates[j]:
-                    nice[i] = 0
-                    updated_labels[i] = -1
+        if cnt > 0:
+
+            for i in range(N):
+                for j in range(cnt):
+                    if initial_labels[i] == candidates[j]:
+                        nice[i] = 0
+                        updated_labels[i] = -1
 
 
-        for i in range(N):
-            for j in range(cnt):
-                if initial_labels[i] > candidates[j]:                
-                    updated_labels[i] -= 1
+            for i in range(N):
+                for j in range(cnt):
+                    if initial_labels[i] > candidates[j]:
+                        updated_labels[i] -= 1
 
+    if cnt > 0:
+        final_candidates = np.asarray(<cnp.npy_intp[:cnt]> candidates)
+    else:
+        final_candidates = np.array([], dtype=np.intp)
 
-
-    final_candidates = np.asarray(<cnp.npy_intp[:cnt]> candidates)
     final_nice = np.asarray(nice)
     final_updated_labels = np.asarray(updated_labels)
 
@@ -576,14 +580,14 @@ def candidate_labels_outliers_c(double[:, ::1] centroids, cnp.npy_intp[:] candid
 
     cdef:
 
-        cnp.npy_intp N = initial_labels.shape[0]        
+        cnp.npy_intp N = initial_labels.shape[0]
         cnp.npy_intp i = 0, j = 0, cnt = 0
-        cnp.npy_intp N2 = candidates.shape[0]        
+        cnp.npy_intp N2 = candidates.shape[0]
         cnp.npy_intp [:] updated_labels = initial_labels.copy()
         cnp.npy_intp [:] nice = np.ones(initial_labels.shape[0], dtype=np.intp)
-        
+
     with nogil:
-    
+
         for i in range(N):
             for j in range(N2):
                 if initial_labels[i] == candidates[j]:
@@ -592,7 +596,7 @@ def candidate_labels_outliers_c(double[:, ::1] centroids, cnp.npy_intp[:] candid
 
         for i in range(N):
             for j in range(N2):
-                if initial_labels[i] > candidates[j]:                
+                if initial_labels[i] > candidates[j]:
                     updated_labels[i] -= 1
 
 

@@ -121,8 +121,8 @@ def test_thetan_normal_uniform_grid(verbose=False):
     cluster_x = 10
     cluster_y = 10
 
-    normal_distribution = True
-    uniform_distribution = False
+    normal_distribution = False
+    uniform_distribution = True
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -396,8 +396,8 @@ def test_candidate_labels():
 
 def test_3d_data(verbose=False):
 
-    n_local_samples = 400
-    # n_local_samples = 1000
+    # n_local_samples = 400
+    n_local_samples = 1000
 
     dims = 3
 
@@ -406,9 +406,9 @@ def test_3d_data(verbose=False):
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
-    normal_distribution = True
-    uniform_distribution = False
-    compare_with_kmeans = True
+    normal_distribution = False
+    uniform_distribution = True
+    compare_with_kmeans = False
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -518,6 +518,7 @@ def test_3d_data(verbose=False):
         print('kmeans++ score ', kscore)
 
 
+
     if verbose:
 
         from fury import actor, window
@@ -525,7 +526,7 @@ def test_3d_data(verbose=False):
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
         act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
 
-        labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
+        # labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
 
         # act3 = actor.dot(points[np.in1d(updated_labels_ex2, labels_of_interest)], colors=(1.0, 1., 1.0), opacity=.5)
 
@@ -537,7 +538,7 @@ def test_3d_data(verbose=False):
 
         scene = window.Scene()
         scene.add(act)
-        scene.add(act2)
+        # scene.add(act2)
         scene.add(act3)
         # scene.add(act3m)
         # scene.add(act3e)
@@ -545,16 +546,16 @@ def test_3d_data(verbose=False):
         show_manager = window.ShowManager(scene)
         show_manager.start()
 
-        from pylab import plot, show, grid, figure, title
-        # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
-        figure()
-        title('Thetan Berserker vs Kmeans++')
-        plot(np.sort(unique_counts_ex2), '*-')
-        plot(np.sort(unique_counts_kmeans), '*-')
-        grid()
-        show()
+        if compare_with_kmeans:
 
-
+            from pylab import plot, show, grid, figure, title
+            # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+            figure()
+            title('Thetan Berserker vs Kmeans++')
+            plot(np.sort(unique_counts_ex2), '*-')
+            plot(np.sort(unique_counts_kmeans), '*-')
+            grid()
+            show()
 
 
     t = 1
@@ -581,7 +582,9 @@ if __name__ == '__main__':
     # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    test_3d_data(verbose=True)
+    # test_3d_data(verbose=True)
+    test_thetan_normal_uniform_grid(verbose=True)
+
 
     # test_candidate_labels()
 
