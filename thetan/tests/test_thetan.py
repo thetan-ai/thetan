@@ -425,8 +425,8 @@ def test_candidate_labels():
 
 def test_3d_data(verbose=False):
 
-    # n_local_samples = 400
-    n_local_samples = 1000
+    n_local_samples = 400
+    # n_local_samples = 1000
 
     dims = 3
 
@@ -435,9 +435,9 @@ def test_3d_data(verbose=False):
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
-    normal_distribution = False
-    uniform_distribution = True
-    compare_with_kmeans = False
+    normal_distribution = True
+    uniform_distribution = False
+    compare_with_kmeans = True
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -553,7 +553,7 @@ def test_3d_data(verbose=False):
         from fury import actor, window
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
 
         # labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
 
@@ -611,8 +611,8 @@ if __name__ == '__main__':
     # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    # test_3d_data(verbose=True)
-    test_2d_data(verbose=True)
+    test_3d_data(verbose=True)
+    # test_2d_data(verbose=True)
 
 
     # test_candidate_labels()
