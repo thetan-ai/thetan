@@ -119,11 +119,11 @@ def test_2d_data(verbose=False):
     dims = 2
 
     blob_dis = 5
-    cluster_x = 10
+    cluster_x = 40
     cluster_y = 10
 
-    normal_distribution = False
-    uniform_distribution = True
+    normal_distribution = True
+    uniform_distribution = False
     compare_with_meanshift = True
 
     normal_sigma = 1.0
@@ -170,7 +170,8 @@ def test_2d_data(verbose=False):
     t0 = time()
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True)
     t1 = time()
-    print('Total Thetan Berserker Time: ', t1 - t0)
+    total_berserker_time = t1 - t0
+    print('Total Thetan Berserker Time: ', total_berserker_time)
 
     if verbose:
 
@@ -187,7 +188,7 @@ def test_2d_data(verbose=False):
 
         bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
 
-        for step in np.arange(2.5, 3.5, step=0.25/2):
+        for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
             t0 = time()
             ms = MeanShift(bandwidth=step, bin_seeding=True)
             ms.fit(points)
@@ -197,7 +198,9 @@ def test_2d_data(verbose=False):
             meanshift_labels = ms.labels_
             meanshift_centers = ms.cluster_centers_
             print('Final shape:', meanshift_centers.shape[0])
-            print('Total Mean Shift Time:', t1 - t0)
+            total_mean_shift_time = t1 - t0
+            print('Total Mean Shift Time:', total_mean_shift_time)
+            print('Speedup: ', total_mean_shift_time / total_berserker_time)
 
             plot_centroids_clusters(points, meanshift_centers, meanshift_labels, title='Meanshift ' + str(meanshift_centers.shape) + ' bandwidth ' + str(step), show=True)
 
