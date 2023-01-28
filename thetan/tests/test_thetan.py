@@ -210,7 +210,6 @@ def test_2d_data(verbose=False):
     return even_centroids_ex2.shape[0]
 
 
-
 def generate_circles(n_samples=15, inner_radius=60, outer_radius=15,
                      density=500, size=(200, 200), labellize=False,
                      return_coord=True):
@@ -367,7 +366,6 @@ def test_two_triangles(verbose=False):
     npt.assert_almost_equal(even_centroids_ex2.shape[0], 2)
 
 
-
 def candidate_labels(centroids, labels, initial_labels):
     """ Find labels for removal in cases of conflict
     """
@@ -435,9 +433,10 @@ def test_3d_data(verbose=False):
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
-    normal_distribution = True
-    uniform_distribution = False
+    normal_distribution = False
+    uniform_distribution = True
     compare_with_kmeans = True
+    compare_with_meanshift = True
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -484,11 +483,14 @@ def test_3d_data(verbose=False):
     from time import time
 
 
+    print('-- Thetan Berserker --')
+
     t1 = time()
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
     t2 = time()
 
     berserker_time = t2 - t1
+
 
     print('Total berserker time ', berserker_time)
 
@@ -508,9 +510,24 @@ def test_3d_data(verbose=False):
     # run TS on even_centroids_ex2 and call candidate_labels
     # if candidate centroids are close to existing centroids then assign their clusters to these and update everything
 
+
+    thr = 0.4
+
+    D = np.sqrt(tdm(even_centroids_ex2, centroids, metric='euclidean'))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+
+
+
+    print('berserker count ',  count)
+    even_centroids_ex2_score = count / len(even_centroids_ex2)
+    print('berserker score ',  even_centroids_ex2_score)
+
     if compare_with_kmeans:
         from sklearn.cluster import KMeans
 
+        
+        print('-- K-means++ --')
         t1 = time()
         # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
         #                 max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
@@ -521,22 +538,14 @@ def test_3d_data(verbose=False):
 
         kmeans_time = t2 - t1
         print('Total kmeans++ time ', kmeans_time)
+        print('Berserker speedup ', kmeans_time/berserker_time)
 
         kcentroids = kmeans.cluster_centers_
         klabels = kmeans.labels_
+        print('Kmeans++ centroids: ', kcentroids.shape[0])
 
         unique_labels_kmeans, unique_counts_kmeans = np.unique(klabels,
                                                                return_counts=True)
-
-        thr = 0.4
-
-        D = np.sqrt(tdm(even_centroids_ex2, centroids, metric='euclidean'))
-        closest = np.min(D, axis=1)
-        count = np.sum(closest < thr)
-
-        print('berserker count ',  count)
-        even_centroids_ex2_score = count / len(even_centroids_ex2)
-        print('berserker score ',  even_centroids_ex2_score)
 
         D = np.sqrt(tdm(kcentroids, centroids, metric='euclidean'))
         closest = np.min(D, axis=1)
@@ -547,6 +556,39 @@ def test_3d_data(verbose=False):
         print('kmeans++ score ', kscore)
 
 
+    if compare_with_meanshift:
+
+        from sklearn.cluster import MeanShift, estimate_bandwidth
+
+        # bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
+
+        
+        print('-- Mean Shift --')
+
+        for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
+            t1 = time()
+            ms = MeanShift(bandwidth=step, bin_seeding=True)
+            ms.fit(points)
+            t2 = time()
+            meanshift_labels = ms.labels_
+            meanshift_centroids = ms.cluster_centers_
+
+            print('Meanshift centroids: ', meanshift_centroids.shape[0])
+
+            meanshift_time = t2 - t1
+        print('Total meanshift time ', meanshift_time)
+        print('Berserker speedup ', meanshift_time/berserker_time)
+
+        unique_labels_meanshift, unique_counts_meanshift = np.unique(meanshift_labels,
+                                                                     return_counts=True)
+
+        D = np.sqrt(tdm(meanshift_centroids, centroids, metric='euclidean'))
+        closest = np.min(D, axis=1)
+        count = np.sum(closest < thr)
+
+        print('Meanshift count ',  count)
+        meanshift_score = count / len(meanshift_centroids)
+        print('Meanshift score ',  meanshift_score)
 
     if verbose:
 
@@ -564,6 +606,8 @@ def test_3d_data(verbose=False):
         # act3m = actor.dot(even_centroids_ex2[main_indices], colors=(1.0, 0.0, 0), opacity=1)
         # act3e = actor.dot(even_centroids_ex2[extra_indices], colors=(1.0, 1.0, 0), opacity=1)
         # act4 = actor.dot(kcentroids, colors=(1.0, 1.0, 0), opacity=1)
+        act5 = actor.dot(meanshift_centroids, colors=(1.0, 0.5, 0), opacity=1)
+
 
         scene = window.Scene()
         scene.add(act)
@@ -572,23 +616,25 @@ def test_3d_data(verbose=False):
         # scene.add(act3m)
         # scene.add(act3e)
         # scene.add(act4)
+        scene.add(act5)
         show_manager = window.ShowManager(scene)
         show_manager.start()
 
-        if compare_with_kmeans:
+        if compare_with_kmeans and compare_with_meanshift:
 
-            from pylab import plot, show, grid, figure, title
+            from pylab import plot, show, grid, figure, title, legend
             # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
             figure()
-            title('Thetan Berserker vs Kmeans++')
-            plot(np.sort(unique_counts_ex2), '*-')
-            plot(np.sort(unique_counts_kmeans), '*-')
+            title('Thetan Berserker vs Kmeans++ vs MeanShift')
+            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')
+            plot(np.sort(unique_counts_kmeans), '*-', label='Kmeans')
+            plot(np.sort(unique_counts_meanshift), '*-', label='Meanshift')
+            legend()
             grid()
             show()
 
 
     t = 1
-
 
 
 if __name__ == '__main__':
