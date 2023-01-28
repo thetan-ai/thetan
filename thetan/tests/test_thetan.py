@@ -435,7 +435,7 @@ def test_3d_data(verbose=False):
 
     normal_distribution = False
     uniform_distribution = True
-    compare_with_kmeans = True
+    compare_with_kmeans = False
     compare_with_meanshift = True
 
     normal_sigma = 1.0
@@ -486,7 +486,7 @@ def test_3d_data(verbose=False):
     print('-- Thetan Berserker --')
 
     t1 = time()
-    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, all_out=True, verbose=True)
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,  manage_outliers={'mode':'min_size', 'size_limit':200})
     t2 = time()
 
     berserker_time = t2 - t1
@@ -497,21 +497,7 @@ def test_3d_data(verbose=False):
     unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                      return_counts=True)
 
-    # main_indices = unique_counts_ex2 > 60
-    # extra_indices = unique_counts_ex2 <= 60
-
-    # res = tdm(even_centroids_ex2[extra_indices], even_centroids_ex2[main_indices], metric='euclidean')
-    # res_min = np.min(res, axis=1)
-
-
-
-    # delete centroids and reassign
-    # or better
-    # run TS on even_centroids_ex2 and call candidate_labels
-    # if candidate centroids are close to existing centroids then assign their clusters to these and update everything
-
-
-    thr = 0.4
+    thr = 0.8 # 0.4 okay too but a bit strict
 
     D = np.sqrt(tdm(even_centroids_ex2, centroids, metric='euclidean'))
     closest = np.min(D, axis=1)
@@ -520,7 +506,7 @@ def test_3d_data(verbose=False):
 
 
     print('berserker count ',  count)
-    even_centroids_ex2_score = count / len(even_centroids_ex2)
+    even_centroids_ex2_score = count / len(centroids)
     print('berserker score ',  even_centroids_ex2_score)
 
     if compare_with_kmeans:
@@ -552,7 +538,7 @@ def test_3d_data(verbose=False):
         count = np.sum(closest < thr)
 
         print('kmeans++ count ', count)
-        kscore = count / len(kcentroids)
+        kscore = count / len(centroids)
         print('kmeans++ score ', kscore)
 
 
@@ -587,7 +573,7 @@ def test_3d_data(verbose=False):
         count = np.sum(closest < thr)
 
         print('Meanshift count ',  count)
-        meanshift_score = count / len(meanshift_centroids)
+        meanshift_score = count / len(centroids)
         print('Meanshift score ',  meanshift_score)
 
     if verbose:
@@ -595,7 +581,7 @@ def test_3d_data(verbose=False):
         from fury import actor, window
 
         act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
 
         # labels_of_interest = unique_labels_ex2[unique_counts_ex2 <= 60]
 
@@ -611,7 +597,7 @@ def test_3d_data(verbose=False):
 
         scene = window.Scene()
         scene.add(act)
-        # scene.add(act2)
+        scene.add(act2)
         scene.add(act3)
         # scene.add(act3m)
         # scene.add(act3e)
@@ -633,6 +619,18 @@ def test_3d_data(verbose=False):
             grid()
             show()
 
+
+        if compare_with_meanshift:
+
+            from pylab import plot, show, grid, figure, title, legend
+            # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+            figure()
+            title('Thetan Berserker vs MeanShift')
+            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')            
+            plot(np.sort(unique_counts_meanshift), '*-', label='Meanshift')
+            legend()
+            grid()
+            show()
 
     t = 1
 
