@@ -514,7 +514,7 @@ def test_3d_data(verbose=False):
     if compare_with_kmeans:
         from sklearn.cluster import KMeans
 
-        
+
         print('-- K-means++ --')
         t1 = time()
         # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
@@ -550,7 +550,7 @@ def test_3d_data(verbose=False):
 
         # bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
 
-        
+
         print('-- Mean Shift --')
 
         for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
@@ -628,7 +628,7 @@ def test_3d_data(verbose=False):
             # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
             figure()
             title('Thetan Berserker vs MeanShift')
-            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')            
+            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')
             plot(np.sort(unique_counts_meanshift), '*-', label='Meanshift')
             legend()
             grid()
@@ -708,7 +708,7 @@ def test_4d_data(verbose=False):
 
     t1 = time()
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
-                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':200},
+                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':300},
                                                                                                                                                      quality_over_speed=True)
     t2 = time()
 
@@ -735,7 +735,7 @@ def test_4d_data(verbose=False):
     if compare_with_kmeans:
         from sklearn.cluster import KMeans
 
-        
+
         print('-- K-means++ --')
         t1 = time()
         # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
@@ -771,7 +771,7 @@ def test_4d_data(verbose=False):
 
         # bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
 
-        
+
         print('-- Mean Shift --')
 
         for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
@@ -837,7 +837,7 @@ def test_4d_data(verbose=False):
             # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
             figure()
             title('Thetan Berserker vs MeanShift')
-            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')            
+            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')
             plot(np.sort(unique_counts_meanshift), '*-', label='Meanshift')
             legend()
             grid()
