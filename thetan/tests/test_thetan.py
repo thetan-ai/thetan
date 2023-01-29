@@ -486,12 +486,14 @@ def test_3d_data(verbose=False):
     print('-- Thetan Berserker --')
 
     t1 = time()
-    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,  manage_outliers={'mode':'min_size', 'size_limit':200})
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
+                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':200},
+                                                                                                                                                     quality_over_speed=True)
     t2 = time()
 
     berserker_time = t2 - t1
 
-
+    print('Berserker centroids: ', even_centroids_ex2.shape[0])
     print('Total berserker time ', berserker_time)
 
     unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
@@ -635,6 +637,215 @@ def test_3d_data(verbose=False):
     t = 1
 
 
+def test_4d_data(verbose=False):
+
+    n_local_samples = 400
+    # n_local_samples = 1000
+
+    dims = 4
+
+    blob_dis = 5 # 10
+    cluster_x = 10 # 10
+    cluster_y = 10 # 10
+    cluster_z = 10 # 10
+    cluster_w = 10
+
+    normal_distribution = True
+    uniform_distribution = False
+    compare_with_kmeans = False
+    compare_with_meanshift = True
+
+    normal_sigma = 1.0
+    uniform_low = -2.
+    uniform_high = 2.
+
+    theta_value = 3.6 # 3.8 looks ok too
+
+    xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
+    yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
+    zz = np.arange(-1 * blob_dis*cluster_z // 2, blob_dis * cluster_z // 2, blob_dis)
+    ww = np.arange(-1 * blob_dis*cluster_w // 2, blob_dis * cluster_w // 2, blob_dis)
+
+    xx, yy, zz, ww = np.meshgrid(xx, yy, zz, ww)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis], np.ravel(zz)[:, np.newaxis], np.ravel(ww)[:, np.newaxis]))
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], dims))
+
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+
+
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+
+        if normal_distribution:
+            local_X = cpos + np.random.normal(0, normal_sigma, (n_local_samples, dims))
+
+        if uniform_distribution:
+            local_X = cpos + np.random.uniform(uniform_low,
+                                               uniform_high,
+                                               (n_local_samples, dims))
+
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    gt_centroids = np.array(gt_centroids)
+
+    points = X
+    labels = y
+    sz = len(n_centres)
+
+    centroids = gt_centroids
+
+    print('>>> X.shape (points) ', X.shape)
+
+
+    from time import time
+
+
+    print('-- Thetan Berserker --')
+
+    t1 = time()
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
+                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':200},
+                                                                                                                                                     quality_over_speed=True)
+    t2 = time()
+
+    berserker_time = t2 - t1
+
+    print('Berserker centroids: ', even_centroids_ex2.shape[0])
+    print('Total berserker time ', berserker_time)
+
+    unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
+                                                     return_counts=True)
+
+    thr = 0.8 # 0.4 okay too but a bit strict
+
+    D = np.sqrt(tdm(even_centroids_ex2, centroids, metric='euclidean'))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+
+
+
+    print('berserker count ',  count)
+    even_centroids_ex2_score = count / len(centroids)
+    print('berserker score ',  even_centroids_ex2_score)
+
+    if compare_with_kmeans:
+        from sklearn.cluster import KMeans
+
+        
+        print('-- K-means++ --')
+        t1 = time()
+        # kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+        #                 max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(points)
+
+        kmeans = KMeans(n_clusters=np.prod(sz), init='k-means++', n_init=1,
+                        max_iter=300, tol=0.0001, random_state=0).fit(points)
+        t2 = time()
+
+        kmeans_time = t2 - t1
+        print('Total kmeans++ time ', kmeans_time)
+        print('Berserker speedup ', kmeans_time/berserker_time)
+
+        kcentroids = kmeans.cluster_centers_
+        klabels = kmeans.labels_
+        print('Kmeans++ centroids: ', kcentroids.shape[0])
+
+        unique_labels_kmeans, unique_counts_kmeans = np.unique(klabels,
+                                                               return_counts=True)
+
+        D = np.sqrt(tdm(kcentroids, centroids, metric='euclidean'))
+        closest = np.min(D, axis=1)
+        count = np.sum(closest < thr)
+
+        print('kmeans++ count ', count)
+        kscore = count / len(centroids)
+        print('kmeans++ score ', kscore)
+
+
+    if compare_with_meanshift:
+
+        from sklearn.cluster import MeanShift, estimate_bandwidth
+
+        # bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
+
+        
+        print('-- Mean Shift --')
+
+        for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
+            t1 = time()
+            ms = MeanShift(bandwidth=step, bin_seeding=True)
+            ms.fit(points)
+            t2 = time()
+            meanshift_labels = ms.labels_
+            meanshift_centroids = ms.cluster_centers_
+
+            print('Meanshift centroids: ', meanshift_centroids.shape[0])
+
+            meanshift_time = t2 - t1
+        print('Total meanshift time ', meanshift_time)
+        print('Berserker speedup ', meanshift_time/berserker_time)
+
+        unique_labels_meanshift, unique_counts_meanshift = np.unique(meanshift_labels,
+                                                                     return_counts=True)
+
+        D = np.sqrt(tdm(meanshift_centroids, centroids, metric='euclidean'))
+        closest = np.min(D, axis=1)
+        count = np.sum(closest < thr)
+
+        print('Meanshift count ',  count)
+        meanshift_score = count / len(centroids)
+        print('Meanshift score ',  meanshift_score)
+
+    if verbose:
+
+        from fury import actor, window
+
+        # act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
+        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
+        # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
+        # act5 = actor.dot(meanshift_centroids, colors=(1.0, 0.5, 0), opacity=1)
+
+
+        # scene = window.Scene()
+        # scene.add(act)
+        # scene.add(act2)
+        # scene.add(act3)
+        # scene.add(act5)
+        # show_manager = window.ShowManager(scene)
+        # show_manager.start()
+
+        if compare_with_kmeans and compare_with_meanshift:
+
+            from pylab import plot, show, grid, figure, title, legend
+            # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+            figure()
+            title('Thetan Berserker vs Kmeans++ vs MeanShift')
+            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')
+            plot(np.sort(unique_counts_kmeans), '*-', label='Kmeans')
+            plot(np.sort(unique_counts_meanshift), '*-', label='Meanshift')
+            legend()
+            grid()
+            show()
+
+
+        if compare_with_meanshift:
+
+            from pylab import plot, show, grid, figure, title, legend
+            # unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2, return_counts=True)
+            figure()
+            title('Thetan Berserker vs MeanShift')
+            plot(np.sort(unique_counts_ex2), '*-', label='Berserker')            
+            plot(np.sort(unique_counts_meanshift), '*-', label='Meanshift')
+            legend()
+            grid()
+            show()
+
+    t = 1
+
+
 if __name__ == '__main__':
 
     ecs = []
@@ -655,7 +866,8 @@ if __name__ == '__main__':
     # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    test_3d_data(verbose=True)
+    # test_3d_data(verbose=True)
+    test_4d_data(verbose=True)
     # test_2d_data(verbose=True)
 
 

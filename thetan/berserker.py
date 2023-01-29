@@ -77,7 +77,7 @@ def candidate_labels_outliers(centroids, candidates, initial_labels):
 
 
 def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
-              manage_outliers={'mode':'min_size', 'size_limit':60}):
+              manage_outliers={'mode':'min_size', 'size_limit':60}, quality_over_speed=False):
 
 
     info_dict = {}
@@ -192,71 +192,102 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
     info_dict['Shuffle 2 CEN_LA'] = t17 - t16
 
 
-    print('Experimental')
+    print('Quality over speed enabled')
 
     print('------------------')
 
+    if quality_over_speed:
 
-    for i in range(3):
+        for i in range(3):
 
-        np.random.shuffle(points)
+            np.random.shuffle(points)
 
-        t10 = time()
+            t10 = time()
 
-        info_dict['Shuffle 3 X'] = t10 - t9        
+            info_dict['Shuffle ' + str(3 + i)  + ' X'] = t10 - t9        
 
-        p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex2, theta=theta_value,
-                                                  metric=metric,
-                                                  all_out=True)
+            p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex2, theta=theta_value,
+                                                    metric=metric,
+                                                    all_out=True)
 
-        t11 = time()
-        print('p_centroids', p_centroids.shape)
+            t11 = time()
+            print('p_centroids', p_centroids.shape)
 
-        info_dict['Shuffle 3 TM X'] = t11 - t10
-
-
-        t12 = time()
-        c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
-                                                 metric=metric, all_out=True)
-
-        t13 = time()
+            info_dict['Shuffle ' + str(3 + i)  + ' TM X'] = t11 - t10
 
 
-        info_dict['Shuffle 3 TG1 PC'] = t13 - t12
+            t12 = time()
+            c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
+                                                    metric=metric, all_out=True)
 
-        # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
-        nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
-
-        t14 = time()
-
-        info_dict['Shuffle 3 CL'] = t14 - t13
+            t13 = time()
 
 
-        even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
+            info_dict['Shuffle ' + str(3 + i)  + ' TG1 PC'] = t13 - t12
 
-        t15 = time()
-        print('ec2 ', even_centroids2.shape)
+            # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
+            nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
 
-        info_dict['Shuffle 3 DEL'] = t15 - t14
+            t14 = time()
 
-        updated_labels_ex2 = reassign_uncertain_update_labels(points, even_centroids2,
-                                                              updated_labels2x, nice2,
-                                                              metric=metric)
-        t16 = time()
+            info_dict['Shuffle ' + str(3 + i)  + ' CL'] = t14 - t13
 
-        info_dict['Shuffle 3 REA X'] = t16 - t15
 
-        even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
-        t17 = time()
-        print('ec2x ', even_centroids_ex2.shape)
+            even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
 
-        info_dict['Shuffle 3 CEN_LA'] = t17 - t16
+            t15 = time()
+            print('ec2 ', even_centroids2.shape)
 
+            info_dict['Shuffle ' + str(3 + i)  + ' DEL'] = t15 - t14
+
+            updated_labels_ex2 = reassign_uncertain_update_labels(points, even_centroids2,
+                                                                updated_labels2x, nice2,
+                                                                metric=metric)
+            t16 = time()
+
+            info_dict['Shuffle ' + str(3 + i)  + ' REA X'] = t16 - t15
+
+            even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
+            t17 = time()
+            print('ec2x ', even_centroids_ex2.shape)
+
+            info_dict['Shuffle ' + str(3 + i)  + ' CEN_LA'] = t17 - t16
+
+
+            if manage_outliers['mode'] == 'min_size':
+
+                unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
+                                                                return_counts=True)
+                
+                candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
+
+                # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
+                nice3, updated_labels3 = candidate_labels_outliers_c(even_centroids_ex2, candidates3, updated_labels_ex2)
+
+                even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
+
+                updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3,
+                                                                    metric=metric)
+
+                even_centroids_ex4 = centroids_from_labels(points, updated_labels_ex4)
+
+                even_centroids_ex2 = even_centroids_ex4
+
+                updated_labels_ex2 = updated_labels_ex4
+
+                t18 = time()
+
+                info_dict['Manage Outliers ' + str(i)] = t18 - t17
+
+                print('Final Shape:', even_centroids_ex2.shape)
+
+
+    else:
 
         if manage_outliers['mode'] == 'min_size':
 
             unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
-                                                             return_counts=True)
+                                                            return_counts=True)
             
             candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
 
@@ -276,9 +307,10 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
 
             t18 = time()
 
-            info_dict['Manage Outliers'] = t18 - t17
+            info_dict['Manage Outliers ' + str(i)] = t18 - t17
 
             print('Final Shape:', even_centroids_ex2.shape)
+
 
 
     print('Times')
