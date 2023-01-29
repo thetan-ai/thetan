@@ -650,8 +650,8 @@ def test_4d_data(verbose=False):
     cluster_z = 10 # 10
     cluster_w = 10
 
-    normal_distribution = True
-    uniform_distribution = False
+    normal_distribution = False
+    uniform_distribution = True
     compare_with_kmeans = False
     compare_with_meanshift = True
 
