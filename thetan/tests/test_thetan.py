@@ -648,10 +648,10 @@ def test_4d_data(verbose=False):
     cluster_x = 10 # 10
     cluster_y = 10 # 10
     cluster_z = 10 # 10
-    cluster_w = 10
+    cluster_w = 4
 
-    normal_distribution = False
-    uniform_distribution = True
+    normal_distribution = True
+    uniform_distribution = False
     compare_with_kmeans = False
     compare_with_meanshift = True
 
@@ -659,7 +659,7 @@ def test_4d_data(verbose=False):
     uniform_low = -2.
     uniform_high = 2.
 
-    theta_value = 3.6 # 3.8 looks ok too
+    theta_value = 3.6 # 3.6 # 3.8 looks ok too
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
@@ -708,7 +708,7 @@ def test_4d_data(verbose=False):
 
     t1 = time()
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
-                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':300},
+                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':200},
                                                                                                                                                      quality_over_speed=True)
     t2 = time()
 
@@ -867,8 +867,8 @@ if __name__ == '__main__':
     # test_ring_of_disks()
     # test_two_triangles(True)
     # test_3d_data(verbose=True)
-    test_4d_data(verbose=True)
-    # test_2d_data(verbose=True)
+    # test_4d_data(verbose=True)
+    test_2d_data(verbose=True)
 
 
     # test_candidate_labels()

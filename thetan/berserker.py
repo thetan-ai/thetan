@@ -192,11 +192,11 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
     info_dict['Shuffle 2 CEN_LA'] = t17 - t16
 
 
-    print('Quality over speed enabled')
-
-    print('------------------')
-
     if quality_over_speed:
+
+        print('Quality over speed enabled')
+
+        print('------------------')
 
         for i in range(3):
 
@@ -307,7 +307,7 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
 
             t18 = time()
 
-            info_dict['Manage Outliers ' + str(i)] = t18 - t17
+            info_dict['Manage Outliers '] = t18 - t17
 
             print('Final Shape:', even_centroids_ex2.shape)
 
