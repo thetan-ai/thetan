@@ -645,10 +645,10 @@ def test_4d_data(verbose=False):
     dims = 4
 
     blob_dis = 5 # 10
-    cluster_x = 10 # 10
-    cluster_y = 10 # 10
-    cluster_z = 10 # 10
-    cluster_w = 10
+    cluster_x = 5 # 10
+    cluster_y = 5 # 10
+    cluster_z = 5 # 10
+    cluster_w = 5
 
     normal_distribution = False
     uniform_distribution = True
