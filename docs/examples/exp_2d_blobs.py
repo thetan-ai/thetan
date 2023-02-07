@@ -19,6 +19,8 @@ from thetan.theta import distance_matrix as tdm
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 # from robotikos.metricspeed import distance_matrix
+from thetan.theta import thetan
+
 
 def labels_to_centroids(data, labels):
 
@@ -80,6 +82,7 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
 
     return final_centroids, final_indices, sum_of_time
 
+
 def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=None, label=None, true_label=None):
     if mode == 'SSD':
         # metric = NormalizedSumSquaredDiffMetric(feature=IdentityFeature())
@@ -130,8 +133,9 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
     if initial_centroids is not None:
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
-    pl.savefig('2_'+exp_type+'_'+title+'.png', dpi=300)
-    pl.close(fig)
+    pl.show()
+    # pl.savefig('2_'+exp_type+'_'+title+'.png', dpi=300)
+    # pl.close(fig)
 
 
 exp_type = 'hard'
@@ -139,7 +143,7 @@ if exp_type == 'easy':
     methods = ['kmeans', 'kmeans++', 'tm', 'mb_kmeans', 'birch']
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
-    verbose = True
+    verbose = False
     show_thr = False
     radius = 4
     n_local_samples = 30
@@ -438,7 +442,7 @@ if exp_type == 'hard':
 
     modes = ['NMI', 'SIL', 'FMS', 'SSD']
     evaluation_thr = 0.1
-    verbose = True
+    verbose = False
     show_thr = False
     radius = 4
     n_local_samples = 30
@@ -480,7 +484,7 @@ if exp_type == 'hard':
 
     if exp_type == 'easy':
 
-        blob_dis = 10
+        blob_dis = 10 # It was 10
         cluster_x = 10
         cluster_y = 10
         xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
@@ -512,7 +516,7 @@ if exp_type == 'hard':
         centroids = gt_centroids
 
     if exp_type == 'hard':
-        blob_dis = 5
+        blob_dis = 5 # It was 5
         cluster_x = 10
         cluster_y = 10
         xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
@@ -655,8 +659,14 @@ if exp_type == 'hard':
         print('tm ', tm_time)
         print('Speedup', kmeans_time/tm_time)
 
-        if verbose:
-            plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
+        final_centroids, final_indices, final_summs, final_clusters_sizes, final_counts, final_nearc_value, final_nearc_dist = thetan(points, theta=theta, all_out=True)
+        print('thetan')
+        
+
+        # if verbose:
+        # plot_centroids_clusters(points, tcentroids, tlabels, 'tm', exp_type, initial_centroids=centroids)
+        plot_centroids_clusters(points, final_centroids, final_indices, 'thetan', exp_type, initial_centroids=centroids)
+        test_tmp = True
         timings['tm'] = tm_time
 
 
