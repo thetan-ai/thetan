@@ -433,8 +433,8 @@ def test_3d_data(verbose=False):
     cluster_y = 10 # 10
     cluster_z = 10 # 10
 
-    normal_distribution = False
-    uniform_distribution = True
+    normal_distribution = True
+    uniform_distribution = False
     compare_with_kmeans = False
     compare_with_meanshift = True
 
@@ -639,7 +639,7 @@ def test_3d_data(verbose=False):
 
 def test_4d_data(verbose=False):
 
-    n_local_samples = 400
+    n_local_samples = 100
     # n_local_samples = 1000
 
     dims = 4
@@ -650,8 +650,8 @@ def test_4d_data(verbose=False):
     cluster_z = 5 # 10
     cluster_w = 5
 
-    normal_distribution = False
-    uniform_distribution = True
+    normal_distribution = 0
+    uniform_distribution = 1
     compare_with_kmeans = False
     compare_with_meanshift = True
 
@@ -659,7 +659,7 @@ def test_4d_data(verbose=False):
     uniform_low = -2.
     uniform_high = 2.
 
-    theta_value = 3.6 # 3.8 looks ok too
+    theta_value = 3.6 # 3.6 # 3.8 looks ok too
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
@@ -692,13 +692,17 @@ def test_4d_data(verbose=False):
 
     gt_centroids = np.array(gt_centroids)
 
+    # selection = np.random.choice(X.shape[0], X.shape[0]//3, replace=False)
+
+    # points = X[selection].copy()
+
     points = X
     labels = y
     sz = len(n_centres)
 
     centroids = gt_centroids
 
-    print('>>> X.shape (points) ', X.shape)
+    print('>>> X.shape (points) ', points.shape)
 
 
     from time import time
@@ -708,7 +712,7 @@ def test_4d_data(verbose=False):
 
     t1 = time()
     even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
-                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':300},
+                                                                                                                                                     manage_outliers={'mode':'min_size', 'size_limit':10},
                                                                                                                                                      quality_over_speed=True)
     t2 = time()
 
