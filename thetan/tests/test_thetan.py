@@ -8,6 +8,26 @@ from thetan.berserker import berserker, candidate_labels
 import matplotlib.pyplot as plt
 
 
+def theta_sg1(X, theta, metric='euclidean', all_out=False):
+
+    # sort each column (from left to right)
+    keys = tuple(c for c in X.T)[::-1]
+    ind = np.lexsort(keys)
+
+    X2 = X[ind].copy()
+
+    initial_centroids, initial_labels, _, _ = theta_g1(X2, theta=theta, metric=metric,
+                                                       all_out=True)
+
+    ind2 = np.argsort(ind)
+
+    final_labels = initial_labels[ind2]
+
+    # Note that X2[ind2] would provide exactly X
+
+    return initial_centroids, final_labels
+
+
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
                             merged_centroids=None, show=True):
@@ -126,12 +146,15 @@ def test_2d_data(verbose=False):
     normal_distribution = True
     uniform_distribution = False
     compare_with_meanshift = True
+    compare_with_theta_sg1 = True
 
     normal_sigma = 1.0
     uniform_low = -2.
     uniform_high = 2.
 
     theta_value = 3.6 # 3.0 still okay for uniform distributions with inf_norm
+    sg1_value = 3.5
+
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
     yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
@@ -181,21 +204,19 @@ def test_2d_data(verbose=False):
         # plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
         # plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
         # plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
-        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='Thetan Berserker ' + str(even_centroids_ex2.shape) + ' theta ' + str(theta_value), show=True)
+        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='Thetan Berserker ' + str(even_centroids_ex2.shape) + ' theta ' + str(theta_value), show=False)
 
     if compare_with_meanshift:
 
         from sklearn.cluster import MeanShift, estimate_bandwidth
 
-        bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
+        # bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
 
         for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
             t0 = time()
             ms = MeanShift(bandwidth=step, bin_seeding=True)
             ms.fit(points)
             t1 = time()
-
-
             meanshift_labels = ms.labels_
             meanshift_centers = ms.cluster_centers_
             print("Number of dimensions: ",dims)
@@ -204,7 +225,22 @@ def test_2d_data(verbose=False):
             print('Total Mean Shift Time:', total_mean_shift_time)
             print('Speedup: ', total_mean_shift_time / total_berserker_time)
 
-            #plot_centroids_clusters(points, meanshift_centers, meanshift_labels, title='Meanshift ' + str(meanshift_centers.shape) + ' bandwidth ' + str(step), show=True)
+            plot_centroids_clusters(points, meanshift_centers, meanshift_labels, title='Meanshift ' + str(meanshift_centers.shape) + ' bandwidth ' + str(step), show=False)
+
+    if compare_with_theta_sg1:
+
+        t0 = time()
+        sg1_centroids, sg1_labels = theta_sg1(points, theta=sg1_value)
+        t1 = time()
+        print("Number of dimensions: ",dims)
+        print('Final shape:', sg1_centroids.shape[0])
+        total_sg1_time = t1 - t0
+        print('Total Thetan SG1 Time:', total_sg1_time)
+        print('Speedup: ', total_sg1_time / total_berserker_time)
+
+        plot_centroids_clusters(points, sg1_centroids, sg1_labels, title='Thetan SG1' + str(sg1_centroids.shape) + ' value ' + str(sg1_value), show=True)
+
+
 
 
     t = 1
@@ -1157,13 +1193,13 @@ def test_2_circles():
     
     points = np.vstack([circle_points1,circle_points2])
     cents = get_meanshift(points)
-    #print("Number of ground truth centroids: ",2)
-    #print("Number of meanshift centroids: ",len(ms_cent))
+    # print("Number of ground truth centroids: ",2)
+    # print("Number of meanshift centroids: ",len(ms_cent))
     
     
-    #plt.scatter(points[:,0],points[:,1])
-    #plt.plot(centroid1[0],centroid1[1],marker='x',color = 'red',label="GT Centroid left")
-    #plt.plot(centroid2[0],centroid2[1],marker='x',color='blue',label="GT Centroid right")
+    # plt.scatter(points[:,0],points[:,1])
+    # plt.plot(centroid1[0],centroid1[1],marker='x',color = 'red',label="GT Centroid left")
+    # plt.plot(centroid2[0],centroid2[1],marker='x',color='blue',label="GT Centroid right")
     for i,ms_cent in enumerate(cents):
         plt.scatter(points[:,0],points[:,1])
         plt.plot(centroid1[0],centroid1[1],marker='x',color = 'red',label="GT Centroid left")
@@ -1172,7 +1208,7 @@ def test_2_circles():
             plt.plot(c[0],c[1],marker='x',color='purple',label = "mean-shift")
     
         plt.legend()
-        #plt.savefig("thetan/tests/Plots/MS_overlap_circle_bw="+str(i+1)+".png")
+        # plt.savefig("thetan/tests/Plots/MS_overlap_circle_bw="+str(i+1)+".png")
         plt.show()
         plt.close()
 
@@ -1181,9 +1217,6 @@ def test_2_circles():
 def test_2_trapeze():
     points1 = np.array([[-0.5,-0.5],[-0.5,0.5],[2,-0.25],[2,0.25]])
     points2 = np.array([[2.5,-0.25],[2.5,0.25],[3.5,-0.5],[3.5,0.5]])
-
-
-    
     
     stack_arr1 = get_points_trapeze(points1)
     mean1 = np.mean(stack_arr1,axis=0)
@@ -1212,7 +1245,7 @@ def test_2_trapeze():
             plt.plot(c[0],c[1],marker='x',color='purple',label = "mean-shift")
         
         plt.legend()
-        plt.savefig("thetan/tests/Plots/MS_sep_trap_bw="+str(i+1)+".png")
+        # plt.savefig("thetan/tests/Plots/MS_sep_trap_bw="+str(i+1)+".png")
         plt.show()
         
         plt.close()
@@ -1236,26 +1269,26 @@ if __name__ == '__main__':
     #     # ecs.append(test_thetan_normal_uniform_grid(verbose=True))
     #     pass
 
-    #print(ecs)
+    # print(ecs)
 
-    #ecs = np.asarray(ecs)
+    # ecs = np.asarray(ecs)
 
     # print(np.sum(ecs == 100))
     # print(np.sum(ecs > 100))
     # print(np.sum(ecs > 101))
     # print(np.sum(ecs < 100))
 
-    #test_two_triangles(verbose=True)
-    #test_2_circles()
-    test_2_trapeze()
-    #test_grid_of_disks()
+    # test_two_triangles(verbose=True)
+    # test_2_circles()
+    # test_2_trapeze()
+    # test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
-    #test_3d_data(verbose=False)
-    #test_4d_data(verbose=False)
-    #test_2d_data(verbose=False)
+    # test_3d_data(verbose=False)
+    # test_4d_data(verbose=False)
+    test_2d_data(verbose=True)
 
-    #test_aldi_data(n_local_samples=100,dims=6)
+    # test_aldi_data(n_local_samples=100,dims=6)
     # arr = generate_circles()
     # plt.imshow(arr[0])
     # plt.show()
