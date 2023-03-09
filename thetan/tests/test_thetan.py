@@ -6,6 +6,7 @@ import pylab as pl
 from thetan.theta import distance_matrix as tdm
 from thetan.berserker import berserker, candidate_labels
 import matplotlib.pyplot as plt
+from PIL import Image
 
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
@@ -860,37 +861,31 @@ def test_4d_data(verbose=False):
 
 
 
-def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False):
-    #n_local_samples = 100
+def test_distros_ndims(n_local_samples,dims,
+                       cluster_pts=5,blob_dis=5,
+                       distro="uniform",compare_with_kmeans = False,
+                       compare_with_meanshift = True,normal_sigma=1.0,
+                       uniform_low=-2,uniform_high=2,
+                       verbose = False,theta_value = 3.6):
+    '''
+    General function for testing n-dimensional data of a certain distribution
+    '''
     
-    #blob_dis = 5 # 10
-    # cluster_x = 5 # 10
-    # cluster_y = 5 # 10
-    # cluster_z = 5 # 10
-    # cluster_w = 5
-
-    normal_distribution = 0
-    uniform_distribution = 1
-    compare_with_kmeans = False
-    compare_with_meanshift = True
-
-    normal_sigma = 1.0
-    uniform_low = -2.
-    uniform_high = 2.
-
-    theta_value = 3.6 # 3.6 # 3.8 looks ok too
-
-    # xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
-    # yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
-    # zz = np.arange(-1 * blob_dis*cluster_z // 2, blob_dis * cluster_z // 2, blob_dis)
-    # ww = np.arange(-1 * blob_dis*cluster_w // 2, blob_dis * cluster_w // 2, blob_dis)
+    valid_distros = ["normal","uniform"]
+    if distro not in valid_distros:
+        raise ValueError("distro should be in %r" %valid_distros)
+    
+    
+    
+    
+    
     dim_arr =[]
     for dim in range(dims):
         dim_arr.append(np.arange(-1 * blob_dis*cluster_pts // 2, blob_dis * cluster_pts // 2, blob_dis))
 
     mesh_arr = np.meshgrid(*dim_arr)
     
-    #n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis], np.ravel(zz)[:, np.newaxis], np.ravel(ww)[:, np.newaxis]))
+    
     n_centres = np.hstack([np.ravel(ii)[:,np.newaxis] for ii in mesh_arr])
     gt_centroids = []
     X = np.zeros((n_local_samples * n_centres.shape[0], dims))
@@ -901,10 +896,10 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
     for i in range(n_centres.shape[0]):
         cpos = n_centres[i]
 
-        if normal_distribution:
+        if distro=="normal":
             local_X = cpos + np.random.normal(0, normal_sigma, (n_local_samples, dims))
 
-        if uniform_distribution:
+        if distro=="uniform":
             local_X = cpos + np.random.uniform(uniform_low,
                                                uniform_high,
                                                (n_local_samples, dims))
@@ -914,10 +909,6 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
         gt_centroids.append(local_X.mean(axis=0))
 
     gt_centroids = np.array(gt_centroids)
-
-    # selection = np.random.choice(X.shape[0], X.shape[0]//3, replace=False)
-
-    # points = X[selection].copy()
 
     points = X
     labels = y
@@ -1001,13 +992,15 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
 
         print('-- Mean Shift --')
 
-        for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
+        for step in [1.0,2.0,3.0,4.0]: # np.arange(2.5, 3.5, step=0.25/2):
             t1 = time()
-            ms = MeanShift(bandwidth=step, bin_seeding=True)
+            ms = MeanShift(bandwidth=step, bin_seeding=False)
             ms.fit(points)
             t2 = time()
             meanshift_labels = ms.labels_
             meanshift_centroids = ms.cluster_centers_
+            print("---------")
+            print("For Bandwidth: ",step)
             print("Ground Truth Centroids: ",gt_centroids.shape[0])
             print('Meanshift centroids: ', meanshift_centroids.shape[0])
 
@@ -1030,20 +1023,7 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
 
         from fury import actor, window
 
-        # act = actor.dot(centroids, colors=(0.0, 0., 1.), opacity=1)
-        # act2 = actor.dot(points, colors=(0, 1.0, 0), opacity=0.1)
-        # act3 = actor.dot(even_centroids_ex2, colors=(1.0, 0.0, 0), opacity=1)
-        # act5 = actor.dot(meanshift_centroids, colors=(1.0, 0.5, 0), opacity=1)
-
-
-        # scene = window.Scene()
-        # scene.add(act)
-        # scene.add(act2)
-        # scene.add(act3)
-        # scene.add(act5)
-        # show_manager = window.ShowManager(scene)
-        # show_manager.start()
-
+        
         if compare_with_kmeans and compare_with_meanshift:
 
             from pylab import plot, show, grid, figure, title, legend
@@ -1071,6 +1051,7 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
             show()
 
     t = 1
+
 
 def get_points_trapeze(points1):
     
@@ -1131,7 +1112,7 @@ def get_points_circle(centre,r,num_points=10):
 def get_meanshift(points):
     from sklearn.cluster import MeanShift, estimate_bandwidth
     centroids = []
-    bws = [0.25,1.0,2.0,3.0,4.0]
+    bws = [0.4]
     for bw in bws:
         ms = MeanShift(bandwidth=bw, bin_seeding=True)
         ms.fit(points)
@@ -1179,8 +1160,8 @@ def test_2_circles():
 
 
 def test_2_trapeze():
-    points1 = np.array([[-0.5,-0.5],[-0.5,0.5],[2,-0.25],[2,0.25]])
-    points2 = np.array([[2.5,-0.25],[2.5,0.25],[3.5,-0.5],[3.5,0.5]])
+    points1 = np.array([[-0.5,-0.5],[-0.5,0.5],[3,-0.25],[3,0.25]])
+    points2 = np.array([[2,-0.25],[2,0.25],[4,-0.5],[4,0.5]])
 
 
     
@@ -1226,8 +1207,47 @@ def test_2_trapeze():
     # plt.plot(mean2[0],mean2[1],marker='x',color='green',label="cluster2")
     
         
-    
+def test_image_data(img_path):
+    from sklearn.cluster import MeanShift
+    im = Image.open(img_path)
 
+    im_arr = np.asarray(im)
+    im_reshaped = im_arr.reshape(192*263,3)
+    bw = 0.5
+    ms = MeanShift(bandwidth=bw, bin_seeding=True)
+    labels = ms.fit_predict(im_reshaped)
+    
+    meanshift_centroids = ms.cluster_centers_
+    fig,ax = plt.subplots(1,2)
+    dmap = labels.reshape((192,263))
+    ax[0].imshow(im_arr)
+    ax[1].imshow(dmap)
+    plt.show()
+
+
+def test_dense_no_dense():
+    from sklearn.cluster import MeanShift
+    points1 = np.random.multivariate_normal([0,0],[[1,0],[0,1]],size=100000)
+    points2 = np.random.multivariate_normal([6,0],[[1,0],[0,1]],size=60)
+    
+    centroids = [np.mean(points1,axis=0),np.mean(points2,axis=0)]
+    all_points = np.vstack([points1,points2])
+
+    bw = 2.0
+    ms = MeanShift(bandwidth=bw, bin_seeding=True)
+    labels = ms.fit_predict(all_points)
+    
+    meanshift_centroids = ms.cluster_centers_
+    print(len(meanshift_centroids))
+    plt.scatter(all_points[:,0],all_points[:,1])
+    plt.plot(centroids[0][0],centroids[0][1],label="Actual centroid1",marker='x',color='red')
+    plt.plot(centroids[1][0],centroids[1][1],label="Actual centroid2",marker='x',color='yellow')
+    for i,cent in enumerate(meanshift_centroids):
+       plt.plot(cent[0],cent[1],label="MS centroid "+str(i),marker='x',color='orange') 
+    plt.legend()
+    # plt.scatter(points1[:,0],points1[:,1])
+    # plt.scatter(points2[:,0],points2[:,1])
+    plt.show()
 
 if __name__ == '__main__':
 
@@ -1247,15 +1267,17 @@ if __name__ == '__main__':
 
     #test_two_triangles(verbose=True)
     #test_2_circles()
-    test_2_trapeze()
+    #test_2_trapeze()
+    #test_image_data("thetan/tests/Images/lake.jpeg")
+    test_dense_no_dense()
     #test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
     #test_3d_data(verbose=False)
     #test_4d_data(verbose=False)
     #test_2d_data(verbose=False)
-
-    #test_aldi_data(n_local_samples=100,dims=6)
+    #test_dense_no_dense()
+    #test_aldi_data(n_local_samples=100,dims=4)
     # arr = generate_circles()
     # plt.imshow(arr[0])
     # plt.show()
