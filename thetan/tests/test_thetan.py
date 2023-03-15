@@ -143,8 +143,8 @@ def test_2d_data(verbose=False):
     cluster_x = 40
     cluster_y = 10
 
-    normal_distribution = True
-    uniform_distribution = False
+    normal_distribution = False
+    uniform_distribution = True
     compare_with_meanshift = True
     compare_with_theta_sg1 = True
 
@@ -311,23 +311,23 @@ def test_grid_of_disks():
     centroids = []
 
     for x, y in np.ndindex(sz):
-        
+
         for d in range(100):
             r = np.sqrt(np.random.random())
             theta = np.random.random() * 2 * np.pi
             x1 = 5 * x + r * np.cos(theta)
-            
+
             y1 = 5 * y + r * np.sin(theta)
-            
+
             coords.append([x1, y1])
 
         centroids.append([5 * x, 5 * y])
 
     points = np.array(coords)
     print(points.shape[0])
-    
+
     centroids = np.array(centroids, dtype='f8')
-    
+
     print(centroids.shape[0])
 
     theta_value = 2.0
@@ -379,7 +379,7 @@ def points_on_triangle(v, n):
     (2, 3) array *v*: one vertex per row.
     """
     x = np.sort(np.random.rand(2, n), axis=0)
-   
+
     return np.column_stack([x[0], x[1]-x[0], 1.0-x[1]]) @ v
 
 
@@ -545,7 +545,7 @@ def test_3d_data(verbose=False):
     thr = 0.8 # 0.4 okay too but a bit strict
 
     D = np.sqrt(tdm(even_centroids_ex2, centroids, metric='euclidean'))
-    
+
     closest = np.min(D, axis=1)
     count = np.sum(closest < thr)
 
@@ -616,7 +616,7 @@ def test_3d_data(verbose=False):
 
         D = np.sqrt(tdm(meanshift_centroids, centroids, metric='euclidean'))
         closest = np.min(D, axis=1)
-        
+
         count = np.sum(closest < thr)
 
         print('Meanshift count ',  count)
@@ -700,6 +700,8 @@ def test_4d_data(verbose=False):
     compare_with_kmeans = False
     compare_with_meanshift = True
 
+    binning = False
+
     normal_sigma = 1.0
     uniform_low = -2.
     uniform_high = 2.
@@ -746,7 +748,7 @@ def test_4d_data(verbose=False):
     sz = len(n_centres)
 
     centroids = gt_centroids
-    
+
     print('>>> X.shape (points) ', points.shape)
 
 
@@ -825,7 +827,7 @@ def test_4d_data(verbose=False):
 
         for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
             t1 = time()
-            ms = MeanShift(bandwidth=step, bin_seeding=True)
+            ms = MeanShift(bandwidth=step, bin_seeding=binning)
             ms.fit(points)
             t2 = time()
             meanshift_labels = ms.labels_
@@ -895,10 +897,13 @@ def test_4d_data(verbose=False):
     t = 1
 
 
+def distros_nd_grids():
+    pass
+
 
 def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False):
     #n_local_samples = 100
-    
+
     #blob_dis = 5 # 10
     # cluster_x = 5 # 10
     # cluster_y = 5 # 10
@@ -925,7 +930,7 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
         dim_arr.append(np.arange(-1 * blob_dis*cluster_pts // 2, blob_dis * cluster_pts // 2, blob_dis))
 
     mesh_arr = np.meshgrid(*dim_arr)
-    
+
     #n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis], np.ravel(zz)[:, np.newaxis], np.ravel(ww)[:, np.newaxis]))
     n_centres = np.hstack([np.ravel(ii)[:,np.newaxis] for ii in mesh_arr])
     gt_centroids = []
@@ -960,7 +965,7 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
     sz = len(n_centres)
 
     centroids = gt_centroids
-    
+
     print('>>> X.shape (points) ', points.shape)
 
 
@@ -1109,28 +1114,28 @@ def test_aldi_data(n_local_samples,dims,cluster_pts=5,blob_dis=5,verbose = False
     t = 1
 
 def get_points_trapeze(points1):
-    
+
     m1 = (points1[2]-points1[0])
     m1= m1[1]/m1[0]
     m2 = -m1
-    
+
     c1 =  points1[0][1]-m1*points1[0][0]
     c2 = points1[1][1] - m2*points1[1][0]
     x = np.arange(points1[0][0],points1[2][0],0.01)
     y_ulims = m1*x+c1
     y_dlims = m2*x+c2
-    
+
     stack_arr =[]
     for i,(dlim,ulim) in enumerate(zip(y_dlims,y_ulims)):
         arr = np.random.uniform(ulim,dlim,size=10)
         #mean = (ulim+dlim)//2
-    
+
         #arr = np.random.normal(mean,scale=0.1,size=10)
         #print(arr)
         points = [(x[i],j) for j in arr]
-        
+
         stack_arr.extend(points)
-    
+
     stack_arr = np.array(stack_arr)
     return stack_arr
 
@@ -1142,10 +1147,10 @@ def get_centroid_trap(points):
     print("P: ",p)
     h = points[2][0]-points[0][0]
     q = euc(points[3],points[2])
-    
+
     X = h/2
     Y = max(p/2,q/2)
-    
+
     return points[0][0]+X,Y
 
 def get_points_circle(centre,r,num_points=10):
@@ -1155,11 +1160,11 @@ def get_points_circle(centre,r,num_points=10):
         #print("T: ",r*np.sin(theta))
         pointsX = np.random.uniform(centre[0],centre[0]+r*np.cos(theta),size =num_points).reshape(-1,1)
         pointsY = np.random.uniform(0,r*np.sin(theta),size=num_points).reshape(-1,1)
-        
+
         circle_points.append(np.hstack([pointsX,pointsY]))
-        
+
         theta = theta+0.1
-    
+
     return circle_points
 
 
@@ -1180,8 +1185,8 @@ def test_2_circles():
     centre1 = np.array([0,0])
     centre2 = np.array([10,0])
     r = 2.5
-    
-    
+
+
     circle1 = get_points_circle(centre1,r,num_points=100)
     circle2 = get_points_circle(centre2,r,num_points=1)
 
@@ -1190,13 +1195,13 @@ def test_2_circles():
 
     centroid1 = np.mean(circle_points1,axis=0)
     centroid2 = np.mean(circle_points2,axis=0)
-    
+
     points = np.vstack([circle_points1,circle_points2])
     cents = get_meanshift(points)
     # print("Number of ground truth centroids: ",2)
     # print("Number of meanshift centroids: ",len(ms_cent))
-    
-    
+
+
     # plt.scatter(points[:,0],points[:,1])
     # plt.plot(centroid1[0],centroid1[1],marker='x',color = 'red',label="GT Centroid left")
     # plt.plot(centroid2[0],centroid2[1],marker='x',color='blue',label="GT Centroid right")
@@ -1206,7 +1211,7 @@ def test_2_circles():
         plt.plot(centroid2[0],centroid2[1],marker='x',color='blue',label="GT Centroid right")
         for c in ms_cent:
             plt.plot(c[0],c[1],marker='x',color='purple',label = "mean-shift")
-    
+
         plt.legend()
         # plt.savefig("thetan/tests/Plots/MS_overlap_circle_bw="+str(i+1)+".png")
         plt.show()
@@ -1217,7 +1222,7 @@ def test_2_circles():
 def test_2_trapeze():
     points1 = np.array([[-0.5,-0.5],[-0.5,0.5],[2,-0.25],[2,0.25]])
     points2 = np.array([[2.5,-0.25],[2.5,0.25],[3.5,-0.5],[3.5,0.5]])
-    
+
     stack_arr1 = get_points_trapeze(points1)
     mean1 = np.mean(stack_arr1,axis=0)
 
@@ -1235,31 +1240,31 @@ def test_2_trapeze():
     # print("Ground Truth Centroids: ",gt_centroids.shape[0])
     # print('Meanshift centroids: ', meanshift_centroids.shape[0])
     cents = get_meanshift(points_arr)
-    
+
     for i,ms_cent in enumerate(cents):
-        
+
         plt.scatter(points_arr[:,0],points_arr[:,1])
         plt.plot(mean1[0],mean1[1],marker='x',color = 'red',label="GT Centroid left")
         plt.plot(mean2[0],mean2[1],marker='x',color='blue',label="GT Centroid right")
         for c in ms_cent:
             plt.plot(c[0],c[1],marker='x',color='purple',label = "mean-shift")
-        
+
         plt.legend()
         # plt.savefig("thetan/tests/Plots/MS_sep_trap_bw="+str(i+1)+".png")
         plt.show()
-        
+
         plt.close()
         break
-    
+
 
     # plt.scatter(points_arr[:,0],points_arr[:,1])
     # #plt.scatter(stack_arr1[:,0],stack_arr1[:,1])
     # plt.plot(mean1[0],mean1[1],marker='x',color='red',label="cluster1")
     # #plt.scatter(stack_arr2[:,0],stack_arr2[:,1])
     # plt.plot(mean2[0],mean2[1],marker='x',color='green',label="cluster2")
-    
-        
-    
+
+
+
 
 
 if __name__ == '__main__':
@@ -1285,8 +1290,8 @@ if __name__ == '__main__':
     # test_ring_of_disks()
     # test_two_triangles(True)
     # test_3d_data(verbose=False)
-    # test_4d_data(verbose=False)
-    test_2d_data(verbose=True)
+    test_4d_data(verbose=False)
+    # test_2d_data(verbose=True)
 
     # test_aldi_data(n_local_samples=100,dims=6)
     # arr = generate_circles()
