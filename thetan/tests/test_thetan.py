@@ -25,13 +25,13 @@ def theta_sg1(X, theta, metric='euclidean', all_out=False):
     final_labels = initial_labels[ind2]
 
     # Note that X2[ind2] would provide exactly X
-
     return initial_centroids, final_labels
 
 
-def theta_sg1(X, theta, metric='euclidean', all_out=False):
+def theta_sg2(X, theta, metric='euclidean', all_out=False):
 
     # sort each column (from left to right)
+    # first dimension sorts first
     keys = tuple(c for c in X.T)[::-1]
     ind = np.lexsort(keys)
 
@@ -44,9 +44,26 @@ def theta_sg1(X, theta, metric='euclidean', all_out=False):
 
     final_labels = initial_labels[ind2]
 
-    # Note that X2[ind2] would provide exactly X
+    # sort by last dimension first
+    keys = tuple(c for c in X.T)
+    ind_inv = np.lexsort(keys)
 
-    return initial_centroids, final_labels
+    X3 = X[ind_inv].copy()
+
+    X4 = np.concatenate((initial_centroids, X3), axis=0)
+
+    secondary_centroids, secondary_labels, _, _ = theta_g1(X4, theta=theta, metric=metric,
+                                                     all_out=True)
+    ic_no = initial_centroids.shape[0]
+
+    secondary_labels = secondary_labels[ic_no:]
+
+    ind_inv2 = np.argsort(ind_inv)
+
+    final_labels2 = secondary_labels[ind_inv2]
+
+    # Note that X2[ind2] would provide exactly X
+    return secondary_centroids, final_labels2
 
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
@@ -93,6 +110,9 @@ def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=N
 
     if merged_centroids is not None:
         pl.plot(merged_centroids[:, 0], merged_centroids[:, 1], 'mo')
+
+    # pl.get_current_fig_manager().full_screen_toggle()
+    pl.get_current_fig_manager().window.showMaximized()
 
     if show:
         pl.show()
@@ -161,20 +181,24 @@ def test_2d_data(verbose=False):
     dims = 2
 
     blob_dis = 5
-    cluster_x = 40
+    cluster_x = 20
     cluster_y = 10
 
-    normal_distribution = False
-    uniform_distribution = True
+    normal_distribution = True
+    uniform_distribution = False
     compare_with_meanshift = True
     compare_with_theta_sg1 = True
+    compare_with_theta_sg2 = True
+    compare_with_theta_g1 = True
 
     normal_sigma = 1.0
     uniform_low = -2.
     uniform_high = 2.
 
     theta_value = 3.6 # 3.0 still okay for uniform distributions with inf_norm
-    sg1_value = 3.5
+    sg1_value = 3.6 #3.6
+    sg2_value = 3.6
+    g1_value = 3.6
 
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
@@ -218,14 +242,15 @@ def test_2d_data(verbose=False):
     total_berserker_time = t1 - t0
     print('Total Thetan Berserker Time: ', total_berserker_time)
 
-    if verbose:
+    # if verbose:
 
         # plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
         # plot_centroids_clusters(points, even_centroids, None, title='ec' + str(even_centroids.shape), show=False)
         # plot_centroids_clusters(points, even_centroids_ex, None, title='ecx' + str(even_centroids_ex.shape), show=False)
         # plot_centroids_clusters(points, p_centroids, p_labels, title='pc' + str(p_centroids.shape), show=False)
         # plot_centroids_clusters(points, even_centroids2, None, title='ec2' + str(even_centroids2.shape), show=False)
-        plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='Thetan Berserker ' + str(even_centroids_ex2.shape) + ' theta ' + str(theta_value), show=False)
+
+    plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='Thetan Berserker ' + str(even_centroids_ex2.shape) + ' theta ' + str(theta_value), show=False)
 
     if compare_with_meanshift:
 
@@ -259,10 +284,34 @@ def test_2d_data(verbose=False):
         print('Total Thetan SG1 Time:', total_sg1_time)
         print('Speedup: ', total_sg1_time / total_berserker_time)
 
-        plot_centroids_clusters(points, sg1_centroids, sg1_labels, title='Thetan SG1' + str(sg1_centroids.shape) + ' value ' + str(sg1_value), show=True)
+        plot_centroids_clusters(points, sg1_centroids, sg1_labels, title='Thetan SG1 ' + str(sg1_centroids.shape) + ' value ' + str(sg1_value), show=False)
+
+    if compare_with_theta_sg2:
+
+        t0 = time()
+        sg2_centroids, sg2_labels = theta_sg2(points, theta=sg1_value)
+        t1 = time()
+        print("Number of dimensions: ",dims)
+        print('Final shape:', sg2_centroids.shape[0])
+        total_sg2_time = t1 - t0
+        print('Total Thetan SG2 Time:', total_sg2_time)
+        print('Speedup: ', total_sg2_time / total_berserker_time)
+
+        plot_centroids_clusters(points, sg2_centroids, sg2_labels, title='Thetan SG2 ' + str(sg2_centroids.shape) + ' value ' + str(sg2_value), show=False)
 
 
+    if compare_with_theta_g1:
 
+        t0 = time()
+        g1_centroids, g1_labels = theta_g1(points, theta=g1_value)
+        t1 = time()
+        print("Number of dimensions: ",dims)
+        print('Final shape:', g1_centroids.shape[0])
+        total_g1_time = t1 - t0
+        print('Total Thetan G1 Time:', total_sg2_time)
+        print('Speedup: ', total_g1_time / total_berserker_time)
+
+        plot_centroids_clusters(points, g1_centroids, sg1_labels, title='Thetan G1 ' + str(g1_centroids.shape) + ' value ' + str(g1_value), show=True)
 
     t = 1
 
@@ -931,7 +980,7 @@ def test_distros_ndims(n_local_samples,dims,
     '''
     General function for testing n-dimensional data of a certain distribution
     '''
-    
+
     valid_distros = ["normal","uniform"]
     if distro not in valid_distros:
         raise ValueError("distro should be in %r" %valid_distros)
@@ -1080,7 +1129,7 @@ def test_distros_ndims(n_local_samples,dims,
 
         from fury import actor, window
 
-        
+
         if compare_with_kmeans and compare_with_meanshift:
 
             from pylab import plot, show, grid, figure, title, legend
@@ -1260,8 +1309,8 @@ def test_2_trapeze():
     # plt.plot(mean1[0],mean1[1],marker='x',color='red',label="cluster1")
     # #plt.scatter(stack_arr2[:,0],stack_arr2[:,1])
     # plt.plot(mean2[0],mean2[1],marker='x',color='green',label="cluster2")
-    
-        
+
+
 def test_image_data(img_path):
     from sklearn.cluster import MeanShift
     im = Image.open(img_path)
@@ -1271,7 +1320,7 @@ def test_image_data(img_path):
     bw = 0.5
     ms = MeanShift(bandwidth=bw, bin_seeding=True)
     labels = ms.fit_predict(im_reshaped)
-    
+
     meanshift_centroids = ms.cluster_centers_
     fig,ax = plt.subplots(1,2)
     dmap = labels.reshape((192,263))
@@ -1284,7 +1333,7 @@ def test_dense_no_dense():
     from sklearn.cluster import MeanShift
     points1 = np.random.multivariate_normal([0,0],[[1,0],[0,1]],size=100000)
     points2 = np.random.multivariate_normal([6,0],[[1,0],[0,1]],size=60)
-    
+
     centroids = [np.mean(points1,axis=0),np.mean(points2,axis=0)]
     all_points = np.vstack([points1,points2])
 
@@ -1292,14 +1341,14 @@ def test_dense_no_dense():
     bw = 2.0
     ms = MeanShift(bandwidth=bw, bin_seeding=True)
     labels = ms.fit_predict(all_points)
-    
+
     meanshift_centroids = ms.cluster_centers_
     print(len(meanshift_centroids))
     plt.scatter(all_points[:,0],all_points[:,1])
     plt.plot(centroids[0][0],centroids[0][1],label="Actual centroid1",marker='x',color='red')
     plt.plot(centroids[1][0],centroids[1][1],label="Actual centroid2",marker='x',color='yellow')
     for i,cent in enumerate(meanshift_centroids):
-       plt.plot(cent[0],cent[1],label="MS centroid "+str(i),marker='x',color='orange') 
+       plt.plot(cent[0],cent[1],label="MS centroid "+str(i),marker='x',color='orange')
     plt.legend()
     # plt.scatter(points1[:,0],points1[:,1])
     # plt.scatter(points2[:,0],points2[:,1])
@@ -1323,13 +1372,13 @@ if __name__ == '__main__':
 
     #test_two_triangles(verbose=True)
     #test_2_circles()
-    test_2_trapeze()
+    # test_2_trapeze()
     #test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
     #test_3d_data(verbose=False)
     #test_4d_data(verbose=False)
-    #test_2d_data(verbose=False)
+    test_2d_data(verbose=False)
 
 
     #test_aldi_data(n_local_samples=100,dims=6)
