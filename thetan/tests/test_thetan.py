@@ -66,6 +66,25 @@ def theta_sg2(X, theta, metric='euclidean', all_out=False):
     return secondary_centroids, final_labels2
 
 
+def test_simple_hashing():
+
+    X = 1000 * (np.random.rand(100000, 3) - 0.5)
+
+    spacing = 40
+
+    Xf = np.floor(X/spacing)
+
+    big_ints = np.random.randint(100000, 200000, X.shape[1])
+
+    hash_prep = Xf * big_ints
+
+    hashes = np.sum(hash_prep, axis=1)
+
+    unique_hashes = np.unique(hashes)
+
+    print(unique_hashes.shape[0] / hashes.shape[0])
+
+
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
                             merged_centroids=None, show=True):
@@ -308,10 +327,10 @@ def test_2d_data(verbose=False):
         print("Number of dimensions: ",dims)
         print('Final shape:', g1_centroids.shape[0])
         total_g1_time = t1 - t0
-        print('Total Thetan G1 Time:', total_sg2_time)
+        print('Total Thetan G1 Time:', total_g1_time)
         print('Speedup: ', total_g1_time / total_berserker_time)
 
-        plot_centroids_clusters(points, g1_centroids, sg1_labels, title='Thetan G1 ' + str(g1_centroids.shape) + ' value ' + str(g1_value), show=True)
+        plot_centroids_clusters(points, g1_centroids, g1_labels, title='Thetan G1 ' + str(g1_centroids.shape) + ' value ' + str(g1_value), show=True)
 
     t = 1
 
@@ -1378,7 +1397,8 @@ if __name__ == '__main__':
     # test_two_triangles(True)
     #test_3d_data(verbose=False)
     #test_4d_data(verbose=False)
-    test_2d_data(verbose=False)
+    # test_2d_data(verbose=False)
+    test_simple_hashing()
 
 
     #test_aldi_data(n_local_samples=100,dims=6)

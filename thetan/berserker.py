@@ -204,7 +204,7 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
 
             t10 = time()
 
-            info_dict['Shuffle ' + str(3 + i)  + ' X'] = t10 - t9        
+            info_dict['Shuffle ' + str(3 + i)  + ' X'] = t10 - t9
 
             p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex2, theta=theta_value,
                                                     metric=metric,
@@ -258,7 +258,7 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
 
                 unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                                 return_counts=True)
-                
+
                 candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
 
                 # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
@@ -288,7 +288,7 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
 
             unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
                                                             return_counts=True)
-            
+
             candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
 
             # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
