@@ -322,3 +322,140 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
 
     else:
         return even_centroids_ex2
+
+
+def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=True):
+
+    info_dict = {}
+    t0 = time()
+
+    # np.random.shuffle(points)
+
+    ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+    points2 = points[ind].copy()
+    ind_inv = np.argsort(ind)
+
+
+    t1 = time()
+    info_dict['Shuffle 1 X'] = t1 - t0
+
+    initial_centroids, initial_labels, _, _ = theta_g1(points2, theta=theta_value, metric=metric,
+                                                       all_out=True)
+
+    t2 = time()
+
+    info_dict['Shuffle 1 TG1 X'] = t2 - t1
+
+    print('ic', initial_centroids.shape)
+
+    t3 = time()
+    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric,
+                                           all_out=True)
+
+    t4 = time()
+
+    info_dict['Shuffle 1 TG1 C'] = t4 - t3
+
+    t5 = time()
+
+    # nice, candidates, _clusters, updated_labels = candidate_labels(c_centroids, c_labels, initial_labels)
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+
+    t6 = time()
+
+    info_dict['Shuffle 1 CL'] = t6 - t5
+
+    even_centroids = np.delete(initial_centroids, candidates, axis=0)
+    print('ec', even_centroids.shape)
+
+    t7 = time()
+
+    info_dict['Shuffle 1 DEL'] = t7 - t6
+
+
+    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
+                                                       updated_labels, nice,
+                                                       metric=metric)
+
+    t8 = time()
+
+    info_dict['Shuffle 1 REA X'] = t8 - t7
+
+    even_centroids_ex = centroids_from_labels(points2, updated_labels2)
+
+    t9 = time()
+
+    info_dict['Shuffle 1 CEN_LA X'] = t9 - t8
+
+
+    # This second shuffle resolves many problems with centroids appearing between clusters
+    # np.random.shuffle(points)
+    ind2 = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+    points3 = points[ind2].copy()
+    ind2_inv = np.argsort(ind2)
+
+    t10 = time()
+
+    info_dict['Shuffle 2 X'] = t10 - t9
+
+    p_centroids, p_labels, _, _ = theta_means(points3, even_centroids_ex, theta=theta_value,
+                                              metric=metric,
+                                              all_out=True)
+
+    t11 = time()
+    print('p_centroids', p_centroids.shape)
+
+    info_dict['Shuffle 2 TM X'] = t11 - t10
+
+
+    t12 = time()
+    c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
+                                             metric=metric, all_out=True)
+
+    t13 = time()
+
+
+    info_dict['Shuffle 2 TG1 PC'] = t13 - t12
+
+    # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
+    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+
+    t14 = time()
+
+    info_dict['Shuffle 2 CL'] = t14 - t13
+
+    even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
+
+    t15 = time()
+    print('ec2 ', even_centroids2.shape)
+
+    info_dict['Shuffle 2 DEL'] = t15 - t14
+
+    updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
+                                                          updated_labels2x, nice2,
+                                                          metric=metric)
+    t16 = time()
+
+    info_dict['Shuffle 2 REA X'] = t16 - t15
+
+    # bring labels back from original points (not points3)
+    updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
+    even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
+
+    t17 = time()
+
+    print('ec2x ', even_centroids_ex2.shape)
+
+    info_dict['Shuffle 2 CEN_LA *'] = t17 - t16
+
+    # quality over speed option not available in this version yet
+
+    print('Times')
+    print(info_dict)
+    t = 1
+
+    if all_out:
+        return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
+
+    else:
+        return even_centroids_ex2

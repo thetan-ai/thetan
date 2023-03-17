@@ -11,6 +11,7 @@ from libc.math cimport fabs
 cdef extern from "math.h" nogil:
     double fabs(double x)
     double sqrt(double x)
+    double floor(double x)
 
 cdef extern from "stdlib.h" nogil:
     ctypedef unsigned long size_t
@@ -439,6 +440,7 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
+        double cnt_orig = 0
 
     if metric == 'euclidean':
         metric_func = &euclidean
@@ -466,6 +468,7 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
 
             for k in range(K):
 
+                cnt_orig += 1
                 dist = metric_func(&X[i, 0], &centroids[k * D], D)
 
                 if dist < minimum:
@@ -497,6 +500,8 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
                 K += 1
 
 
+    print('Original calls ', cnt_orig)
+
     final_centroids = np.asarray(<double[:K, :D]> centroids)
     final_indices = np.asarray(indices)
 
@@ -508,6 +513,126 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
         free(summs)
         free(clusters_sizes)
         return final_centroids, final_indices
+
+
+def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
+    """ Adding trivial collision abilities
+    """
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = 0
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        cnp.npy_intp [:] multipliers = np.random.randint(100000, 200000, X.shape[1], dtype='i8')
+        double sum_mult = np.float(np.sum(np.asarray(multipliers)))
+        # cnp.npy_intp [:] X_hash = np.sum(np.intp(np.floor(np.asarray(X) / (theta * 2))) * np.asarray(multipliers), axis=1)
+        double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> D * sizeof(double))
+        double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
+        double * c_hash = <double *> malloc(<size_t> 1 * sizeof(double))
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+        double x_hash = 0
+        double cnt_dist = 0, cnt_orig = 0
+        double mdiv = 1 / (2 * theta)
+
+
+    print('MDIV>>>', mdiv)
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+    with nogil:
+
+        # first point becomes first cluster
+        indices[0] = 0
+        c_hash[0] = 0
+        for d in range(D):
+            summs[d] = X[0, d]
+            centroids[d] = X[0, d]
+            c_hash[0] += floor(centroids[d] * mdiv) * multipliers[d]
+        K = 1
+        clusters_sizes[0] = 1.0
+
+
+        for i in range(1, N):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            x_hash = 0
+            for d in range(D):
+                x_hash += floor(X[i, d] * mdiv) * multipliers[d]
+
+            for k in range(K):
+
+                cnt_orig += 1
+
+                if fabs(x_hash - c_hash[k]) <= sum_mult:
+
+                    dist = metric_func(&X[i, 0], &centroids[k * D], D)
+                    cnt_dist += 1
+
+                    if dist < minimum:
+                        minimum = dist
+                        argmin = k
+
+            # add in existing
+            if minimum < theta:
+
+                for d in range(D):
+                    summs[argmin * D + d] += X[i, d]
+                clusters_sizes[argmin] += 1.0
+                c_hash[argmin] = 0
+                for d in range(D):
+                    centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
+                    c_hash[argmin] += floor(centroids[argmin * D + d] * mdiv) * multipliers[d]
+                indices[i] = argmin
+
+            # create new cluster
+            else:
+
+                summs = <double *> realloc(summs, <size_t> D * (K + 1) * sizeof(double))
+                clusters_sizes = <double *> realloc(clusters_sizes, <size_t> (K + 1) * sizeof(double))
+                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double))
+                c_hash = <double *> realloc(c_hash, <size_t> (K + 1) * sizeof(double))
+                indices[i] = K
+                for d in range(D):
+                    summs[K * D + d] = X[i, d]
+                clusters_sizes[K] = 1.0
+                c_hash[K] = 0
+                for d in range(D):
+                    centroids[K * D + d] = summs[K * D + d]
+                    c_hash[K] += floor(centroids[K * D + d] * mdiv) * multipliers[d]
+                K += 1
+
+
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    final_indices = np.asarray(indices)
+
+    print('Distance calls ', cnt_dist)
+    print('Original calls ', cnt_orig)
+
+    free(c_hash)
+
+    if all_out:
+        final_summs = np.asarray(<double[:K, :D]> summs)
+        final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+        return final_centroids, final_indices, final_summs, final_clusters_sizes
+    else:
+        free(summs)
+        free(clusters_sizes)
+        return final_centroids, final_indices
+
 
 
 def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy_intp[:] initial_labels):
@@ -627,7 +752,7 @@ def candidate_labels_outliers_c(double[:, ::1] centroids, cnp.npy_intp[:] candid
 def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
                                      cnp.npy_intp[::1] labels, cnp.npy_intp[::1] nice,
                                      metric='euclidean'):
-    # Reassign uncertain labels to closes cluster (note nice not currently used)
+    # Reassign uncertain labels to closest cluster (note nice not currently used)
 
     cdef:
         cnp.npy_intp N = X.shape[0]
