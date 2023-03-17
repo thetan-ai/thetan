@@ -1454,3 +1454,23 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         free(dtmp)
         free(dtravel)
         return final_centroids, final_indices
+
+
+def img3d_to_ijkv_features(double[:, :, :] img3d):
+
+    cdef cnp.npy_intp i, j, k
+    shape = img3d.base.shape
+    cdef cnp.npy_intp cnt = 0
+
+    features = np.zeros((np.prod(img3d.shape), 4), dtype='f8')
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            for k in range(shape[2]):
+                if img3d[i, j, k] != 0:
+                    features[cnt, 0] = i
+                    features[cnt, 1] = j
+                    features[cnt, 2] = k
+                    features[cnt, 3] = img3d[i, j, k]
+                    cnt += 1
+    return features
+
