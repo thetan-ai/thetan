@@ -1,7 +1,8 @@
 from time import time
 import numpy as np
 import numpy.testing as npt
-from thetan.theta import reorder_labels, theta_g1, theta_means, reassign_uncertain_update_labels, theta_g1h
+from thetan.theta import reorder_labels, theta_g1, theta_means, reassign_uncertain_update_labels, theta_g1h, theta_g1d
+from thetan.theta import centroids_from_labels
 import pylab as pl
 from thetan.theta import distance_matrix as tdm
 from thetan.berserker import berserker, candidate_labels, berserker2
@@ -210,6 +211,7 @@ def test_2d_data(verbose=False):
     compare_with_theta_sg2 = 0
     compare_with_theta_g1 = True
     compare_with_theta_g1h = True
+    compare_with_theta_g1d = True
 
     normal_sigma = 1.0
     uniform_low = -2.
@@ -220,6 +222,7 @@ def test_2d_data(verbose=False):
     sg2_value = 3.6
     g1_value = 3.6
     g1h_value = 3.6
+    g1d_value = 3.6
 
 
     xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
@@ -255,6 +258,12 @@ def test_2d_data(verbose=False):
 
     centroids = gt_centroids
 
+    # Randomize the data
+    ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+    points = points[ind].copy()
+    labels = labels[ind].copy()
+
+    print()
     print('>> Berserker 2')
     # even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, theta_value, metric='inf_norm', all_out=True, verbose=True)
     t0 = time()
@@ -280,6 +289,7 @@ def test_2d_data(verbose=False):
         # bandwidth = estimate_bandwidth(points, quantile=0.2, n_samples=500)
 
         for step in [3.0]: # np.arange(2.5, 3.5, step=0.25/2):
+            print()
             print('>> MeanShift')
             t0 = time()
             ms = MeanShift(bandwidth=step, bin_seeding=True)
@@ -296,7 +306,7 @@ def test_2d_data(verbose=False):
             plot_centroids_clusters(points, meanshift_centers, meanshift_labels, title='Meanshift ' + str(meanshift_centers.shape) + ' bandwidth ' + str(step), show=False)
 
     if compare_with_theta_sg1:
-
+        print()
         print('>> SG1')
         t0 = time()
         sg1_centroids, sg1_labels = theta_sg1(points, theta=sg1_value)
@@ -310,7 +320,7 @@ def test_2d_data(verbose=False):
         plot_centroids_clusters(points, sg1_centroids, sg1_labels, title='Thetan SG1 ' + str(sg1_centroids.shape) + ' value ' + str(sg1_value), show=False)
 
     if compare_with_theta_sg2:
-
+        print()
         print('>> SG2')
         t0 = time()
         sg2_centroids, sg2_labels = theta_sg2(points, theta=sg1_value)
@@ -325,6 +335,7 @@ def test_2d_data(verbose=False):
 
 
     if compare_with_theta_g1:
+        print()
         print('>> G1')
         t0 = time()
         g1_centroids, g1_labels = theta_g1(points, theta=g1_value)
@@ -339,17 +350,33 @@ def test_2d_data(verbose=False):
 
 
     if compare_with_theta_g1h:
+        print()
         print('>> G1H')
         t0 = time()
         g1h_centroids, g1h_labels = theta_g1h(points, theta=g1h_value)
         t1 = time()
-        print("Number of dimensions: ",dims)
+        print("Number of dimensions: ", dims)
         print('Final shape:', g1h_centroids.shape[0])
         total_g1h_time = t1 - t0
         print('Total Thetan G1H Time:', total_g1h_time)
         print('Speedup: ', total_g1h_time / total_berserker_time)
 
-        plot_centroids_clusters(points, g1h_centroids, g1h_labels, title='Thetan G1H ' + str(g1h_centroids.shape) + ' value ' + str(g1h_value), show=True)
+        plot_centroids_clusters(points, g1h_centroids, g1h_labels, title='Thetan G1H ' + str(g1h_centroids.shape) + ' value ' + str(g1h_value), show=False)
+
+    if compare_with_theta_g1d:
+        print()
+        print('>> G1D')        
+        t0 = time()
+        g1d_centroids, g1d_labels = theta_g1d(points, theta=g1d_value)
+        t1 = time()
+        print("Number of dimensions: ", dims)
+        print('Final shape:', g1d_centroids.shape[0])
+        total_g1d_time = t1 - t0
+        print('Total Thetan G1D Time:', total_g1d_time)
+        print('Speedup: ', total_g1d_time / total_berserker_time)
+
+        plot_centroids_clusters(points, g1d_centroids, g1d_labels, title='Thetan G1D ' + str(g1d_centroids.shape) + ' value ' + str(g1d_value), show=True)
+
 
 
     t = 1
@@ -1393,6 +1420,80 @@ def test_dense_no_dense():
     # plt.scatter(points2[:,0],points2[:,1])
     plt.show()
 
+
+def test_neighb_compactness():
+
+    shape = (4, 3, 5, 6, 2)
+
+    multipliers = np.random.randint(1000, 2000, len(shape))
+    multipliers_diff = np.random.randint(1000, 2000, len(shape) - 1)
+
+    proximal_hashes = []
+    proximal_diff_hashes = []
+
+    for index in np.ndindex(shape):
+
+        proximal_hash = np.sum(np.asarray(index) * multipliers)
+
+        diff_index = np.diff(index)
+        proximal_diff_hash = np.sum(diff_index * multipliers_diff)
+
+        print(index, diff_index, proximal_hash, proximal_diff_hash, np.sum(diff_index**2))
+        proximal_hashes.append(proximal_hash)
+        proximal_diff_hashes.append(proximal_diff_hash)
+
+    print(len(proximal_hashes))
+    print(len(np.unique(proximal_hashes)))
+
+    print(len(proximal_diff_hashes))
+    print(len(np.unique(proximal_diff_hashes)))
+    
+    t = 1
+
+
+def _centroids_from_labels(points, labels):
+
+    new_centroids = []
+    for i, l in enumerate(range(labels.max() + 1)):
+        # print(i)
+        avg = np.average(points[labels==l], axis=0)
+        new_centroids.append(avg)
+
+    t = 0
+    return np.ascontiguousarray(new_centroids)
+
+def test_centroids_from_labels():
+
+    _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=15,
+                                 density=500, size=(200, 200), labellize=False,
+                                 return_coord=True)
+    points = np.asarray(points)
+    
+    centroids, labels = theta_g1(points, (points.max() - points.min()) / 20.)
+
+    t0 = time() 
+    _centroids = _centroids_from_labels(points, labels)
+    t1 = time()
+    centroids2 = centroids_from_labels(points, labels)
+    t2 = time()
+    
+    print('G1 version')
+    print(centroids.shape)
+    print(centroids[:4])
+
+    print('Pythonic version', t1 - t0)
+    print(_centroids[:4])
+    print(_centroids.shape)
+    
+    print('Cythonic version', t2 - t1)
+    print(centroids2[:4])
+    print(centroids2.shape)
+
+
+    check = True
+    
+    
+
 if __name__ == '__main__':
 
     # ecs = []
@@ -1417,8 +1518,10 @@ if __name__ == '__main__':
     # test_two_triangles(True)
     #test_3d_data(verbose=False)
     #test_4d_data(verbose=False)
-    test_2d_data(verbose=False)
+    # test_2d_data(verbose=False)
     # test_simple_hashing()
+    # test_neighb_compactness()
+    test_centroids_from_labels()
 
 
     #test_aldi_data(n_local_samples=100,dims=6)
@@ -1429,5 +1532,6 @@ if __name__ == '__main__':
 
     # test_reorder_labels()
     # test_build_nice()
-    t = 2
+    # t = 2
+    
     pass

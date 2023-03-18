@@ -526,8 +526,7 @@ def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         cnp.npy_intp k = 0, K = 0
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         cnp.npy_intp [:] multipliers = np.random.randint(100000, 200000, X.shape[1], dtype='i8')
-        double sum_mult = np.float(np.sum(np.asarray(multipliers)))
-        # cnp.npy_intp [:] X_hash = np.sum(np.intp(np.floor(np.asarray(X) / (theta * 2))) * np.asarray(multipliers), axis=1)
+        double sum_mult = <double>(np.sum(np.asarray(multipliers)))
         double * summs = <double *> malloc(<size_t> D * sizeof(double))
         double * centroids = <double *> malloc(<size_t> D * sizeof(double))
         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
@@ -623,6 +622,131 @@ def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
     print('Original calls ', cnt_orig)
 
     free(c_hash)
+
+    if all_out:
+        final_summs = np.asarray(<double[:K, :D]> summs)
+        final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+        return final_centroids, final_indices, final_summs, final_clusters_sizes
+    else:
+        free(summs)
+        free(clusters_sizes)
+        return final_centroids, final_indices
+
+def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
+    """ Adding trivial collision abilities
+    """
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = 0
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        # cnp.npy_intp [:] multipliers = np.random.randint(100000, 200000, X.shape[1], dtype='i8')
+        # double sum_mult = np.float(np.sum(np.asarray(multipliers)))
+        # cnp.npy_intp [:] X_hash = np.sum(np.intp(np.floor(np.asarray(X) / (theta * 2))) * np.asarray(multipliers), axis=1)
+        double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> D * sizeof(double))
+        double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
+        double * x_bin = <double *> malloc(<size_t> D * sizeof(double))
+        double * c_bin = <double *> malloc(<size_t> D * sizeof(double))
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1, abort = 0
+        metricp metric_func = &euclidean        
+        double cnt_dist = 0, cnt_orig = 0
+        double mdiv = 1 / (2 * theta)
+
+
+    print('MDIV>>>', mdiv)
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+
+    with nogil:
+
+        # first point becomes first cluster
+        indices[0] = 0
+
+        for d in range(D):
+            summs[d] = X[0, d]
+            centroids[d] = X[0, d]
+            c_bin[d] = floor(centroids[d] * mdiv)
+
+        K = 1
+        clusters_sizes[0] = 1.0
+
+
+        for i in range(1, N):
+
+            minimum = DBL_MAX
+            argmin = -1
+            
+            for d in range(D):
+                x_bin[d] = floor(X[i, d] * mdiv)
+
+            for k in range(K):
+
+                cnt_orig += 1
+
+                for d in range(D):
+                    if fabs(x_bin[d] - c_bin[k * D + d]) > 1:
+                        abort = 1
+                        break
+
+                if abort == 1:
+                    abort = 0
+                    continue
+
+
+                dist = metric_func(&X[i, 0], &centroids[k * D], D)
+                cnt_dist += 1
+
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
+
+            # add in existing
+            if minimum < theta:
+
+                for d in range(D):
+                    summs[argmin * D + d] += X[i, d]
+                clusters_sizes[argmin] += 1.0                
+                for d in range(D):
+                    centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
+                    c_bin[argmin * D + d] = floor(centroids[argmin * D + d] * mdiv)
+                indices[i] = argmin
+
+            # create new cluster
+            else:
+
+                summs = <double *> realloc(summs, <size_t> D * (K + 1) * sizeof(double))
+                clusters_sizes = <double *> realloc(clusters_sizes, <size_t> (K + 1) * sizeof(double))
+                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double)) 
+                c_bin = <double *> realloc(c_bin, <size_t> D * (K + 1) * sizeof(double))                
+                indices[i] = K
+                for d in range(D):
+                    summs[K * D + d] = X[i, d]
+                clusters_sizes[K] = 1.0                
+                for d in range(D):
+                    centroids[K * D + d] = summs[K * D + d]
+                    c_bin[K * D + d] = floor(centroids[K * D + d] * mdiv)                    
+                K += 1
+
+
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    final_indices = np.asarray(indices)
+
+    print('Distance calls ', cnt_dist)
+    print('Original calls ', cnt_orig)
+
+    free(x_bin)
+    free(c_bin)
 
     if all_out:
         final_summs = np.asarray(<double[:K, :D]> summs)
@@ -1012,16 +1136,34 @@ def reorder_labels(centroids, labels, nice, candidates):
     return labels
 
 
-def centroids_from_labels(points, labels):
+def centroids_from_labels(double[:, ::1] X, labels):
 
-    new_centroids = []
-    for i, l in enumerate(range(labels.max() + 1)):
-        # print(i)
-        avg = np.average(points[labels==l], axis=0)
-        new_centroids.append(avg)
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp K = labels.max() + 1
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0
+        cnp.npy_intp [:] indices = labels        
+        # double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> K * D * sizeof(double))
+        double * cluster_sizes = <double *> calloc(<size_t> K, <size_t> sizeof(double))
 
-    t = 0
-    return np.ascontiguousarray(new_centroids)
+    with nogil:
+
+        for i in range(N):
+            for d in range(D):                
+                centroids[indices[i] * D + d] += X[i, d]
+            cluster_sizes[indices[i]] += 1
+
+        for k in range(K):
+            for d in range(D):                
+                centroids[k * D + d] /= cluster_sizes[k] 
+
+    free(cluster_sizes)
+    final_centroids = np.asarray(<double[:K, :D]> centroids)    
+
+    return np.ascontiguousarray(final_centroids)
 
 
 def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, all_out=False):
