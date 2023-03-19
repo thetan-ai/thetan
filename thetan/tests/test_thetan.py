@@ -1464,80 +1464,25 @@ def _centroids_from_labels(points, labels):
 
 def test_centroids_from_labels():
 
-    # _, points = generate_circles(n_samples=15, inner_radius=60, outer_radius=15,
-    #                              density=500, size=(200, 200), labellize=False,
-    #                              return_coord=True)
-    # points = np.asarray(points)
+    points = 1000 * (np.random.rand(100000, 10) - 0.5)
 
-    n_local_samples = 1000
+    tb1 = time() 
+    centroids1, labels1 = theta_g1(points, 500)
+    tb2 = time() 
 
-    dims = 2
-
-    blob_dis = 5
-    cluster_x = 40
-    cluster_y = 10
-
-    normal_distribution = True
-    uniform_distribution = False
-    compare_with_meanshift = 0
-    compare_with_theta_sg1 = 0
-    compare_with_theta_sg2 = 0
-    compare_with_theta_g1 = True
-    compare_with_theta_g1h = True
-    compare_with_theta_g1d = True
-
-    normal_sigma = 1.0
-    uniform_low = -2.
-    uniform_high = 2.
-
-    theta_value = 3.6 # 3.0 still okay for uniform distributions with inf_norm
-    sg1_value = 3.6 #3.6
-    sg2_value = 3.6
-    g1_value = 3.6
-    g1h_value = 3.6
-    g1d_value = 3.6
-
-
-    xx = np.arange(-1 * blob_dis*cluster_x // 2, blob_dis * cluster_x // 2, blob_dis)
-    yy = np.arange(-1 * blob_dis*cluster_y // 2, blob_dis * cluster_y // 2, blob_dis)
-
-    xx, yy = np.meshgrid(xx, yy)
-    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis], np.ravel(yy)[:, np.newaxis]))
-
-    gt_centroids = []
-    X = np.zeros((n_local_samples * n_centres.shape[0], dims))
-    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
-
-    for i in range(n_centres.shape[0]):
-        cpos = n_centres[i]
-
-        if normal_distribution:
-            local_X = cpos + np.random.normal(0, normal_sigma, (n_local_samples, dims))
-
-        if uniform_distribution:
-            local_X = cpos + np.random.uniform(uniform_low,
-                                               uniform_high,
-                                               (n_local_samples, dims))
-
-        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
-        y[i * n_local_samples: (i + 1) * n_local_samples] = i
-        gt_centroids.append(local_X.mean(axis=0))
-
-    gt_centroids = np.array(gt_centroids)
-
-    points = X
-    labels = y
-    sz = len(n_centres)
+    # tb2 = time() 
+    # centroids1, labels1 = theta_g1h(points, 500)
+    # tb3 = time() 
     
-    centroids1, labels1 = theta_g1(points, 3.6)
+    print('G1 ', tb2 - tb1)
+    # print('G1H ', tb3 - tb2)
 
     t0 = time() 
     _centroids = _centroids_from_labels(points, labels1)
     t1 = time()
-    summs2, cluster_sizes2 = centroids_from_labels(points, labels1, labels1.max() + 1)
+    centroids2 = centroids_from_labels(points, labels1)
     t2 = time()
-    
-    centroids2 = summs2 / cluster_sizes2[:, None]
+        
     print('G1 version')
     print(centroids1.shape)
     print(centroids1[:4])
@@ -1550,14 +1495,12 @@ def test_centroids_from_labels():
     print(centroids2[:4])
     print(centroids2.shape)
 
-    plot_centroids_clusters(points, _centroids, labels1, title='Yo before', show=False)
-    plot_centroids_clusters(points, centroids2, labels1, title='Yo after', show=True)
+    # plot_centroids_clusters(points, _centroids, labels1, title='Yo before', show=False)
+    # plot_centroids_clusters(points, centroids2, labels1, title='Yo after', show=True)
 
-    npt.assert_array_almost_equal(centroids2, centroids1, decimal=4)
-    npt.assert_array_almost_equal(centroids2, _centroids, decimal=4)
+    npt.assert_array_almost_equal(centroids2, centroids1)
+    npt.assert_array_almost_equal(centroids2, _centroids)
 
-    check = True
-    
     
 
 if __name__ == '__main__':
