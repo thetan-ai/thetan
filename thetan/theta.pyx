@@ -1,6 +1,7 @@
 # distutils: language = c
 # cython: wraparound=False, cdivision=True, boundscheck=False, initializedcheck=False
 
+
 cimport cython
 import numpy as np
 cimport numpy as cnp
@@ -1136,34 +1137,38 @@ def reorder_labels(centroids, labels, nice, candidates):
     return labels
 
 
-def centroids_from_labels(double[:, ::1] X, labels):
+def centroids_from_labels(double[:, ::1] X, cnp.npy_intp[:] indices, cnp.npy_intp K):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
         cnp.npy_intp D = X.shape[1]
-        cnp.npy_intp K = labels.max() + 1
-        cnp.npy_intp i = 0, d = 0
-        cnp.npy_intp k = 0
-        cnp.npy_intp [:] indices = labels        
+        # cnp.npy_intp K = 
+        cnp.npy_intp i = 0, d = 0, k = 0
+        # cnp.npy_intp [:] indices = labels.copy()        
         # double * summs = <double *> malloc(<size_t> D * sizeof(double))
         double * centroids = <double *> malloc(<size_t> K * D * sizeof(double))
-        double * cluster_sizes = <double *> calloc(<size_t> K, <size_t> sizeof(double))
+        double * sizes = <double *> malloc(<size_t> K * sizeof(double))
+
+    print('Yo', K)
 
     with nogil:
+
+        for k in range(K):
+            sizes[k] = 0.0
 
         for i in range(N):
             for d in range(D):                
                 centroids[indices[i] * D + d] += X[i, d]
-            cluster_sizes[indices[i]] += 1
+            sizes[indices[i]] += 1.0
 
-        for k in range(K):
-            for d in range(D):                
-                centroids[k * D + d] /= cluster_sizes[k] 
+        # for k in range(K):
+        #     for d in range(D):                
+        #        centroids[k * D + d] /= cluster_sizes[k] 
 
-    free(cluster_sizes)
+    # free(cluster_sizes)
     final_centroids = np.asarray(<double[:K, :D]> centroids)    
-
-    return np.ascontiguousarray(final_centroids)
+    final_sizes = np.asarray(<double[:K]> sizes)
+    return np.ascontiguousarray(final_centroids), final_sizes
 
 
 def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, all_out=False):
