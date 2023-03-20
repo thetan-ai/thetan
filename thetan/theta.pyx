@@ -540,8 +540,6 @@ def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double mdiv = 1 / (2 * theta)
 
 
-    print('MDIV>>>', mdiv)
-
     if metric == 'euclidean':
         metric_func = &euclidean
     if metric == 'ssd':
@@ -657,8 +655,6 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double cnt_dist = 0, cnt_orig = 0
         double mdiv = 1 / (2 * theta)
 
-
-    print('MDIV>>>', mdiv)
 
     if metric == 'euclidean':
         metric_func = &euclidean

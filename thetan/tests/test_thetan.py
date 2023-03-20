@@ -1464,18 +1464,26 @@ def _centroids_from_labels(points, labels):
 
 def test_centroids_from_labels():
 
-    points = 1000 * (np.random.rand(100000, 10) - 0.5)
+    dims = 3
+    theta_value = 50
 
+    points = 1000 * (np.random.rand(100000, dims) - 0.5)
+    
     tb1 = time() 
-    centroids1, labels1 = theta_g1(points, 500)
+    centroids1, labels1 = theta_g1(points, theta_value)
     tb2 = time() 
 
-    # tb2 = time() 
-    # centroids1, labels1 = theta_g1h(points, 500)
-    # tb3 = time() 
+    centroids2, labels2 = theta_g1h(points, theta_value)
+    tb3 = time() 
+
+    centroids3, labels3 = theta_g1d(points, theta_value)
+    tb4 = time() 
     
-    print('G1 ', tb2 - tb1)
-    # print('G1H ', tb3 - tb2)
+    print('G1 ', tb2 - tb1, centroids1.shape)
+    print('G1H ', tb3 - tb2, centroids2.shape)
+    print('G1D ', tb4 - tb3, centroids3.shape)
+
+    # 1/0 
 
     t0 = time() 
     _centroids = _centroids_from_labels(points, labels1)
