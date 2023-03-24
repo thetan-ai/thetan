@@ -651,7 +651,7 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double * c_bin = <double *> malloc(<size_t> D * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1, abort = 0
-        metricp metric_func = &euclidean        
+        metricp metric_func = &euclidean
         double cnt_dist = 0, cnt_orig = 0
         double mdiv = 1 / (2 * theta)
 
@@ -683,7 +683,7 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
 
             minimum = DBL_MAX
             argmin = -1
-            
+
             for d in range(D):
                 x_bin[d] = floor(X[i, d] * mdiv)
 
@@ -713,7 +713,7 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
 
                 for d in range(D):
                     summs[argmin * D + d] += X[i, d]
-                clusters_sizes[argmin] += 1.0                
+                clusters_sizes[argmin] += 1.0
                 for d in range(D):
                     centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
                     c_bin[argmin * D + d] = floor(centroids[argmin * D + d] * mdiv)
@@ -724,15 +724,15 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
 
                 summs = <double *> realloc(summs, <size_t> D * (K + 1) * sizeof(double))
                 clusters_sizes = <double *> realloc(clusters_sizes, <size_t> (K + 1) * sizeof(double))
-                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double)) 
-                c_bin = <double *> realloc(c_bin, <size_t> D * (K + 1) * sizeof(double))                
+                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double))
+                c_bin = <double *> realloc(c_bin, <size_t> D * (K + 1) * sizeof(double))
                 indices[i] = K
                 for d in range(D):
                     summs[K * D + d] = X[i, d]
-                clusters_sizes[K] = 1.0                
+                clusters_sizes[K] = 1.0
                 for d in range(D):
                     centroids[K * D + d] = summs[K * D + d]
-                    c_bin[K * D + d] = floor(centroids[K * D + d] * mdiv)                    
+                    c_bin[K * D + d] = floor(centroids[K * D + d] * mdiv)
                 K += 1
 
 
@@ -1139,23 +1139,23 @@ def centroids_from_labels(double[:, ::1] X, cnp.npy_intp[:] indices):
         cnp.npy_intp N = X.shape[0]
         cnp.npy_intp D = X.shape[1]
         cnp.npy_intp K = np.max(indices) + 1
-        cnp.npy_intp i = 0, d = 0, k = 0        
+        cnp.npy_intp i = 0, d = 0, k = 0
         double * centroids = <double *> calloc(<size_t> K, <size_t> D * sizeof(double))
         double * cluster_sizes = <double *> calloc(<size_t> K, <size_t> sizeof(double))
 
     with nogil:
 
         for i in range(N):
-            for d in range(D):                
+            for d in range(D):
                 centroids[indices[i] * D + d] += X[i, d]
             cluster_sizes[indices[i]] += 1.0
 
         for k in range(K):
-            for d in range(D):                
-                centroids[k * D + d] /= cluster_sizes[k] 
+            for d in range(D):
+                centroids[k * D + d] /= cluster_sizes[k]
 
     free(cluster_sizes)
-    final_centroids = np.asarray(<double[:K, :D]> centroids)    
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
     return np.ascontiguousarray(final_centroids)
 
 
@@ -1591,21 +1591,27 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         return final_centroids, final_indices
 
 
-def img3d_to_ijkv_features(double[:, :, :] img3d):
+def img3d_to_ijkv_features(double[:, :, ::1] img3d):
 
-    cdef cnp.npy_intp i, j, k
-    shape = img3d.base.shape
-    cdef cnp.npy_intp cnt = 0
+    cdef:
+        cnp.npy_intp i=0, j=0, k=0
+        cnp.npy_intp I = img3d.shape[0], J = img3d.shape[1], K = img3d.shape[2]
+        cnp.npy_intp cnt = 0
+        double * features = <double *> malloc(<size_t> I * J * K * 4 * sizeof(double))
 
-    features = np.zeros((np.prod(img3d.shape), 4), dtype='f8')
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            for k in range(shape[2]):
-                if img3d[i, j, k] != 0:
-                    features[cnt, 0] = i
-                    features[cnt, 1] = j
-                    features[cnt, 2] = k
-                    features[cnt, 3] = img3d[i, j, k]
-                    cnt += 1
-    return features
+    with nogil:
+
+        for i in range(I):
+            for j in range(J):
+                for k in range(K):
+
+                        features[cnt * 4 + 0] = i
+                        features[cnt * 4 + 1] = j
+                        features[cnt * 4 + 2] = k
+                        features[cnt * 4 + 3] = img3d[i, j, k]
+                        cnt += 1
+
+    features_np = np.asarray(<double[:I * J * K, :4]> features)
+
+    return features_np
 

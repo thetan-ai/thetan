@@ -458,4 +458,4 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
         return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
 
     else:
-        return even_centroids_ex2
+        return even_centroids_ex2, updated_labels_ex2
