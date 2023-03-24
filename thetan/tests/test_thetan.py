@@ -1483,8 +1483,6 @@ def test_centroids_from_labels():
     print('G1H ', tb3 - tb2, centroids2.shape)
     print('G1D ', tb4 - tb3, centroids3.shape)
 
-    # 1/0 
-
     t0 = time() 
     _centroids = _centroids_from_labels(points, labels1)
     t1 = time()
@@ -1537,8 +1535,8 @@ if __name__ == '__main__':
     #test_4d_data(verbose=False)
     # test_2d_data(verbose=False)
     # test_simple_hashing()
-    # test_neighb_compactness()
-    test_centroids_from_labels()
+    test_neighb_compactness()
+    # test_centroids_from_labels()
 
 
     #test_aldi_data(n_local_samples=100,dims=6)
