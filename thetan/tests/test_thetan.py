@@ -365,7 +365,7 @@ def test_2d_data(verbose=False):
 
     if compare_with_theta_g1d:
         print()
-        print('>> G1D')        
+        print('>> G1D')
         t0 = time()
         g1d_centroids, g1d_labels = theta_g1d(points, theta=g1d_value)
         t1 = time()
@@ -1447,7 +1447,7 @@ def test_neighb_compactness():
 
     print(len(proximal_diff_hashes))
     print(len(np.unique(proximal_diff_hashes)))
-    
+
     t = 1
 
 
@@ -1468,27 +1468,27 @@ def test_centroids_from_labels():
     theta_value = 50
 
     points = 1000 * (np.random.rand(100000, dims) - 0.5)
-    
-    tb1 = time() 
+
+    tb1 = time()
     centroids1, labels1 = theta_g1(points, theta_value)
-    tb2 = time() 
+    tb2 = time()
 
     centroids2, labels2 = theta_g1h(points, theta_value)
-    tb3 = time() 
+    tb3 = time()
 
     centroids3, labels3 = theta_g1d(points, theta_value)
-    tb4 = time() 
-    
+    tb4 = time()
+
     print('G1 ', tb2 - tb1, centroids1.shape)
     print('G1H ', tb3 - tb2, centroids2.shape)
     print('G1D ', tb4 - tb3, centroids3.shape)
 
-    t0 = time() 
+    t0 = time()
     _centroids = _centroids_from_labels(points, labels1)
     t1 = time()
     centroids2 = centroids_from_labels(points, labels1)
     t2 = time()
-        
+
     print('G1 version')
     print(centroids1.shape)
     print(centroids1[:4])
@@ -1496,7 +1496,7 @@ def test_centroids_from_labels():
     print('Pythonic version', t1 - t0)
     print(_centroids[:4])
     print(_centroids.shape)
-    
+
     print('Cythonic version', t2 - t1)
     print(centroids2[:4])
     print(centroids2.shape)
@@ -1507,7 +1507,7 @@ def test_centroids_from_labels():
     npt.assert_array_almost_equal(centroids2, centroids1)
     npt.assert_array_almost_equal(centroids2, _centroids)
 
-    
+
 
 if __name__ == '__main__':
 
@@ -1548,5 +1548,5 @@ if __name__ == '__main__':
     # test_reorder_labels()
     # test_build_nice()
     # t = 2
-    
+
     pass
