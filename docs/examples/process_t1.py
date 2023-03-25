@@ -62,9 +62,12 @@ theta_value = 80 # 52
 # theta_value = 200
 
 # With X[:, 3] ** 2
-X[:, 3] = X[:, 3] ** 2
+# theta_value = 32000
 
-theta_value = 32000
+
+# With X[:, 3] ** 2 / 1000
+# theta_value = 100
+theta_value = 80
 
 centroids, labels = berserker2(X, theta_value, all_out=False)
 
