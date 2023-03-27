@@ -35,20 +35,17 @@ fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 
 data, affine = load_nifti(fname)
+value_range = np.percentile(data, q=[2, 99])
+data2 = np.interp(data, value_range, (0, 1))
+data2 =  300 * np.ascontiguousarray(data2, dtype='f8')
 
+X = img3d_to_ijkv_features(data2)
 
-
-data =  np.ascontiguousarray(data, dtype='f8')
-
-X = img3d_to_ijkv_features(data)
-
-
+# X[:, 3] = X[:, 3] ** 2
 
 # Calculating z-scores. It will help with metric spaces
 
 X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
-
-
 
 # With standard X
 
@@ -62,12 +59,13 @@ theta_value = 80 # 52
 # theta_value = 200
 
 # With X[:, 3] ** 2
+# X[:, 3] = X[:, 3] ** 2
 # theta_value = 32000
-
+# theta_value = 20000
 
 # With X[:, 3] ** 2 / 1000
 # theta_value = 100
-theta_value = 80
+# theta_value = 80
 
 centroids, labels = berserker2(X, theta_value, all_out=False)
 
@@ -77,7 +75,7 @@ data_labels = labels.copy()
 
 data_labels = data_labels.reshape(data.shape)
 
-X3 = X[:, 3].reshape(data.shape)
+# X3 = X[:, 3].reshape(data.shape)
 
 data_labels = data_labels.astype('f8')
 

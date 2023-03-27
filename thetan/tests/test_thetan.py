@@ -8,6 +8,7 @@ from thetan.theta import distance_matrix as tdm
 from thetan.berserker import berserker, candidate_labels, berserker2
 import matplotlib.pyplot as plt
 from PIL import Image
+from thetan.viz import plot_centroids_clusters
 
 
 def theta_sg1(X, theta, metric='euclidean', all_out=False):
