@@ -19,8 +19,13 @@ plot_centroids_clusters(X, initial_centroids, initial_labels, title='Berserker2'
 
 new_labels = chainer(X, initial_centroids, initial_labels, epsilon_value)
 new_labels = np.ascontiguousarray(new_labels, dtype='i8')
+# new_labels are not guaranteed to be 0, 1, 2, 3, ... you can have 0, 5, 8
+
+# indices_arg = np.argsort(new_labels)
+# sorted_labels = new_labels[indices_arg]
 
 new_centroids = centroids_from_labels(X, new_labels)
+
 
 plot_centroids_clusters(X, centroids=new_centroids, labels=new_labels, title='Chainer', show=True)
 

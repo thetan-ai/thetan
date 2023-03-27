@@ -125,7 +125,7 @@ def chainer(data, centroids, labels, chaining_thr):
         cluster_chaining = [[1]]
         for p in range(len(new_clusters_ids)):  # all_centroids
             # initially just assigning it the original
-            # cluster numbers we got from qbx
+            # cluster numbers we got
             cluster_chaining.append([new_clusters_ids[p]])
         cluster_chaining.pop(0)
 
