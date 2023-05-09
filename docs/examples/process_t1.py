@@ -52,6 +52,7 @@ X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
 theta_value = 150 # 8
 theta_value = 100 # 24
 theta_value = 50 # 52
+theta_value = 30
 
 # With standard 3*X
 
