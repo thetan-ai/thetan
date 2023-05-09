@@ -5,7 +5,9 @@ from thetan.berserker import berserker2
 from thetan.viz import plot_centroids_clusters
 
 
-spiral_data = np.genfromtxt("/home/elef/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
+# spiral_data = np.genfromtxt("/home/elef/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
+spiral_data = np.genfromtxt("C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
+
 # first entry is nan
 spiral_data = np.delete(spiral_data, 0, 0)
 X = spiral_data.copy()
