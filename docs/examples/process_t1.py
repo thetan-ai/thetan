@@ -5,6 +5,8 @@ from dipy.io.image import load_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
 from thetan.berserker import berserker2, theta_g1
+from thetan.chaining import chainer, chainer2
+
 
 def find_theta():
 
@@ -31,8 +33,8 @@ def find_theta():
 
 
 
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 value_range = np.percentile(data, q=[2, 99])
