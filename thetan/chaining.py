@@ -73,17 +73,19 @@ def chainer2(X, centroids, chaining_thr, iterations=1, clusters_sizes=None):
     return chains
 
 
-def chainer(data, centroids, labels, chaining_thr):
+def chainer(data, centroids, labels, chaining_thr, max_iterations=10):
     ''' Chaining clusters
 
     Parameters
     ----------
     data : sequence of features
         input data to be clustered
-    qbx_thresholds: sequence
+    qbx_thresholds : sequence
         ist of distance thresholds for for QBX
-    chaining_thr: float
+    chaining_thr : float
         chaining threshold
+    max_iterations : int
+
     '''
 
     clusters, clusters_density = clusters_from_labels(centroids, labels)
@@ -114,7 +116,7 @@ def chainer(data, centroids, labels, chaining_thr):
     belongs to
 
     '''
-    iteration = 10  # max number of iterations you want to run
+    iteration = max_iterations  # max number of iterations you want to run
     clusters_compact = list(set(new_labels))
     old_clusters = clusters_compact.copy()
     old_clusters_no = len(old_clusters)

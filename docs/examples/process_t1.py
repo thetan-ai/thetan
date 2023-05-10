@@ -103,8 +103,22 @@ print('>> L', unique_labels[np.argmax(counts)])
 # data_labels3 = data_labels3.astype('f8')
 
 # horizon(images=[(data_labels, np.eye(4))])
+
+# horizon(images=[(data_labels, np.eye(4))])
+
+chaining_thr = 1.2 * theta_value
+
+new_labels = chainer(X, centroids, labels, chaining_thr, max_iterations=1)
+
+data_labels2 = new_labels.copy()
+
+data_labels2 = data_labels2.reshape(data.shape)
+
+# X3 = X[:, 3].reshape(data.shape)
+
+data_labels2 = data_labels2.astype('f8')
+
 horizon(images=[(data_labels, np.eye(4))])
-
-
+horizon(images=[(data_labels2, np.eye(4))])
 
 t = 1
