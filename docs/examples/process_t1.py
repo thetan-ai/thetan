@@ -111,7 +111,11 @@ print('>> L', unique_labels[np.argmax(counts)])
 
 chaining_thr = 1.2 * theta_value
 
+
+
 new_labels = chainer(X, centroids, labels, chaining_thr, max_iterations=1)
+
+# TODO: fix issue with new_labels brakes function centroid_from_labels.
 
 data_labels2 = new_labels.copy()
 
