@@ -124,6 +124,6 @@ data_labels2 = data_labels2.astype('f8')
 # horizon(images=[(data_labels, np.eye(4))])
 # horizon(images=[(data_labels2, np.eye(4))])
 
-horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data, np.eye(4))])
+horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
 
 t = 1
