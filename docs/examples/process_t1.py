@@ -1,6 +1,6 @@
 
 import numpy as np
-from thetan.theta import img3d_to_ijkv_features
+from thetan.theta import img3d_to_ijkv_features, centroids_from_labels
 from dipy.io.image import load_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
@@ -33,8 +33,8 @@ def find_theta():
 
 
 
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 value_range = np.percentile(data, q=[2, 99])
@@ -125,5 +125,8 @@ data_labels2 = data_labels2.astype('f8')
 # horizon(images=[(data_labels2, np.eye(4))])
 
 horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
+
+
+new_centroids = centroids_from_labels(X, new_labels.astype('i8'))
 
 t = 1
