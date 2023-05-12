@@ -33,8 +33,8 @@ def find_theta():
 
 
 
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 value_range = np.percentile(data, q=[2, 99])
@@ -49,12 +49,15 @@ X = img3d_to_ijkv_features(data2)
 
 X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
 
-# With standard X
+# Intensity more important than location
 
-theta_value = 150 # 8
-theta_value = 100 # 24
-theta_value = 50 # 52
-theta_value = 30
+# X[:, 3] = 4 * X[:, 3]
+
+X[:, 3] = 8 * X[:, 3]
+
+theta_value = 100
+# theta_value = 50
+
 
 # With standard 3*X
 
@@ -118,7 +121,9 @@ data_labels2 = data_labels2.reshape(data.shape)
 
 data_labels2 = data_labels2.astype('f8')
 
-horizon(images=[(data_labels, np.eye(4))])
-horizon(images=[(data_labels2, np.eye(4))])
+# horizon(images=[(data_labels, np.eye(4))])
+# horizon(images=[(data_labels2, np.eye(4))])
+
+horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data, np.eye(4))])
 
 t = 1
