@@ -33,8 +33,8 @@ def find_theta():
 
 
 
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 value_range = np.percentile(data, q=[2, 99])
@@ -115,9 +115,19 @@ chaining_thr = 1.2 * theta_value
 
 new_labels = chainer(X, centroids, labels, chaining_thr, max_iterations=1)
 
+
+unique = np.sort(list(set(new_labels)))
+new_numbers = range(unique.shape[0])
+dix = dict(zip(unique, new_numbers))
+new_labels2 = new_labels.copy()
+
+for i, n in enumerate(new_labels):
+    new_labels2[i] = dix[new_labels[i]]
+
+
 # TODO: fix issue with new_labels brakes function centroid_from_labels.
 
-data_labels2 = new_labels.copy()
+data_labels2 = new_labels2.copy()
 
 data_labels2 = data_labels2.reshape(data.shape)
 
@@ -128,9 +138,13 @@ data_labels2 = data_labels2.astype('f8')
 # horizon(images=[(data_labels, np.eye(4))])
 # horizon(images=[(data_labels2, np.eye(4))])
 
-horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
+# horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
 
 
-new_centroids = centroids_from_labels(X, new_labels.astype('i8'))
+unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
+
+new_centroids = centroids_from_labels(X, new_labels2.astype('i8'))
+
+
 
 t = 1
