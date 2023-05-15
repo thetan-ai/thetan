@@ -33,8 +33,8 @@ def find_theta():
 
 
 
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 value_range = np.percentile(data, q=[2, 99])
