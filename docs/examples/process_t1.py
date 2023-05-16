@@ -33,8 +33,8 @@ def find_theta():
 
 
 
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 value_range = np.percentile(data, q=[2, 99])
@@ -111,8 +111,6 @@ print('>> L', unique_labels[np.argmax(counts)])
 
 chaining_thr = 1.2 * theta_value
 
-
-
 new_labels = chainer(X, centroids, labels, chaining_thr, max_iterations=1)
 
 
@@ -125,7 +123,6 @@ for i, n in enumerate(new_labels):
     new_labels2[i] = dix[new_labels[i]]
 
 
-# TODO: fix issue with new_labels brakes function centroid_from_labels.
 
 data_labels2 = new_labels2.copy()
 
@@ -144,6 +141,99 @@ data_labels2 = data_labels2.astype('f8')
 unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
 new_centroids = centroids_from_labels(X, new_labels2.astype('i8'))
+
+bk = np.where(new_centroids[..., 3] < 500)[0]
+fg = np.where(new_centroids[..., 3] >= 500)[0]
+
+
+binary_mask = data_labels2.copy()
+
+for l in bk:
+    binary_mask[data_labels2 == l] = 0
+for l in fg:
+    binary_mask[data_labels2 == l] = 1
+
+data3 = data2.copy()
+
+data3[binary_mask == 0] = 0
+
+
+X = img3d_to_ijkv_features(data3)
+
+# X[:, 3] = X[:, 3] ** 2
+
+# Calculating z-scores. It will help with metric spaces
+
+X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
+
+# Intensity more important than location
+
+# X[:, 3] = 4 * X[:, 3]
+
+X[:, 3] = 8 * X[:, 3]
+
+theta_value = 100
+
+centroids, labels = berserker2(X, theta_value, all_out=False)
+
+data_labels = labels.copy()
+
+data_labels = data_labels.reshape(data.shape)
+
+# X3 = X[:, 3].reshape(data.shape)
+
+data_labels = data_labels.astype('f8')
+
+unique_labels, counts = np.unique(data_labels, return_counts=True)
+
+print('>> L', unique_labels[np.argmax(counts)])
+
+chaining_thr = 1.2 * theta_value
+
+new_labels = chainer(X, centroids, labels, chaining_thr, max_iterations=1)
+
+unique = np.sort(list(set(new_labels)))
+new_numbers = range(unique.shape[0])
+dix = dict(zip(unique, new_numbers))
+new_labels2 = new_labels.copy()
+
+for i, n in enumerate(new_labels):
+    new_labels2[i] = dix[new_labels[i]]
+
+
+data_labels2 = new_labels2.copy()
+
+data_labels2 = data_labels2.reshape(data.shape)
+
+# X3 = X[:, 3].reshape(data.shape)
+
+data_labels2 = data_labels2.astype('f8')
+
+# horizon(images=[(data_labels, np.eye(4))])
+# horizon(images=[(data_labels2, np.eye(4))])
+
+# horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
+
+
+unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
+
+new_centroids = centroids_from_labels(X, new_labels2.astype('i8'))
+
+morpho = False
+
+if morpho:
+
+    strel = np.ones((7, 7, 7))
+
+    from scipy.ndimage import binary_opening, label
+    from skimage.morphology import ball
+
+    strel = ball(3)
+
+    binary_mask2 = binary_opening(binary_mask, structure=strel)
+    binary_label2, num_labels = label(binary_mask2) # structure=strel)
+
+
 
 
 
