@@ -53,7 +53,7 @@ X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
 
 # X[:, 3] = 4 * X[:, 3]
 
-X[:, 3] = 8 * X[:, 3]
+X[:, 3] = 4 * X[:, 3]
 
 theta_value = 100
 # theta_value = 50
@@ -142,8 +142,8 @@ unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
 new_centroids = centroids_from_labels(X, new_labels2.astype('i8'))
 
-bk = np.where(new_centroids[..., 3] < 500)[0]
-fg = np.where(new_centroids[..., 3] >= 500)[0]
+bk = np.where(new_centroids[..., 3] < 250)[0]
+fg = np.where(new_centroids[..., 3] >= 250)[0]
 
 
 binary_mask = data_labels2.copy()
@@ -170,7 +170,7 @@ X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
 
 # X[:, 3] = 4 * X[:, 3]
 
-X[:, 3] = 8 * X[:, 3]
+X[:, 3] = 4 * X[:, 3]
 
 theta_value = 100
 
@@ -232,8 +232,6 @@ if morpho:
 
     binary_mask2 = binary_opening(binary_mask, structure=strel)
     binary_label2, num_labels = label(binary_mask2) # structure=strel)
-
-
 
 
 
