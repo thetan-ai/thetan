@@ -99,8 +99,8 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
     return binary_mask, data_labels2
 
 
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 
