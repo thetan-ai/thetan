@@ -88,6 +88,8 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
     fg = np.where(new_centroids[..., 3] >= bk_thr)[0]
 
     binary_mask = data_labels2.copy()
+    print(bk)
+    print(fg)
 
     for l in bk:
         binary_mask[data_labels2 == l] = 0
@@ -117,6 +119,10 @@ print()
 print('Starting b2ch1 #2')
 binary_mask2, data_labels2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
 
+# What I did that seemed promissing is ...
+# data_labels2[data_labels2 == 0] = 0
+# data_labels2[data_labels2 == 1] = 0
+# this may indicate that binary_mask/2 may not be truly useful
 
 
 morpho = False
