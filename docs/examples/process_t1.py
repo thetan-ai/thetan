@@ -56,6 +56,8 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
 
     data_labels = data_labels.astype('f8')
 
+    horizon(images=[(data_labels, np.eye(4)), (data2, np.eye(4))])
+
     unique_labels, counts = np.unique(data_labels, return_counts=True)
 
     print('>> L', unique_labels[np.argmax(counts)])
@@ -123,6 +125,8 @@ binary_mask2, data_labels2 = b2ch1(data3, affine, theta_value=100, chaining_fact
 # data_labels2[data_labels2 == 0] = 0
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
+
+horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
 
 
 morpho = False
