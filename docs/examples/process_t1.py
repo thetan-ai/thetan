@@ -56,7 +56,7 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
 
     data_labels = data_labels.astype('f8')
 
-    horizon(images=[(data_labels, np.eye(4)), (data2, np.eye(4))])
+    # horizon(images=[(data_labels, np.eye(4)), (data, np.eye(4))])
 
     unique_labels, counts = np.unique(data_labels, return_counts=True)
 
