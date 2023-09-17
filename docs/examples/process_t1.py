@@ -98,11 +98,11 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
     for l in fg:
         binary_mask[data_labels2 == l] = 1
 
-    return binary_mask, data_labels2
+    return binary_mask, data_labels2, new_centroids
 
 
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine = load_nifti(fname)
 
@@ -112,19 +112,21 @@ data2 =  300 * np.ascontiguousarray(data2, dtype='f8')
 
 print()
 print('Starting b2ch1 #1')
-binary_mask, data_labels = b2ch1(data2, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+binary_mask, data_labels, new_centroids = b2ch1(data2, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
 
 data3 = data2.copy()
 data3[binary_mask == 0] = 0
 
 print()
 print('Starting b2ch1 #2')
-binary_mask2, data_labels2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+binary_mask2, data_labels2, new_centroids2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
 
 # What I did that seemed promissing is ...
 # data_labels2[data_labels2 == 0] = 0
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
+
+data_labels2[binary_mask == 0] = 0
 
 horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
 
