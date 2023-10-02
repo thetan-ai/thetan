@@ -104,7 +104,23 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-data, affine = load_nifti(fname)
+data, affine, vxs = load_nifti(fname, return_voxsize=True)
+
+vxs = np.asarray(vxs)
+
+# from dipy.align.reslice import reslice
+
+# data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
+# data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
+
+from dipy.align.scalespace import ScaleSpace
+
+scs = ScaleSpace(data, 6, affine, vxs)
+
+data = scs.get_image(4)
+
+
+# 
 
 value_range = np.percentile(data, q=[2, 99])
 data2 = np.interp(data, value_range, (0, 1))
@@ -126,7 +142,9 @@ binary_mask2, data_labels2, new_centroids2 = b2ch1(data3, affine, theta_value=10
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
 
-data_labels2[binary_mask == 0] = 0
+# data_labels2[binary_mask == 0] = 0
+
+
 
 horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
 
