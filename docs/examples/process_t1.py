@@ -98,11 +98,11 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
     for l in fg:
         binary_mask[data_labels2 == l] = 1
 
-    return binary_mask, data_labels2, new_centroids
+    return binary_mask, data_labels2, new_centroids, data_labels, centroids
 
 
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -113,14 +113,14 @@ vxs = np.asarray(vxs)
 # data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
 # data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
 
-from dipy.align.scalespace import ScaleSpace
+scale_space = True
 
-scs = ScaleSpace(data, 6, affine, vxs)
+if scale_space:
 
-data = scs.get_image(4)
+    from dipy.align.scalespace import ScaleSpace
 
-
-# 
+    scs = ScaleSpace(data, 6, affine, vxs)
+    data = scs.get_image(4)
 
 value_range = np.percentile(data, q=[2, 99])
 data2 = np.interp(data, value_range, (0, 1))
@@ -128,14 +128,18 @@ data2 =  300 * np.ascontiguousarray(data2, dtype='f8')
 
 print()
 print('Starting b2ch1 #1')
-binary_mask, data_labels, new_centroids = b2ch1(data2, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(data2, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+
+print('Original Berserker Centroids')
+np.set_printoptions(3, suppress=True)
+print(centroids_orig)
 
 data3 = data2.copy()
 data3[binary_mask == 0] = 0
 
 print()
 print('Starting b2ch1 #2')
-binary_mask2, data_labels2, new_centroids2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+binary_mask2, data_labels2, new_centroids2, data_labels_orig2, centroids_orig2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
 
 # What I did that seemed promissing is ...
 # data_labels2[data_labels2 == 0] = 0
@@ -145,8 +149,8 @@ binary_mask2, data_labels2, new_centroids2 = b2ch1(data3, affine, theta_value=10
 # data_labels2[binary_mask == 0] = 0
 
 
-
-horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data2, np.eye(4))])
+horizon(images=[(data_labels_orig, np.eye(4)), (data2, np.eye(4))])
+# horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
 
 morpho = False
