@@ -8,45 +8,67 @@ from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 
 
-def find_theta():
+def prepare_data(data, affine, mult=300, enh=4):
+
+    value_range = np.percentile(data, q=[2, 99])
+    data2 = np.interp(data, value_range, (0, 1))
+    data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+
+    X = img3d_to_ijkv_features(data2)
+
+    # move to world coordinates W (xyz)
+
+    W = np.dot(affine[:3, :3], X[:, :3].T) + affine[:3, 3][:, None]
+    X[:, :3] = W.T
+
+    # add distance from world coordinates origin
+
+    Wnorm = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
+    Xenh = np.concatenate((X, Wnorm[:, None]), axis=-1)
+    X = Xenh
+  
+    # Calculating z-scores. It may help with metric spaces
+    X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
+
+    # Calculating pseudo z-scores. It may help with metric spaces.
+    # Assuming mean at 0 for all columns
+
+    # X = (X / np.std(X, axis=0))
+
+    # Intensity more important than location
+
+    X[:, 3] = enh * X[:, 3]
+
+    return X
+
+
+def find_theta(X, start, stop, step):
 
     theta_values = []
-
     sizes = []
 
     cnt = 0
-    for theta_value in np.arange(50, 200, 10):
+    print('Looking for nice theta values')
+    for theta_value in np.arange(start, stop, step):
 
         print('=========>>', cnt, theta_value)
-
         centroids, labels = berserker2(X, theta_value, all_out=False)
         theta_values.append(theta_value)
         sizes.append(centroids.shape[0])
-
         cnt += 1
 
     import matplotlib.pyplot as plt
 
     plt.figure()
-    plt.plot(theta_values, sizes)
+    plt.plot(theta_values, sizes, '*-')
+    plt.grid()
     plt.show()
 
 
-def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr=250):
+def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
 
-    X = img3d_to_ijkv_features(data)
 
-    # Calculating z-scores. It may help with metric spaces
-
-    X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
-
-    # Intensity more important than location
-
-    X[:, 3] = 4 * X[:, 3]
-
-    theta_value = theta_value
-
-    # Deploying berserker 2
+    # Deploying berserker v2
 
     centroids, labels = berserker2(X, theta_value, all_out=False)
 
@@ -101,8 +123,8 @@ def b2ch1(data, affine, mult=300, theta_value=100, chaining_factor = 1.2, bk_thr
     return binary_mask, data_labels2, new_centroids, data_labels, centroids
 
 
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -120,36 +142,47 @@ if scale_space:
     from dipy.align.scalespace import ScaleSpace
 
     scs = ScaleSpace(data, 6, affine, vxs)
-    data = scs.get_image(4)
+    data = scs.get_image(2)
 
-value_range = np.percentile(data, q=[2, 99])
-data2 = np.interp(data, value_range, (0, 1))
-data2 =  300 * np.ascontiguousarray(data2, dtype='f8')
+
 
 print()
 print('Starting b2ch1 #1')
-binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(data2, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+
+# TODO check carefully the range of values in X
+# Then also try with simpler data such as homocentric spheres
+X = prepare_data(data, affine, mult=300, enh=4)
+
+for i in range(5):
+    print(">>>>", i)
+    print(X[:, i].min())
+    print(X[:, i].max())
+
+
+# Find theta automatically if possible
+
+find_theta(X, 50.0, 150.0, 25.0)
+
+binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(X, theta_value=125., chaining_factor = 1.2, bk_thr=250)
 
 print('Original Berserker Centroids')
 np.set_printoptions(3, suppress=True)
 print(centroids_orig)
 
-data3 = data2.copy()
-data3[binary_mask == 0] = 0
+# data3 = data2.copy()
+# data3[binary_mask == 0] = 0
 
-print()
-print('Starting b2ch1 #2')
-binary_mask2, data_labels2, new_centroids2, data_labels_orig2, centroids_orig2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
+# print()
+# print('Starting b2ch1 #2')
+# binary_mask2, data_labels2, new_centroids2, data_labels_orig2, centroids_orig2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
 
 # What I did that seemed promissing is ...
 # data_labels2[data_labels2 == 0] = 0
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
 
-# data_labels2[binary_mask == 0] = 0
-
-
-horizon(images=[(data_labels_orig, np.eye(4)), (data2, np.eye(4))])
+# data_labels2[binary_mask == 0] = 
+horizon(images=[(data_labels_orig, np.eye(4)), (data, np.eye(4))])
 # horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
 
