@@ -8,11 +8,14 @@ from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 
 
-def prepare_data(data, affine, mult=300, enh=4):
+def prepare_data(data, affine, perc=True, mult=300, enh=4, center_dist=False, z_scoring=True):
 
-    value_range = np.percentile(data, q=[2, 99])
-    data2 = np.interp(data, value_range, (0, 1))
-    data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+    if perc:
+        value_range = np.percentile(data, q=[2, 99])
+        data2 = np.interp(data, value_range, (0, 1))
+        data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+    else:
+        data2 = data
 
     X = img3d_to_ijkv_features(data2)
 
@@ -23,12 +26,15 @@ def prepare_data(data, affine, mult=300, enh=4):
 
     # add distance from world coordinates origin
 
-    Wnorm = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
-    Xenh = np.concatenate((X, Wnorm[:, None]), axis=-1)
-    X = Xenh
-  
-    # Calculating z-scores. It may help with metric spaces
-    X = (X - np.mean(X, axis=0) / np.std(X, axis=0))
+    if center_dist:
+
+        Wnorm = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
+        Xenh = np.concatenate((X, Wnorm[:, None]), axis=-1)
+        X = Xenh
+
+    if z_scoring:
+        # Calculating z-scores. It may help with metric spaces
+        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
     # Calculating pseudo z-scores. It may help with metric spaces.
     # Assuming mean at 0 for all columns
@@ -63,6 +69,46 @@ def find_theta(X, start, stop, step):
     plt.plot(theta_values, sizes, '*-')
     plt.grid()
     plt.show()
+
+
+def volumetric_sphere(shape, radius, position):
+    """Generate an n-dimensional spherical mask."""
+    # assume shape and position have the same length and contain ints
+    # the units are pixels / voxels (px for short)
+    # radius is a int or float in px
+    assert len(position) == len(shape)
+    n = len(shape)
+    semisizes = (radius,) * len(shape)
+
+    # genereate the grid for the support points
+    # centered at the position indicated by position
+    grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape)]
+    position = np.ogrid[grid]
+    # calculate the distance of all points from `position` center
+    # scaled by the radius
+    arr = np.zeros(shape, dtype=float)
+    for x_i, semisize in zip(position, semisizes):
+        # this can be generalized for exponent != 2
+        # in which case `(x_i / semisize)`
+        # would become `np.abs(x_i / semisize)`
+        arr += (x_i / semisize) ** 2
+
+    # the inner part of the sphere will have distance below or equal to 1
+    return arr <= 1.0
+
+
+def simulate_volumes(sh=(100, 100, 100), radii=[10, 20], pos=(50, 50, 50)):
+
+    data = np.zeros(sh)
+
+    first = volumetric_sphere(sh, radius=radii[0], position=pos)
+    data[first] = 10
+
+    data += np.random.rand(*data.shape)
+
+    # np.array([[1, 0, 0, 50]])
+
+    return data, np.eye(4), (1., 1., 1.)
 
 
 def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
@@ -123,10 +169,11 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
     return binary_mask, data_labels2, new_centroids, data_labels, centroids
 
 
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-data, affine, vxs = load_nifti(fname, return_voxsize=True)
+# data, affine, vxs = load_nifti(fname, return_voxsize=True)
+data, affine, vxs = simulate_volumes()
 
 vxs = np.asarray(vxs)
 
@@ -135,7 +182,7 @@ vxs = np.asarray(vxs)
 # data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
 # data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
 
-scale_space = True
+scale_space = False
 
 if scale_space:
 
@@ -146,27 +193,29 @@ if scale_space:
 
 
 
+
+np.set_printoptions(3, suppress=True)
+
 print()
 print('Starting b2ch1 #1')
 
 # TODO check carefully the range of values in X
 # Then also try with simpler data such as homocentric spheres
-X = prepare_data(data, affine, mult=300, enh=4)
+X = prepare_data(data, affine, perc=True, mult=300, enh=4, center_dist=False, z_scoring=False)
 
-for i in range(5):
-    print(">>>>", i)
-    print(X[:, i].min())
-    print(X[:, i].max())
+print('Feature, min, max, mean, std')
 
+tmp_array = np.zeros((X.shape[1], 5))
+for i in range(X.shape[1]):
+    tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
 
 # Find theta automatically if possible
+# find_theta(X, 50.0, 150.0, 25.0)
 
-find_theta(X, 50.0, 150.0, 25.0)
-
-binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(X, theta_value=125., chaining_factor = 1.2, bk_thr=250)
+binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(X, theta_value=125., chaining_factor=1.2, bk_thr=250)
 
 print('Original Berserker Centroids')
-np.set_printoptions(3, suppress=True)
+
 print(centroids_orig)
 
 # data3 = data2.copy()
@@ -181,7 +230,7 @@ print(centroids_orig)
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
 
-# data_labels2[binary_mask == 0] = 
+# data_labels2[binary_mask == 0] =
 horizon(images=[(data_labels_orig, np.eye(4)), (data, np.eye(4))])
 # horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
