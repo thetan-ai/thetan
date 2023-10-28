@@ -97,12 +97,14 @@ def volumetric_sphere(shape, radius, position):
     return arr <= 1.0
 
 
-def simulate_volumes(sh=(100, 100, 100), radii=[10, 20], pos=(50, 50, 50)):
+def simulate_volumes(sh=(100, 100, 100), radii=[10, 10], pos=[(50, 50, 50), (50, 50, 50)]):
 
     data = np.zeros(sh)
 
-    first = volumetric_sphere(sh, radius=radii[0], position=pos)
-    data[first] = 10
+    for rad_, pos_ in zip(radii, pos):
+
+        tmp = volumetric_sphere(sh, radius=rad_, position=pos_)
+        data[tmp] += rad_ 
 
     data += np.random.rand(*data.shape)
 
@@ -169,11 +171,11 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
     return binary_mask, data_labels2, new_centroids, data_labels, centroids
 
 
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # data, affine, vxs = load_nifti(fname, return_voxsize=True)
-data, affine, vxs = simulate_volumes()
+data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20], pos=[(50, 50, 50), (50, 50, 50)])
 
 vxs = np.asarray(vxs)
 
@@ -196,8 +198,7 @@ if scale_space:
 
 np.set_printoptions(3, suppress=True)
 
-print()
-print('Starting b2ch1 #1')
+
 
 # TODO check carefully the range of values in X
 # Then also try with simpler data such as homocentric spheres
@@ -209,10 +210,15 @@ tmp_array = np.zeros((X.shape[1], 5))
 for i in range(X.shape[1]):
     tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
 
+print(tmp_array)
+
 # Find theta automatically if possible
 # find_theta(X, 50.0, 150.0, 25.0)
 
-binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(X, theta_value=125., chaining_factor=1.2, bk_thr=250)
+print()
+print('Starting b2ch1 #1')
+
+binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(X, theta_value=50., chaining_factor=1.2, bk_thr=250)
 
 print('Original Berserker Centroids')
 
