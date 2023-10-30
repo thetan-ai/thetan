@@ -6,9 +6,14 @@ from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
 from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
+from patchify import patchify
 
 
-def prepare_data(data, affine, perc=True, mult=300, enh=4, center_dist=False, z_scoring=True):
+def expand_voxels(data, patch_size=(3, 3, 3)):
+
+    return patchify(data, patch_size)
+
+def prepare_data(data, affine, perc=True, mult=300, enh=2, center_dist=False, z_scoring=True):
 
     if perc:
         value_range = np.percentile(data, q=[2, 99])
@@ -67,6 +72,8 @@ def find_theta(X, start, stop, step):
 
     plt.figure()
     plt.plot(theta_values, sizes, '*-')
+    plt.xlabel('theta values')
+    plt.ylabel('sizes')
     plt.grid()
     plt.show()
 
@@ -97,14 +104,14 @@ def volumetric_sphere(shape, radius, position):
     return arr <= 1.0
 
 
-def simulate_volumes(sh=(100, 100, 100), radii=[10, 10], pos=[(50, 50, 50), (50, 50, 50)]):
+def simulate_volumes(sh=(100, 100, 100), radii=[10, 20], values=[10, 20], pos=[(50, 50, 50), (50, 50, 50)]):
 
     data = np.zeros(sh)
 
-    for rad_, pos_ in zip(radii, pos):
+    for rad_, vals_, pos_ in zip(radii, values, pos):
 
         tmp = volumetric_sphere(sh, radius=rad_, position=pos_)
-        data[tmp] += rad_ 
+        data[tmp] += vals_
 
     data += np.random.rand(*data.shape)
 
@@ -113,7 +120,7 @@ def simulate_volumes(sh=(100, 100, 100), radii=[10, 10], pos=[(50, 50, 50), (50,
     return data, np.eye(4), (1., 1., 1.)
 
 
-def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
+def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250, sh=None):
 
 
     # Deploying berserker v2
@@ -122,7 +129,7 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
 
     data_labels = labels.copy()
 
-    data_labels = data_labels.reshape(data.shape)
+    data_labels = data_labels.reshape(sh)
 
     data_labels = data_labels.astype('f8')
 
@@ -168,23 +175,25 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250):
     for l in fg:
         binary_mask[data_labels2 == l] = 1
 
-    return binary_mask, data_labels2, new_centroids, data_labels, centroids
+    return binary_mask, data_labels2, new_centroids, data_labels, centroids, X[:, 0].reshape(sh), X[:, 1].reshape(sh), X[:, 2].reshape(sh), X[:, 3].reshape(sh)
 
 
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-# data, affine, vxs = load_nifti(fname, return_voxsize=True)
-data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20], pos=[(50, 50, 50), (50, 50, 50)])
+data, affine, vxs = load_nifti(fname, return_voxsize=True)
+# data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
+# data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[5, 5, 5, 5.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 
 vxs = np.asarray(vxs)
+
 
 # from dipy.align.reslice import reslice
 
 # data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
 # data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
 
-scale_space = False
+scale_space = True
 
 if scale_space:
 
@@ -193,16 +202,15 @@ if scale_space:
     scs = ScaleSpace(data, 6, affine, vxs)
     data = scs.get_image(2)
 
-
-
+data = np.ascontiguousarray(data, dtype='f8')
 
 np.set_printoptions(3, suppress=True)
 
-
-
 # TODO check carefully the range of values in X
 # Then also try with simpler data such as homocentric spheres
-X = prepare_data(data, affine, perc=True, mult=300, enh=4, center_dist=False, z_scoring=False)
+# X = prepare_data(data, affine, perc=False, mult=300., enh=3., center_dist=False, z_scoring=False)
+
+X = prepare_data(data, affine, perc=True, mult=300., enh=3., center_dist=False, z_scoring=False)
 
 print('Feature, min, max, mean, std')
 
@@ -213,12 +221,40 @@ for i in range(X.shape[1]):
 print(tmp_array)
 
 # Find theta automatically if possible
-# find_theta(X, 50.0, 150.0, 25.0)
+auto_theta = False
+auto_range = (70.0, 100., 5.)
+if auto_theta:    
+    find_theta(X, *auto_range)
+
 
 print()
 print('Starting b2ch1 #1')
 
-binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig = b2ch1(X, theta_value=50., chaining_factor=1.2, bk_thr=250)
+# values used for sims
+# theta_value = 12.
+# chaining_factor = 1.6
+
+# theta_value = 25.
+# chaining_factor = 1.4
+
+# values used for real data
+
+# scale space
+# theta_value = 200.
+# chaining_factor = 1.2
+
+# with scale space
+theta_value = 100.
+chaining_factor = 1.2
+
+
+
+# assume only intensity is important
+# X[:, 0] = X[:, 3]
+# X[:, 1] = X[:, 3]
+# X[:, 2] = X[:, 3]
+
+binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=250, sh=data.shape)
 
 print('Original Berserker Centroids')
 
@@ -237,7 +273,8 @@ print(centroids_orig)
 # this may indicate that binary_mask/2 may not be truly useful
 
 # data_labels2[binary_mask == 0] =
-horizon(images=[(data_labels_orig, np.eye(4)), (data, np.eye(4))])
+# horizon(images=[(data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
+horizon(images=[(data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
 # horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
 
