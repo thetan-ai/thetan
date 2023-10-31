@@ -1,9 +1,10 @@
 
 import numpy as np
 from thetan.theta import img3d_to_ijkv_features, centroids_from_labels
-from dipy.io.image import load_nifti
+from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
+from dipy.align.scalespace import ScaleSpace
 from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
@@ -41,13 +42,7 @@ def prepare_data(data, affine, perc=True, mult=300, enh=2, center_dist=False, z_
         # Calculating z-scores. It may help with metric spaces
         X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
-    # Calculating pseudo z-scores. It may help with metric spaces.
-    # Assuming mean at 0 for all columns
-
-    # X = (X / np.std(X, axis=0))
-
     # Intensity more important than location
-
     X[:, 3] = enh * X[:, 3]
 
     return X
@@ -116,7 +111,6 @@ def simulate_volumes(sh=(100, 100, 100), radii=[10, 20], values=[10, 20], pos=[(
     data += np.random.rand(*data.shape)
 
     # np.array([[1, 0, 0, 50]])
-
     return data, np.eye(4), (1., 1., 1.)
 
 
@@ -177,28 +171,42 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250, sh=None):
 
     return binary_mask, data_labels2, new_centroids, data_labels, centroids, X[:, 0].reshape(sh), X[:, 1].reshape(sh), X[:, 2].reshape(sh), X[:, 3].reshape(sh)
 
-
+# T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
+# DWI dataset
+fname = '/home/elef/.dipy/stanford_hardi/dwi_patch2self.nii.gz'
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
+# Just keep b0 for now
+data = data[..., 0].copy()
+
+# Binfinity
+fname = '/home/elef/Data/distortions/b0_u.nii.gz'
+data, affine, vxs = load_nifti(fname, return_voxsize=True)
+fmask = '/home/elef/Data/distortions/b0_u_thetan2.nii.gz'
+
+# B0 HCP (LR)
+fname = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR.nii.gz'
+data, affine, vxs = load_nifti(fname, return_voxsize=True)
+fmask = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR_thetan2.nii.gz'
+data = data[..., 0].copy()
+
+# Simulation example
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[5, 5, 5, 5.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 
 vxs = np.asarray(vxs)
 
+verbose = True
 
 # from dipy.align.reslice import reslice
-
 # data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
 # data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
 
 scale_space = True
-
 if scale_space:
-
-    from dipy.align.scalespace import ScaleSpace
-
     scs = ScaleSpace(data, 6, affine, vxs)
     data = scs.get_image(2)
 
@@ -210,10 +218,17 @@ np.set_printoptions(3, suppress=True)
 # Then also try with simpler data such as homocentric spheres
 # X = prepare_data(data, affine, perc=False, mult=300., enh=3., center_dist=False, z_scoring=False)
 
+# Recommendation for T1
+# X = prepare_data(data, affine, perc=True, mult=300., enh=3., center_dist=False, z_scoring=False)
+
+# Recommendation for B0
+# X = prepare_data(data, affine, perc=True, mult=300., enh=1., center_dist=False, z_scoring=False)
+
+# Recommendation for Binf
 X = prepare_data(data, affine, perc=True, mult=300., enh=3., center_dist=False, z_scoring=False)
 
+print('Looking at the range of values per feature')
 print('Feature, min, max, mean, std')
-
 tmp_array = np.zeros((X.shape[1], 5))
 for i in range(X.shape[1]):
     tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
@@ -221,11 +236,10 @@ for i in range(X.shape[1]):
 print(tmp_array)
 
 # Find theta automatically if possible
-auto_theta = False
-auto_range = (70.0, 100., 5.)
-if auto_theta:    
+auto_theta = 0
+auto_range = (70.0, 150., 10.)
+if auto_theta:
     find_theta(X, *auto_range)
-
 
 print()
 print('Starting b2ch1 #1')
@@ -244,21 +258,37 @@ print('Starting b2ch1 #1')
 # chaining_factor = 1.2
 
 # with scale space
-theta_value = 100.
+# T1 likes 100
+# theta_value = 100.
+# B0 likes 80?
+theta_value = 80.
+
 chaining_factor = 1.2
-
-
+bk_thr = 250
+# Binf liked 100
+bk_thr2 = 100
+# RL liked ?
+bk_thr2 = 50
 
 # assume only intensity is important
 # X[:, 0] = X[:, 3]
 # X[:, 1] = X[:, 3]
 # X[:, 2] = X[:, 3]
 
-binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=250, sh=data.shape)
+binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=bk_thr, sh=data.shape)
 
 print('Original Berserker Centroids')
-
 print(centroids_orig)
+
+print()
+print('New centroids')
+print(new_centroids)
+
+# Remove low intensities
+tmp = data_labels.copy()
+indx = np.where(new_centroids[:, 3] < bk_thr2)[0]
+for indx_ in indx:
+    tmp[tmp == indx_] = 0
 
 # data3 = data2.copy()
 # data3[binary_mask == 0] = 0
@@ -272,26 +302,33 @@ print(centroids_orig)
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
 
-# data_labels2[binary_mask == 0] =
-# horizon(images=[(data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-horizon(images=[(data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-# horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
+if verbose:
+    # horizon(images=[(data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
+    # horizon(images=[(data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
+    horizon(images=[((tmp > 0).astype('f4'), np.eye(4)), (tmp, np.eye(4)), (data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
+    # horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
-morpho = False
+morpho = True
 
 if morpho:
 
-    strel = np.ones((7, 7, 7))
+    # opening followed by closing can remove unneeded objects
+    # strel = np.ones((7, 7, 7))
 
-    from scipy.ndimage import binary_opening, label
+    binary_mask = tmp > 0
+
+    from scipy.ndimage import binary_opening, label, binary_closing
     from skimage.morphology import ball
 
-    strel = ball(3)
+    strel = ball(9)
 
     binary_mask2 = binary_opening(binary_mask, structure=strel)
-    binary_label2, num_labels = label(binary_mask2) # structure=strel)
+    binary_mask3 = binary_closing(binary_mask2, structure=strel)
 
-
+    # binary_label2, num_labels = label(binary_mask2) # structure=strel)
+    if verbose:
+        horizon(images=[(tmp, np.eye(4)), (binary_mask2.astype('i4'), np.eye(4)), (binary_mask3.astype('i4'), np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
+    save_nifti(fmask, binary_mask3.astype('i4'), affine)
 
 t = 1
