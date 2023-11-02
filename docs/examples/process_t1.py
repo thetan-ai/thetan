@@ -14,14 +14,15 @@ def expand_voxels(data, patch_size=(3, 3, 3)):
 
     return patchify(data, patch_size)
 
-def prepare_data(data, affine, perc=True, mult=300, enh=2, center_dist=False, z_scoring=True):
+def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False, z_scoring=True):
 
-    if perc:
+    if perc is None:
+        data2 = data
+    else:
         value_range = np.percentile(data, q=[2, 99])
         data2 = np.interp(data, value_range, (0, 1))
         data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
-    else:
-        data2 = data
+
 
     X = img3d_to_ijkv_features(data2)
 
@@ -178,14 +179,14 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250, sh=None):
 
 # DWI dataset
 fname = '/home/elef/.dipy/stanford_hardi/dwi_patch2self.nii.gz'
-data, affine, vxs = load_nifti(fname, return_voxsize=True)
+# data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # Just keep b0 for now
-data = data[..., 0].copy()
+# data = data[..., 0].copy()
 
 # Binfinity
-fname = '/home/elef/Data/distortions/b0_u.nii.gz'
-data, affine, vxs = load_nifti(fname, return_voxsize=True)
-fmask = '/home/elef/Data/distortions/b0_u_thetan2.nii.gz'
+# fname = '/home/elef/Data/distortions/b0_u.nii.gz'
+# data, affine, vxs = load_nifti(fname, return_voxsize=True)
+# fmask = '/home/elef/Data/distortions/b0_u_thetan2.nii.gz'
 
 # B0 HCP (LR)
 fname = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR.nii.gz'
@@ -219,13 +220,13 @@ np.set_printoptions(3, suppress=True)
 # X = prepare_data(data, affine, perc=False, mult=300., enh=3., center_dist=False, z_scoring=False)
 
 # Recommendation for T1
-# X = prepare_data(data, affine, perc=True, mult=300., enh=3., center_dist=False, z_scoring=False)
+# X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=3., center_dist=False, z_scoring=False)
 
 # Recommendation for B0
-# X = prepare_data(data, affine, perc=True, mult=300., enh=1., center_dist=False, z_scoring=False)
+# X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=1., center_dist=False, z_scoring=False)
 
-# Recommendation for Binf
-X = prepare_data(data, affine, perc=True, mult=300., enh=3., center_dist=False, z_scoring=False)
+# Recommendation for Binf or RL
+X = prepare_data(data, affine, perc=(2, 80), mult=300., enh=3., center_dist=False, z_scoring=False)
 
 print('Looking at the range of values per feature')
 print('Feature, min, max, mean, std')
@@ -268,7 +269,8 @@ bk_thr = 250
 # Binf liked 100
 bk_thr2 = 100
 # RL liked ?
-bk_thr2 = 50
+bk_thr = 225
+bk_thr2 = 25
 
 # assume only intensity is important
 # X[:, 0] = X[:, 3]
