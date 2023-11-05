@@ -14,7 +14,7 @@ def expand_voxels(data, patch_size=(3, 3, 3)):
 
     return patchify(data, patch_size)
 
-def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False, z_scoring=True):
+def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False, z_scoring=True, patch=None):
 
     if perc is None:
         data2 = data
@@ -23,8 +23,18 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
         data2 = np.interp(data, value_range, (0, 1))
         data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
 
+    if patch is not None:
+        data3 = np.pad(data2, patch[0]//2)
+        data3_enh = patchify(data3, patch)
+        data3_enh = data3_enh.reshape((data2.shape[0] * data2.shape[1] * data2.shape[2]),
+                                      (patch[0] * patch[1] * patch[2]))
+        mean_enh = np.mean(data3_enh, axis=-1)
+        median_enh = np.median(data3_enh, axis=-1)
 
     X = img3d_to_ijkv_features(data2)
+
+    # X[:, 3] = mean_enh
+    X[:, 3] = median_enh
 
     # move to world coordinates W (xyz)
 
@@ -213,6 +223,8 @@ if scale_space:
 
 data = np.ascontiguousarray(data, dtype='f8')
 
+
+
 np.set_printoptions(3, suppress=True)
 
 # TODO check carefully the range of values in X
@@ -226,7 +238,9 @@ np.set_printoptions(3, suppress=True)
 # X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=1., center_dist=False, z_scoring=False)
 
 # Recommendation for Binf or RL
-X = prepare_data(data, affine, perc=(2, 80), mult=300., enh=3., center_dist=False, z_scoring=False)
+X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=(5, 5, 5))
+
+
 
 print('Looking at the range of values per feature')
 print('Feature, min, max, mean, std')
@@ -235,6 +249,8 @@ for i in range(X.shape[1]):
     tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
 
 print(tmp_array)
+
+
 
 # Find theta automatically if possible
 auto_theta = 0
@@ -311,7 +327,7 @@ if verbose:
     horizon(images=[((tmp > 0).astype('f4'), np.eye(4)), (tmp, np.eye(4)), (data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
     # horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
 
-morpho = True
+morpho = False
 
 if morpho:
 
