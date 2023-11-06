@@ -184,25 +184,28 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250, sh=None):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
-# data, affine, vxs = load_nifti(fname, return_voxsize=True)
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 # DWI dataset
-fname = '/home/elef/.dipy/stanford_hardi/dwi_patch2self.nii.gz'
+# fname = '/home/elef/.dipy/stanford_hardi/dwi_patch2self.nii.gz'
 # data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # Just keep b0 for now
 # data = data[..., 0].copy()
 
 # Binfinity
 # fname = '/home/elef/Data/distortions/b0_u.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/distortions/b0_u.nii.gz'
 # data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # fmask = '/home/elef/Data/distortions/b0_u_thetan2.nii.gz'
 
 # B0 HCP (LR)
-fname = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR.nii.gz'
-data, affine, vxs = load_nifti(fname, return_voxsize=True)
-fmask = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR_thetan2.nii.gz'
-data = data[..., 0].copy()
+# fname = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/distortions/103818_3T_DWI_dir96_LR.nii.gz'
+# data, affine, vxs = load_nifti(fname, return_voxsize=True)
+# fmask = '/home/elef/Data/distortions/103818_3T_DWI_dir96_LR_thetan2.nii.gz'
+# fmask = 'C:/Users/Eleftherios/Data/distortions/103818_3T_DWI_dir96_LR_thetan2.nii.gz'
+# data = data[..., 0].copy()
 
 # Simulation example
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
@@ -238,7 +241,7 @@ np.set_printoptions(3, suppress=True)
 # X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=1., center_dist=False, z_scoring=False)
 
 # Recommendation for Binf or RL
-X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=(5, 5, 5))
+X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=(3, 3, 3))
 
 
 
@@ -278,7 +281,7 @@ print('Starting b2ch1 #1')
 # T1 likes 100
 # theta_value = 100.
 # B0 likes 80?
-theta_value = 80.
+theta_value = 60.
 
 chaining_factor = 1.2
 bk_thr = 250
@@ -292,6 +295,9 @@ bk_thr2 = 25
 # X[:, 0] = X[:, 3]
 # X[:, 1] = X[:, 3]
 # X[:, 2] = X[:, 3]
+
+# simple division in 10 parts can be useful
+Wd = np.floor(W / 100.)
 
 binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=bk_thr, sh=data.shape)
 
