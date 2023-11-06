@@ -296,9 +296,6 @@ bk_thr2 = 25
 # X[:, 1] = X[:, 3]
 # X[:, 2] = X[:, 3]
 
-# simple division in 10 parts can be useful
-Wd = np.floor(W / 100.)
-
 binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=bk_thr, sh=data.shape)
 
 print('Original Berserker Centroids')
@@ -325,6 +322,9 @@ for indx_ in indx:
 # data_labels2[data_labels2 == 0] = 0
 # data_labels2[data_labels2 == 1] = 0
 # this may indicate that binary_mask/2 may not be truly useful
+
+# simple division in 10 parts can be useful (0, 900)
+Wd = np.floor(W / 100.)
 
 
 if verbose:
