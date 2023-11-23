@@ -8,6 +8,8 @@ from dipy.align.scalespace import ScaleSpace
 from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
+from scipy.ndimage import gaussian_gradient_magnitude
+from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, gaussian_gradient_magnitude
 
 
 def expand_voxels(data, patch_size=(3, 3, 3)):
@@ -33,8 +35,8 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
 
     X = img3d_to_ijkv_features(data2)
 
-    # X[:, 3] = mean_enh
-    X[:, 3] = median_enh
+    if patch is not None:
+        X[:, 3] = median_enh
 
     # move to world coordinates W (xyz)
 
@@ -183,8 +185,8 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250, sh=None):
     return binary_mask, data_labels2, new_centroids, data_labels, centroids, X[:, 0].reshape(sh), X[:, 1].reshape(sh), X[:, 2].reshape(sh), X[:, 3].reshape(sh)
 
 # T1 dataset
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 # DWI dataset
@@ -211,7 +213,13 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[5, 5, 5, 5.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 
+
+
 vxs = np.asarray(vxs)
+
+gradient_image = False
+if gradient_image:
+    data = gaussian_gradient_magnitude(data, sigma=1)
 
 verbose = True
 
@@ -219,7 +227,7 @@ verbose = True
 # data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
 # data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
 
-scale_space = True
+scale_space = False
 if scale_space:
     scs = ScaleSpace(data, 6, affine, vxs)
     data = scs.get_image(2)
@@ -241,8 +249,9 @@ np.set_printoptions(3, suppress=True)
 # X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=1., center_dist=False, z_scoring=False)
 
 # Recommendation for Binf or RL
-X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=(3, 3, 3))
+# X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=(3, 3, 3))
 
+X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=None)
 
 
 print('Looking at the range of values per feature')
@@ -252,7 +261,6 @@ for i in range(X.shape[1]):
     tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
 
 print(tmp_array)
-
 
 
 # Find theta automatically if possible
@@ -281,7 +289,9 @@ print('Starting b2ch1 #1')
 # T1 likes 100
 # theta_value = 100.
 # B0 likes 80?
-theta_value = 60.
+# theta_value = 80.
+# gradient image
+theta_value = 120.
 
 chaining_factor = 1.2
 bk_thr = 250
@@ -298,8 +308,12 @@ bk_thr2 = 25
 
 binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=bk_thr, sh=data.shape)
 
+
 print('Original Berserker Centroids')
 print(centroids_orig)
+
+print('With label id')
+print(np.concatenate((np.arange(centroids_orig.shape[0])[:, None], centroids_orig), axis=-1))
 
 print()
 print('New centroids')
@@ -325,13 +339,18 @@ for indx_ in indx:
 
 # simple division in 10 parts can be useful (0, 900)
 Wd = np.floor(W / 100.)
-
+Wd[Wd == 0] = 0
+Wd[Wd == 1] = 0
+Wd[Wd == 2] = 0
+Wd[Wd == 3] = 0
 
 if verbose:
     # horizon(images=[(data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
     # horizon(images=[(data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-    horizon(images=[((tmp > 0).astype('f4'), np.eye(4)), (tmp, np.eye(4)), (data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-    # horizon(images=[(data_labels, np.eye(4)), (data_labels2, np.eye(4)), (data_labels_orig, np.eye(4)), (data2, np.eye(4))])
+
+    aff = np.eye(4)
+    # horizon(images=[((tmp > 0).astype('f4'), aff), (tmp, aff), (data_labels, aff), (data_labels_orig, aff), (Wd, aff), (W, aff), (data, aff)])
+    horizon(images=[(data_labels_orig, np.eye(4)), (W, np.eye(4))])
 
 morpho = False
 
@@ -342,13 +361,19 @@ if morpho:
 
     binary_mask = tmp > 0
 
-    from scipy.ndimage import binary_opening, label, binary_closing
-    from skimage.morphology import ball
+
 
     strel = ball(9)
 
+    Wl = laplace(W)
+    Wg = gaussian_gradient_magnitude(W, sigma=1)
+    # Ws = sobel(W)
+    # I need to study tophat better
+    # Wt9 = white_tophat(W, structure=strel)
+
     binary_mask2 = binary_opening(binary_mask, structure=strel)
     binary_mask3 = binary_closing(binary_mask2, structure=strel)
+
 
     # binary_label2, num_labels = label(binary_mask2) # structure=strel)
     if verbose:
