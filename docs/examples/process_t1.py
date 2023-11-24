@@ -25,13 +25,14 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
         data2 = np.interp(data, value_range, (0, 1))
         data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
 
+    # This simply adds median information
     if patch is not None:
         data3 = np.pad(data2, patch[0]//2)
         data3_enh = patchify(data3, patch)
         data3_enh = data3_enh.reshape((data2.shape[0] * data2.shape[1] * data2.shape[2]),
                                       (patch[0] * patch[1] * patch[2]))
         mean_enh = np.mean(data3_enh, axis=-1)
-        median_enh = np.median(data3_enh, axis=-1)
+        median_enh = np.median(data3_enh, axis=-1)        
 
     X = img3d_to_ijkv_features(data2)
 
@@ -184,9 +185,54 @@ def b2ch1(X, theta_value=100, chaining_factor = 1.2, bk_thr=250, sh=None):
 
     return binary_mask, data_labels2, new_centroids, data_labels, centroids, X[:, 0].reshape(sh), X[:, 1].reshape(sh), X[:, 2].reshape(sh), X[:, 3].reshape(sh)
 
+
+def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False):
+    # Random storm
+
+    # Deploying berserker v2
+
+    centroids, labels = berserker2(X, theta_value, all_out=False)
+
+    data_labels = labels.copy()
+
+    data_labels = data_labels.reshape(data_dims)
+
+    data_labels = data_labels.astype('f8')
+
+    # horizon(images=[(data_labels, np.eye(4)), (data, np.eye(4))])
+
+    unique_labels, counts = np.unique(data_labels, return_counts=True)
+
+    print('>> L', unique_labels[np.argmax(counts)])
+    
+    return data_labels, centroids
+
+
+def X_to_many_3D(X, data_dims):
+    
+    X0 = X[:, 0].reshape(data_dims)
+    X1 = X[:, 1].reshape(data_dims)
+    X2 = X[:, 2].reshape(data_dims)
+    X3 = X[:, 3].reshape(data_dims)
+
+    return X0, X1, X2, X3
+
+def print_ranges(X):
+
+    print('Looking at the range of values per feature')
+    print('Feature, min, max, mean, std')
+    tmp_array = np.zeros((X.shape[1], 5))
+    for i in range(X.shape[1]):
+        tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
+    print(tmp_array)
+
+
+
 # T1 dataset
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 # DWI dataset
@@ -217,73 +263,32 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 vxs = np.asarray(vxs)
 
-gradient_image = False
-if gradient_image:
-    data = gaussian_gradient_magnitude(data, sigma=1)
-
 verbose = True
-
-# from dipy.align.reslice import reslice
-# data2, affine2 = reslice(data, affine, vxs, vxs * 3.)
-# data3, affine3 = reslice(data2, affine2, vxs * 3, vxs)
-
 scale_space = False
+
 if scale_space:
     scs = ScaleSpace(data, 6, affine, vxs)
     data = scs.get_image(2)
 
 data = np.ascontiguousarray(data, dtype='f8')
 
-
-
 np.set_printoptions(3, suppress=True)
-
-# TODO check carefully the range of values in X
-# Then also try with simpler data such as homocentric spheres
-# X = prepare_data(data, affine, perc=False, mult=300., enh=3., center_dist=False, z_scoring=False)
-
-# Recommendation for T1
-# X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=3., center_dist=False, z_scoring=False)
-
-# Recommendation for B0
-# X = prepare_data(data, affine, perc=(2, 99), mult=300., enh=1., center_dist=False, z_scoring=False)
-
-# Recommendation for Binf or RL
-# X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=(3, 3, 3))
 
 X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=None)
 
-
-print('Looking at the range of values per feature')
-print('Feature, min, max, mean, std')
-tmp_array = np.zeros((X.shape[1], 5))
-for i in range(X.shape[1]):
-    tmp_array[i] = np.array([i, X[:, i].min(), X[:, i].max(), X[:, i].mean(), X[:, i].std()])
-
-print(tmp_array)
-
+Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
 # Find theta automatically if possible
-auto_theta = 0
+auto_theta = False
 auto_range = (70.0, 150., 10.)
 if auto_theta:
     find_theta(X, *auto_range)
 
 print()
-print('Starting b2ch1 #1')
+print('Starting Thetan Berserker2 #1')
 
 # values used for sims
 # theta_value = 12.
-# chaining_factor = 1.6
-
-# theta_value = 25.
-# chaining_factor = 1.4
-
-# values used for real data
-
-# scale space
-# theta_value = 200.
-# chaining_factor = 1.2
 
 # with scale space
 # T1 likes 100
@@ -293,91 +298,29 @@ print('Starting b2ch1 #1')
 # gradient image
 theta_value = 120.
 
-chaining_factor = 1.2
-bk_thr = 250
-# Binf liked 100
-bk_thr2 = 100
-# RL liked ?
-bk_thr = 225
-bk_thr2 = 25
+data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
-# assume only intensity is important
-# X[:, 0] = X[:, 3]
-# X[:, 1] = X[:, 3]
-# X[:, 2] = X[:, 3]
-
-binary_mask, data_labels, new_centroids, data_labels_orig, centroids_orig, X, Y, Z, W = b2ch1(X, theta_value=theta_value, chaining_factor=chaining_factor, bk_thr=bk_thr, sh=data.shape)
-
-
-print('Original Berserker Centroids')
-print(centroids_orig)
-
-print('With label id')
-print(np.concatenate((np.arange(centroids_orig.shape[0])[:, None], centroids_orig), axis=-1))
-
+print('Centroids')
+print('---------')
+for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
+    print(idx, c)
 print()
-print('New centroids')
-print(new_centroids)
 
-# Remove low intensities
-tmp = data_labels.copy()
-indx = np.where(new_centroids[:, 3] < bk_thr2)[0]
-for indx_ in indx:
-    tmp[tmp == indx_] = 0
+print('Labels less than threshold')
+print('---------')
+bk_idx = np.argwhere(centroids[:, 3] < 360)
+print(bk_idx)
+print()
 
-# data3 = data2.copy()
-# data3[binary_mask == 0] = 0
+min_bk_idx = bk_idx.min()
+for idx in bk_idx:
 
-# print()
-# print('Starting b2ch1 #2')
-# binary_mask2, data_labels2, new_centroids2, data_labels_orig2, centroids_orig2 = b2ch1(data3, affine, theta_value=100, chaining_factor = 1.2, bk_thr=250)
-
-# What I did that seemed promissing is ...
-# data_labels2[data_labels2 == 0] = 0
-# data_labels2[data_labels2 == 1] = 0
-# this may indicate that binary_mask/2 may not be truly useful
-
-# simple division in 10 parts can be useful (0, 900)
-Wd = np.floor(W / 100.)
-Wd[Wd == 0] = 0
-Wd[Wd == 1] = 0
-Wd[Wd == 2] = 0
-Wd[Wd == 3] = 0
+    data_labels[data_labels == idx] = min_bk_idx
 
 if verbose:
-    # horizon(images=[(data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-    # horizon(images=[(data_labels, np.eye(4)), (data_labels_orig, np.eye(4)), (X, np.eye(4)), (Y, np.eye(4)), (Z, np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-
-    aff = np.eye(4)
-    # horizon(images=[((tmp > 0).astype('f4'), aff), (tmp, aff), (data_labels, aff), (data_labels_orig, aff), (Wd, aff), (W, aff), (data, aff)])
-    horizon(images=[(data_labels_orig, np.eye(4)), (W, np.eye(4))])
-
-morpho = False
-
-if morpho:
-
-    # opening followed by closing can remove unneeded objects
-    # strel = np.ones((7, 7, 7))
-
-    binary_mask = tmp > 0
+    aff = np.eye(4)    
+    horizon(images=[(data_labels, np.eye(4)), (W, np.eye(4))])
 
 
-
-    strel = ball(9)
-
-    Wl = laplace(W)
-    Wg = gaussian_gradient_magnitude(W, sigma=1)
-    # Ws = sobel(W)
-    # I need to study tophat better
-    # Wt9 = white_tophat(W, structure=strel)
-
-    binary_mask2 = binary_opening(binary_mask, structure=strel)
-    binary_mask3 = binary_closing(binary_mask2, structure=strel)
-
-
-    # binary_label2, num_labels = label(binary_mask2) # structure=strel)
-    if verbose:
-        horizon(images=[(tmp, np.eye(4)), (binary_mask2.astype('i4'), np.eye(4)), (binary_mask3.astype('i4'), np.eye(4)), (W, np.eye(4)), (data, np.eye(4))])
-    save_nifti(fmask, binary_mask3.astype('i4'), affine)
 
 t = 1
