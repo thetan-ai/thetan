@@ -231,7 +231,8 @@ def print_ranges(X):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -306,21 +307,29 @@ for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
     print(idx, c)
 print()
 
+
+
 print('Labels less than threshold')
 print('---------')
-bk_idx = np.argwhere(centroids[:, 3] < 360)
+# bk_idx = np.argwhere(centroids[:, 3] < 360)
+bk_idx = np.argwhere(centroids[:, 3] < 200)
 print(bk_idx)
 print()
 
 min_bk_idx = bk_idx.min()
 for idx in bk_idx:
-
     data_labels[data_labels == idx] = min_bk_idx
 
 if verbose:
     aff = np.eye(4)    
     horizon(images=[(data_labels, np.eye(4)), (W, np.eye(4))])
 
+dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
+
 
 
 t = 1
+# Find largest objects
+labeled_array, num_features = label(data_labels == 1)
+
+# Select random points in the label to see distance from the origin
