@@ -231,8 +231,9 @@ def print_ranges(X):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -275,7 +276,7 @@ data = np.ascontiguousarray(data, dtype='f8')
 
 np.set_printoptions(3, suppress=True)
 
-X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=None)
+X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.5, center_dist=False, z_scoring=False, patch=None)
 
 Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
@@ -297,7 +298,7 @@ print('Starting Thetan Berserker2 #1')
 # B0 likes 80?
 # theta_value = 80.
 # gradient image
-theta_value = 120.
+theta_value = 150.
 
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
@@ -308,28 +309,53 @@ for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
 print()
 
 
-
-print('Labels less than threshold')
-print('---------')
-# bk_idx = np.argwhere(centroids[:, 3] < 360)
-bk_idx = np.argwhere(centroids[:, 3] < 200)
-print(bk_idx)
-print()
-
-min_bk_idx = bk_idx.min()
-for idx in bk_idx:
-    data_labels[data_labels == idx] = min_bk_idx
+bk_threshold = True
+if bk_threshold:
+    print('Labels less than threshold')
+    print('---------')
+    # bk_idx = np.argwhere(centroids[:, 3] < 360)
+    bk_idx = np.argwhere(centroids[:, 3] < 100)
+    print(bk_idx)
+    print()
+    min_bk_idx = bk_idx.min()
+    for idx in bk_idx:
+        data_labels[data_labels == idx] = min_bk_idx
 
 if verbose:
     aff = np.eye(4)    
-    horizon(images=[(data_labels, np.eye(4)), (W, np.eye(4))])
+    horizon(images=[(data_labels, aff), (W, aff)])
 
 dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
+
+unique_labels, counts = np.unique(data_labels, return_counts=True)
+
+big_objects = {}
+
+for idx in unique_labels:
+
+    print('Label index ==> ', idx, ' largest object')
+    # Find largest objects
+    labeled_array, num_features = label(data_labels == int(idx))
+    print(num_features)
+
+    unique_labels_la, counts_la = np.unique(labeled_array, return_counts=True)
+    print(counts_la)
+
+    # this is incorrect (argmax not enough) and ignoring background
+    tmp_array = labeled_array == counts_la[1:].argmax() + 1
+    big_objects[idx] = tmp_array.copy()
+    print(np.sum(big_objects[idx]))
+
+    aff = np.eye(4)    
+    horizon(images=[(big_objects[idx].astype('i4'), aff), (data_labels, aff), (W, aff)])
+
+    t = 2
+
+print()
+
 
 
 
 t = 1
-# Find largest objects
-labeled_array, num_features = label(data_labels == 1)
 
 # Select random points in the label to see distance from the origin
