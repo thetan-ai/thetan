@@ -32,7 +32,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
         data3_enh = data3_enh.reshape((data2.shape[0] * data2.shape[1] * data2.shape[2]),
                                       (patch[0] * patch[1] * patch[2]))
         mean_enh = np.mean(data3_enh, axis=-1)
-        median_enh = np.median(data3_enh, axis=-1)        
+        median_enh = np.median(data3_enh, axis=-1)
 
     X = img3d_to_ijkv_features(data2)
 
@@ -201,9 +201,9 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False):
 
     # horizon(images=[(data_labels, np.eye(4)), (data, np.eye(4))])
 
-    unique_labels, counts = np.unique(data_labels, return_counts=True)
+    # unique_labels, counts = np.unique(data_labels, return_counts=True)
 
-    print('>> L', unique_labels[np.argmax(counts)])
+    # print('>> L', unique_labels[np.argmax(counts)])
     
     return data_labels, centroids
 
@@ -231,9 +231,15 @@ def print_ranges(X):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+
 # fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
+fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
+fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
+
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -276,9 +282,11 @@ data = np.ascontiguousarray(data, dtype='f8')
 
 np.set_printoptions(3, suppress=True)
 
-X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.5, center_dist=False, z_scoring=False, patch=None)
+X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=False, z_scoring=False, patch=None)
 
 Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+W10 = W // 100
 
 # Find theta automatically if possible
 auto_theta = False
@@ -308,8 +316,7 @@ for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
     print(idx, c)
 print()
 
-
-bk_threshold = True
+bk_threshold = False
 if bk_threshold:
     print('Labels less than threshold')
     print('---------')
@@ -323,7 +330,7 @@ if bk_threshold:
 
 if verbose:
     aff = np.eye(4)    
-    horizon(images=[(data_labels, aff), (W, aff)])
+    horizon(images=[(data_labels, aff), (W, aff), (W10, aff)])
 
 dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 
