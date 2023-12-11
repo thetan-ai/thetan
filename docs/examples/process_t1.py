@@ -436,6 +436,9 @@ unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
 samples = 100
 
+mins = []
+maxs = []
+
 for l in unique_labels2.astype('i8'):
 
     ijks = np.where(data_labels == l)
@@ -449,11 +452,22 @@ for l in unique_labels2.astype('i8'):
     print('Current label >> ', l)
     for rec in range(samples):
         # print(data_enh[tuple(ijks_rs[rec])].ravel())
-        print(np.floor(data_enh[tuple(ijks_rs[rec])].min()),
-              np.floor(data_enh[tuple(ijks_rs[rec])].max()))
+        min_ = np.floor(data_enh[tuple(ijks_rs[rec])].min())
+        max_ = np.floor(data_enh[tuple(ijks_rs[rec])].max())
+        mins.append(min_)
+        maxs.append(max_)
+
 
     print()
 
     t = 1
+
+
+import matplotlib.pyplot as plt
+
+plt.figure()
+plt.plot(mins, maxs, '*')
+plt.grid()
+plt.show()
 
 t = 2
