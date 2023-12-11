@@ -1,6 +1,6 @@
 
 import numpy as np
-from thetan.theta import img3d_to_ijkv_features, centroids_from_labels
+from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
@@ -62,10 +62,11 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
     return X
 
 
-def find_theta(X, start, stop, step):
+def find_theta(X, start, stop, step, data, matrix_calc=False):
 
     theta_values = []
     sizes = []
+    current_L2_sums = []
 
     cnt = 0
     print('Looking for nice theta values')
@@ -73,6 +74,22 @@ def find_theta(X, start, stop, step):
 
         print('=========>>', cnt, theta_value)
         centroids, labels = berserker2(X, theta_value, all_out=False)
+
+        data_labels = labels.copy()
+        data_labels = data_labels.reshape(data.shape)
+        data_labels = data_labels.astype('f8')
+
+        # horizon(images=[(data_labels, np.eye(4)), (data, np.eye(4))])
+
+        if matrix_calc:
+
+            D = distance_matrix(centroids, centroids, metric='euclidean')
+            Dsort = np.sort(D, axis=-1)
+            current_L2_sum = np.sum(Dsort[:, 1])
+            # current_L2_sum = np.sum(np.min(D, axis=-1))
+            print('Current L2 sum C matrix is ', current_L2_sum)
+            current_L2_sums.append(current_L2_sum)
+
         theta_values.append(theta_value)
         sizes.append(centroids.shape[0])
         cnt += 1
@@ -86,6 +103,15 @@ def find_theta(X, start, stop, step):
     plt.grid()
     plt.show()
 
+    if matrix_calc:
+        plt.figure()
+        plt.plot(theta_values, current_L2_sums, '*-')
+        plt.xlabel('theta values')
+        plt.ylabel('current L2 sum of min with centroids')
+        plt.grid()
+        plt.show()
+
+    t = 1
 
 def volumetric_sphere(shape, radius, position):
     """Generate an n-dimensional spherical mask."""
@@ -227,17 +253,44 @@ def print_ranges(X):
     print(tmp_array)
 
 
+def looking_for_big_objects(data_labels, labeled_array, unique_labels):
+
+    big_objects = {}
+
+    for idx in unique_labels:
+
+        print('Label index ==> ', idx, ' largest object')
+
+        # Find largest objects
+        labeled_array, num_features = label(data_labels == int(idx))
+        print(num_features)
+
+        unique_labels_la, counts_la = np.unique(labeled_array, return_counts=True)
+        print(counts_la)
+
+        # this is incorrect (argmax not enough) and ignoring background
+        tmp_array = labeled_array == counts_la[1:].argmax() + 1
+        big_objects[idx] = tmp_array.copy()
+        print(np.sum(big_objects[idx]))
+
+        aff = np.eye(4)    
+        horizon(images=[(big_objects[idx].astype('i4'), aff), (data_labels, aff), (W, aff)])
+
+        t = 2
+
+    print()
+
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
-fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
-fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
+# fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
+# fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
+# fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 
@@ -287,12 +340,23 @@ X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=Fals
 Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
 W10 = W // 100
+Wcopy = W.copy()
+
 
 # Find theta automatically if possible
 auto_theta = False
 auto_range = (70.0, 150., 10.)
+# auto_range = (50.0, 80., 10.)
+
 if auto_theta:
-    find_theta(X, *auto_range)
+    print('Searching for Theta')
+    find_theta(X, *auto_range, W)
+
+gradient_image = True
+if gradient_image:
+    Wgrad = gaussian_gradient_magnitude(W, sigma=1)
+
+X[:, 3] += Wgrad.ravel()
 
 print()
 print('Starting Thetan Berserker2 #1')
@@ -306,9 +370,12 @@ print('Starting Thetan Berserker2 #1')
 # B0 likes 80?
 # theta_value = 80.
 # gradient image
+# theta_value = 100.
 theta_value = 150.
 
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+
+## data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
 print('Centroids')
 print('---------')
@@ -330,39 +397,63 @@ if bk_threshold:
 
 if verbose:
     aff = np.eye(4)    
-    horizon(images=[(data_labels, aff), (W, aff), (W10, aff)])
+    # horizon(images=[(Wgrad, aff), ((Wgrad + W, aff)) (Wgrad // 20, aff), (data_labels, aff), (W, aff), (W10, aff)])
+    horizon(images=[(data_labels, aff), (W, aff), (Wcopy, aff)])
 
 dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 
 unique_labels, counts = np.unique(data_labels, return_counts=True)
 
-big_objects = {}
+# Remove low intensities
+bk_thr = 250
+tmp = data_labels.copy()
+indx = np.where(centroids[:, 3] < bk_thr)[0]
+min_indx = np.argmin(centroids[:, 3])
 
-for idx in unique_labels:
+for indx_ in indx:
+    tmp[tmp == indx_] = min_indx
 
-    print('Label index ==> ', idx, ' largest object')
-    # Find largest objects
-    labeled_array, num_features = label(data_labels == int(idx))
-    print(num_features)
+X[:, 3][tmp.ravel() == min_indx] = 0
 
-    unique_labels_la, counts_la = np.unique(labeled_array, return_counts=True)
-    print(counts_la)
+mask = tmp == indx_
 
-    # this is incorrect (argmax not enough) and ignoring background
-    tmp_array = labeled_array == counts_la[1:].argmax() + 1
-    big_objects[idx] = tmp_array.copy()
-    print(np.sum(big_objects[idx]))
+data_labels2, centroids2 = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
+if verbose:
     aff = np.eye(4)    
-    horizon(images=[(big_objects[idx].astype('i4'), aff), (data_labels, aff), (W, aff)])
-
-    t = 2
-
-print()
-
-
-
-
-t = 1
+    horizon(images=[(data_labels2, aff), (data_labels, aff), (W, aff), (Wcopy, aff)])
 
 # Select random points in the label to see distance from the origin
+
+
+# Select random patches from labels
+
+patch = (3, 3, 3)
+data_3x3x3 = np.pad(W.reshape(data.shape), patch[0]//2)
+data_enh = patchify(data_3x3x3, patch)
+
+unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
+
+samples = 100
+
+for l in unique_labels2.astype('i8'):
+
+    ijks = np.where(data_labels == l)
+
+    random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
+    i_s = ijks[0][random_selection]
+    j_s = ijks[1][random_selection]
+    k_s = ijks[2][random_selection]
+    ijks_rs = np.vstack([i_s, j_s, k_s]).T
+
+    print('Current label >> ', l)
+    for rec in range(samples):
+        # print(data_enh[tuple(ijks_rs[rec])].ravel())
+        print(np.floor(data_enh[tuple(ijks_rs[rec])].min()),
+              np.floor(data_enh[tuple(ijks_rs[rec])].max()))
+
+    print()
+
+    t = 1
+
+t = 2
