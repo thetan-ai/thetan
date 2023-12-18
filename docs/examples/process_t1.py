@@ -428,20 +428,22 @@ if verbose:
 
 # Select random patches from labels
 
-patch = (3, 3, 3)
-data_3x3x3 = np.pad(W.reshape(data.shape), patch[0]//2)
+patch = (7, 7, 7)
+data_3x3x3 = np.pad(W.reshape(data.shape), patch[0] // 2)
 data_enh = patchify(data_3x3x3, patch)
 
 unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
-samples = 100
+samples = 20
 
 mins = []
 maxs = []
 
+data_loc = np.zeros(W.shape)
+
 for l in unique_labels2.astype('i8'):
 
-    ijks = np.where(data_labels == l)
+    ijks = np.where(data_labels2 == l)
 
     random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
     i_s = ijks[0][random_selection]
@@ -449,25 +451,31 @@ for l in unique_labels2.astype('i8'):
     k_s = ijks[2][random_selection]
     ijks_rs = np.vstack([i_s, j_s, k_s]).T
 
-    print('Current label >> ', l)
+    print('Current label >> ', l)    
     for rec in range(samples):
         # print(data_enh[tuple(ijks_rs[rec])].ravel())
+
+        i, j, k = tuple(ijks_rs[rec])
+
+        data_loc[i, j, k] = l
+
         min_ = np.floor(data_enh[tuple(ijks_rs[rec])].min())
         max_ = np.floor(data_enh[tuple(ijks_rs[rec])].max())
+
+        print(i, j, k, min_, max_)
         mins.append(min_)
         maxs.append(max_)
 
-
     print()
-
     t = 1
 
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-plt.figure()
-plt.plot(mins, maxs, '*')
-plt.grid()
-plt.show()
+# plt.figure()
+# plt.scatter(mins, maxs, c=np.repeat(unique_labels2, 100), cmap='tab20c')
+# plt.legend()
+# plt.grid()
+# plt.show()
 
 t = 2
