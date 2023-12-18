@@ -290,7 +290,10 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 
@@ -358,6 +361,8 @@ if gradient_image:
 
 X[:, 3] += Wgrad.ravel()
 
+# X[:, 3][X[:, 3] > 900.0] = 900.0
+
 print()
 print('Starting Thetan Berserker2 #1')
 
@@ -369,9 +374,10 @@ print('Starting Thetan Berserker2 #1')
 # theta_value = 100.
 # B0 likes 80?
 # theta_value = 80.
-# gradient image
 # theta_value = 100.
-theta_value = 150.
+theta_value = 120.
+
+# theta_value = 150.
 
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
@@ -398,33 +404,33 @@ if bk_threshold:
 if verbose:
     aff = np.eye(4)    
     # horizon(images=[(Wgrad, aff), ((Wgrad + W, aff)) (Wgrad // 20, aff), (data_labels, aff), (W, aff), (W10, aff)])
-    horizon(images=[(data_labels, aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(data_labels, aff), (W, aff), (Wcopy, aff)])
 
 dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 
 unique_labels, counts = np.unique(data_labels, return_counts=True)
 
 # Remove low intensities
-bk_thr = 250
-tmp = data_labels.copy()
-indx = np.where(centroids[:, 3] < bk_thr)[0]
-min_indx = np.argmin(centroids[:, 3])
+# bk_thr = 250
+# tmp = data_labels.copy()
+# indx = np.where(centroids[:, 3] < bk_thr)[0]
+# min_indx = np.argmin(centroids[:, 3])
 
-for indx_ in indx:
-    tmp[tmp == indx_] = min_indx
+# for indx_ in indx:
+#     tmp[tmp == indx_] = min_indx
 
-X[:, 3][tmp.ravel() == min_indx] = 0
+# X[:, 3][tmp.ravel() == min_indx] = 0
+# mask = tmp == indx_
 
-mask = tmp == indx_
-
-data_labels2, centroids2 = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+# data_labels2, centroids2 = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
 if verbose:
     aff = np.eye(4)    
-    horizon(images=[(data_labels2, aff), (data_labels, aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+
 
 # Select random points in the label to see distance from the origin
-
 
 # Select random patches from labels
 
@@ -432,42 +438,47 @@ patch = (7, 7, 7)
 data_3x3x3 = np.pad(W.reshape(data.shape), patch[0] // 2)
 data_enh = patchify(data_3x3x3, patch)
 
-unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
-samples = 20
 
-mins = []
-maxs = []
+# unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
-data_loc = np.zeros(W.shape)
+# samples = 20
 
-for l in unique_labels2.astype('i8'):
+# mins = []
+# means = []
+# maxs = []
 
-    ijks = np.where(data_labels2 == l)
+# data_loc = np.zeros(W.shape)
 
-    random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
-    i_s = ijks[0][random_selection]
-    j_s = ijks[1][random_selection]
-    k_s = ijks[2][random_selection]
-    ijks_rs = np.vstack([i_s, j_s, k_s]).T
+# for l in unique_labels2.astype('i8'):
 
-    print('Current label >> ', l)    
-    for rec in range(samples):
-        # print(data_enh[tuple(ijks_rs[rec])].ravel())
+#     ijks = np.where(data_labels2 == l)
 
-        i, j, k = tuple(ijks_rs[rec])
+#     random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
+#     i_s = ijks[0][random_selection]
+#     j_s = ijks[1][random_selection]
+#     k_s = ijks[2][random_selection]
+#     ijks_rs = np.vstack([i_s, j_s, k_s]).T
 
-        data_loc[i, j, k] = l
+#     print('Current label >> ', l)    
+#     for rec in range(samples):
+#         # print(data_enh[tuple(ijks_rs[rec])].ravel())
 
-        min_ = np.floor(data_enh[tuple(ijks_rs[rec])].min())
-        max_ = np.floor(data_enh[tuple(ijks_rs[rec])].max())
+#         i, j, k = tuple(ijks_rs[rec])
 
-        print(i, j, k, min_, max_)
-        mins.append(min_)
-        maxs.append(max_)
+#         data_loc[i, j, k] = l
 
-    print()
-    t = 1
+#         min_ = np.floor(data_enh[tuple(ijks_rs[rec])].min())
+#         mean_ = np.floor(data_enh[tuple(ijks_rs[rec])].mean())
+#         max_ = np.floor(data_enh[tuple(ijks_rs[rec])].max())
+
+#         print(i, j, k, "----" , min_, mean_, max_)
+#         mins.append(min_)
+#         means.append(mean_)
+#         maxs.append(max_)
+
+#     print()
+#     t = 1
 
 
 # import matplotlib.pyplot as plt
