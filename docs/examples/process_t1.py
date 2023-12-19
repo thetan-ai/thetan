@@ -291,10 +291,10 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -410,35 +410,34 @@ dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 
 unique_labels, counts = np.unique(data_labels, return_counts=True)
 
-# Remove low intensities
-# bk_thr = 250
-# tmp = data_labels.copy()
-# indx = np.where(centroids[:, 3] < bk_thr)[0]
-# min_indx = np.argmin(centroids[:, 3])
+# Remove low intensities using label centroids
+bk_thr = 300 # 400 or 250 interesting too
+data_labels_u = data_labels.copy()
+indx = np.where(centroids[:, 3] < bk_thr)[0]
+min_indx = np.argmin(centroids[:, 3])
 
-# for indx_ in indx:
-#     tmp[tmp == indx_] = min_indx
+for indx_ in indx:
+    data_labels_u[data_labels == indx_] = min_indx
 
 # X[:, 3][tmp.ravel() == min_indx] = 0
-# mask = tmp == indx_
+mask = data_labels_u == min_indx
 
 # data_labels2, centroids2 = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
 if verbose:
     aff = np.eye(4)    
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
 # Select random points in the label to see distance from the origin
 
 # Select random patches from labels
-
 patch = (7, 7, 7)
-data_3x3x3 = np.pad(W.reshape(data.shape), patch[0] // 2)
-data_enh = patchify(data_3x3x3, patch)
+data_neighb = np.pad(W.reshape(data.shape), patch[0] // 2)
+data_enh = patchify(data_neighb, patch)
 
-
+# gaussian magnitude of the labels can distinguish neighboring regions
 
 # unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
 
