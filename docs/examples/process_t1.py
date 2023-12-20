@@ -290,11 +290,11 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
-fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -426,26 +426,42 @@ mask = mask.astype('f8')
 Xmask = X.copy()
 Xmask[:, 3] = 3 * 300 * mask.ravel()
 
-data_labels2, centroids2 = berserker2_to_3D_labels(Xmask, theta_value, data_dims=data.shape, verbose=False)
+# data_labels2, centroids2 = berserker2_to_3D_labels(Xmask, theta_value // 4, data_dims=data.shape, verbose=False)
 
-data_labels2[mask < 1] = -1 
+# data_labels2[mask < 1] = -1 
 
 
 from skimage.morphology import ball
-from skimage.segmentation import flood, flood_fill
+# from skimage.segmentation import flood, flood_fill
+
+# res = flood_fill(mask, (128, 128, 75), 0.5, connectivity=1)
 
 from scipy.ndimage import binary_fill_holes, binary_propagation
+from scipy.ndimage import binary_opening, binary_closing
 
-strel = ball(9)
-# res = binary_fill_holes(maskb) #, origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
-# res = res.astype('f8')
+# Randomly select voxels
+# If region around it is all black then color it.
 
-res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
+
+strel = ball(11)
+# strel = np.ones((41, 41, 41))
+# res = binary_fill_holes(maskb, structure=strel) # , origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
+# # res = res.astype('f8')
+print('Starting opening operation using a ball kernel of size', strel.shape)
+res = binary_closing(maskb, strel)
+
+# maskb = np.pad(maskb, 20)
+
+# res, num_features = label(maskb, structure=strel)
+
+# res = res[21:-20, 21:-20, 21:-20 ]
+
+# res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
 if verbose:
     aff = np.eye(4)    
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(res.astype('f8'), aff), (data_labels2, aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 # Move the ball
 
