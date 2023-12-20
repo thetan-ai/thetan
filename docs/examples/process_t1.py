@@ -443,12 +443,12 @@ from scipy.ndimage import binary_opening, binary_closing
 # If region around it is all black then color it.
 
 
-strel = ball(11)
+# strel = ball(11)
 # strel = np.ones((41, 41, 41))
 # res = binary_fill_holes(maskb, structure=strel) # , origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
 # # res = res.astype('f8')
-print('Starting opening operation using a ball kernel of size', strel.shape)
-res = binary_closing(maskb, strel)
+# print('Starting opening operation using a ball kernel of size', strel.shape)
+$ res = binary_closing(maskb, strel)
 
 # maskb = np.pad(maskb, 20)
 
@@ -472,6 +472,8 @@ if verbose:
 patch = (7, 7, 7)
 data_neighb = np.pad(W.reshape(data.shape), patch[0] // 2)
 data_enh = patchify(data_neighb, patch)
+
+
 
 # gaussian magnitude of the labels can distinguish neighboring regions
 
