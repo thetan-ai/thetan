@@ -290,12 +290,11 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
-# fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -421,13 +420,34 @@ for indx_ in indx:
 
 # X[:, 3][tmp.ravel() == min_indx] = 0
 mask = data_labels_u == min_indx
+maskb = mask.copy()
+mask = mask.astype('f8')
 
-# data_labels2, centroids2 = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+Xmask = X.copy()
+Xmask[:, 3] = 3 * 300 * mask.ravel()
+
+data_labels2, centroids2 = berserker2_to_3D_labels(Xmask, theta_value, data_dims=data.shape, verbose=False)
+
+data_labels2[mask < 1] = -1 
+
+
+from skimage.morphology import ball
+from skimage.segmentation import flood, flood_fill
+
+from scipy.ndimage import binary_fill_holes, binary_propagation
+
+strel = ball(9)
+# res = binary_fill_holes(maskb) #, origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
+# res = res.astype('f8')
+
+res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
 if verbose:
     aff = np.eye(4)    
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(res.astype('f8'), aff), (data_labels2, aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+
+# Move the ball
 
 
 # Select random points in the label to see distance from the origin
