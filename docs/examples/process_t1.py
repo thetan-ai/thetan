@@ -230,12 +230,12 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False):
     # unique_labels, counts = np.unique(data_labels, return_counts=True)
 
     # print('>> L', unique_labels[np.argmax(counts)])
-    
+
     return data_labels, centroids
 
 
 def X_to_many_3D(X, data_dims):
-    
+
     X0 = X[:, 0].reshape(data_dims)
     X1 = X[:, 1].reshape(data_dims)
     X2 = X[:, 2].reshape(data_dims)
@@ -273,7 +273,7 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
         big_objects[idx] = tmp_array.copy()
         print(np.sum(big_objects[idx]))
 
-        aff = np.eye(4)    
+        aff = np.eye(4)
         horizon(images=[(big_objects[idx].astype('i4'), aff), (data_labels, aff), (W, aff)])
 
         t = 2
@@ -282,7 +282,7 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 
 
 # T1 dataset
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
@@ -290,15 +290,11 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
-<<<<<<< HEAD
-fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-=======
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
->>>>>>> 4dcf4284a4d12fa5c490937a51ef1aa9df3ec411
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -405,7 +401,7 @@ if bk_threshold:
         data_labels[data_labels == idx] = min_bk_idx
 
 if verbose:
-    aff = np.eye(4)    
+    aff = np.eye(4)
     # horizon(images=[(Wgrad, aff), ((Wgrad + W, aff)) (Wgrad // 20, aff), (data_labels, aff), (W, aff), (W10, aff)])
     # horizon(images=[(data_labels, aff), (W, aff), (Wcopy, aff)])
 
@@ -432,7 +428,7 @@ Xmask[:, 3] = 3 * 300 * mask.ravel()
 
 # data_labels2, centroids2 = berserker2_to_3D_labels(Xmask, theta_value // 4, data_dims=data.shape, verbose=False)
 
-# data_labels2[mask < 1] = -1 
+# data_labels2[mask < 1] = -1
 
 
 from skimage.morphology import ball
@@ -476,17 +472,10 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
-<<<<<<< HEAD
 if verbose:
-    aff = np.eye(4)    
+    aff = np.eye(4)
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     horizon(images=[(mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-=======
-# if verbose:
-#     aff = np.eye(4)    
-#     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-#     horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
->>>>>>> 4dcf4284a4d12fa5c490937a51ef1aa9df3ec411
 
 
 # Select random patches from labels
@@ -502,7 +491,7 @@ density_vol = np.sum(mask_enh, axis=-1)
 density_vol = density_vol.reshape(data.shape)
 
 if verbose:
-    aff = np.eye(4)    
+    aff = np.eye(4)
     horizon(images=[(density_vol, aff), (mask.astype('f8'), aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
@@ -529,7 +518,7 @@ if verbose:
 #     k_s = ijks[2][random_selection]
 #     ijks_rs = np.vstack([i_s, j_s, k_s]).T
 
-#     print('Current label >> ', l)    
+#     print('Current label >> ', l)
 #     for rec in range(samples):
 #         # print(data_enh[tuple(ijks_rs[rec])].ravel())
 
