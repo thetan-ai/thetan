@@ -290,11 +290,15 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
+<<<<<<< HEAD
 fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+=======
+# fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+>>>>>>> 4dcf4284a4d12fa5c490937a51ef1aa9df3ec411
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -472,21 +476,35 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
+<<<<<<< HEAD
 if verbose:
     aff = np.eye(4)    
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     horizon(images=[(mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+=======
+# if verbose:
+#     aff = np.eye(4)    
+#     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+#     horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+>>>>>>> 4dcf4284a4d12fa5c490937a51ef1aa9df3ec411
 
-# Move the ball
-
-
-# Select random points in the label to see distance from the origin
 
 # Select random patches from labels
-patch = (7, 7, 7)
-data_neighb = np.pad(W.reshape(data.shape), patch[0] // 2)
-data_enh = patchify(data_neighb, patch)
+patch = (5, 5, 5)
 
+mask_neighb = np.pad(mask, patch[0] // 2)
+mask_neighb = patchify(mask_neighb, patch)
+
+mask_enh = mask_neighb.reshape((data.shape[0] * data.shape[1] * data.shape[2]),
+                                (patch[0] * patch[1] * patch[2]))
+density_vol = np.sum(mask_enh, axis=-1)
+
+density_vol = density_vol.reshape(data.shape)
+
+if verbose:
+    aff = np.eye(4)    
+    horizon(images=[(density_vol, aff), (mask.astype('f8'), aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
 # gaussian magnitude of the labels can distinguish neighboring regions
