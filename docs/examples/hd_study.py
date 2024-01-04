@@ -26,10 +26,10 @@ def sample_spherical(npoints, ndim=3):
 def euclidean(p1,p2):
     return np.linalg.norm(p1-p2,axis=1)
 
-dims_list = [2,10,50,100,500,1000]
-NUM_RUNS = 5
+dims_list = [1000] #[2,10,50,100,500,1000]
+NUM_RUNS = 2
 #dims_list =[2]
-distance = "euclidean" # "thresh_metric"
+distance = "euclidean"  # "thresh_metric"
 center_type = 'normal'
 #SEED = np.random.seed(42)
 fig,ax = plt.subplots(3,2,figsize=(10,8))
@@ -49,8 +49,8 @@ for i,dims in enumerate(dims_list):
 
         #SEED = np.random.seed(42)
 
-        norm1 = np.random.multivariate_normal(c1, np.eye(dims), size=50000)
-        norm2 = np.random.multivariate_normal(c2, np.eye(dims), size=50000)
+        norm1 = np.random.multivariate_normal(c1, np.eye(dims), size=100000)
+        norm2 = np.random.multivariate_normal(c2, np.eye(dims), size=100000)
         points = np.vstack([norm1,norm2])
 
 
@@ -68,16 +68,19 @@ for i,dims in enumerate(dims_list):
             d1 = thresh_metric(points, c1, thresh=THRESH)
 
         if final_d1_flag:
-            final_d1 = final_d1+d1
+            final_d1 = final_d1 + d1
         else:
             final_d1 = d1
             final_d1_flag = 1
 
+
+    # By dividing here we are reweighting the histograms to promote the more frequent distances
+    # over less frequent distances across the distributions.
     final_d1 = final_d1 / NUM_RUNS
     #diffs = np.square(points-c1)
-    ax[i//2][i%2].hist(final_d1,bins=1000)
-    # ax[i//2][i%2].hist(final_d1[:50000],bins=1000)
-    # ax[i//2][i%2].hist(final_d1[50000:],bins=1000)
+    # ax[i//2][i%2].hist(final_d1, bins=1000)
+    ax[i//2][i%2].hist(final_d1[:100000],bins=1000)
+    ax[i//2][i%2].hist(final_d1[100000:],bins=1000)
     ax[i//2][i%2].set_title(f'Dim: {dims}')
 
 fig.suptitle(f'Euclidean distance histograms: {center_type} centers')
