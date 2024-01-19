@@ -1,4 +1,4 @@
-
+from time import time
 import numpy as np
 from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix
 from dipy.io.image import load_nifti, save_nifti
@@ -363,8 +363,6 @@ X[:, 3] += Wgrad.ravel()
 # X[:, 3][X[:, 3] > 900.0] = 900.0
 
 print()
-print('Starting Thetan Berserker2 #1')
-
 # values used for sims
 # theta_value = 12.
 
@@ -378,8 +376,10 @@ theta_value = 120.
 
 # theta_value = 150.
 
+print('Applying Berserker 2 on X (i,j,k,w)')
+t = time()
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
-
+print('Duration ', time()-t)
 ## data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
 print('Centroids')
@@ -400,14 +400,9 @@ if bk_threshold:
     for idx in bk_idx:
         data_labels[data_labels == idx] = min_bk_idx
 
-if verbose:
-    aff = np.eye(4)
-    # horizon(images=[(Wgrad, aff), ((Wgrad + W, aff)) (Wgrad // 20, aff), (data_labels, aff), (W, aff), (W10, aff)])
-    # horizon(images=[(data_labels, aff), (W, aff), (Wcopy, aff)])
 
-dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
-
-unique_labels, counts = np.unique(data_labels, return_counts=True)
+# dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
+# unique_labels, counts = np.unique(data_labels, return_counts=True)
 
 # Remove low intensities using label centroids
 bk_thr = 300 # 400 or 250 interesting too
@@ -423,10 +418,23 @@ mask = data_labels_u == min_indx
 maskb = mask.copy()
 mask = mask.astype('f8')
 
-Xmask = X.copy()
-Xmask[:, 3] = 3 * 300 * mask.ravel()
+Xmasked = X.copy()
+# Xmask[:, 3] = 3 * 300 * (1 - mask.ravel())
+Xmasked[mask.ravel() == 1] = 0
 
-# data_labels2, centroids2 = berserker2_to_3D_labels(Xmask, theta_value // 4, data_dims=data.shape, verbose=False)
+
+
+print('Applying Berserker 2 on the masked X (i, j, k, w)')
+t = time()
+data_labels2, centroids2 = berserker2_to_3D_labels(Xmasked, theta_value, data_dims=data.shape, verbose=False)
+print("Duration ", time()-t)
+
+print('Centroids2')
+print('---------')
+for idx, c in zip(range(centroids2.shape[0]), centroids2[:, 3]):
+    print(idx, c)
+print()
+
 
 # data_labels2[mask < 1] = -1
 
@@ -437,8 +445,6 @@ from skimage.segmentation import flood, flood_fill
 # res = flood_fill(mask, (128, 128, 75), 0.5, connectivity=1)
 
 # res = flood(1-mask, (128, 128, 75), tolerance=10)
-
-
 
 from scipy.ndimage import binary_fill_holes, binary_propagation
 from scipy.ndimage import binary_opening, binary_closing
@@ -475,24 +481,25 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(1 - mask.astype('f8'), aff), (data_labels2, aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
 # Select random patches from labels
-patch = (5, 5, 5)
+# patch = (5, 5, 5)
+# # patch = (11, 11, 11)
 
-mask_neighb = np.pad(mask, patch[0] // 2)
-mask_neighb = patchify(mask_neighb, patch)
+# mask_neighb = np.pad(mask, patch[0] // 2)
+# mask_neighb = patchify(mask_neighb, patch)
 
-mask_enh = mask_neighb.reshape((data.shape[0] * data.shape[1] * data.shape[2]),
-                                (patch[0] * patch[1] * patch[2]))
-density_vol = np.sum(mask_enh, axis=-1)
+# mask_enh = mask_neighb.reshape((data.shape[0] * data.shape[1] * data.shape[2]),
+#                                 (patch[0] * patch[1] * patch[2]))
+# density_vol = np.sum(mask_enh, axis=-1)
 
-density_vol = density_vol.reshape(data.shape)
+# density_vol = density_vol.reshape(data.shape)
 
-if verbose:
-    aff = np.eye(4)
-    horizon(images=[(density_vol, aff), (mask.astype('f8'), aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+# if verbose:
+#     aff = np.eye(4)
+#     horizon(images=[(density_vol, aff), (mask.astype('f8'), aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
