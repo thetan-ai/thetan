@@ -9,7 +9,7 @@ from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude
-from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, gaussian_gradient_magnitude
+from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, gaussian_gradient_magnitude, binary_dilation, binary_erosion
 
 
 def expand_voxels(data, patch_size=(3, 3, 3)):
@@ -282,8 +282,8 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 
 
 # T1 dataset
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
@@ -418,22 +418,26 @@ mask = data_labels_u == min_indx
 maskb = mask.copy()
 mask = mask.astype('f8')
 
-Xmasked = X.copy()
-# Xmask[:, 3] = 3 * 300 * (1 - mask.ravel())
-Xmasked[mask.ravel() == 1] = 0
+mask2 = binary_erosion(1 - mask, iterations=1)
 
 
+maskedop = True
+if maskedop:
+    Xmasked = X.copy()
+    Xmasked[:, 3] -= Wgrad.ravel()
+    # Xmask[:, 3] = 3 * 300 * (1 - mask.ravel())
+    Xmasked[mask.ravel() == 1] = 0
 
-print('Applying Berserker 2 on the masked X (i, j, k, w)')
-t = time()
-data_labels2, centroids2 = berserker2_to_3D_labels(Xmasked, theta_value, data_dims=data.shape, verbose=False)
-print("Duration ", time()-t)
+    print('Applying Berserker 2 on the masked X (i, j, k, w)')
+    t = time()
+    data_labels2, centroids2 = berserker2_to_3D_labels(Xmasked, theta_value*1.2, data_dims=data.shape, verbose=False)
+    print("Duration ", time()-t)
 
-print('Centroids2')
-print('---------')
-for idx, c in zip(range(centroids2.shape[0]), centroids2[:, 3]):
-    print(idx, c)
-print()
+    print('Centroids2')
+    print('---------')
+    for idx, c in zip(range(centroids2.shape[0]), centroids2[:, 3]):
+        print(idx, c)
+    print()
 
 
 # data_labels2[mask < 1] = -1
@@ -478,10 +482,11 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
+
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(1 - mask.astype('f8'), aff), (data_labels2, aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
 # Select random patches from labels
