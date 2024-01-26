@@ -283,9 +283,9 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-# fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
@@ -363,6 +363,7 @@ X[:, 3] += Wgrad.ravel()
 # X[:, 3][X[:, 3] > 900.0] = 900.0
 
 print()
+
 # values used for sims
 # theta_value = 12.
 
@@ -379,7 +380,7 @@ theta_value = 120.
 print('Applying Berserker 2 on X (i,j,k,w)')
 t = time()
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
-print('Duration ', time()-t)
+print('Duration ', time() - t)
 ## data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
 print('Centroids')
@@ -430,8 +431,8 @@ if maskedop:
 
     print('Applying Berserker 2 on the masked X (i, j, k, w)')
     t = time()
-    data_labels2, centroids2 = berserker2_to_3D_labels(Xmasked, theta_value*1.2, data_dims=data.shape, verbose=False)
-    print("Duration ", time()-t)
+    data_labels2, centroids2 = berserker2_to_3D_labels(Xmasked, theta_value * 1.2, data_dims=data.shape, verbose=False)
+    print("Duration ", time() - t)
 
     print('Centroids2')
     print('---------')
@@ -469,7 +470,7 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # strel = ball(11)
 # strel = np.ones((41, 41, 41))
-# res = binary_fill_holes(maskb, structure=strel) # , origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
+# res = binary_fill_holes(maskb, structure=strel) # origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
 # # res = res.astype('f8')
 # print('Starting opening operation using a ball kernel of size', strel.shape)
 # res = binary_closing(maskb, strel)
@@ -505,7 +506,7 @@ if verbose:
 # if verbose:
 #     aff = np.eye(4)
 #     horizon(images=[(density_vol, aff), (mask.astype('f8'), aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    # horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+# horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
 # gaussian magnitude of the labels can distinguish neighboring regions
