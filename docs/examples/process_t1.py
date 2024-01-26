@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix
+from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
@@ -418,6 +418,15 @@ for indx_ in indx:
 mask = data_labels_u == min_indx
 maskb = mask.copy()
 mask = mask.astype('f8')
+
+print('Calculating integrals')
+t = time()
+out = np.zeros(mask.shape, dtype='f8')
+
+# TODO
+# enable actual ball strel
+img3d_integrals(mask, out, 10)
+print('Duration is ', time() - t)
 
 mask2 = binary_erosion(1 - mask, iterations=1)
 
