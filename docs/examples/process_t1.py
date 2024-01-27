@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals
+from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals, img3d_strel_mult
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
@@ -421,11 +421,11 @@ mask = mask.astype('f8')
 
 print('Calculating integrals')
 t = time()
-out = np.zeros(mask.shape, dtype='f8')
-
+out_integral = np.zeros(mask.shape, dtype='f8')
+print('Integral shape', 10 * 2 + 1)
 # TODO
 # enable actual ball strel
-img3d_integrals(mask, out, 10)
+img3d_integrals(mask, out_integral, 10)
 print('Duration is ', time() - t)
 
 mask2 = binary_erosion(1 - mask, iterations=1)
@@ -476,8 +476,16 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # labels_grad = gaussian_gradient_magnitude(data_labels_u.copy(), sigma=1)
 
+print('Multiplying and summing strels - correlation kernel')
+t = time()
+out_strel = np.zeros(mask.shape, dtype='f8')
+strel = ball(10)
+print('Strel shape', strel.shape)
 
-# strel = ball(11)
+img3d_strel_mult(mask, out_strel, strel.astype('f8'))
+print('Duration ', time() - t)
+
+
 # strel = np.ones((41, 41, 41))
 # res = binary_fill_holes(maskb, structure=strel) # origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
 # # res = res.astype('f8')
@@ -496,7 +504,7 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
 # Select random patches from labels
