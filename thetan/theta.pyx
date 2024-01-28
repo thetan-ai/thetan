@@ -1639,24 +1639,3 @@ def img3d_integrals(double[:, :, ::1] img3d, double[:, :, ::1] out, cnp.npy_intp
     return 1
 
 
-def img3d_strel_mult(double[:, :, ::1] img3d, double[:, :, ::1] out, double[:, :, ::1] strel):
-
-    cdef:
-        cnp.npy_intp i=0, j=0, k=0, l=0, m=0, n=0
-        cnp.npy_intp I = img3d.shape[0], J = img3d.shape[1], K = img3d.shape[2]
-        cnp.npy_intp cnt = 0
-        cnp.npy_intp sz = strel.shape[0]
-
-    with nogil:
-
-        for i in range(sz, I - sz):
-            for j in range(sz, J - sz):
-                for k in range(sz, K - sz):
-                        
-                        for l in range(-sz, sz + 1):
-                            for m in range(-sz, sz + 1):
-                                for n in range(-sz, sz + 1):
-                                    
-                                        out[i, j, k] += img3d[i + l, j + m, k + n] * strel[l + sz, m + sz, n + sz]
-                        
-    return 1

@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals, img3d_strel_mult
+from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
@@ -8,7 +8,7 @@ from dipy.align.scalespace import ScaleSpace
 from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude
+from scipy.ndimage import gaussian_gradient_magnitude, convolve
 from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, gaussian_gradient_magnitude, binary_dilation, binary_erosion
 
 
@@ -476,13 +476,15 @@ random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # labels_grad = gaussian_gradient_magnitude(data_labels_u.copy(), sigma=1)
 
-print('Multiplying and summing strels - correlation kernel')
+print('Multiplying and summing strels - convolution kernel')
 t = time()
 out_strel = np.zeros(mask.shape, dtype='f8')
 strel = ball(10)
 print('Strel shape', strel.shape)
 
-img3d_strel_mult(mask, out_strel, strel.astype('f8'))
+out_strel = convolve(mask, strel.astype('f8'), mode='constant', cval=0.0)
+
+# img3d_strel_mult(mask, out_strel, strel.astype('f8'))
 print('Duration ', time() - t)
 
 
@@ -504,7 +506,9 @@ print('Duration ', time() - t)
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
 
 
 # Select random patches from labels
