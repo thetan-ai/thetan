@@ -8,8 +8,8 @@ from dipy.align.scalespace import ScaleSpace
 from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, convolve
-from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, gaussian_gradient_magnitude, binary_dilation, binary_erosion
+from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
+from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion
 
 
 def expand_voxels(data, patch_size=(3, 3, 3)):
@@ -283,9 +283,9 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
@@ -358,7 +358,14 @@ gradient_image = True
 if gradient_image:
     Wgrad = gaussian_gradient_magnitude(W, sigma=1)
 
-X[:, 3] += Wgrad.ravel()
+dog = True
+if dog:
+
+    G2 = gaussian_filter(W, sigma=2)
+    G1 = gaussian_filter(W, sigma=1)
+    G2G1 = G2 - G1
+
+X[:, 3] += 2 * Wgrad.ravel()
 
 # X[:, 3][X[:, 3] > 900.0] = 900.0
 
@@ -419,19 +426,22 @@ mask = data_labels_u == min_indx
 maskb = mask.copy()
 mask = mask.astype('f8')
 
-print('Calculating integrals')
-t = time()
-out_integral = np.zeros(mask.shape, dtype='f8')
-print('Integral shape', 10 * 2 + 1)
-# TODO
-# enable actual ball strel
-img3d_integrals(mask, out_integral, 10)
-print('Duration is ', time() - t)
-
-mask2 = binary_erosion(1 - mask, iterations=1)
+# maskz = zoom(mask, 0.25)
 
 
-maskedop = True
+# print('Calculating integrals')
+# t = time()
+# out_integral = np.zeros(mask.shape, dtype='f8')
+# print('Integral shape', 10 * 2 + 1)
+# # TODO
+# # enable actual ball strel
+# img3d_integrals(mask, out_integral, 10)
+# print('Duration is ', time() - t)
+
+# mask2 = binary_erosion(1 - mask, iterations=1)
+
+
+maskedop = False
 if maskedop:
     Xmasked = X.copy()
     Xmasked[:, 3] -= Wgrad.ravel()
@@ -502,14 +512,17 @@ print('Duration ', time() - t)
 
 # res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
+mask2 = np.zeros(mask.shape, dtype='f8')
+mask2[out_strel < 300] = 1.0
 
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-
+    horizon(images=[(mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
+    # this maybe useful
+    horizon(images=[(data_labels, aff), (Wgrad, aff), ((Wgrad > 100).astype('f8'), aff), (mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
 
 # Select random patches from labels
 # patch = (5, 5, 5)
