@@ -10,6 +10,7 @@ from thetan.chaining import chainer, chainer2
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
 from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion
+from skimage.segmentation import flood, flood_fill
 
 
 def expand_voxels(data, patch_size=(3, 3, 3)):
@@ -429,6 +430,7 @@ mask = mask.astype('f8')
 # maskz = zoom(mask, 0.25)
 
 
+
 # print('Calculating integrals')
 # t = time()
 # out_integral = np.zeros(mask.shape, dtype='f8')
@@ -498,6 +500,8 @@ out_strel = convolve(mask, strel.astype('f8'), mode='constant', cval=0.0)
 print('Duration ', time() - t)
 
 
+
+
 # strel = np.ones((41, 41, 41))
 # res = binary_fill_holes(maskb, structure=strel) # origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
 # # res = res.astype('f8')
@@ -514,6 +518,16 @@ print('Duration ', time() - t)
 
 mask2 = np.zeros(mask.shape, dtype='f8')
 mask2[out_strel < 300] = 1.0
+
+print('Ndimage fill holes')
+t = time()
+res = binary_fill_holes(mask, strel)
+print('Duration ', time() - t)
+
+print("Notice this")
+new_mask = np.zeros(data_labels.shape)
+new_mask[data_labels==3] = 1 # where 3 is the largest label
+
 
 if verbose:
     aff = np.eye(4)
