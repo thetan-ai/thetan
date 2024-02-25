@@ -17,6 +17,26 @@ def expand_voxels(data, patch_size=(3, 3, 3)):
 
     return patchify(data, patch_size)
 
+
+def patch_sum_diffs(data, patch):
+
+    data2 = np.pad(data, patch[0]//2)
+    data2_enh = patchify(data2, patch)
+    data2_enh = data2_enh.reshape(data2_enh.shape[0],
+                                  data2_enh.shape[1], 
+                                  data2_enh.shape[2],
+                                  patch[0] * patch[1] * patch[2])
+
+    return np.sum(np.diff(data2_enh, axis=-1), axis=-1)
+
+def patch_features(data, patch):
+
+    data2 = np.pad(data, patch[0]//2)
+    data2_enh = patchify(data2, patch)
+    data2_enh = data2_enh.reshape(np.prod(data2_enh.shape[:3]), patch[0] * patch[1] * patch[2])
+
+    return data2_enh
+
 def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False, z_scoring=True, patch=None):
 
     if perc is None:
@@ -27,6 +47,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
         data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
 
     # This simply adds median information
+    # Currently not being used
     if patch is not None:
         data3 = np.pad(data2, patch[0]//2)
         data3_enh = patchify(data3, patch)
@@ -284,7 +305,7 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
@@ -294,7 +315,8 @@ fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+# leopard
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -391,6 +413,10 @@ data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.
 print('Duration ', time() - t)
 ## data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
+t = time()
+data_labels_r, centroids_r = berserker2_to_3D_labels(X, theta_value * .75, data_dims=data.shape, verbose=False)
+print('Duration ', time() - t)
+
 print('Centroids')
 print('---------')
 for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
@@ -430,6 +456,11 @@ mask = mask.astype('f8')
 # maskz = zoom(mask, 0.25)
 
 
+# data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
+Wf = patch_features(W, (3, 3, 3))
+Wf_labels, centroids = berserker2_to_3D_labels(Wf, 2000, W.shape, verbose=False)
+Wfsorted = np.sort(Wf, axis=-1)
+Wf_labels2, centroids2 = berserker2_to_3D_labels(Wfsorted, 1000, W.shape, verbose=False)
 
 # print('Calculating integrals')
 # t = time()
@@ -485,7 +516,6 @@ ijks = np.where(maskb == 0)
 random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
 
 # mask_grad = gaussian_gradient_magnitude(mask.copy(), sigma=1)
-
 # labels_grad = gaussian_gradient_magnitude(data_labels_u.copy(), sigma=1)
 
 print('Multiplying and summing strels - convolution kernel')
@@ -493,14 +523,10 @@ t = time()
 out_strel = np.zeros(mask.shape, dtype='f8')
 strel = ball(10)
 print('Strel shape', strel.shape)
-
 out_strel = convolve(mask, strel.astype('f8'), mode='constant', cval=0.0)
 
 # img3d_strel_mult(mask, out_strel, strel.astype('f8'))
 print('Duration ', time() - t)
-
-
-
 
 # strel = np.ones((41, 41, 41))
 # res = binary_fill_holes(maskb, structure=strel) # origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
@@ -519,14 +545,14 @@ print('Duration ', time() - t)
 mask2 = np.zeros(mask.shape, dtype='f8')
 mask2[out_strel < 300] = 1.0
 
-print('Ndimage fill holes')
-t = time()
-res = binary_fill_holes(mask, strel)
-print('Duration ', time() - t)
+# print('Ndimage fill holes')
+# t = time()
+# res = binary_fill_holes(mask, strel)
+# print('Duration ', time() - t)
 
 print("Notice this")
 new_mask = np.zeros(data_labels.shape)
-new_mask[data_labels==3] = 1 # where 3 is the largest label
+new_mask[data_labels==3] = 1 # where 3 is the largest label??
 
 
 if verbose:
@@ -534,9 +560,10 @@ if verbose:
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(data_labels_rs, aff), (data_labels, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
     # this maybe useful
-    horizon(images=[(data_labels, aff), (Wgrad, aff), ((Wgrad > 100).astype('f8'), aff), (mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(data_labels, aff), (Wgrad, aff), ((Wgrad > 100).astype('f8'), aff), (mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
 
 # Select random patches from labels
 # patch = (5, 5, 5)
