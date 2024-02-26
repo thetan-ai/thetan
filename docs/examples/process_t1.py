@@ -438,6 +438,7 @@ if gradient_image:
     X[:, 3] += 2 * Wgrad.ravel()
 
     X2 = X.copy()
+    # Removing 4 Wgrads from X[:, 3] provides - 2 * Wgrad of original
     X2[:, 3] -= 4 * Wgrad.ravel()
 
 
