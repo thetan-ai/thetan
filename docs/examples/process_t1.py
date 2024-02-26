@@ -11,6 +11,7 @@ from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
 from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion
 from skimage.segmentation import flood, flood_fill
+from skimage.morphology import ball
 
 
 def expand_voxels(data, patch_size=(3, 3, 3)):
@@ -19,6 +20,8 @@ def expand_voxels(data, patch_size=(3, 3, 3)):
 
 
 def patch_sum_diffs(data, patch):
+    """ Sum differences in linearized patches
+    """
 
     data2 = np.pad(data, patch[0]//2)
     data2_enh = patchify(data2, patch)
@@ -29,13 +32,41 @@ def patch_sum_diffs(data, patch):
 
     return np.sum(np.diff(data2_enh, axis=-1), axis=-1)
 
-def patch_features(data, patch):
+def patch_sums(data, patch):
+    """ Sums in linearized patches
+    """
 
     data2 = np.pad(data, patch[0]//2)
     data2_enh = patchify(data2, patch)
+    data2_enh = data2_enh.reshape(data2_enh.shape[0],
+                                  data2_enh.shape[1], 
+                                  data2_enh.shape[2],
+                                  patch[0] * patch[1] * patch[2])
+
+    return np.sum(data2_enh, axis=-1)
+
+
+def patch_features(data, patch, step):
+    """ Create a feature vector
+    """
+    data2 = np.pad(data, patch[0]//2)
+    data2_enh = patchify(data2, patch, step)
     data2_enh = data2_enh.reshape(np.prod(data2_enh.shape[:3]), patch[0] * patch[1] * patch[2])
 
     return data2_enh
+
+def patch_down(data, patch, step):
+    """ Downsample using steps
+    """
+    data_step = patchify(data, patch, step=step)
+    data_step_shape = data_step.shape
+    data_step2 = data_step.reshape(data_step_shape[0], 
+                                   data_step_shape[1], 
+                                   data_step_shape[2], 
+                                   np.prod(data_step_shape[3:]))
+    data_step2 = data_step2.mean(axis=-1)
+
+    return data_step2
 
 def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False, z_scoring=True, patch=None):
 
@@ -265,6 +296,7 @@ def X_to_many_3D(X, data_dims):
 
     return X0, X1, X2, X3
 
+
 def print_ranges(X):
 
     print('Looking at the range of values per feature')
@@ -302,6 +334,29 @@ def looking_for_big_objects(data_labels, labeled_array, unique_labels):
 
     print()
 
+
+def mask_lt(data_labels, centroids, bk_thr=300):
+    """ Remove low intensities using label centroids
+    """
+    # bk_thr = 300 # 400 or 250 interesting too
+    data_labels_u = data_labels.copy()
+    indx = np.where(centroids[:, 3] < bk_thr)[0]
+    min_indx = np.argmin(centroids[:, 3])
+
+    for indx_ in indx:
+        data_labels_u[data_labels == indx_] = min_indx
+
+    # X[:, 3][tmp.ravel() == min_indx] = 0
+    mask = data_labels_u == min_indx
+    maskb = mask.copy()
+    mask = mask.astype('f8')
+    return mask
+
+
+def print_centroids(centroids):
+    for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
+        print(idx, c)
+    print()
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -380,15 +435,21 @@ if auto_theta:
 gradient_image = True
 if gradient_image:
     Wgrad = gaussian_gradient_magnitude(W, sigma=1)
+    X[:, 3] += 2 * Wgrad.ravel()
 
-dog = True
+    X2 = X.copy()
+    X2[:, 3] -= 4 * Wgrad.ravel()
+
+
+dog = False
 if dog:
 
     G2 = gaussian_filter(W, sigma=2)
     G1 = gaussian_filter(W, sigma=1)
     G2G1 = G2 - G1
 
-X[:, 3] += 2 * Wgrad.ravel()
+
+
 
 # X[:, 3][X[:, 3] > 900.0] = 900.0
 
@@ -403,25 +464,32 @@ print()
 # B0 likes 80?
 # theta_value = 80.
 # theta_value = 100.
-theta_value = 120.
 
+theta_value = 120.
 # theta_value = 150.
 
-print('Applying Berserker 2 on X (i,j,k,w)')
+print('Applying Berserker 2 on X (i,j,k,3w + 2gradW)')
 t = time()
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 print('Duration ', time() - t)
-## data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+#data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 
+print('Applying Berserker 2 on X (i,j,k,3w - 2gradW)')
 t = time()
-data_labels_r, centroids_r = berserker2_to_3D_labels(X, theta_value * .75, data_dims=data.shape, verbose=False)
+data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value, data_dims=data.shape, verbose=False)
 print('Duration ', time() - t)
 
-print('Centroids')
-print('---------')
-for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
-    print(idx, c)
-print()
+# t = time()
+# data_labels_r, centroids_r = berserker2_to_3D_labels(X, theta_value * .75, data_dims=data.shape, verbose=False)
+# print('Duration ', time() - t)
+
+
+print('Centroids\n------')
+print_centroids(centroids)
+
+print('Centroids2\n-----')
+print_centroids(centroids2)
+
 
 bk_threshold = False
 if bk_threshold:
@@ -439,39 +507,55 @@ if bk_threshold:
 # dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 # unique_labels, counts = np.unique(data_labels, return_counts=True)
 
-# Remove low intensities using label centroids
-bk_thr = 300 # 400 or 250 interesting too
-data_labels_u = data_labels.copy()
-indx = np.where(centroids[:, 3] < bk_thr)[0]
-min_indx = np.argmin(centroids[:, 3])
+mask = mask_lt(data_labels, centroids, bk_thr=300)
+mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
 
-for indx_ in indx:
-    data_labels_u[data_labels == indx_] = min_indx
+mask3 = patch_sums(mask2, (5, 5, 5))
+mask4 = np.zeros(mask3.shape)
+# currently very strict - fixed at 0
+mask4[mask3 == 0] = 1
+data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
-# X[:, 3][tmp.ravel() == min_indx] = 0
-mask = data_labels_u == min_indx
-maskb = mask.copy()
-mask = mask.astype('f8')
+print('Focused')
+sizes = []
+for i in range(num_focused):
+
+    cur_sz =data_labels_focused[data_labels_focused == i].sum()
+    sizes.append(cur_sz)
+
+sizes = np.asarray(sizes)
+print(sizes)
+print(sizes.argmax(), sizes.max())
+
+mask5 = np.zeros(mask4.shape)
+mask5[data_labels_focused == sizes.argmax()] = 1
+
 
 # maskz = zoom(mask, 0.25)
-
-
 # data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
-Wf = patch_features(W, (3, 3, 3))
-Wf_labels, centroids = berserker2_to_3D_labels(Wf, 2000, W.shape, verbose=False)
-Wfsorted = np.sort(Wf, axis=-1)
-Wf_labels2, centroids2 = berserker2_to_3D_labels(Wfsorted, 1000, W.shape, verbose=False)
 
-# print('Calculating integrals')
-# t = time()
-# out_integral = np.zeros(mask.shape, dtype='f8')
-# print('Integral shape', 10 * 2 + 1)
-# # TODO
-# # enable actual ball strel
-# img3d_integrals(mask, out_integral, 10)
-# print('Duration is ', time() - t)
+watershed = False
 
-# mask2 = binary_erosion(1 - mask, iterations=1)
+if watershed:
+
+    from scipy.ndimage import watershed_ift
+
+    markers = np.zeros(mask.shape, dtype=np.int16)
+    markers[0, 0, 0] = 1
+    markers[150, 142, 86] = 2
+    markers[107, 106, 75] = 3
+
+    t = time()
+    wift = watershed_ift(mask.astype('uint8'), markers)
+    print('Duration ', time() - t)
+
+patch_explorations = False
+if patch_explorations:
+
+    Wf = patch_features(W, (3, 3, 3))
+    Wf_labels, centroids = berserker2_to_3D_labels(Wf, 2000, W.shape, verbose=False)
+    Wfsorted = np.sort(Wf, axis=-1)
+    Wf_labels2, centroids2 = berserker2_to_3D_labels(Wfsorted, 1000, W.shape, verbose=False)
 
 
 maskedop = False
@@ -496,8 +580,7 @@ if maskedop:
 # data_labels2[mask < 1] = -1
 
 
-from skimage.morphology import ball
-from skimage.segmentation import flood, flood_fill
+
 
 # res = flood_fill(mask, (128, 128, 75), 0.5, connectivity=1)
 
@@ -509,58 +592,59 @@ from scipy.ndimage import binary_opening, binary_closing
 # Randomly select voxels
 # If region around it is all black then color it.
 
-samples = 100
+rand_sel = False
+if rand_sel:
+    samples = 100
+    ijks = np.where(mask.astype(np.bool_) == 0)
+    random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
+    # mask_grad = gaussian_gradient_magnitude(mask.copy(), sigma=1)
+    # labels_grad = gaussian_gradient_magnitude(data_labels_u.copy(), sigma=1)
 
-ijks = np.where(maskb == 0)
+convolve_ball = False
 
-random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
+if convolve_ball:
+    print('Multiplying and summing strels - convolution kernel')
+    t = time()
+    out_strel = np.zeros(mask.shape, dtype='f8')
+    strel = ball(10)
+    print('Strel shape', strel.shape)
+    out_strel = convolve(mask, strel.astype('f8'), mode='constant', cval=0.0)
 
-# mask_grad = gaussian_gradient_magnitude(mask.copy(), sigma=1)
-# labels_grad = gaussian_gradient_magnitude(data_labels_u.copy(), sigma=1)
+    # img3d_strel_mult(mask, out_strel, strel.astype('f8'))
+    print('Duration ', time() - t)
 
-print('Multiplying and summing strels - convolution kernel')
-t = time()
-out_strel = np.zeros(mask.shape, dtype='f8')
-strel = ball(10)
-print('Strel shape', strel.shape)
-out_strel = convolve(mask, strel.astype('f8'), mode='constant', cval=0.0)
+    # strel = np.ones((41, 41, 41))
+    # res = binary_fill_holes(maskb, structure=strel) # origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
+    # # res = res.astype('f8')
+    # print('Starting opening operation using a ball kernel of size', strel.shape)
+    # res = binary_closing(maskb, strel)
 
-# img3d_strel_mult(mask, out_strel, strel.astype('f8'))
-print('Duration ', time() - t)
+    # maskb = np.pad(maskb, 20)
 
-# strel = np.ones((41, 41, 41))
-# res = binary_fill_holes(maskb, structure=strel) # origin=(data.shape[0]//2, data.shape[1]//2, data.shape[2]//2))
-# # res = res.astype('f8')
-# print('Starting opening operation using a ball kernel of size', strel.shape)
-# res = binary_closing(maskb, strel)
+    # res, num_features = label(maskb, structure=strel)
 
-# maskb = np.pad(maskb, 20)
+    # res = res[21:-20, 21:-20, 21:-20 ]
 
-# res, num_features = label(maskb, structure=strel)
+    # res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
 
-# res = res[21:-20, 21:-20, 21:-20 ]
-
-# res = flood_fill(maskb, seed_point=(128, 128, 75), new_value=1., selem=strel, connectivity=3)
-
-mask2 = np.zeros(mask.shape, dtype='f8')
-mask2[out_strel < 300] = 1.0
+    mask2 = np.zeros(mask.shape, dtype='f8')
+    mask2[out_strel < 300] = 1.0
 
 # print('Ndimage fill holes')
 # t = time()
 # res = binary_fill_holes(mask, strel)
 # print('Duration ', time() - t)
 
-print("Notice this")
-new_mask = np.zeros(data_labels.shape)
-new_mask[data_labels==3] = 1 # where 3 is the largest label??
 
 
 if verbose:
     aff = np.eye(4)
+    # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[ (mask5, aff), (data_labels_focused, aff), (mask4, aff), (mask3, aff), (data_labels2, aff), (mask2, aff), (data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(data_labels_rs, aff), (data_labels, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
+    # horizon(images=[(Wf_labels2, aff), (Wf_labels, aff), (data_labels, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
     # this maybe useful
     # horizon(images=[(data_labels, aff), (Wgrad, aff), ((Wgrad > 100).astype('f8'), aff), (mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
