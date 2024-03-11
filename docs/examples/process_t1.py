@@ -26,7 +26,7 @@ def patch_sum_diffs(data, patch):
     data2 = np.pad(data, patch[0]//2)
     data2_enh = patchify(data2, patch)
     data2_enh = data2_enh.reshape(data2_enh.shape[0],
-                                  data2_enh.shape[1], 
+                                  data2_enh.shape[1],
                                   data2_enh.shape[2],
                                   patch[0] * patch[1] * patch[2])
 
@@ -39,7 +39,7 @@ def patch_sums(data, patch):
     data2 = np.pad(data, patch[0]//2)
     data2_enh = patchify(data2, patch)
     data2_enh = data2_enh.reshape(data2_enh.shape[0],
-                                  data2_enh.shape[1], 
+                                  data2_enh.shape[1],
                                   data2_enh.shape[2],
                                   patch[0] * patch[1] * patch[2])
 
@@ -60,9 +60,9 @@ def patch_down(data, patch, step):
     """
     data_step = patchify(data, patch, step=step)
     data_step_shape = data_step.shape
-    data_step2 = data_step.reshape(data_step_shape[0], 
-                                   data_step_shape[1], 
-                                   data_step_shape[2], 
+    data_step2 = data_step.reshape(data_step_shape[0],
+                                   data_step_shape[1],
+                                   data_step_shape[2],
                                    np.prod(data_step_shape[3:]))
     data_step2 = data_step2.mean(axis=-1)
 
@@ -358,8 +358,13 @@ def print_centroids(centroids):
         print(idx, c)
     print()
 
+
+
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
@@ -372,7 +377,7 @@ def print_centroids(centroids):
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -448,9 +453,6 @@ if dog:
     G2 = gaussian_filter(W, sigma=2)
     G1 = gaussian_filter(W, sigma=1)
     G2G1 = G2 - G1
-
-
-
 
 # X[:, 3][X[:, 3] > 900.0] = 900.0
 
@@ -641,7 +643,7 @@ if convolve_ball:
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[ (mask5, aff), (data_labels_focused, aff), (mask4, aff), (mask3, aff), (data_labels2, aff), (mask2, aff), (data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(mask5, aff), (data_labels_focused, aff), (mask4, aff), (mask3, aff), (data_labels2, aff), (mask2, aff), (data_labels, aff), (mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
