@@ -363,7 +363,7 @@ def print_centroids(centroids):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -378,7 +378,7 @@ def print_centroids(centroids):
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -635,8 +635,8 @@ if convolve_ball:
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask5, aff, 'mask5'), (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'), 
-                    (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'), 
+    horizon(images=[(mask5, aff, 'mask5'), (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
+                    (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
                     (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
