@@ -361,7 +361,7 @@ def print_centroids(centroids):
 
 
 # T1 dataset
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
@@ -378,6 +378,7 @@ fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -424,7 +425,7 @@ X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3., center_dist=Fals
 
 Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
-W10 = W // 100
+# W10 = W // 100
 Wcopy = W.copy()
 
 
@@ -432,7 +433,6 @@ Wcopy = W.copy()
 auto_theta = False
 auto_range = (70.0, 150., 10.)
 # auto_range = (50.0, 80., 10.)
-
 if auto_theta:
     print('Searching for Theta')
     find_theta(X, *auto_range, W)
@@ -486,7 +486,6 @@ print('Duration ', time() - t)
 # data_labels_r, centroids_r = berserker2_to_3D_labels(X, theta_value * .75, data_dims=data.shape, verbose=False)
 # print('Duration ', time() - t)
 
-
 print('Centroids\n------')
 print_centroids(centroids)
 
@@ -505,7 +504,6 @@ if bk_threshold:
     min_bk_idx = bk_idx.min()
     for idx in bk_idx:
         data_labels[data_labels == idx] = min_bk_idx
-
 
 # dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 # unique_labels, counts = np.unique(data_labels, return_counts=True)
@@ -538,7 +536,6 @@ mask5[data_labels_focused == sizes.argmax()] = 1
 # data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
 
 watershed = False
-
 if watershed:
 
     from scipy.ndimage import watershed_ift
@@ -559,7 +556,6 @@ if patch_explorations:
     Wf_labels, centroids = berserker2_to_3D_labels(Wf, 2000, W.shape, verbose=False)
     Wfsorted = np.sort(Wf, axis=-1)
     Wf_labels2, centroids2 = berserker2_to_3D_labels(Wfsorted, 1000, W.shape, verbose=False)
-
 
 maskedop = False
 if maskedop:
@@ -582,9 +578,6 @@ if maskedop:
 
 # data_labels2[mask < 1] = -1
 
-
-
-
 # res = flood_fill(mask, (128, 128, 75), 0.5, connectivity=1)
 
 # res = flood(1-mask, (128, 128, 75), tolerance=10)
@@ -604,7 +597,6 @@ if rand_sel:
     # labels_grad = gaussian_gradient_magnitude(data_labels_u.copy(), sigma=1)
 
 convolve_ball = False
-
 if convolve_ball:
     print('Multiplying and summing strels - convolution kernel')
     t = time()
@@ -643,7 +635,9 @@ if convolve_ball:
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask5, aff), (data_labels_focused, aff), (mask4, aff), (mask3, aff), (data_labels2, aff), (mask2, aff), (data_labels, aff), (mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
+    horizon(images=[(mask5, aff, 'mask5'), (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'), 
+                    (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'), 
+                    (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
