@@ -362,7 +362,7 @@ def print_centroids(centroids):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -377,7 +377,7 @@ def print_centroids(centroids):
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -444,7 +444,27 @@ if gradient_image:
     X2 = X.copy()
     # Removing 4 Wgrads from X[:, 3] provides - 2 * Wgrad of original
     X2[:, 3] -= 4 * Wgrad.ravel()
+    Ivol2, Jvol2, Kvol2, W2 = X_to_many_3D(X2, data.shape)
 
+plus_original = True
+if plus_original:
+
+    X_orig = X.copy()
+    X_orig[:, 3] = Wcopy.ravel()
+
+locality_check = True
+if locality_check:
+    patch = (3, 3, 3)
+
+    Wpadded = np.pad(Wcopy, patch[0] // 2)
+    Wpatch = patchify(Wpadded, (3, 3, 3))
+    t = 3
+
+# mask_neighb = np.pad(mask, patch[0] // 2)
+# mask_neighb = patchify(mask_neighb, patch)
+
+# mask_enh = mask_neighb.reshape((data.shape[0] * data.shape[1] * data.shape[2]),
+#                                 (patch[0] * patch[1] * patch[2]))
 
 dog = False
 if dog:
@@ -474,7 +494,12 @@ print('Applying Berserker 2 on X (i,j,k,3w + 2gradW)')
 t = time()
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 print('Duration ', time() - t)
-#data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+
+print('Applying Berserker 2 on X (i,j,k,3w) - 0.8 of threshold')
+t = time()
+data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_orig, theta_value * 0.8, data_dims=data.shape, verbose=False)
+print('Duration ', time() - t)
+
 
 print('Applying Berserker 2 on X (i,j,k,3w - 2gradW)')
 t = time()
@@ -491,6 +516,8 @@ print_centroids(centroids)
 print('Centroids2\n-----')
 print_centroids(centroids2)
 
+print('Centroids tmp\n-----')
+print_centroids(centroids_tmp)
 
 bk_threshold = False
 if bk_threshold:
@@ -513,9 +540,8 @@ mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
-
-mask4[mask3 == 0] = 1
-# mask4[mask3 < 20] = 1
+# mask4[mask3 == 0] = 1
+mask4[mask3 < 5] = 1
 data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
 print('Focused')
@@ -632,11 +658,14 @@ if convolve_ball:
 # print('Duration ', time() - t)
 
 
-
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask5, aff, 'mask5'), (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
+    # horizon(images=[(mask5, aff, 'mask5'), (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
+    #                 (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
+    #                 (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
+
+    horizon(images=[(mask5, aff, 'mask5'), (data_labels_tmp, aff, 'labels_tmp'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
                     (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
