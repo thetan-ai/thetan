@@ -513,7 +513,9 @@ mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
+
 mask4[mask3 == 0] = 1
+# mask4[mask3 < 20] = 1
 data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
 print('Focused')
