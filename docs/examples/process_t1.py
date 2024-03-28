@@ -362,7 +362,7 @@ def print_centroids(centroids):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -377,7 +377,7 @@ fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.n
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -454,10 +454,17 @@ if plus_original:
 
 locality_check = True
 if locality_check:
-    patch = (3, 3, 3)
+    patch_sz = (3, 3, 3)
+    Wpadded = np.pad(Wcopy, patch_sz[0] // 2)
+    Wpatch = patchify(Wpadded, patch_sz)
+    Wpatch = Wpatch.reshape(data.shape[0] * data.shape[1] * data.shape[2], np.prod(patch_sz))
+    Xpatch = np.zeros((Wpatch.shape[0], 4))
+    Xpatch[:, 0] = Wpatch.min(axis=-1)
+    Xpatch[:, 1] = Wpatch.mean(axis=-1)
+    Xpatch[:, 2] = Wpatch.max(axis=-1)
+    Xpatch[:, 3] = Wcopy.ravel()
+    del Wpatch
 
-    Wpadded = np.pad(Wcopy, patch[0] // 2)
-    Wpatch = patchify(Wpadded, (3, 3, 3))
     t = 3
 
 # mask_neighb = np.pad(mask, patch[0] // 2)
@@ -494,17 +501,32 @@ print('Applying Berserker 2 on X (i,j,k,3w + 2gradW)')
 t = time()
 data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
 print('Duration ', time() - t)
+print()
 
 print('Applying Berserker 2 on X (i,j,k,3w) - 0.8 of threshold')
 t = time()
 data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_orig, theta_value * 0.8, data_dims=data.shape, verbose=False)
 print('Duration ', time() - t)
-
+print()
 
 print('Applying Berserker 2 on X (i,j,k,3w - 2gradW)')
 t = time()
 data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value, data_dims=data.shape, verbose=False)
 print('Duration ', time() - t)
+print()
+
+
+mask = mask_lt(data_labels, centroids, bk_thr=300)
+mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
+
+Xpatch[mask.ravel()==0] = np.zeros(4)
+
+print('Applying Berserker 2 on Xpatch')
+t = time()
+data_labels_p, centroids_p = berserker2_to_3D_labels(Xpatch, theta_value, data_dims=data.shape, verbose=False)
+print('Duration ', time() - t)
+print()
+
 
 # t = time()
 # data_labels_r, centroids_r = berserker2_to_3D_labels(X, theta_value * .75, data_dims=data.shape, verbose=False)
@@ -518,6 +540,10 @@ print_centroids(centroids2)
 
 print('Centroids tmp\n-----')
 print_centroids(centroids_tmp)
+
+print('Centroids p\n-----')
+print_centroids(centroids_p)
+
 
 bk_threshold = False
 if bk_threshold:
@@ -534,8 +560,7 @@ if bk_threshold:
 # dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 # unique_labels, counts = np.unique(data_labels, return_counts=True)
 
-mask = mask_lt(data_labels, centroids, bk_thr=300)
-mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
+
 
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
@@ -544,11 +569,11 @@ mask4 = np.zeros(mask3.shape)
 mask4[mask3 < 5] = 1
 data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
-print('Focused')
+print('Focused - Localizing ...')
 sizes = []
 for i in range(num_focused):
 
-    cur_sz =data_labels_focused[data_labels_focused == i].sum()
+    cur_sz = data_labels_focused[data_labels_focused == i].sum()
     sizes.append(cur_sz)
 
 sizes = np.asarray(sizes)
@@ -558,9 +583,36 @@ print(sizes.argmax(), sizes.max())
 mask5 = np.zeros(mask4.shape)
 mask5[data_labels_focused == sizes.argmax()] = 1
 
+cx = X[mask5.ravel() == 1, 0].mean()
+cy = X[mask5.ravel() == 1, 1].mean()
+cz = X[mask5.ravel() == 1, 2].mean()
+
+Xdist = np.zeros((X.shape[0], 2))
+
+Xdist[:, 0] = np.sqrt((X[:, 0] - cx) ** 2 + (X[:, 1] - cy) ** 2 + (X[:, 2] - cz) ** 2)
+Xdist[:, 1] = 200 * (1 - mask.ravel())
+
+theta_value_d = 40
+print('Applying Berserker 2 on Xdist')
+t = time()
+data_labels_d, centroids_d = berserker2_to_3D_labels(Xdist, theta_value_d, data_dims=data.shape, verbose=False)
+print('Duration ', time() - t)
+print()
 
 # maskz = zoom(mask, 0.25)
 # data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
+
+floodfill = True
+if floodfill:
+    from skimage.morphology import flood_fill
+
+    mask_ff = flood_fill(mask, (115, 76, 160), 50)
+    mask_ff2 = flood_fill(mask, (135, 209, 194), 30)
+    # TODO
+    # two things to check
+    # a) use flood or flood_fill on the image gradients (randomly pick 100 seeds)
+    # b) use flood fill only on the W[mask==0/1] or similar
+
 
 watershed = False
 if watershed:
@@ -661,13 +713,14 @@ if convolve_ball:
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    # horizon(images=[(mask5, aff, 'mask5'), (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
-    #                 (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
-    #                 (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
-
-    horizon(images=[(mask5, aff, 'mask5'), (data_labels_tmp, aff, 'labels_tmp'),
+    horizon(images=[(data_labels_d, aff, 'labels_d'), (data_labels_p, aff, 'labels_min_mean_max'), (mask5, aff, 'mask5'),
+                    (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
                     (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
+
+    # horizon(images=[(mask5, aff, 'mask5'), (data_labels_tmp, aff, 'labels_tmp'),
+    #                 (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
+    #                 (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
     # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
     # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
