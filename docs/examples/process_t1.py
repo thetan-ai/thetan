@@ -362,7 +362,7 @@ def print_centroids(centroids):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -377,7 +377,7 @@ def print_centroids(centroids):
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -503,12 +503,6 @@ data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.
 print('Duration ', time() - t)
 print()
 
-print('Applying Berserker 2 on X (i,j,k,3w) - 0.8 of threshold')
-t = time()
-data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_orig, theta_value * 0.8, data_dims=data.shape, verbose=False)
-print('Duration ', time() - t)
-print()
-
 print('Applying Berserker 2 on X (i,j,k,3w - 2gradW)')
 t = time()
 data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value, data_dims=data.shape, verbose=False)
@@ -519,13 +513,14 @@ print()
 mask = mask_lt(data_labels, centroids, bk_thr=300)
 mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
 
-Xpatch[mask.ravel()==0] = np.zeros(4)
+if locality_check:
 
-print('Applying Berserker 2 on Xpatch')
-t = time()
-data_labels_p, centroids_p = berserker2_to_3D_labels(Xpatch, theta_value, data_dims=data.shape, verbose=False)
-print('Duration ', time() - t)
-print()
+    Xpatch[mask.ravel()==0] = np.zeros(4)
+    print('Applying Berserker 2 on Xpatch')
+    t = time()
+    data_labels_p, centroids_p = berserker2_to_3D_labels(Xpatch, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
 
 
 # t = time()
@@ -538,11 +533,6 @@ print_centroids(centroids)
 print('Centroids2\n-----')
 print_centroids(centroids2)
 
-print('Centroids tmp\n-----')
-print_centroids(centroids_tmp)
-
-print('Centroids p\n-----')
-print_centroids(centroids_p)
 
 
 bk_threshold = False
@@ -583,26 +573,30 @@ print(sizes.argmax(), sizes.max())
 mask5 = np.zeros(mask4.shape)
 mask5[data_labels_focused == sizes.argmax()] = 1
 
+# Center of mass calculation for mask 5 (focused)
+
 cx = X[mask5.ravel() == 1, 0].mean()
 cy = X[mask5.ravel() == 1, 1].mean()
 cz = X[mask5.ravel() == 1, 2].mean()
 
-Xdist = np.zeros((X.shape[0], 2))
 
-Xdist[:, 0] = np.sqrt((X[:, 0] - cx) ** 2 + (X[:, 1] - cy) ** 2 + (X[:, 2] - cz) ** 2)
-Xdist[:, 1] = 200 * (1 - mask.ravel())
+distance_field = False
+if distance_field:
+    theta_value_d = 40
+    print('Applying Berserker 2 on Xdist')
+    t = time()
+    Xdist = np.zeros((X.shape[0], 2))
+    Xdist[:, 0] = np.sqrt((X[:, 0] - cx) ** 2 + (X[:, 1] - cy) ** 2 + (X[:, 2] - cz) ** 2)
+    Xdist[:, 1] = 200 * (1 - mask.ravel())
 
-theta_value_d = 40
-print('Applying Berserker 2 on Xdist')
-t = time()
-data_labels_d, centroids_d = berserker2_to_3D_labels(Xdist, theta_value_d, data_dims=data.shape, verbose=False)
-print('Duration ', time() - t)
-print()
+    data_labels_d, centroids_d = berserker2_to_3D_labels(Xdist, theta_value_d, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
 
 # maskz = zoom(mask, 0.25)
 # data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
 
-floodfill = True
+floodfill = False
 if floodfill:
     from skimage.morphology import flood_fill
 
@@ -614,20 +608,21 @@ if floodfill:
     # b) use flood fill only on the W[mask==0/1] or similar
     # c) use flood on the localized (focused mask)
 
-
 watershed = False
 if watershed:
 
     from scipy.ndimage import watershed_ift
 
-    markers = np.zeros(mask.shape, dtype=np.int16)
-    markers[0, 0, 0] = 1
-    markers[150, 142, 86] = 2
-    markers[107, 106, 75] = 3
+    # markers = np.zeros(mask.shape, dtype=np.int16)
+    # markers[0, 0, 0] = 1
+    # markers[150, 142, 86] = 2
+    # markers[107, 106, 75] = 3
 
     t = time()
-    wift = watershed_ift(mask.astype('uint8'), markers)
+    wift = watershed_ift(W, mask5.astype('uint8'))
+
     print('Duration ', time() - t)
+    print()
 
 patch_explorations = False
 if patch_explorations:
@@ -714,90 +709,12 @@ if convolve_ball:
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(data_labels_d, aff, 'labels_d'), (data_labels_p, aff, 'labels_min_mean_max'), (mask5, aff, 'mask5'),
+    horizon(images=[(mask5, aff, 'mask5'),
                     (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
                     (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
 
-    # horizon(images=[(mask5, aff, 'mask5'), (data_labels_tmp, aff, 'labels_tmp'),
-    #                 (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
-    #                 (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
-    # horizon(images=[(data_labels2, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    # horizon(images=[(out_strel, aff), (out_integral, aff), (data_labels2, aff), (mask2.astype('f8'), aff), (1 - mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (Wgrad.max()-Wgrad, aff), (W, aff), (Wcopy, aff)])
-    # horizon(images=[(out_strel, aff), (1 - mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-    # horizon(images=[(Wf_labels2, aff), (Wf_labels, aff), (data_labels, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-    # horizon(images=[(mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-    # this maybe useful
-    # horizon(images=[(data_labels, aff), (Wgrad, aff), ((Wgrad > 100).astype('f8'), aff), (mask2, aff), (out_strel, aff), (mask.astype('f8'), aff), (W, aff), (Wcopy, aff)])
-
-# Select random patches from labels
-# patch = (5, 5, 5)
-# # patch = (11, 11, 11)
-
-# mask_neighb = np.pad(mask, patch[0] // 2)
-# mask_neighb = patchify(mask_neighb, patch)
-
-# mask_enh = mask_neighb.reshape((data.shape[0] * data.shape[1] * data.shape[2]),
-#                                 (patch[0] * patch[1] * patch[2]))
-# density_vol = np.sum(mask_enh, axis=-1)
-
-# density_vol = density_vol.reshape(data.shape)
-
-# if verbose:
-#     aff = np.eye(4)
-#     horizon(images=[(density_vol, aff), (mask.astype('f8'), aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-# horizon(images=[(res.astype('f8'), aff), (mask.astype('f8'), aff), (data_labels_u, aff), (data_labels, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
 
 
-# gaussian magnitude of the labels can distinguish neighboring regions
-
-# unique_labels2, counts2 = np.unique(data_labels2, return_counts=True)
-
-# samples = 20
-
-# mins = []
-# means = []
-# maxs = []
-
-# data_loc = np.zeros(W.shape)
-
-# for l in unique_labels2.astype('i8'):
-
-#     ijks = np.where(data_labels2 == l)
-
-#     random_selection = np.random.choice(len(ijks[0]), samples, replace=False)
-#     i_s = ijks[0][random_selection]
-#     j_s = ijks[1][random_selection]
-#     k_s = ijks[2][random_selection]
-#     ijks_rs = np.vstack([i_s, j_s, k_s]).T
-
-#     print('Current label >> ', l)
-#     for rec in range(samples):
-#         # print(data_enh[tuple(ijks_rs[rec])].ravel())
-
-#         i, j, k = tuple(ijks_rs[rec])
-
-#         data_loc[i, j, k] = l
-
-#         min_ = np.floor(data_enh[tuple(ijks_rs[rec])].min())
-#         mean_ = np.floor(data_enh[tuple(ijks_rs[rec])].mean())
-#         max_ = np.floor(data_enh[tuple(ijks_rs[rec])].max())
-
-#         print(i, j, k, "----" , min_, mean_, max_)
-#         mins.append(min_)
-#         means.append(mean_)
-#         maxs.append(max_)
-
-#     print()
-#     t = 1
-
-
-# import matplotlib.pyplot as plt
-
-# plt.figure()
-# plt.scatter(mins, maxs, c=np.repeat(unique_labels2, 100), cmap='tab20c')
-# plt.legend()
-# plt.grid()
-# plt.show()
 
 t = 2

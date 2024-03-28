@@ -1,7 +1,6 @@
 # distutils: language = c
 # cython: wraparound=False, cdivision=True, boundscheck=False, initializedcheck=False
 
-
 cimport cython
 import numpy as np
 cimport numpy as cnp
@@ -30,7 +29,7 @@ cdef extern from "float.h":
     cdef double DBL_MAX
     cdef double DBL_MIN
 
-ctypedef double (*metricp)(double *, double *, cnp.npy_intp) nogil
+ctypedef double (*metricp)(double *, double *, cnp.npy_intp) noexcept nogil
 
 ctypedef struct Linkedlist:
 
@@ -47,7 +46,7 @@ ctypedef struct Node:
 
 
 
-cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
+cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
         double summ = 0.0
@@ -58,7 +57,7 @@ cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     return sqrt(summ)
 
 
-cdef double inf_norm(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
+cdef double inf_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
         double overall_max = DBL_MIN
@@ -72,7 +71,7 @@ cdef double inf_norm(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     return overall_max
 
 
-cdef double norm_ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
+cdef double norm_ssd(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
         double summ = 0.0
@@ -83,7 +82,7 @@ cdef double norm_ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     return summ / D
 
 
-cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
+cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
         double summ = 0.0
@@ -94,7 +93,7 @@ cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) nogil:
     return summ
 
 
-cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) nogil:
+cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) noexcept nogil:
     cdef:
         int i
         int n = D // 4
@@ -1629,13 +1628,13 @@ def img3d_integrals(double[:, :, ::1] img3d, double[:, :, ::1] out, cnp.npy_intp
         for i in range(sz, I - sz):
             for j in range(sz, J - sz):
                 for k in range(sz, K - sz):
-                        
+
                         for l in range(-sz, sz + 1):
                             for m in range(-sz, sz + 1):
                                 for n in range(-sz, sz + 1):
 
                                     out[i, j, k] += img3d[i + l, j + m, k + n]
-                        
+
     return 1
 
 
