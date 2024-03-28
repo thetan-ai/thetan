@@ -85,7 +85,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
         data3_enh = data3_enh.reshape((data2.shape[0] * data2.shape[1] * data2.shape[2]),
                                       (patch[0] * patch[1] * patch[2]))
         mean_enh = np.mean(data3_enh, axis=-1)
-        median_enh = np.median(data3_enh, axis=-1)
+        # median_enh = np.median(data3_enh, axis=-1)
 
     X = img3d_to_ijkv_features(data2)
 
@@ -452,7 +452,7 @@ if plus_original:
     X_orig = X.copy()
     X_orig[:, 3] = Wcopy.ravel()
 
-locality_check = True
+locality_check = False
 if locality_check:
     patch_sz = (3, 3, 3)
     Wpadded = np.pad(Wcopy, patch_sz[0] // 2)
@@ -523,16 +523,11 @@ if locality_check:
     print()
 
 
-# t = time()
-# data_labels_r, centroids_r = berserker2_to_3D_labels(X, theta_value * .75, data_dims=data.shape, verbose=False)
-# print('Duration ', time() - t)
-
 print('Centroids\n------')
 print_centroids(centroids)
 
 print('Centroids2\n-----')
 print_centroids(centroids2)
-
 
 
 bk_threshold = False
@@ -556,29 +551,56 @@ mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
 # mask4[mask3 == 0] = 1
-mask4[mask3 < 5] = 1
+mask4[mask3 < 10] = 1
 data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
 print('Focused - Localizing ...')
+print('Printing sizes ...')
 sizes = []
 for i in range(num_focused):
 
     cur_sz = data_labels_focused[data_labels_focused == i].sum()
     sizes.append(cur_sz)
+    print(cur_sz)
 
 sizes = np.asarray(sizes)
-print(sizes)
 print(sizes.argmax(), sizes.max())
+
 
 mask5 = np.zeros(mask4.shape)
 mask5[data_labels_focused == sizes.argmax()] = 1
 
 # Center of mass calculation for mask 5 (focused)
-
+# This in world coordinates
 cx = X[mask5.ravel() == 1, 0].mean()
 cy = X[mask5.ravel() == 1, 1].mean()
 cz = X[mask5.ravel() == 1, 2].mean()
 
+print('Applying flood fill process ...')
+
+t = time()
+
+rand_sz = 100
+fill = 100
+tol = 10
+
+print('Selecting ', rand_sz, ' seeds')
+
+# Find ijk coordinates inside the mask
+indices = np.nonzero(mask5)
+indices = np.asarray(indices).T
+
+# Sample 100
+sample_mask = np.random.randint(0, indices.shape[0], size = rand_sz)
+mask_ff_final = np.zeros(data.shape)
+for i in range(100):
+    flood_seed = tuple(indices[sample_mask[i]])
+    mask_ff = flood_fill(Wcopy, flood_seed, fill, tolerance=tol)
+    mask_ff[mask_ff != fill] = 0
+    mask_ff_final += mask_ff
+
+print('Duration ', time() - t)
+print()
 
 distance_field = False
 if distance_field:
@@ -595,6 +617,13 @@ if distance_field:
 
 # maskz = zoom(mask, 0.25)
 # data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
+
+
+distance_transform = False
+if distance_transform:
+    from scipy.ndimage import distance_transform_edt, distance_transform_bf, distance_transform_cdt
+    dmask = distance_transform_edt(1 - mask)
+    # compare dmask vs 1 - mask
 
 floodfill = False
 if floodfill:
@@ -617,9 +646,8 @@ if watershed:
     # markers[0, 0, 0] = 1
     # markers[150, 142, 86] = 2
     # markers[107, 106, 75] = 3
-
     t = time()
-    wift = watershed_ift(W, mask5.astype('uint8'))
+    wift = watershed_ift(W.astype('uint16'), mask5.astype('uint8'))
 
     print('Duration ', time() - t)
     print()
@@ -709,7 +737,8 @@ if convolve_ball:
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask5, aff, 'mask5'),
+    horizon(images=[(mask_ff_final, aff, 'ff_final'),
+                    (mask5, aff, 'mask5'),
                     (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
                     (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
