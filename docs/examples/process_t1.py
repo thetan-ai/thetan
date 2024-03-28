@@ -612,6 +612,7 @@ if floodfill:
     # two things to check
     # a) use flood or flood_fill on the image gradients (randomly pick 100 seeds)
     # b) use flood fill only on the W[mask==0/1] or similar
+    # c) use flood on the localized (focused mask)
 
 
 watershed = False
