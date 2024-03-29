@@ -362,7 +362,7 @@ def print_centroids(centroids):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -377,7 +377,7 @@ fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.n
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -593,10 +593,9 @@ indices = np.asarray(indices).T
 # Sample 100
 sample_mask = np.random.randint(0, indices.shape[0], size = rand_sz)
 mask_ff_final = np.zeros(data.shape)
-for i in range(100):
+for i in range(rand_sz):
     flood_seed = tuple(indices[sample_mask[i]])
     mask_ff = flood_fill(Wcopy, flood_seed, fill, tolerance=tol)
-    mask_ff[mask_ff != fill] = 0
     mask_ff_final += mask_ff
 
 print('Duration ', time() - t)
@@ -733,6 +732,8 @@ if convolve_ball:
 # res = binary_fill_holes(mask, strel)
 # print('Duration ', time() - t)
 
+mask6 = binary_dilation(mask5, iterations=6)
+mask6 = mask6.astype('i4')
 
 if verbose:
     aff = np.eye(4)
