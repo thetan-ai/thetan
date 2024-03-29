@@ -738,7 +738,7 @@ mask6 = mask6.astype('i4')
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask_ff_final, aff, 'ff_final'),
+    horizon(images=[(mask6, aff, 'mask6'),
                     (mask5, aff, 'mask5'),
                     (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
