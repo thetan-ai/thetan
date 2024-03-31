@@ -766,6 +766,10 @@ mask7[edt > 4] = 1
 # TODO
 # if edt > 2 the coverage is larger and nicer
 # but sometimes the mask may connect
+# we can do two things to resolve this issue
+# a) increase the structure (might be preferrable)
+# b) erode the mask
+# c) increase edt > 3 or 4
 data_labels_focused2, num_focused2 = label(mask7, structure=np.ones((3, 3, 3)))
 
 favorite2 = analyze_labels(data_labels_focused2, num_focused2)
