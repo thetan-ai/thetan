@@ -12,6 +12,7 @@ from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_
 from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion
 from skimage.segmentation import flood, flood_fill
 from skimage.morphology import ball
+from scipy.ndimage import distance_transform_edt, distance_transform_bf, distance_transform_cdt
 
 
 def expand_voxels(data, patch_size=(3, 3, 3)):
@@ -359,6 +360,22 @@ def print_centroids(centroids):
     print()
 
 
+def analyze_labels(data_labels_focused, num_focused):
+
+    sizes = []
+    for i in range(num_focused):
+        cur_sz = (data_labels_focused == i).sum()
+        sizes.append(cur_sz)
+
+    sizes = np.asarray(sizes)
+    print(sizes)
+    favorites = np.argsort(sizes)[::-1][:3]
+    favorite = favorites[1] # 0 most likely bk
+    print('Prefered localized index')
+    print(favorite, sizes[favorite])
+
+    return favorite
+
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -426,6 +443,7 @@ Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
 # W10 = W // 100
 Wcopy = W.copy()
+Xcopy = X.copy()
 
 
 # Find theta automatically if possible
@@ -545,8 +563,6 @@ if bk_threshold:
 # dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 # unique_labels, counts = np.unique(data_labels, return_counts=True)
 
-
-
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
@@ -556,19 +572,11 @@ data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
 print('Focused - Localizing ...')
 print('Printing sizes ...')
-sizes = []
-for i in range(num_focused):
 
-    cur_sz = data_labels_focused[data_labels_focused == i].sum()
-    sizes.append(cur_sz)
-    print(cur_sz)
-
-sizes = np.asarray(sizes)
-print(sizes.argmax(), sizes.max())
-
+favorite = analyze_labels(data_labels_focused, num_focused)
 
 mask5 = np.zeros(mask4.shape)
-mask5[data_labels_focused == sizes.argmax()] = 1
+mask5[data_labels_focused == favorite] = 1
 
 # Center of mass calculation for mask 5 (focused)
 # This in world coordinates
@@ -576,30 +584,33 @@ cx = X[mask5.ravel() == 1, 0].mean()
 cy = X[mask5.ravel() == 1, 1].mean()
 cz = X[mask5.ravel() == 1, 2].mean()
 
-print('Applying flood fill process ...')
 
-t = time()
+flood_fill_process = False
+if flood_fill_process:
+    print('Applying flood fill process ...')
 
-rand_sz = 100
-fill = 100
-tol = 10
+    t = time()
 
-print('Selecting ', rand_sz, ' seeds')
+    rand_sz = 100
+    fill = 100
+    tol = 10
 
-# Find ijk coordinates inside the mask
-indices = np.nonzero(mask5)
-indices = np.asarray(indices).T
+    print('Selecting ', rand_sz, ' seeds')
 
-# Sample 100
-sample_mask = np.random.randint(0, indices.shape[0], size = rand_sz)
-mask_ff_final = np.zeros(data.shape)
-for i in range(rand_sz):
-    flood_seed = tuple(indices[sample_mask[i]])
-    mask_ff = flood_fill(Wcopy, flood_seed, fill, tolerance=tol)
-    mask_ff_final += mask_ff
+    # Find ijk coordinates inside the mask
+    indices = np.nonzero(mask5)
+    indices = np.asarray(indices).T
 
-print('Duration ', time() - t)
-print()
+    # Sample 100
+    sample_mask = np.random.randint(0, indices.shape[0], size = rand_sz)
+    mask_ff_final = np.zeros(data.shape)
+    for i in range(rand_sz):
+        flood_seed = tuple(indices[sample_mask[i]])
+        mask_ff = flood_fill(Wcopy, flood_seed, fill, tolerance=tol)
+        mask_ff_final += mask_ff
+
+    print('Duration ', time() - t)
+    print()
 
 distance_field = False
 if distance_field:
@@ -621,7 +632,7 @@ if distance_field:
 distance_transform = False
 if distance_transform:
     from scipy.ndimage import distance_transform_edt, distance_transform_bf, distance_transform_cdt
-    dmask = distance_transform_edt(1 - mask)
+    dmask_tmp = distance_transform_edt(1 - mask)
     # compare dmask vs 1 - mask
 
 floodfill = False
@@ -678,11 +689,6 @@ if maskedop:
     print()
 
 
-# data_labels2[mask < 1] = -1
-
-# res = flood_fill(mask, (128, 128, 75), 0.5, connectivity=1)
-
-# res = flood(1-mask, (128, 128, 75), tolerance=10)
 
 from scipy.ndimage import binary_fill_holes, binary_propagation
 from scipy.ndimage import binary_opening, binary_closing
@@ -732,19 +738,52 @@ if convolve_ball:
 # res = binary_fill_holes(mask, strel)
 # print('Duration ', time() - t)
 
-mask6 = binary_dilation(mask5, iterations=6)
-mask6 = mask6.astype('i4')
+iter_dilation = True
+if iter_dilation:
+    mask6 = binary_dilation(mask5, iterations=4)
+    mask6 = mask6.astype('i4')
 
+difference_check = False
+if difference_check:
+    mask_diff = mask6 - mask5
+    Xd = X2.copy()
+    Xd[mask_diff.ravel() < 1] = 0
+
+    print('Applying Berserker 2 on Xd theta/2.')
+    t = time()
+    data_labels_d, centroids_d = berserker2_to_3D_labels(Xd, theta_value/2., data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids_d)
+
+
+print('Using 1 - mask ...')
+t = time()
+mask7 = np.zeros(mask.shape)
+edt = distance_transform_edt(1 - mask)
+mask7[edt > 4] = 1
+# TODO
+# if edt > 2 the coverage is larger and nicer
+# but sometimes the mask may connect
+data_labels_focused2, num_focused2 = label(mask7, structure=np.ones((3, 3, 3)))
+
+favorite2 = analyze_labels(data_labels_focused2, num_focused2)
+print('Duration ', time() - t)
+print()
+
+verbose = False
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(mask6, aff, 'mask6'),
+    horizon(images=[(1 - mask, aff, '1 - mask'),
+                    (data_labels_focused2, aff, 'labels_focused2 (edt)'),
+                    (edt, aff, 'edt'),
+                    (mask7, aff, 'mask7'), 
+                    (mask6, aff, 'mask6'),
                     (mask5, aff, 'mask5'),
                     (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
                     (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
-
-
-
 
 t = 2
