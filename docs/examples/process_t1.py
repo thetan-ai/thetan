@@ -379,7 +379,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -394,7 +394,7 @@ def analyze_labels(data_labels_focused, num_focused):
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -763,6 +763,7 @@ t = time()
 mask7 = np.zeros(mask.shape)
 edt = distance_transform_edt(1 - mask)
 mask7[edt > 4] = 1
+
 # TODO
 # if edt > 2 the coverage is larger and nicer
 # but sometimes the mask may connect
@@ -783,7 +784,7 @@ if verbose:
     horizon(images=[(1 - mask, aff, '1 - mask'),
                     (data_labels_focused2, aff, 'labels_focused2 (edt)'),
                     (edt, aff, 'edt'),
-                    (mask7, aff, 'mask7'), 
+                    (mask7, aff, 'mask7'),
                     (mask6, aff, 'mask6'),
                     (mask5, aff, 'mask5'),
                     (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
