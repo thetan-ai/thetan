@@ -378,7 +378,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 
 # T1 dataset
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -394,7 +394,7 @@ def analyze_labels(data_labels_focused, num_focused):
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -760,11 +760,11 @@ if difference_check:
 
 print('Distance Transform ...')
 t = time()
-kernel = np.ones((3, 3, 3))
-# Note that this is operation on a 1 - mask
-maske = binary_erosion(1 - mask, structure=kernel, iterations=1).astype('i4')
+# kernel = np.ones((3, 3, 3))
+# Note that this is operation on a 1 - mask2
+# maske = binary_erosion(1 - mask, structure=kernel, iterations=1).astype('i4')
 mask7 = np.zeros(mask.shape)
-edt = distance_transform_edt(maske)
+edt = distance_transform_edt(1 - mask2)
 mask7[edt > 2] = 1
 print('Duration ', time() - t)
 print()
@@ -781,18 +781,19 @@ print('Labeling time ...')
 t = time()
 kernel = np.ones((3, 3, 3))
 data_labels_focused2, num_focused2 = label(mask7, structure=kernel)
-
 favorite2 = analyze_labels(data_labels_focused2, num_focused2)
 print('Duration ', time() - t)
 print()
 
 
 # invert erosion
-print('Inverting erosion ...')
+print('Final mask ...')
 t = time()
-final_mask = (data_labels_focused2 == favorite2).astype('i4')
-final_mask = binary_dilation(final_mask, structure=kernel, iterations=1).astype('i4')
-
+fav2_mask = (data_labels_focused2 == favorite2).astype('i4')
+# final_mask = binary_dilation(final_mask, structure=kernel, iterations=1).astype('i4')
+mask8 = np.zeros(mask.shape)
+edt2 = distance_transform_edt(1 - fav2_mask + mask)
+mask8[edt2 <= 8] = 1
 print('Duration ', time() - t)
 print()
 
@@ -800,15 +801,24 @@ verbose = True
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(final_mask, aff, 'final mask'),
-                    (maske, aff, 'maske'),
+    horizon(images=[(mask8, aff, 'mask8'),
+                    (fav2_mask, aff, 'fav2 mask'),
                     (1 - mask, aff, '1 - mask'),
                     (data_labels_focused2, aff, 'labels_focused2 (edt)'),
                     (edt, aff, 'edt'),
                     (mask7, aff, 'mask7'),
                     (mask5, aff, 'mask5'),
-                    (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
-                    (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
-                    (Wgrad, aff, 'Wgrad'), (W, aff, 'W'), (Wcopy, aff, 'Wcopy')])
+                    (data_labels_focused, aff, 'labels_focused'),
+                    # (mask4, aff, 'mask4'),
+                    # (mask3, aff, 'mask3'),
+                    # (data_labels2, aff, 'labels2'),
+                    (mask2, aff, 'mask2'),
+                    # (data_labels, aff, 'labels'),
+                    (mask, aff, 'mask'),
+                    (Wgrad, aff, 'Wgrad'),
+                    (W, aff, 'W'),
+                    (Wcopy, aff, 'Wcopy')])
+
+    horizon(images=[(fav2_mask, aff, 'final_mask'), (mask, aff, 'mask'), (fav2_mask + mask, aff, 'final_mask + mask'), (edt2, aff, 'edt2'), (Wcopy, aff, 'Wcopy')])
 
 t = 2
