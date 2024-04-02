@@ -761,6 +761,7 @@ if difference_check:
 print('Distance Transform ...')
 t = time()
 kernel = np.ones((3, 3, 3))
+# Note that this is operation on a 1 - mask
 maske = binary_erosion(1 - mask, structure=kernel, iterations=1).astype('i4')
 mask7 = np.zeros(mask.shape)
 edt = distance_transform_edt(maske)
