@@ -379,7 +379,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -394,7 +394,7 @@ fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.n
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -612,8 +612,8 @@ if flood_fill_process:
     print('Duration ', time() - t)
     print()
 
-distance_field = False
-if distance_field:
+distance_field_from_point = False
+if distance_field_from_point:
     theta_value_d = 40
     print('Applying Berserker 2 on Xdist')
     t = time()
@@ -738,7 +738,7 @@ if convolve_ball:
 # res = binary_fill_holes(mask, strel)
 # print('Duration ', time() - t)
 
-iter_dilation = True
+iter_dilation = False
 if iter_dilation:
     mask6 = binary_dilation(mask5, iterations=4)
     mask6 = mask6.astype('i4')
@@ -758,11 +758,15 @@ if difference_check:
     print_centroids(centroids_d)
 
 
-print('Using 1 - mask ...')
+print('Distance Transform ...')
 t = time()
+kernel = np.ones((3, 3, 3))
+maske = binary_erosion(1 - mask, structure=kernel, iterations=1).astype('i4')
 mask7 = np.zeros(mask.shape)
-edt = distance_transform_edt(1 - mask)
-mask7[edt > 4] = 1
+edt = distance_transform_edt(maske)
+mask7[edt > 2] = 1
+print('Duration ', time() - t)
+print()
 
 # TODO
 # if edt > 2 the coverage is larger and nicer
@@ -771,21 +775,36 @@ mask7[edt > 4] = 1
 # a) increase the structure (might be preferrable)
 # b) erode the mask
 # c) increase edt > 3 or 4
-data_labels_focused2, num_focused2 = label(mask7, structure=np.ones((3, 3, 3)))
+
+print('Labeling time ...')
+t = time()
+kernel = np.ones((3, 3, 3))
+data_labels_focused2, num_focused2 = label(mask7, structure=kernel)
 
 favorite2 = analyze_labels(data_labels_focused2, num_focused2)
 print('Duration ', time() - t)
 print()
 
-verbose = False
+
+# invert erosion
+print('Inverting erosion ...')
+t = time()
+final_mask = (data_labels_focused2 == favorite2).astype('i4')
+final_mask = binary_dilation(final_mask, structure=kernel, iterations=1).astype('i4')
+
+print('Duration ', time() - t)
+print()
+
+verbose = True
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
-    horizon(images=[(1 - mask, aff, '1 - mask'),
+    horizon(images=[(final_mask, aff, 'final mask'),
+                    (maske, aff, 'maske'),
+                    (1 - mask, aff, '1 - mask'),
                     (data_labels_focused2, aff, 'labels_focused2 (edt)'),
                     (edt, aff, 'edt'),
                     (mask7, aff, 'mask7'),
-                    (mask6, aff, 'mask6'),
                     (mask5, aff, 'mask5'),
                     (data_labels_focused, aff, 'labels_focused'), (mask4, aff, 'mask4'), (mask3, aff, 'mask3'),
                     (data_labels2, aff, 'labels2'), (mask2, aff, 'mask2'), (data_labels, aff, 'labels'), (mask, aff, 'mask'),
