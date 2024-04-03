@@ -378,7 +378,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 
 # T1 dataset
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -393,7 +393,7 @@ fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -428,7 +428,6 @@ vxs = np.asarray(vxs)
 
 verbose = True
 scale_space = False
-
 if scale_space:
     scs = ScaleSpace(data, 6, affine, vxs)
     data = scs.get_image(2)
@@ -568,6 +567,9 @@ mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
 # mask4[mask3 == 0] = 1
 mask4[mask3 < 10] = 1
+
+
+
 data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
 print('Focused - Localizing ...')
@@ -577,6 +579,10 @@ favorite = analyze_labels(data_labels_focused, num_focused)
 
 mask5 = np.zeros(mask4.shape)
 mask5[data_labels_focused == favorite] = 1
+
+# e + d
+mask5 = binary_erosion(mask5, iterations=1)
+mask5 = binary_dilation(mask5, iterations=1).astype('i4')
 
 # Center of mass calculation for mask 5 (focused)
 # This in world coordinates
@@ -761,11 +767,16 @@ if difference_check:
 print('Distance Transform ...')
 t = time()
 # kernel = np.ones((3, 3, 3))
-# Note that this is operation on a 1 - mask2
+# Note that this is operation on a 1 - mask
 # maske = binary_erosion(1 - mask, structure=kernel, iterations=1).astype('i4')
 mask7 = np.zeros(mask.shape)
-edt = distance_transform_edt(1 - mask2)
+edt = distance_transform_edt(1 - mask)
 mask7[edt > 2] = 1
+
+# e + d
+mask7 = binary_erosion(mask7, iterations=1)
+mask7 = binary_dilation(mask7, iterations=1).astype('i4')
+
 print('Duration ', time() - t)
 print()
 
