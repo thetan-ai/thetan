@@ -86,7 +86,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False,
         data3_enh = data3_enh.reshape((data2.shape[0] * data2.shape[1] * data2.shape[2]),
                                       (patch[0] * patch[1] * patch[2]))
         mean_enh = np.mean(data3_enh, axis=-1)
-        # median_enh = np.median(data3_enh, axis=-1)
+        median_enh = np.median(data3_enh, axis=-1)
 
     X = img3d_to_ijkv_features(data2)
 
@@ -380,6 +380,7 @@ def analyze_labels(data_labels_focused, num_focused):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -393,7 +394,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -562,13 +563,14 @@ if bk_threshold:
 # dists = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
 # unique_labels, counts = np.unique(data_labels, return_counts=True)
 
+# TODO
+# Doing first an EDT of mask2 seems really promising (perhaps patch_sums should be after)
+
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
 # mask4[mask3 == 0] = 1
 mask4[mask3 < 10] = 1
-
-
 
 data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
 
@@ -826,6 +828,7 @@ if verbose:
                     (mask2, aff, 'mask2'),
                     # (data_labels, aff, 'labels'),
                     (mask, aff, 'mask'),
+                    (W2, aff, 'W2'),
                     (Wgrad, aff, 'Wgrad'),
                     (W, aff, 'W'),
                     (Wcopy, aff, 'Wcopy')])
