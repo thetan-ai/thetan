@@ -380,7 +380,7 @@ def analyze_labels(data_labels_focused, num_focused):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
-fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -394,7 +394,7 @@ fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -566,6 +566,8 @@ if bk_threshold:
 # TODO
 # Doing first an EDT of mask2 seems really promising (perhaps patch_sums should be after)
 
+
+
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
@@ -654,21 +656,6 @@ if floodfill:
     # a) use flood or flood_fill on the image gradients (randomly pick 100 seeds)
     # b) use flood fill only on the W[mask==0/1] or similar
     # c) use flood on the localized (focused mask)
-
-watershed = False
-if watershed:
-
-    from scipy.ndimage import watershed_ift
-
-    # markers = np.zeros(mask.shape, dtype=np.int16)
-    # markers[0, 0, 0] = 1
-    # markers[150, 142, 86] = 2
-    # markers[107, 106, 75] = 3
-    t = time()
-    wift = watershed_ift(W.astype('uint16'), mask5.astype('uint8'))
-
-    print('Duration ', time() - t)
-    print()
 
 patch_explorations = False
 if patch_explorations:
@@ -810,6 +797,19 @@ mask8[edt2 <= 8] = 1
 print('Duration ', time() - t)
 print()
 
+watersh = False
+markers = 1000
+compactness = 0.01
+if watersh:
+    print('Watershed on grad mag')
+    t = time()
+    from skimage.segmentation import watershed
+    Wshed = watershed(Wgrad, markers=markers, compactness=compactness)
+    # TODO
+    # try also with Sobel if available in 3D
+    print('Duration ', time() - t)
+    print()
+
 verbose = True
 if verbose:
     aff = np.eye(4)
@@ -833,6 +833,6 @@ if verbose:
                     (W, aff, 'W'),
                     (Wcopy, aff, 'Wcopy')])
 
-    horizon(images=[(fav2_mask, aff, 'final_mask'), (mask, aff, 'mask'), (fav2_mask + mask, aff, 'final_mask + mask'), (edt2, aff, 'edt2'), (Wcopy, aff, 'Wcopy')])
+    # horizon(images=[(fav2_mask, aff, 'final_mask'), (mask, aff, 'mask'), (fav2_mask + mask, aff, 'final_mask + mask'), (edt2, aff, 'edt2'), (Wcopy, aff, 'Wcopy')])
 
 t = 2
