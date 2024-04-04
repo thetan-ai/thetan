@@ -378,7 +378,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 
 # T1 dataset
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
@@ -394,7 +394,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -527,9 +527,17 @@ data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value, data_dims=da
 print('Duration ', time() - t)
 print()
 
-
 mask = mask_lt(data_labels, centroids, bk_thr=300)
 mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
+edt_1m2 = distance_transform_edt(1 - mask2)
+mask2_1m2 = np.zeros(mask2.shape)
+mask2_1m2[edt_1m2 > 2] = 1
+
+aff = np.eye(4)
+
+horizon(images=[(mask2_1m2, aff, 'mask2_1m2'), (edt_1m2, aff, 'edt_1m2'), (data_labels2, aff, 'dl2'), (mask, aff, 'mask'), (Wcopy, aff, 'Wcopy')])
+
+t = 4
 
 if locality_check:
 
@@ -565,8 +573,6 @@ if bk_threshold:
 
 # TODO
 # Doing first an EDT of mask2 seems really promising (perhaps patch_sums should be after)
-
-
 
 mask3 = patch_sums(mask2, (5, 5, 5))
 mask4 = np.zeros(mask3.shape)
