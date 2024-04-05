@@ -737,13 +737,15 @@ t = time()
 # edt = distance_transform_edt(1 - mask)
 # mask7[edt > 2] = 1
 
-mask1s = patch_sums(mask, (5, 5, 5))
+mask1s = patch_sums(1 - mask, (5, 5, 5))
 mask4s = patch_sums(mask4, (5, 5, 5))
 
 edt4 = distance_transform_edt(1 - mask4)
 
+tmp = np.bitwise_and(edt4 < 5, mask1s > 100).astype('i4')
+
 aff = np.eye(4)
-horizon(images=[ (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (Wcopy, aff, 'Wcopy')])
+horizon(images=[ (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 t = 5
 
