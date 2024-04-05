@@ -513,7 +513,6 @@ print()
 # theta_value = 100.
 
 theta_value = 120.
-# theta_value = 150.
 
 print('Applying Berserker 2 on X (i,j,k,3w + 2gradW)')
 t = time()
@@ -529,15 +528,16 @@ print()
 
 mask = mask_lt(data_labels, centroids, bk_thr=300)
 mask2 = mask_lt(data_labels2, centroids2, bk_thr=300)
+
+# improve mask2 by using EDT
 edt_1m2 = distance_transform_edt(1 - mask2)
-mask2_1m2 = np.zeros(mask2.shape)
-mask2_1m2[edt_1m2 > 2] = 1
+mask3 = np.zeros(mask2.shape)
+# currently at 3
+mask3[edt_1m2 > 3] = 1
 
-aff = np.eye(4)
 
-horizon(images=[(mask2_1m2, aff, 'mask2_1m2'), (edt_1m2, aff, 'edt_1m2'), (data_labels2, aff, 'dl2'), (mask, aff, 'mask'), (Wcopy, aff, 'Wcopy')])
 
-t = 4
+
 
 if locality_check:
 
@@ -574,62 +574,39 @@ if bk_threshold:
 # TODO
 # Doing first an EDT of mask2 seems really promising (perhaps patch_sums should be after)
 
-mask3 = patch_sums(mask2, (5, 5, 5))
-mask4 = np.zeros(mask3.shape)
+# mask3 = patch_sums(mask2, (5, 5, 5))
+# mask4 = np.zeros(mask3.shape)
 # currently very strict - fixed at 0
 # mask4[mask3 == 0] = 1
-mask4[mask3 < 10] = 1
+# mask4[mask3 < 10] = 1
 
-data_labels_focused, num_focused = label(mask4, structure=np.ones((3, 3, 3)))
+
+
+data_labels_focused, num_focused = label(mask3, structure=np.ones((3, 3, 3)))
 
 print('Focused - Localizing ...')
 print('Printing sizes ...')
 
 favorite = analyze_labels(data_labels_focused, num_focused)
 
-mask5 = np.zeros(mask4.shape)
-mask5[data_labels_focused == favorite] = 1
+# localize the brain
+mask4 = np.zeros(mask3.shape)
+mask4[data_labels_focused == favorite] = 1
+
+
 
 # e + d
-mask5 = binary_erosion(mask5, iterations=1)
-mask5 = binary_dilation(mask5, iterations=1).astype('i4')
-
-# Center of mass calculation for mask 5 (focused)
-# This in world coordinates
-cx = X[mask5.ravel() == 1, 0].mean()
-cy = X[mask5.ravel() == 1, 1].mean()
-cz = X[mask5.ravel() == 1, 2].mean()
-
-
-flood_fill_process = False
-if flood_fill_process:
-    print('Applying flood fill process ...')
-
-    t = time()
-
-    rand_sz = 100
-    fill = 100
-    tol = 10
-
-    print('Selecting ', rand_sz, ' seeds')
-
-    # Find ijk coordinates inside the mask
-    indices = np.nonzero(mask5)
-    indices = np.asarray(indices).T
-
-    # Sample 100
-    sample_mask = np.random.randint(0, indices.shape[0], size = rand_sz)
-    mask_ff_final = np.zeros(data.shape)
-    for i in range(rand_sz):
-        flood_seed = tuple(indices[sample_mask[i]])
-        mask_ff = flood_fill(Wcopy, flood_seed, fill, tolerance=tol)
-        mask_ff_final += mask_ff
-
-    print('Duration ', time() - t)
-    print()
+# mask5 = binary_erosion(mask5, iterations=1)
+# mask5 = binary_dilation(mask5, iterations=1).astype('i4')
 
 distance_field_from_point = False
 if distance_field_from_point:
+    # Center of mass calculation for mask 5 (focused)
+    # This in world coordinates
+    cx = X[mask4.ravel() == 1, 0].mean()
+    cy = X[mask4.ravel() == 1, 1].mean()
+    cz = X[mask4.ravel() == 1, 2].mean()
+
     theta_value_d = 40
     print('Applying Berserker 2 on Xdist')
     t = time()
@@ -640,16 +617,6 @@ if distance_field_from_point:
     data_labels_d, centroids_d = berserker2_to_3D_labels(Xdist, theta_value_d, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
-
-# maskz = zoom(mask, 0.25)
-# data_labels_rs = patch_sum_diffs(data_labels_r, (3, 3, 3))
-
-
-distance_transform = False
-if distance_transform:
-    from scipy.ndimage import distance_transform_edt, distance_transform_bf, distance_transform_cdt
-    dmask_tmp = distance_transform_edt(1 - mask)
-    # compare dmask vs 1 - mask
 
 floodfill = False
 if floodfill:
@@ -759,18 +726,26 @@ if difference_check:
     print_centroids(centroids_d)
 
 
+
+
 print('Distance Transform ...')
 t = time()
 # kernel = np.ones((3, 3, 3))
 # Note that this is operation on a 1 - mask
 # maske = binary_erosion(1 - mask, structure=kernel, iterations=1).astype('i4')
-mask7 = np.zeros(mask.shape)
-edt = distance_transform_edt(1 - mask)
-mask7[edt > 2] = 1
+# mask7 = np.zeros(mask.shape)
+# edt = distance_transform_edt(1 - mask)
+# mask7[edt > 2] = 1
 
-# e + d
-mask7 = binary_erosion(mask7, iterations=1)
-mask7 = binary_dilation(mask7, iterations=1).astype('i4')
+mask1s = patch_sums(mask, (5, 5, 5))
+mask4s = patch_sums(mask4, (5, 5, 5))
+
+edt4 = distance_transform_edt(1 - mask4)
+
+aff = np.eye(4)
+horizon(images=[ (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (Wcopy, aff, 'Wcopy')])
+
+t = 5
 
 print('Duration ', time() - t)
 print()
@@ -816,7 +791,7 @@ if watersh:
     print('Duration ', time() - t)
     print()
 
-verbose = True
+verbose = False
 if verbose:
     aff = np.eye(4)
     # horizon(images=[(data_labels, aff), (mask, aff), (1 - mask, aff), (Wgrad, aff), (W, aff), (Wcopy, aff)])
