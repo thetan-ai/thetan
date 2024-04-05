@@ -742,10 +742,9 @@ mask4s = patch_sums(mask4, (5, 5, 5))
 
 edt4 = distance_transform_edt(1 - mask4)
 
+# Attention
 tmp = np.bitwise_and(edt4 < 5, mask1s > 100).astype('i4')
 
-aff = np.eye(4)
-horizon(images=[ (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 t = 5
 
@@ -755,13 +754,17 @@ print()
 
 print('Final mask ...')
 t = time()
-fav2_mask = (data_labels_focused2 == favorite2).astype('i4')
+# fav2_mask = (data_labels_focused2 == favorite2).astype('i4')
+
 # final_mask = binary_dilation(final_mask, structure=kernel, iterations=1).astype('i4')
 mask8 = np.zeros(mask.shape)
-edt2 = distance_transform_edt(1 - fav2_mask + mask)
-mask8[edt2 <= 8] = 1
+edt2 = distance_transform_edt(1 - tmp + mask)
+mask8[edt2 <= 4] = 1
 print('Duration ', time() - t)
 print()
+
+aff = np.eye(4)
+horizon(images=[ (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 
 watersh = False
