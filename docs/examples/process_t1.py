@@ -728,7 +728,7 @@ if difference_check:
 
 
 
-print('Distance Transform ...')
+print('Patch Sums ...')
 t = time()
 # kernel = np.ones((3, 3, 3))
 # Note that this is operation on a 1 - mask
