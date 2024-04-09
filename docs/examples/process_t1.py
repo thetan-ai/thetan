@@ -380,7 +380,7 @@ def analyze_labels(data_labels_focused, num_focused):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
-fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -394,7 +394,7 @@ fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -764,7 +764,7 @@ print('Duration ', time() - t)
 print()
 
 aff = np.eye(4)
-horizon(images=[ (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
+horizon(images=[ (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 
 watersh = False
