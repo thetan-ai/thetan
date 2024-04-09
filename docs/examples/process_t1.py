@@ -353,6 +353,22 @@ def mask_lt(data_labels, centroids, bk_thr=300):
     mask = mask.astype('f8')
     return mask
 
+def mask_gt(data_labels, centroids, bk_thr=300):
+    """ Keep high intensities using label centroids
+    """
+    # bk_thr = 300 # 400 or 250 interesting too
+    data_labels_u = data_labels.copy()
+    indx = np.where(centroids[:, 3] > bk_thr)[0]
+    max_indx = np.argmax(centroids[:, 3])
+
+    for indx_ in indx:
+        data_labels_u[data_labels == indx_] = max_indx
+
+    mask = data_labels_u == max_indx
+    maskb = mask.copy()
+    mask = mask.astype('f8')
+    return mask
+
 
 def print_centroids(centroids):
     for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
@@ -377,10 +393,25 @@ def analyze_labels(data_labels_focused, num_focused):
     return favorite
 
 
+def watershed_wgrad(Wgrad):
+
+    watersh = False
+    markers = 1000
+    compactness = 0.01
+    print('Watershed on grad mag')
+    t = time()
+    from skimage.segmentation import watershed
+    Wshed = watershed(Wgrad, markers=markers, compactness=compactness)
+    # TODO
+    # try also with Sobel if available in 3D
+    print('Duration ', time() - t)
+    print()
+
+
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
-# fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -394,7 +425,7 @@ def analyze_labels(data_labels_focused, num_focused):
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -422,7 +453,6 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # Simulation example
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[5, 5, 5, 5.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
-
 
 
 vxs = np.asarray(vxs)
@@ -535,10 +565,6 @@ mask3 = np.zeros(mask2.shape)
 # currently at 3
 mask3[edt_1m2 > 3] = 1
 
-
-
-
-
 if locality_check:
 
     Xpatch[mask.ravel()==0] = np.zeros(4)
@@ -579,8 +605,6 @@ if bk_threshold:
 # currently very strict - fixed at 0
 # mask4[mask3 == 0] = 1
 # mask4[mask3 < 10] = 1
-
-
 
 data_labels_focused, num_focused = label(mask3, structure=np.ones((3, 3, 3)))
 
@@ -701,32 +725,37 @@ if convolve_ball:
     mask2 = np.zeros(mask.shape, dtype='f8')
     mask2[out_strel < 300] = 1.0
 
-# print('Ndimage fill holes')
-# t = time()
-# res = binary_fill_holes(mask, strel)
-# print('Duration ', time() - t)
 
-iter_dilation = False
-if iter_dilation:
-    mask6 = binary_dilation(mask5, iterations=4)
-    mask6 = mask6.astype('i4')
 
-difference_check = False
-if difference_check:
-    mask_diff = mask6 - mask5
-    Xd = X2.copy()
-    Xd[mask_diff.ravel() < 1] = 0
+break_down = True
+if break_down:
+    Xbd = X.copy()
+    Xbd[mask.ravel() < 1] = 0
 
-    print('Applying Berserker 2 on Xd theta/2.')
+    print('Applying Berserker 2 on Xd theta * .8')
     t = time()
-    data_labels_d, centroids_d = berserker2_to_3D_labels(Xd, theta_value/2., data_dims=data.shape, verbose=False)
+    data_labels_bd, centroids_bd = berserker2_to_3D_labels(Xbd, theta_value * 0.8, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
-    print_centroids(centroids_d)
+    print_centroids(centroids_bd)
+    maskbd = mask_gt(data_labels_bd, centroids_bd, bk_thr=100)
+
+orig = True
+if orig:
+
+    Xo = X_orig.copy()
+    print('Applying Berserker 2 on X orig')
+    t = time()
+    data_labels_o, centroids_o = berserker2_to_3D_labels(Xo, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids_o)
+    masko = mask_lt(data_labels_o, centroids_o, bk_thr=300)
 
 
-
+horizon(images = [(masko + mask, aff, 'masko + mask'), (masko, aff, 'masko'), (mask, aff, 'mask'), (mask2, aff, 'mask2'), (Wcopy, aff, 'Wcopy')])
 
 print('Patch Sums ...')
 t = time()
@@ -764,21 +793,13 @@ print('Duration ', time() - t)
 print()
 
 aff = np.eye(4)
-horizon(images=[ (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
+# horizon(images=[(data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
+mask9 = mask_gt(data_labels, centroids, 400)
+mask10 = mask_gt(data_labels2, centroids2, 400)
 
-watersh = False
-markers = 1000
-compactness = 0.01
-if watersh:
-    print('Watershed on grad mag')
-    t = time()
-    from skimage.segmentation import watershed
-    Wshed = watershed(Wgrad, markers=markers, compactness=compactness)
-    # TODO
-    # try also with Sobel if available in 3D
-    print('Duration ', time() - t)
-    print()
+horizon(images=[(maskbd, aff, 'maskbd'), (data_labels_bd, aff, 'dlbd'), (mask10, aff, 'm10'), (mask9, aff, 'm9'), (data_labels2, aff, 'dl2'), (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
+
 
 
 t = 2
