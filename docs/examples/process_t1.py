@@ -410,7 +410,7 @@ def watershed_wgrad(Wgrad):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -424,7 +424,7 @@ def watershed_wgrad(Wgrad):
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
@@ -726,21 +726,6 @@ if convolve_ball:
     mask2[out_strel < 300] = 1.0
 
 
-
-break_down = False
-if break_down:
-    Xbd = X.copy()
-    Xbd[mask.ravel() < 1] = 0
-
-    print('Applying Berserker 2 on Xd theta * .8')
-    t = time()
-    data_labels_bd, centroids_bd = berserker2_to_3D_labels(Xbd, theta_value * 0.8, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
-
-    print_centroids(centroids_bd)
-    maskbd = mask_gt(data_labels_bd, centroids_bd, bk_thr=100)
-
 orig = True
 if orig:
 
@@ -756,9 +741,38 @@ if orig:
 
 
 aff = np.eye(4)
-final_mask = np.zeros(data.shape)
-final_mask[masko + mask == 1] = 1
-horizon(images=[(final_mask, aff, 'fm'), (masko + mask + mask2, aff, 'masko + mask + mask2'), (masko, aff, 'masko'), (mask, aff, 'mask'), (mask2, aff, 'mask2'), (Wcopy, aff, 'Wcopy')])
+thin_mask = np.zeros(data.shape)
+thin_mask[masko + mask == 1] = 1
+
+dt = distance_transform_edt(1 - mask)
+data_labels_dt, num_focused_dt = label(dt > 5, structure=np.ones((3, 3, 3)))
+
+
+print('Focused - Localizing dt ...')
+print('Printing sizes ...')
+
+favorite_dt = analyze_labels(data_labels_dt, num_focused_dt)
+
+mask11 = np.zeros(data.shape)
+mask11[data_labels_dt == favorite_dt] = 1
+
+# dt2 = distance_transform_edt(1 - (mask11 + thin_mask))
+
+
+horizon(images=[(1 - 2 * mask11 + mask, aff, 'mask11 + mask'),
+                (mask11, aff, 'mask11'),
+                (dt, aff, 'dt'),
+                (data_labels_dt, aff, 'data_labels_dt'),
+                (dt, aff, 'dt mask'),
+                (thin_mask, aff, 'fm'),
+                (3 - (masko + mask + mask2), aff, 'masko + mask + mask2'),
+                (masko, aff, 'masko'),
+                (mask, aff, 'mask'),
+                (mask2, aff, 'mask2'),
+                (mask4, aff, 'mask4'),
+                (Wcopy, aff, 'Wcopy')])
+
+
 
 
 print('Patch Sums ...')
@@ -789,7 +803,7 @@ print('Final mask ...')
 t = time()
 # fav2_mask = (data_labels_focused2 == favorite2).astype('i4')
 
-# final_mask = binary_dilation(final_mask, structure=kernel, iterations=1).astype('i4')
+
 mask8 = np.zeros(mask.shape)
 edt2 = distance_transform_edt(1 - tmp + mask)
 mask8[edt2 <= 4] = 1
