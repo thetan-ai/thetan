@@ -799,10 +799,7 @@ print()
 aff = np.eye(4)
 # horizon(images=[(data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
-mask9 = mask_gt(data_labels, centroids, 400)
-mask10 = mask_gt(data_labels2, centroids2, 400)
-
-# horizon(images=[(maskbd, aff, 'maskbd'), (data_labels_bd, aff, 'dlbd'), (mask10, aff, 'm10'), (mask9, aff, 'm9'), (data_labels2, aff, 'dl2'), (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
+horizon(images=[(data_labels2, aff, 'dl2'), (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 
 
