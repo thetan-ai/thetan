@@ -411,7 +411,7 @@ def watershed_wgrad(Wgrad):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
-fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -424,7 +424,7 @@ fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
@@ -727,7 +727,7 @@ if convolve_ball:
 
 
 
-break_down = True
+break_down = False
 if break_down:
     Xbd = X.copy()
     Xbd[mask.ravel() < 1] = 0
@@ -755,7 +755,11 @@ if orig:
     masko = mask_lt(data_labels_o, centroids_o, bk_thr=300)
 
 
-horizon(images = [(masko + mask, aff, 'masko + mask'), (masko, aff, 'masko'), (mask, aff, 'mask'), (mask2, aff, 'mask2'), (Wcopy, aff, 'Wcopy')])
+aff = np.eye(4)
+final_mask = np.zeros(data.shape)
+final_mask[masko + mask == 1] = 1
+horizon(images=[(final_mask, aff, 'fm'), (masko + mask + mask2, aff, 'masko + mask + mask2'), (masko, aff, 'masko'), (mask, aff, 'mask'), (mask2, aff, 'mask2'), (Wcopy, aff, 'Wcopy')])
+
 
 print('Patch Sums ...')
 t = time()
@@ -798,7 +802,7 @@ aff = np.eye(4)
 mask9 = mask_gt(data_labels, centroids, 400)
 mask10 = mask_gt(data_labels2, centroids2, 400)
 
-horizon(images=[(maskbd, aff, 'maskbd'), (data_labels_bd, aff, 'dlbd'), (mask10, aff, 'm10'), (mask9, aff, 'm9'), (data_labels2, aff, 'dl2'), (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
+# horizon(images=[(maskbd, aff, 'maskbd'), (data_labels_bd, aff, 'dlbd'), (mask10, aff, 'm10'), (mask9, aff, 'm9'), (data_labels2, aff, 'dl2'), (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 
 
