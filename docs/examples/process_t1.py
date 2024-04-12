@@ -410,7 +410,7 @@ def watershed_wgrad(Wgrad):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -424,7 +424,7 @@ def watershed_wgrad(Wgrad):
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
@@ -758,20 +758,47 @@ mask11[data_labels_dt == favorite_dt] = 1
 
 # dt2 = distance_transform_edt(1 - (mask11 + thin_mask))
 
+viz_check = False
+if viz_check:
+    horizon(images=[(1 - 2 * mask11 + mask, aff, 'mask11 + mask'),
+                    (mask11, aff, 'mask11'),
+                    (dt, aff, 'dt'),
+                    (data_labels_dt, aff, 'data_labels_dt'),
+                    (dt, aff, 'dt mask'),
+                    (thin_mask, aff, 'fm'),
+                    (3 - (masko + mask + mask2), aff, 'masko + mask + mask2'),
+                    (masko, aff, 'masko'),
+                    (mask, aff, 'mask'),
+                    (mask2, aff, 'mask2'),
+                    (mask4, aff, 'mask4'),
+                    (Wgrad, aff, 'Wgrad'),
+                    (Wcopy, aff, 'Wcopy')])
 
-horizon(images=[(1 - 2 * mask11 + mask, aff, 'mask11 + mask'),
-                (mask11, aff, 'mask11'),
-                (dt, aff, 'dt'),
-                (data_labels_dt, aff, 'data_labels_dt'),
-                (dt, aff, 'dt mask'),
-                (thin_mask, aff, 'fm'),
-                (3 - (masko + mask + mask2), aff, 'masko + mask + mask2'),
-                (masko, aff, 'masko'),
-                (mask, aff, 'mask'),
-                (mask2, aff, 'mask2'),
-                (mask4, aff, 'mask4'),
-                (Wcopy, aff, 'Wcopy')])
+dist_from_focused = distance_transform_edt(1 - mask11)
 
+weights = (dist_from_focused.max() - dist_from_focused)
+weights_from_focused = (weights / weights.max()) ** 4
+weighted_image =  weights_from_focused * Wcopy
+
+Xw = X.copy()
+Xw[:, 3] = weighted_image.ravel()
+
+
+print('Applying Berserker 2 on Xw (re-weighted)')
+t = time()
+data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value, data_dims=data.shape, verbose=False)
+print('Duration ', time() - t)
+print()
+
+
+print_centroids(centroids_w)
+
+
+mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=300)
+mask_w2 = mask_lt(data_labels_w, centroids_w, bk_thr=200)
+mask_w3 = mask_lt(data_labels_w, centroids_w, bk_thr=100)
+
+horizon(images=[(1-mask_w3, aff, '1-mask_w3'), (1-mask_w2, aff, '1-mask_w2'), (1-mask_w, aff, '1-mask_w'), (data_labels_w, aff, 'dlw'), (dist_from_focused, aff, 'dff'), (weights_from_focused, aff, 'w'), (weighted_image, aff, 'wi'), (mask, aff, 'mask'), (Wcopy, aff, 'Wcopy')])
 
 
 
