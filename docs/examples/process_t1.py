@@ -9,7 +9,7 @@ from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
-from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion
+from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion, morphological_gradient
 from skimage.segmentation import flood, flood_fill
 from skimage.morphology import ball
 from scipy.ndimage import distance_transform_edt, distance_transform_bf, distance_transform_cdt
@@ -410,7 +410,7 @@ def watershed_wgrad(Wgrad):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -424,7 +424,7 @@ fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.n
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
@@ -799,11 +799,25 @@ print('Duration ', time() - t)
 print()
 
 
+
 print('Final mask ...')
 t = time()
 # fav2_mask = (data_labels_focused2 == favorite2).astype('i4')
+kernel = np.ones((3, 3, 3))
+# mask_th = white_tophat(1 - masko, structure=kernel).astype('i4')
+mask_bo1 = binary_opening(1 - mask, structure=kernel).astype('i4')
+mask_bo2 = binary_opening(1 - masko, structure=kernel).astype('i4')
+mask_bo3 = binary_opening(1 - mask2, structure=kernel).astype('i4')
+mask_bo4 = binary_opening(Wcopy < 100, structure=kernel).astype('i4')
 
+# mg3 = morphological_gradient(1 - mask, structure=kernel).astype('i4')
 
+print('Duration ', time() - t)
+print()
+
+horizon(images=[(mask_bo4, aff, 'mask_bo4'), (mask_bo1, aff, 'mask_bo1'), (mask_bo2, aff, 'mask_bo2'), (mask_bo3, aff, 'mask_bo3'), (mask_bo1 + mask_bo2 + mask_bo3, aff, 'all 3'), (1 - mask, aff, '1 - mask'), (mask, aff, 'mask'), (Wcopy, aff, 'Wcopy')])
+
+t = time()
 mask8 = np.zeros(mask.shape)
 edt2 = distance_transform_edt(1 - tmp + mask)
 mask8[edt2 <= 4] = 1
@@ -812,7 +826,6 @@ print()
 
 aff = np.eye(4)
 # horizon(images=[(data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
-
 horizon(images=[(data_labels2, aff, 'dl2'), (data_labels, aff, 'dl'), (mask8, aff, 'mask8'), (edt4, aff, 'edt4'), (mask1s, aff, 'mask1s'), (mask4s, aff, 'mask4s'), (mask4, aff, 'mask4'), (mask, aff, 'mask'), (tmp, aff, 'tmp'), (Wcopy, aff, 'Wcopy')])
 
 
