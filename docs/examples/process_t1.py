@@ -5,7 +5,7 @@ from dipy.io.image import load_nifti, save_nifti
 from dipy.viz.horizon.app import horizon
 from dipy.align.reslice import reslice
 from dipy.align.scalespace import ScaleSpace
-from thetan.berserker import berserker2, theta_g1
+from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
@@ -410,7 +410,7 @@ def watershed_wgrad(Wgrad):
 
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
-fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
@@ -425,7 +425,7 @@ fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.n
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
@@ -453,6 +453,23 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # Simulation example
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[5, 5, 5, 5.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
+
+
+res = berserker2_brain_seg(data, affine, return_all=True)
+
+imask_w, data_labels_w, mask_w, mask_f, mask, dist_from_focused, weighted_image, W = res
+
+
+aff = np.eye(4)
+horizon(images=[(mask + mask_w, aff, 'mask + mask_w'),
+                (imask_w, aff, 'imask_w'),
+                (data_labels_w, aff, 'aff'), 
+                (mask_w, aff, 'mask_w'), 
+                (mask_f, aff, 'mask_f'), 
+                (mask, aff, 'mask'),
+                (dist_from_focused, aff, 'dff'),
+                (weighted_image, aff, 'wi'),
+                (W, aff, 'W')])
 
 
 vxs = np.asarray(vxs)

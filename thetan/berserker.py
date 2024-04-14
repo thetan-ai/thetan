@@ -1,7 +1,9 @@
 from time import time
 import numpy as np
+from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
+from thetan.theta import img3d_to_ijkv_features
 
 
 def check_module_load():
@@ -459,3 +461,167 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
 
     else:
         return even_centroids_ex2, updated_labels_ex2
+
+
+
+def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False):
+    """
+    Deploying berserker v2 in imaging data and 
+    returning labels as 3D volumes
+    """
+    centroids, labels = berserker2(X, theta_value, all_out=False)
+    data_labels = labels.copy()
+    data_labels = data_labels.reshape(data_dims)
+    data_labels = data_labels.astype('f8')
+    return data_labels, centroids
+
+
+def X_to_many_3D(X, data_dims):
+    """ Currently assuming only 4 features"""
+
+    X0 = X[:, 0].reshape(data_dims)
+    X1 = X[:, 1].reshape(data_dims)
+    X2 = X[:, 2].reshape(data_dims)
+    X3 = X[:, 3].reshape(data_dims)
+
+    return X0, X1, X2, X3
+
+
+def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
+
+    if perc is None:
+        data2 = data
+    else:
+        value_range = np.percentile(data, q=[2, 99])
+        data2 = np.interp(data, value_range, (0, 1))
+        data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+
+    X = img3d_to_ijkv_features(data2)
+    # move to world coordinates W (xyz)
+
+    W = np.dot(affine[:3, :3], X[:, :3].T) + affine[:3, 3][:, None]
+    X[:, :3] = W.T
+
+    # Intensity more important than location
+    X[:, 3] = enh * X[:, 3]
+
+    return X
+
+
+def analyze_labels(data_labels_focused, num_focused, verbose=False):
+
+    sizes = []
+    for i in range(num_focused):
+        cur_sz = (data_labels_focused == i).sum()
+        sizes.append(cur_sz)
+
+    sizes = np.asarray(sizes)
+    if verbose:
+        print(sizes)
+    favorites = np.argsort(sizes)[::-1][:3]
+    favorite = favorites[1] # 0 most likely bk
+    print('Favorite index')
+    print(favorite, sizes[favorite])
+    return favorite
+
+
+def mask_lt(data_labels, centroids, bk_thr=300):
+    """ Remove low intensities using label centroids
+    """
+    # bk_thr = 300 # 400 or 250 interesting too
+    data_labels_u = data_labels.copy()
+    indx = np.where(centroids[:, 3] < bk_thr)[0]
+    min_indx = np.argmin(centroids[:, 3])
+
+    for indx_ in indx:
+        data_labels_u[data_labels == indx_] = min_indx
+
+    # X[:, 3][tmp.ravel() == min_indx] = 0
+    mask = data_labels_u == min_indx
+    maskb = mask.copy()
+    mask = mask.astype('f8')
+    return mask
+
+
+def mask_gt(data_labels, centroids, bk_thr=300):
+    """ Keep high intensities using label centroids
+    """
+    # bk_thr = 300 # 400 or 250 interesting too
+    data_labels_u = data_labels.copy()
+    indx = np.where(centroids[:, 3] > bk_thr)[0]
+    max_indx = np.argmax(centroids[:, 3])
+
+    for indx_ in indx:
+        data_labels_u[data_labels == indx_] = max_indx
+
+    mask = data_labels_u == max_indx
+    maskb = mask.copy()
+    mask = mask.astype('f8')
+    return mask
+
+
+def print_centroids(centroids):
+    for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
+        print(idx, c)
+    print()
+
+
+def berserker2_brain_seg(data, affine, return_all=False):
+
+    theta_value = 120.
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    Xg = X.copy()
+
+    print('Calculating gradients')
+    Wgrad = gaussian_gradient_magnitude(W, sigma=1)
+    Xg[:, 3] += 2 * Wgrad.ravel()
+
+    print('Applying Berserker 2 on Xg (i,j,k,3w + 2gradW)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(Xg, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    mask = mask_lt(data_labels, centroids, bk_thr=300)
+
+    dt = distance_transform_edt(1 - mask)
+    data_labels_dt, num_focused_dt = label(dt > 5, structure=np.ones((3, 3, 3)))
+
+    favorite_dt = analyze_labels(data_labels_dt, num_focused_dt)
+
+    mask_f = np.zeros(data.shape)
+    mask_f[data_labels_dt == favorite_dt] = 1
+
+    # dt2 = distance_transform_edt(1 - (mask11 + thin_mask))
+
+    dist_from_focused = distance_transform_edt(1 - mask_f)
+
+    weights = (dist_from_focused.max() - dist_from_focused)
+    weights_from_focused = (weights / weights.max()) ** 4
+    weighted_image =  weights_from_focused * W
+
+    Xw = X.copy()
+    Xw[:, 3] = weighted_image.ravel()
+   
+    print('Applying Berserker 2 on Xw (re-weighted)')
+    t = time()
+    data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids_w)
+
+    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=300)
+    imask_w = 1 - mask_w
+
+    if return_all:
+        return imask_w, data_labels_w, mask_w, mask_f, mask, dist_from_focused, weighted_image, W
+
+    return imask_w
+
