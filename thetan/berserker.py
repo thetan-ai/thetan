@@ -536,7 +536,6 @@ def mask_lt(data_labels, centroids, bk_thr=300):
     for indx_ in indx:
         data_labels_u[data_labels == indx_] = min_indx
 
-    # X[:, 3][tmp.ravel() == min_indx] = 0
     mask = data_labels_u == min_indx
     maskb = mask.copy()
     mask = mask.astype('f8')
@@ -546,7 +545,7 @@ def mask_lt(data_labels, centroids, bk_thr=300):
 def mask_gt(data_labels, centroids, bk_thr=300):
     """ Keep high intensities using label centroids
     """
-    # bk_thr = 300 # 400 or 250 interesting too
+
     data_labels_u = data_labels.copy()
     indx = np.where(centroids[:, 3] > bk_thr)[0]
     max_indx = np.argmax(centroids[:, 3])
@@ -576,32 +575,47 @@ def berserker2_brain_seg(data, affine, return_all=False):
     X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
-    Xg = X.copy()
-
     print('Calculating gradients')
     Wgrad = gaussian_gradient_magnitude(W, sigma=1)
-    Xg[:, 3] += 2 * Wgrad.ravel()
 
-    print('Applying Berserker 2 on Xg (i,j,k,3w + 2gradW)')
+    Xpg = X.copy()
+    Xpg[:, 3] += 2 * Wgrad.ravel()
+    Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
+
+    Xng = X.copy()
+    Xng[:, 3] -= 2 * Wgrad.ravel()
+    Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
+
+    print('Applying Berserker 2 on Xg (i, j, k, 3w + 2gradW)')
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(Xg, theta_value, data_dims=data.shape, verbose=False)
+    data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
-    mask = mask_lt(data_labels, centroids, bk_thr=300)
+    print_centroids(centroids_pg)
 
-    dt = distance_transform_edt(1 - mask)
+    mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=300)
+
+    print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
+    t = time()
+    data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids_ng)
+
+    mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=300)
+
+    dt = distance_transform_edt(1 - mask_ng)
     data_labels_dt, num_focused_dt = label(dt > 5, structure=np.ones((3, 3, 3)))
-
     favorite_dt = analyze_labels(data_labels_dt, num_focused_dt)
 
     mask_f = np.zeros(data.shape)
     mask_f[data_labels_dt == favorite_dt] = 1
 
-    # dt2 = distance_transform_edt(1 - (mask11 + thin_mask))
-
+    print('Re-weighting')
     dist_from_focused = distance_transform_edt(1 - mask_f)
-
+    dist_from_focused[dist_from_focused > 40] = 40.0
     weights = (dist_from_focused.max() - dist_from_focused)
     weights_from_focused = (weights / weights.max()) ** 4
     weighted_image =  weights_from_focused * W
@@ -620,8 +634,28 @@ def berserker2_brain_seg(data, affine, return_all=False):
     mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=300)
     imask_w = 1 - mask_w
 
-    if return_all:
-        return imask_w, data_labels_w, mask_w, mask_f, mask, dist_from_focused, weighted_image, W
+    aff = np.eye(4)
+    from dipy.viz import horizon
+    horizon(images=[(imask_w, aff, 'imask_w'), 
+                    (mask_w, aff, 'mask_w'), 
+                    (data_labels_w, aff, 'dl_w'), 
+                    (weighted_image, aff, 'wi'), 
+                    (weights_from_focused, aff, 'wi'), 
+                    (dist_from_focused, aff, 'distance_from_focused'), 
+                    (mask_f, aff, 'mask_f'), 
+                    (dt, aff, 'dt'), 
+                    (mask_ng, aff, 'mask_ng'), 
+                    (data_labels_ng, aff, 'dl_ng'), 
+                    (mask_pg, aff, 'mask_pg'), 
+                    (data_labels_pg, aff, 'dl_pg'), 
+                    (Wpg, aff, 'Wpg'), 
+                    (W, aff, 'W'), 
+                    (Wng, aff, 'Wng')])
+
+    t = 1
+
+    # if return_all:
+    #     return imask_w, data_labels_w, mask_w, mask_f, weighted_image, dist_from_focused, data_labels_dt, W
 
     return imask_w
 
