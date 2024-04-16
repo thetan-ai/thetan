@@ -1,5 +1,6 @@
 from time import time
 import numpy as np
+from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
 from scipy.ndimage import generate_binary_structure, gaussian_filter
@@ -567,6 +568,19 @@ def print_centroids(centroids):
     print()
 
 
+def patch_sums(data, patch):
+    """ Sums in linearized patches
+    """
+
+    data2 = np.pad(data, patch[0]//2)
+    data2_enh = patchify(data2, patch)
+    data2_enh = data2_enh.reshape(data2_enh.shape[0],
+                                  data2_enh.shape[1],
+                                  data2_enh.shape[2],
+                                  patch[0] * patch[1] * patch[2])
+
+    return np.sum(data2_enh, axis=-1)
+
 def berserker2_brain_seg(data, affine, return_all=False):
 
     theta_value = 120.
@@ -625,25 +639,34 @@ def berserker2_brain_seg(data, affine, return_all=False):
     locus = np.zeros(data.shape)
     locus[data_labels == favorite] = 1
 
-    ignore = True
-    if not ignore:
-        kernel = np.ones((3, 3, 3))
-        data_labels, num_focused = label(mask_ngo, structure=kernel)
-        favorite = analyze_labels(data_labels, num_focused)
-
-        mask_fngo = np.zeros(data.shape)
-        mask_fngo[data_labels == favorite] = 1
-
-        dt = distance_transform_edt(mask_fngo)
-        data_labels_dt, num_focused_dt = label(dt > 5, structure=kernel)
-        favorite_dt = analyze_labels(data_labels_dt, num_focused_dt)
-
-        mask_f = np.zeros(data.shape)
-        mask_f[data_labels_dt == favorite_dt] = 1
-
     print('Re-weighting')
     dist_from_focused = distance_transform_edt(1 - locus)
-    dist_from_focused[dist_from_focused > 20] = 20.0
+    dist_from_focused[dist_from_focused > 10] = 10.0
+
+    dist_from_focused = (dist_from_focused.max() - dist_from_focused)
+    dist_from_focused = dist_from_focused + 10 * (1 - mask_pg) # + 1. * (W / 90.)
+
+    dff_ps = patch_sums(dist_from_focused, (5, 5, 5))
+
+    from dipy.viz import horizon
+    aff = np.eye(4)
+    horizon(images=[(dist_from_focused, aff, 'dff'),
+                    (locus, aff, 'locus'),
+                    (mask_pg, aff, 'mask_pg'),
+                    (Wgrad, aff, 'Wgrad'),
+                    (dff_ps, aff, 'dff_ps'),
+                    (W, aff, 'W')])
+
+    Xd = X.copy()
+    Xd[:, 3] = 30 * dist_from_focused.ravel()
+
+    print('Applying Berserker 2 on Xd (re-weighted)')
+    t = time()
+    data_labels_d, centroids_d = berserker2_to_3D_labels(Xd, theta_value * 0.8, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+
     weights = (dist_from_focused.max() - dist_from_focused)
     weights_from_focused = (weights / weights.max()) ** 4
     weighted_image =  weights_from_focused * W
@@ -668,8 +691,19 @@ def berserker2_brain_seg(data, affine, return_all=False):
     horizon(images=[(imask_w, aff, 'imask_w'),
                     (data_labels_w, aff, 'dl_w'),
                     (weighted_image, aff, 'weighted_image'),
-                    (weights, aff, 'weights'),                     
-                    (dist_from_focused, aff, 'dff'),                     
+                    (weights, aff, 'weights'),
+                    (dist_from_focused, aff, 'dff'),
+                    (locus, aff, 'locus'),
+                    (mask_pg, aff, 'mask_pg'),
+                    (Wgrad, aff, 'Wgrad'),
+                    (Wgrad2, aff, 'Wgrad2'),
+                    (W, aff, 'W')])
+
+    horizon(images=[(imask_w, aff, 'imask_w'),
+                    (data_labels_w, aff, 'dl_w'),
+                    (weighted_image, aff, 'weighted_image'),
+                    (weights, aff, 'weights'),
+                    (dist_from_focused, aff, 'dff'),
                     (locus, aff, 'locus'),
                     (data_labels, aff, 'dl'),
                     (dt_avg2, aff, 'dt_avg2'),
