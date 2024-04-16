@@ -2,6 +2,7 @@ from time import time
 import numpy as np
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
+from scipy.ndimage import generate_binary_structure, gaussian_filter
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 from thetan.theta import img3d_to_ijkv_features
@@ -596,38 +597,52 @@ def berserker2_brain_seg(data, affine, return_all=False):
     print_centroids(centroids_pg)
 
     mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=300)
-    mask_pgo = binary_opening(1 - mask_pg, iterations=5).astype('i4')
-
-    ng = True
-    if ng:
-        print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
-        t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
-        print()
-
-        print_centroids(centroids_ng)
-
-        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=300)
-        mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
+    # mask_pgo = binary_opening(1 - mask_pg, iterations=5).astype('i4')
+    dt_pg = distance_transform_edt(1 - mask_pg)
 
 
-    kernel = np.ones((3, 3, 3))
-    data_labels, num_focused = label(mask_ngo, structure=kernel)
-    favorite = analyze_labels(data_labels, num_focused)
+    print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
+    t = time()
+    data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
 
-    mask_fngo = np.zeros(data.shape)
-    mask_fngo[data_labels == favorite] = 1
+    print_centroids(centroids_ng)
 
-    dt = distance_transform_edt(mask_fngo)
-    data_labels_dt, num_focused_dt = label(dt > 5, structure=kernel)
-    favorite_dt = analyze_labels(data_labels_dt, num_focused_dt)
+    mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=300)
+    # mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
 
-    mask_f = np.zeros(data.shape)
-    mask_f[data_labels_dt == favorite_dt] = 1
+    dt_ng = distance_transform_edt(1 - mask_ng)
+    dt_avg = 0.5 * dt_pg + 0.5 * dt_ng
+    dt_avg2 = gaussian_filter(dt_avg, sigma=1)
+
+
+    # kernel = np.ones((3, 3, 3))
+    kernel = generate_binary_structure(3, 1)
+    data_labels, num_labels = label(dt_avg2 > 4, structure=kernel)
+    favorite = analyze_labels(data_labels, num_labels)
+
+    locus = np.zeros(data.shape)
+    locus[data_labels == favorite] = 1
+
+    ignore = True
+    if not ignore:
+        kernel = np.ones((3, 3, 3))
+        data_labels, num_focused = label(mask_ngo, structure=kernel)
+        favorite = analyze_labels(data_labels, num_focused)
+
+        mask_fngo = np.zeros(data.shape)
+        mask_fngo[data_labels == favorite] = 1
+
+        dt = distance_transform_edt(mask_fngo)
+        data_labels_dt, num_focused_dt = label(dt > 5, structure=kernel)
+        favorite_dt = analyze_labels(data_labels_dt, num_focused_dt)
+
+        mask_f = np.zeros(data.shape)
+        mask_f[data_labels_dt == favorite_dt] = 1
 
     print('Re-weighting')
-    dist_from_focused = distance_transform_edt(1 - mask_f)
+    dist_from_focused = distance_transform_edt(1 - locus)
     dist_from_focused[dist_from_focused > 20] = 20.0
     weights = (dist_from_focused.max() - dist_from_focused)
     weights_from_focused = (weights / weights.max()) ** 4
@@ -644,38 +659,29 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids_w)
 
-    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=300)
+    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=100)
     imask_w = 1 - mask_w
 
     aff = np.eye(4)
     from dipy.viz import horizon
-    horizon(images=[(mask_pgo, aff, 'mask_pgo'),
-                    (1-mask_pg, aff, '1-mask_pg'),
-                    (1 - mask_ng, aff, '1-mask_ng'),
-                    (mask_ngo, aff, 'mask_ngo'),
-                    (mask_fngo, aff, 'mask_fngo'),
+
+    horizon(images=[(imask_w, aff, 'imask_w'),
+                    (data_labels_w, aff, 'dl_w'),
+                    (weighted_image, aff, 'weighted_image'),
+                    (weights, aff, 'weights'),                     
+                    (dist_from_focused, aff, 'dff'),                     
+                    (locus, aff, 'locus'),
+                    (data_labels, aff, 'dl'),
+                    (dt_avg2, aff, 'dt_avg2'),
+                    (dt_avg, aff, 'dt_avg'),
+                    (dt_ng, aff, 'dt_ng'),
+                    (mask_ng, aff, 'mask_ng'),
+                    (dt_pg, aff, 'dt_pg'),
+                    (mask_pg, aff, 'mask_pg'),
                     (Wgrad, aff, 'Wgrad'),
                     (W, aff, 'W')])
 
-    horizon(images=[(imask_w, aff, 'imask_w'),
-                    (mask_w, aff, 'mask_w'),
-                    (data_labels_w, aff, 'dl_w'),
-                    (weighted_image, aff, 'wi'),
-                    (weights_from_focused, aff, 'wi'),
-                    (dist_from_focused, aff, 'distance_from_focused'),
-                    (mask_f, aff, 'mask_f'),
-                    (dt, aff, 'dt'),
-                    (mask_pg, aff, 'mask_pg'),
-                    (mask_pgo, aff, 'mask_pgo'),
-                    (mask_ng, aff, 'mask_ng'),
-                    (mask_ngo, aff, 'mask_ngo'),
-                    (mask_fngo, aff, 'mask_fngo'),
-                    (data_labels_pg, aff, 'dl_pg'),
-                    (data_labels_ng, aff, 'dl_ng'),
-                    (data_labels_w, aff, 'dl_w'),
-                    (Wpg, aff, 'Wpg'),
-                    (Wng, aff, 'Wng'),
-                    (W, aff, 'W')])
+
 
     t = 1
 
