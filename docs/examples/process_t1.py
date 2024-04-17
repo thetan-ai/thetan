@@ -424,16 +424,18 @@ def watershed_wgrad(Wgrad):
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
+# fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 # DWI dataset
 # fname = '/home/elef/.dipy/stanford_hardi/dwi_patch2self.nii.gz'
+# fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/HARDI150.nii.gz'
 # data, affine, vxs = load_nifti(fname, return_voxsize=True)
-# Just keep b0 for now
+# # Just keep b0 for now
 # data = data[..., 0].copy()
 
 # Binfinity
@@ -454,8 +456,12 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[10, 20, 30, 40.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 # data, affine, vxs = simulate_volumes(sh=(100, 100, 100), radii=[10, 20, 30, 40], values=[5, 5, 5, 5.], pos=[(50, 50, 50), (50, 50, 50), (50, 50, 50), (50, 50, 50)])
 
+print('Starting Thetan Berserker 2 for Brain Segmentation ...')
+t = time()
+images = berserker2_brain_seg(data, affine, return_all=True)
+print('Duration ', time() - t)
+print()
 
-res = berserker2_brain_seg(data, affine, return_all=True)
-
+horizon(images=images)
 
 t = 2

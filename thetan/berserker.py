@@ -614,38 +614,43 @@ def berserker2_brain_seg(data, affine, return_all=False):
     # mask_pgo = binary_opening(1 - mask_pg, iterations=5).astype('i4')
     dt_pg = distance_transform_edt(1 - mask_pg)
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
-    t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
+    ignore = True
+    if not ignore:
+        print('Applying Berserker 2 on X (i, j, k, 3w)')
+        t = time()
+        data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
 
-    print_centroids(centroids)
+        print_centroids(centroids)
 
-    mask = mask_lt(data_labels, centroids, bk_thr=300)
-    dt = distance_transform_edt(1 - mask)
+        mask = mask_lt(data_labels, centroids, bk_thr=300)
+        dt = distance_transform_edt(1 - mask)
 
-    print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
-    t = time()
-    data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
+        print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
+        t = time()
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
 
-    print_centroids(centroids_ng)
+        print_centroids(centroids_ng)
 
-    mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=300)
-    # mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
+        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=300)
+        mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
 
-    dt_ng = distance_transform_edt(1 - mask_ng)
-    
-    dt_avg = 0.5 * dt_pg + 0.5 * dt # + 0.333 * dt_ng
-    # dt_avg2 = gaussian_filter(dt_avg, sigma=1)
-    dt_avg2 = dt_avg
+        dt_ng = distance_transform_edt(1 - mask_ng)
+        
+        dt_avg = 0.5 * dt_pg + 0.5 * dt 
+        dt_avg2 = gaussian_filter(dt_avg, sigma=1)
+        dt_avg2 = dt_avg
 
 
-    W_tmp = dt_pg.copy()
-    W_tmp[dt_pg > 5] = 5
-    W_tmp = W_tmp * W
+    weights = dt_pg.copy()
+    weights[dt_pg > 5] = 5
+    weights_tmp = weights.copy()
+    weights = gaussian_filter(weights, sigma=1)
+    weights_tmp2 = weights.copy()
+    weights = weights * W
 
     ignore = True
     if not ignore:
@@ -697,7 +702,7 @@ def berserker2_brain_seg(data, affine, return_all=False):
         weighted_image =  weights_from_focused * W
 
     Xw = X.copy()
-    Xw[:, 3] = W_tmp.ravel()
+    Xw[:, 3] = weights.ravel()
 
     print('Applying Berserker 2 on Xw (re-weighted)')
     t = time()
@@ -707,25 +712,29 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids_w)
 
-    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=100)
+    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=5 * 300)
     imask_w = 1 - mask_w
 
+    kernel = generate_binary_structure(3, 1)
+    data_labels, num_labels = label(imask_w, structure=kernel)
+    favorite = analyze_labels(data_labels, num_labels)
+
+    final_mask = np.zeros(data.shape)
+    final_mask[data_labels == favorite] = 1
+
     aff = np.eye(4)
-    from dipy.viz import horizon
-
-    horizon(images=[(data_labels_w, aff, 'dl_w'),
-                    (W_tmp, aff, 'W_tmp'),
-                    (dt_pg, aff, 'dt_pg'),                    
-                    (mask_pg, aff, 'dl_w'),
-                    (Wgrad, aff, 'Wgrad'),
-                    (W, aff, 'W')])
-
-
+    images=[(final_mask, aff, 'final_mask'),
+            (imask_w, aff, 'imask_w'),
+            (data_labels_w, aff, 'dl_w'),
+            (weights_tmp, aff, 'weights_tmp'),
+            (weights_tmp2, aff, 'weights_tmp2'),
+            (weights, aff, 'weights'),
+            (dt_pg, aff, 'dt_pg'),                    
+            (mask_pg, aff, 'dl_w'),
+            (Wgrad, aff, 'Wgrad'),
+            (3 * W + 2 * Wgrad, aff, '3W + 2Wgrad'),
+            (W, aff, 'W')]
 
     t = 1
-
-    # if return_all:
-    #     return imask_w, data_labels_w, mask_w, mask_f, weighted_image, dist_from_focused, data_labels_dt, W
-
-    return imask_w
+    return images
 
