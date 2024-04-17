@@ -639,8 +639,8 @@ def berserker2_brain_seg(data, affine, return_all=False):
         mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
 
         dt_ng = distance_transform_edt(1 - mask_ng)
-        
-        dt_avg = 0.5 * dt_pg + 0.5 * dt 
+
+        dt_avg = 0.5 * dt_pg + 0.5 * dt
         dt_avg2 = gaussian_filter(dt_avg, sigma=1)
         dt_avg2 = dt_avg
 
@@ -673,12 +673,12 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
         from dipy.viz import horizon
         aff = np.eye(4)
-        horizon(images=[(dt_pg, aff, 'dt_pg'), 
-                        (dt, aff, 'dt'), 
+        horizon(images=[(dt_pg, aff, 'dt_pg'),
+                        (dt, aff, 'dt'),
                         (dt_ng, aff, 'dt_ng'),
-                        (dt_avg, aff, 'dt_avg'), 
+                        (dt_avg, aff, 'dt_avg'),
                         (dist_from_focused, aff, 'dff'),
-                        (locus, aff, 'locus'),                    
+                        (locus, aff, 'locus'),
                         (Wgrad, aff, 'Wgrad'),
                         (dff_ps, aff, 'dff_ps'),
                         (1 - mask_pg, aff, '1 - mask_pg'),
@@ -712,7 +712,8 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids_w)
 
-    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=5 * 300)
+    # 5 works but 6 also in some cases such as HH-1211
+    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * 300)
     imask_w = 1 - mask_w
 
     kernel = generate_binary_structure(3, 1)
@@ -729,12 +730,14 @@ def berserker2_brain_seg(data, affine, return_all=False):
             (weights_tmp, aff, 'weights_tmp'),
             (weights_tmp2, aff, 'weights_tmp2'),
             (weights, aff, 'weights'),
-            (dt_pg, aff, 'dt_pg'),                    
+            (dt_pg, aff, 'dt_pg'),
             (mask_pg, aff, 'dl_w'),
             (Wgrad, aff, 'Wgrad'),
             (3 * W + 2 * Wgrad, aff, '3W + 2Wgrad'),
             (W, aff, 'W')]
 
+    from dipy.viz import horizon
+    horizon(images=images)
     t = 1
     return images
 
