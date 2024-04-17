@@ -614,6 +614,16 @@ def berserker2_brain_seg(data, affine, return_all=False):
     # mask_pgo = binary_opening(1 - mask_pg, iterations=5).astype('i4')
     dt_pg = distance_transform_edt(1 - mask_pg)
 
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids)
+
+    mask = mask_lt(data_labels, centroids, bk_thr=300)
+    dt = distance_transform_edt(1 - mask)
 
     print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
     t = time()
@@ -627,56 +637,71 @@ def berserker2_brain_seg(data, affine, return_all=False):
     # mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
 
     dt_ng = distance_transform_edt(1 - mask_ng)
-    dt_avg = 0.5 * dt_pg + 0.5 * dt_ng
-    dt_avg2 = gaussian_filter(dt_avg, sigma=1)
+    
+    dt_avg = 0.5 * dt_pg + 0.5 * dt # + 0.333 * dt_ng
+    # dt_avg2 = gaussian_filter(dt_avg, sigma=1)
+    dt_avg2 = dt_avg
 
 
-    # kernel = np.ones((3, 3, 3))
-    kernel = generate_binary_structure(3, 1)
-    data_labels, num_labels = label(dt_avg2 > 4, structure=kernel)
-    favorite = analyze_labels(data_labels, num_labels)
+    W_tmp = dt_pg.copy()
+    W_tmp[dt_pg > 5] = 5
+    W_tmp = W_tmp * W
 
-    locus = np.zeros(data.shape)
-    locus[data_labels == favorite] = 1
+    ignore = True
+    if not ignore:
+        # kernel = np.ones((3, 3, 3))
+        kernel = generate_binary_structure(3, 1)
+        data_labels, num_labels = label(dt_pg > 5, structure=kernel)
+        favorite = analyze_labels(data_labels, num_labels)
 
-    print('Re-weighting')
-    dist_from_focused = distance_transform_edt(1 - locus)
-    dist_from_focused[dist_from_focused > 10] = 10.0
+        locus = np.zeros(data.shape)
+        locus[data_labels == favorite] = 1
 
-    dist_from_focused = (dist_from_focused.max() - dist_from_focused)
-    dist_from_focused = dist_from_focused + 10 * (1 - mask_pg) # + 1. * (W / 90.)
+        print('Re-weighting')
+        dist_from_focused = distance_transform_edt(1 - locus)
+        dist_from_focused[dist_from_focused > 10] = 10.0
 
-    dff_ps = patch_sums(dist_from_focused, (5, 5, 5))
+        dist_from_focused = (dist_from_focused.max() - dist_from_focused)
+        dist_from_focused = dist_from_focused + 10 * (1 - mask_pg) # + 1. * (W / 90.)
 
-    from dipy.viz import horizon
-    aff = np.eye(4)
-    horizon(images=[(dist_from_focused, aff, 'dff'),
-                    (locus, aff, 'locus'),
-                    (mask_pg, aff, 'mask_pg'),
-                    (Wgrad, aff, 'Wgrad'),
-                    (dff_ps, aff, 'dff_ps'),
-                    (W, aff, 'W')])
+        dff_ps = patch_sums(dist_from_focused, (5, 5, 5))
 
-    Xd = X.copy()
-    Xd[:, 3] = 30 * dist_from_focused.ravel()
+        from dipy.viz import horizon
+        aff = np.eye(4)
+        horizon(images=[(dt_pg, aff, 'dt_pg'), 
+                        (dt, aff, 'dt'), 
+                        (dt_ng, aff, 'dt_ng'),
+                        (dt_avg, aff, 'dt_avg'), 
+                        (dist_from_focused, aff, 'dff'),
+                        (locus, aff, 'locus'),                    
+                        (Wgrad, aff, 'Wgrad'),
+                        (dff_ps, aff, 'dff_ps'),
+                        (1 - mask_pg, aff, '1 - mask_pg'),
+                        (1 - mask, aff, '1 - mask'),
+                        (1 - mask_ng, aff, '1 - mask_ng'),
+                        (W * locus, aff, 'W * locus'),
+                        (W, aff, 'W')])
 
-    print('Applying Berserker 2 on Xd (re-weighted)')
-    t = time()
-    data_labels_d, centroids_d = berserker2_to_3D_labels(Xd, theta_value * 0.8, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
+        Xd = X.copy()
+        Xd[:, 3] = 30 * dist_from_focused.ravel()
+
+        print('Applying Berserker 2 on Xd (re-weighted)')
+        t = time()
+        data_labels_d, centroids_d = berserker2_to_3D_labels(Xd, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
 
 
-    weights = (dist_from_focused.max() - dist_from_focused)
-    weights_from_focused = (weights / weights.max()) ** 4
-    weighted_image =  weights_from_focused * W
+        weights = (dist_from_focused.max() - dist_from_focused)
+        weights_from_focused = (weights / weights.max()) ** 4
+        weighted_image =  weights_from_focused * W
 
     Xw = X.copy()
-    Xw[:, 3] = weighted_image.ravel()
+    Xw[:, 3] = W_tmp.ravel()
 
     print('Applying Berserker 2 on Xw (re-weighted)')
     t = time()
-    data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value, data_dims=data.shape, verbose=False)
+    data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value * 5, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
@@ -688,30 +713,10 @@ def berserker2_brain_seg(data, affine, return_all=False):
     aff = np.eye(4)
     from dipy.viz import horizon
 
-    horizon(images=[(imask_w, aff, 'imask_w'),
-                    (data_labels_w, aff, 'dl_w'),
-                    (weighted_image, aff, 'weighted_image'),
-                    (weights, aff, 'weights'),
-                    (dist_from_focused, aff, 'dff'),
-                    (locus, aff, 'locus'),
-                    (mask_pg, aff, 'mask_pg'),
-                    (Wgrad, aff, 'Wgrad'),
-                    (Wgrad2, aff, 'Wgrad2'),
-                    (W, aff, 'W')])
-
-    horizon(images=[(imask_w, aff, 'imask_w'),
-                    (data_labels_w, aff, 'dl_w'),
-                    (weighted_image, aff, 'weighted_image'),
-                    (weights, aff, 'weights'),
-                    (dist_from_focused, aff, 'dff'),
-                    (locus, aff, 'locus'),
-                    (data_labels, aff, 'dl'),
-                    (dt_avg2, aff, 'dt_avg2'),
-                    (dt_avg, aff, 'dt_avg'),
-                    (dt_ng, aff, 'dt_ng'),
-                    (mask_ng, aff, 'mask_ng'),
-                    (dt_pg, aff, 'dt_pg'),
-                    (mask_pg, aff, 'mask_pg'),
+    horizon(images=[(data_labels_w, aff, 'dl_w'),
+                    (W_tmp, aff, 'W_tmp'),
+                    (dt_pg, aff, 'dt_pg'),                    
+                    (mask_pg, aff, 'dl_w'),
                     (Wgrad, aff, 'Wgrad'),
                     (W, aff, 'W')])
 
