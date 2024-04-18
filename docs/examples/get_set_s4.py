@@ -75,23 +75,35 @@ print(kcentroids.shape)
 
 # centroids, labels = theta_g1(points, theta=145000)
 # centroids, labels = theta_g2(points, theta=110000, num_shuffles=2000) ####s4
-from thetan.berserker import berserker
+from thetan.berserker import berserker, berserker2
 
+print('berserker')
+t = time()
 centroids, labels, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker(points, 105000, all_out=True, verbose=True)
+print('Duration ', time() - t)
+
+print('berserker2')
+t = time()
+even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker2(points, 105000, all_out=True, verbose=True)
+print('Duration ', time() - t)
+
+centroids, labels = even_centroids_ex2, updated_labels_ex2
 
 unique_labels, sizes = np.unique(labels, return_counts=True)
 plt.figure()
 plt.plot(np.sort(sizes)[::-1], '-o')
 plt.show
 data = np.array(np.sort(sizes)[::-1])
-np.savetxt(os.path.join(dir_path,'s3_centroids_size.dat'), data)
+# np.savetxt(os.path.join(dir_path,'s3_centroids_size.dat'), data)
 plt.savefig(os.path.join(dir_path,'s4_clusters_sizes_vs_numbers.png'), dpi=300)
 big_idx = np.argsort(sizes)[::-1][:15]
 big_centroids = centroids[big_idx]
 labels = assign(points, big_centroids)
-show_clusters(points_orig, 'S4: Compare gt labels with K-means++ and Thetan Berserker', gt_centroids, labels_true, kcentroids, big_centroids)
+show_clusters(points_orig, 'S4: Compare gt labels with K-means++ and Thetan Berserker2', gt_centroids, labels_true, kcentroids, big_centroids)
 labels.sort()
 klabels.sort()
+
+
 print('adjusted_rand_score for labels: ',adjusted_rand_score(labels_true, labels))
 print('normalized_mutual_info_score (labels_true, labels): ' , normalized_mutual_info_score (labels_true, labels))
 
