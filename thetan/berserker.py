@@ -729,7 +729,7 @@ def berserker2_brain_seg(data, affine, return_all=False):
     imask_w2 = np.zeros(data.shape)
     # 110 used here due to 125
     # imask_w2[ps_iw > 110] = 1
-    imask_w2[dt_iw > 3] = 1
+    imask_w2[dt_iw > 2] = 1
 
     # imask_w_tmp = imask_w.copy()
 
