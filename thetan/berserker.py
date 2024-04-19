@@ -713,7 +713,7 @@ def berserker2_brain_seg(data, affine, return_all=False):
     print_centroids(centroids_w)
 
     # TODO: given that there are only a few labels here
-    # it would be interesting if we could erode them individualy
+    # it would be interesting if we could edt them individualy
     # and check amount of volume change
 
     # 5 works but 6 also in some cases such as HH-1211
@@ -729,10 +729,11 @@ def berserker2_brain_seg(data, affine, return_all=False):
     imask_w2 = np.zeros(data.shape)
     # 110 used here due to 125
     # imask_w2[ps_iw > 110] = 1
-    imask_w2[dt_iw > 2] = 1
+    imask_w2[dt_iw > 2.5] = 1
 
-    # imask_w_tmp = imask_w.copy()
-
+    # TODO: create an edt based transition between imask_w2 and imask_w
+    # or do the same directly from the gradient mag image
+    
     kernel = generate_binary_structure(3, 1)
     # imask_wb = binary_opening(imask_w, structure=kernel, iterations=2).astype('i4')
     # imask_w = imask_wb    
