@@ -712,12 +712,30 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids_w)
 
+    # TODO: given that there are only a few labels here
+    # it would be interesting if we could erode them individualy
+    # and check amount of volume change
+
     # 5 works but 6 also in some cases such as HH-1211
     mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * 300)
     imask_w = 1 - mask_w
 
+    imask_w_tmp = imask_w.copy()
+
+    # TODO: this part was useful only for HH-1211 but reduces quality of mask
+    ps_iw = patch_sums(imask_w, (5, 5, 5))
+    # dt_iw = distance_transform_edt(imask_w)
+
+    imask_w2 = np.zeros(data.shape)
+    # 125 used here due to 125
+    imask_w2[ps_iw == 125] = 1
+
+    # imask_w_tmp = imask_w.copy()
+
     kernel = generate_binary_structure(3, 1)
-    data_labels, num_labels = label(imask_w, structure=kernel)
+    # imask_wb = binary_opening(imask_w, structure=kernel, iterations=2).astype('i4')
+    # imask_w = imask_wb    
+    data_labels, num_labels = label(imask_w2, structure=kernel)
     favorite = analyze_labels(data_labels, num_labels)
 
     final_mask = np.zeros(data.shape)
@@ -725,7 +743,10 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     aff = np.eye(4)
     images=[(final_mask, aff, 'final_mask'),
-            (imask_w, aff, 'imask_w'),
+            (ps_iw, aff, 'ps_iw'),
+            # (dt_iw, aff, 'dt_iw'),
+            (imask_w, aff, 'imask_w'), 
+            (imask_w2, aff, 'imask_w2'), 
             (data_labels_w, aff, 'dl_w'),
             (weights_tmp, aff, 'weights_tmp'),
             (weights_tmp2, aff, 'weights_tmp2'),
