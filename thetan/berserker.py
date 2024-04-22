@@ -511,7 +511,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
     return X
 
 
-def analyze_labels(data_labels_focused, num_focused, verbose=False):
+def analyze_labels(data_labels_focused, num_focused, verbose=False, return_sizes=False):
 
     sizes = []
     for i in range(num_focused):
@@ -525,10 +525,12 @@ def analyze_labels(data_labels_focused, num_focused, verbose=False):
     favorite = favorites[1] # 0 most likely bk
     print('Favorite index')
     print(favorite, sizes[favorite])
+    if return_sizes:
+        return sizes
     return favorite
 
 
-def mask_lt(data_labels, centroids, bk_thr=300):
+def mask_lt(data_labels, centroids, bk_thr=300, updated_labels=False):
     """ Remove low intensities using label centroids
     """
     # bk_thr = 300 # 400 or 250 interesting too
@@ -542,10 +544,13 @@ def mask_lt(data_labels, centroids, bk_thr=300):
     mask = data_labels_u == min_indx
     maskb = mask.copy()
     mask = mask.astype('f8')
+
+    if updated_labels:
+        return mask, data_labels_u
     return mask
 
 
-def mask_gt(data_labels, centroids, bk_thr=300):
+def mask_gt(data_labels, centroids, bk_thr=300, updated_labels=False):
     """ Keep high intensities using label centroids
     """
 
@@ -559,6 +564,8 @@ def mask_gt(data_labels, centroids, bk_thr=300):
     mask = data_labels_u == max_indx
     maskb = mask.copy()
     mask = mask.astype('f8')
+    if updated_labels:
+        return mask, data_labels_u
     return mask
 
 
@@ -580,6 +587,34 @@ def patch_sums(data, patch):
                                   patch[0] * patch[1] * patch[2])
 
     return np.sum(data2_enh, axis=-1)
+
+def patch_median(data, patch):
+    """ Sums in linearized patches
+    """
+
+    data2 = np.pad(data, patch[0]//2)
+    data2_enh = patchify(data2, patch)
+    data2_enh = data2_enh.reshape(data2_enh.shape[0],
+                                  data2_enh.shape[1],
+                                  data2_enh.shape[2],
+                                  patch[0] * patch[1] * patch[2])
+
+    return np.median(data2_enh, axis=-1)
+
+
+def labels_sp_centroids(labels, centroids):
+    """ count labels in patch
+    """
+    tmp = labels.copy()
+
+    for i in range(centroids.shape[0]):
+
+        tmp[labels == i] = centroids[i][3]
+
+    return tmp
+
+
+
 
 def berserker2_brain_seg(data, affine, return_all=False):
 
@@ -611,7 +646,6 @@ def berserker2_brain_seg(data, affine, return_all=False):
     print_centroids(centroids_pg)
 
     mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=300)
-    # mask_pgo = binary_opening(1 - mask_pg, iterations=5).astype('i4')
     dt_pg = distance_transform_edt(1 - mask_pg)
 
     ignore = True
@@ -671,21 +705,21 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
         dff_ps = patch_sums(dist_from_focused, (5, 5, 5))
 
-        from dipy.viz import horizon
-        aff = np.eye(4)
-        horizon(images=[(dt_pg, aff, 'dt_pg'),
-                        (dt, aff, 'dt'),
-                        (dt_ng, aff, 'dt_ng'),
-                        (dt_avg, aff, 'dt_avg'),
-                        (dist_from_focused, aff, 'dff'),
-                        (locus, aff, 'locus'),
-                        (Wgrad, aff, 'Wgrad'),
-                        (dff_ps, aff, 'dff_ps'),
-                        (1 - mask_pg, aff, '1 - mask_pg'),
-                        (1 - mask, aff, '1 - mask'),
-                        (1 - mask_ng, aff, '1 - mask_ng'),
-                        (W * locus, aff, 'W * locus'),
-                        (W, aff, 'W')])
+        # from dipy.viz import horizon
+        # aff = np.eye(4)
+        # horizon(images=[(dt_pg, aff, 'dt_pg'),
+        #                 (dt, aff, 'dt'),
+        #                 (dt_ng, aff, 'dt_ng'),
+        #                 (dt_avg, aff, 'dt_avg'),
+        #                 (dist_from_focused, aff, 'dff'),
+        #                 (locus, aff, 'locus'),
+        #                 (Wgrad, aff, 'Wgrad'),
+        #                 (dff_ps, aff, 'dff_ps'),
+        #                 (1 - mask_pg, aff, '1 - mask_pg'),
+        #                 (1 - mask, aff, '1 - mask'),
+        #                 (1 - mask_ng, aff, '1 - mask_ng'),
+        #                 (W * locus, aff, 'W * locus'),
+        #                 (W, aff, 'W')])
 
         Xd = X.copy()
         Xd[:, 3] = 30 * dist_from_focused.ravel()
@@ -701,9 +735,15 @@ def berserker2_brain_seg(data, affine, return_all=False):
         weights_from_focused = (weights / weights.max()) ** 4
         weighted_image =  weights_from_focused * W
 
+    # print('Calculating gradients')
+    # Wgrad2 = gaussian_gradient_magnitude(weights, sigma=1)
+
+    # weights2 = weights + Wgrad2
+
     Xw = X.copy()
     Xw[:, 3] = weights.ravel()
 
+    
     print('Applying Berserker 2 on Xw (re-weighted)')
     t = time()
     data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value * 5, data_dims=data.shape, verbose=False)
@@ -721,46 +761,110 @@ def berserker2_brain_seg(data, affine, return_all=False):
     imask_w = 1 - mask_w
 
     imask_w_tmp = imask_w.copy()
-
-    # TODO: this part was useful only for HH-1211 but reduces quality of mask
-    # ps_iw = patch_sums(imask_w, (5, 5, 5))
-    dt_iw = distance_transform_edt(imask_w)
-
-    imask_w2 = np.zeros(data.shape)
-    # 110 used here due to 125
-    # imask_w2[ps_iw > 110] = 1
-    imask_w2[dt_iw > 2.5] = 1
-
-    # TODO: create an edt based transition between imask_w2 and imask_w
-    # or do the same directly from the gradient mag image
+ 
     
-    kernel = generate_binary_structure(3, 1)
-    # imask_wb = binary_opening(imask_w, structure=kernel, iterations=2).astype('i4')
-    # imask_w = imask_wb    
-    data_labels, num_labels = label(imask_w2, structure=kernel)
-    favorite = analyze_labels(data_labels, num_labels)
+    ignore = True
+    if not ignore:
+        aff = np.eye(4)
+        images=[(final_mask, aff, 'final_mask'),
+                # (ps_iw, aff, 'ps_iw'),
+                (dt_iw, aff, 'dt_iw'),
+                (imask_w, aff, 'imask_w'), 
+                (imask_w2, aff, 'imask_w2'), 
+                (data_labels_w, aff, 'dl_w'),
+                (weights_tmp, aff, 'weights_tmp'),
+                (weights_tmp2, aff, 'weights_tmp2'),
+                (weights, aff, 'weights'),
+                (dt_pg, aff, 'dt_pg'),
+                (mask_pg, aff, 'mask_pg'),
+                # (Wgrad2, aff, 'Wgrad2'),            
+                (Wgrad, aff, 'Wgrad'),            
+                (3 * W + 2 * Wgrad, aff, '3W + 2Wgrad'),
+                (W, aff, 'W')]
+    
 
-    final_mask = np.zeros(data.shape)
-    final_mask[data_labels == favorite] = 1
+
+    data_labels_pg_u = data_labels_pg.copy()
+    indx = np.where(centroids_pg[:, 3] < 300)[0]
+
+    unq, cnts = np.unique(data_labels_pg_u.ravel(), return_counts=True)
+    
+    print('Further analyzing clusters')
+
+    # from dipy.viz import horizon
+    total = np.zeros(data.shape)
+    total_cnt = np.zeros(data.shape)
+    images = []
+    t = time()
+
+    cnt = 1
+    for i, u in enumerate(unq):
+
+        print('Unique label ', u, ' centroid ', centroids_pg[i, 3])
+        # if i in indx:
+        #     print('bk\n')
+        #     continue
+
+        tmp = (data_labels_pg_u == u)
+        print(tmp.min(), tmp.max())
+        # tmp_o = binary_opening(tmp, structure=kernel)
+
+        dt_tmp = distance_transform_edt(tmp)
+        tmp_o = dt_tmp > 1
+        # tmp_o = binary_erosion(tmp, structure=kernel)
+        # horizon(images=[(tmp.astype('i4'), np.eye(4), 'tmp'), (tmp_o.astype('i4'), np.eye(4), 'tmp_o')])
+        print(tmp_o.min(), tmp_o.max())
+
+        ratio = tmp_o.sum() / np.prod(data.shape)
+        print('>>', ratio)
+
+        if ratio > 0.0001:
+
+            total[tmp_o == 1] = 1
+
+        """ heavy analysis
+        if tmp_o.max() > tmp_o.min():
+        
+            print('Running label ...')
+            res, num_res = label(tmp_o, structure=kernel)
+            sizes = analyze_labels(res, num_res, return_sizes=True)
+            print('> intermediate labels', num_res)
+            print('> 200 largest sizes', np.sort(sizes)[::-1][1:201])
+            favorites = np.argsort(sizes)[::-1][1:201]
+        
+            # res_mask = np.zeros(data.shape)
+            # res_mask[res == res_favorite] = 1
+            for fav in favorites:
+                total[res == fav] = u
+                total_cnt[res == fav] = cnt
+                cnt += 1
+            # images.append((res_mask, aff, str(u) + '!'))
+        print()
+        """
+
+    print('Duration ', time() - t)
+
+    total_blur = np.zeros(data.shape)
+    total_blur[total > 0] = 10.0
+    total_blur = gaussian_filter(total_blur, sigma=1)
 
     aff = np.eye(4)
-    images=[(final_mask, aff, 'final_mask'),
-            # (ps_iw, aff, 'ps_iw'),
-            (dt_iw, aff, 'dt_iw'),
-            (imask_w, aff, 'imask_w'), 
-            (imask_w2, aff, 'imask_w2'), 
-            (data_labels_w, aff, 'dl_w'),
-            (weights_tmp, aff, 'weights_tmp'),
-            (weights_tmp2, aff, 'weights_tmp2'),
-            (weights, aff, 'weights'),
-            (dt_pg, aff, 'dt_pg'),
-            (mask_pg, aff, 'dl_w'),
-            (Wgrad, aff, 'Wgrad'),
-            (3 * W + 2 * Wgrad, aff, '3W + 2Wgrad'),
-            (W, aff, 'W')]
+    images.append((total, aff, 'total'))
+    images.append((total_blur, aff, 'total_blur'))
+    # images.append((total_cnt, aff, 'total_cnt'))
+    images.append((mask_pg, aff, 'mask_pg'))
+    images.append((data_labels_pg, aff, 'dl_pg'))
+    images.append((imask_w, aff, 'imask_w'))
+    images.append((W, aff, 'W'))
 
-    from dipy.viz import horizon
-    horizon(images=images)
-    t = 1
+    return images
+
+    images = [(mask_pg, aff, 'mask_pg'),
+              (data_labels_pg, aff, 'dl_pg'),
+              (dl_process, aff, 'dl_process'),
+              (imask_w, aff, 'imask_w'), 
+              (Wgrad, aff, 'Wgrad'),
+              (W, aff, 'W')]
+
     return images
 

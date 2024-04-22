@@ -2,7 +2,7 @@ from time import time
 import numpy as np
 from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals
 from dipy.io.image import load_nifti, save_nifti
-from dipy.viz.horizon.app import horizon
+from dipy.viz import horizon
 from dipy.align.reslice import reslice
 from dipy.align.scalespace import ScaleSpace
 from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg
@@ -462,6 +462,13 @@ images = berserker2_brain_seg(data, affine, return_all=True)
 print('Duration ', time() - t)
 print()
 
+print('Automated quality assurance')
+
+
 horizon(images=images)
 
+
 t = 2
+
+print('Done')
+
