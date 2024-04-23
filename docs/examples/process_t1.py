@@ -462,7 +462,7 @@ images = berserker2_brain_seg(data, affine, return_all=True)
 print('Duration ', time() - t)
 print()
 
-print('Automated quality assurance')
+# print('Automated quality assurance')
 
 
 horizon(images=images)

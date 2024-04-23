@@ -810,17 +810,23 @@ def berserker2_brain_seg(data, affine, return_all=False):
         # tmp_o = binary_opening(tmp, structure=kernel)
 
         dt_tmp = distance_transform_edt(tmp)
-        tmp_o = dt_tmp > 1
+
+        tmp_o = dt_tmp > 1 # 1 will darken most smaller structures
         # tmp_o = binary_erosion(tmp, structure=kernel)
         # horizon(images=[(tmp.astype('i4'), np.eye(4), 'tmp'), (tmp_o.astype('i4'), np.eye(4), 'tmp_o')])
         print(tmp_o.min(), tmp_o.max())
 
         ratio = tmp_o.sum() / np.prod(data.shape)
         print('>>', ratio)
+        ratio2 = tmp_o.sum() / tmp.sum()
+        print('>>', ratio2)
 
-        if ratio > 0.0001:
+        # if ratio > 0.04:
+        # if ratio > 0.001:
+        # if ratio > 0.000001:
+        if ratio2 > 0.1:
 
-            total[tmp_o == 1] = 1
+            total[tmp_o == 1] = centroids_pg[int(u), 3]
 
         """ heavy analysis
         if tmp_o.max() > tmp_o.min():
@@ -844,8 +850,9 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print('Duration ', time() - t)
 
-    total_blur = np.zeros(data.shape)
-    total_blur[total > 0] = 10.0
+    # total_blur = np.zeros(data.shape)
+    # total_blur[total > 0] = 10.0
+    total_blur = total.copy()
     total_blur = gaussian_filter(total_blur, sigma=1)
 
     aff = np.eye(4)
