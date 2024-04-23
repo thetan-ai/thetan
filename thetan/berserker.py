@@ -614,6 +614,43 @@ def labels_sp_centroids(labels, centroids):
     return tmp
 
 
+def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
+
+    data_labels_pg_u = data_labels_pg.copy()    
+    unq, cnts = np.unique(data_labels_pg_u.ravel(), return_counts=True)   
+
+    print('Further analyzing clusters')
+    # from dipy.viz import horizon
+    total = np.zeros(data_labels_pg.shape)
+    total_cnt = np.zeros(data_labels_pg.shape)
+    t = time()
+
+    cnt = 1
+    for i, u in enumerate(unq):
+
+        print('Unique label ', u, ' centroid ', centroids_pg[i, 3])
+        tmp = (data_labels_pg_u == u)
+        print(tmp.min(), tmp.max())
+        dt_tmp = distance_transform_edt(tmp)
+
+        tmp_o = dt_tmp > lod # 1 will darken most smaller structures
+        print(tmp_o.min(), tmp_o.max())
+
+        # ratio = tmp_o.sum() / np.prod(data_labels_pg.shape)
+        # print('>>', ratio)
+        # ratio2 = tmp_o.sum() / tmp.sum()
+        # print('>>', ratio2)
+
+        total[tmp_o == 1] = centroids_pg[int(u), 3]
+
+    print('Duration ', time() - t)
+
+    # total_blur = np.zeros(data.shape)
+    # total_blur[total > 0] = 10.0
+    total_blur = total.copy()
+    total_blur = gaussian_filter(total_blur, sigma=1)
+
+    return total, total_blur
 
 
 def berserker2_brain_seg(data, affine, return_all=False):
@@ -647,6 +684,20 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=300)
     dt_pg = distance_transform_edt(1 - mask_pg)
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids)
+
+    mask = mask_lt(data_labels, centroids, bk_thr=300)
+    dt = distance_transform_edt(1 - mask)
+
+
+
 
     ignore = True
     if not ignore:
@@ -783,85 +834,26 @@ def berserker2_brain_seg(data, affine, return_all=False):
                 (W, aff, 'W')]
     
 
+    print('Starting cluster analysis of dl_pg ..')
+    total_pg, total_blur_pg = cluster_analysis(data_labels_pg, centroids_pg, 0.9)
 
-    data_labels_pg_u = data_labels_pg.copy()
-    indx = np.where(centroids_pg[:, 3] < 300)[0]
-
-    unq, cnts = np.unique(data_labels_pg_u.ravel(), return_counts=True)
+    print('Starting cluster analysis of dl ..')
+    total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
     
-    print('Further analyzing clusters')
-
-    # from dipy.viz import horizon
-    total = np.zeros(data.shape)
-    total_cnt = np.zeros(data.shape)
-    images = []
-    t = time()
-
-    cnt = 1
-    for i, u in enumerate(unq):
-
-        print('Unique label ', u, ' centroid ', centroids_pg[i, 3])
-        # if i in indx:
-        #     print('bk\n')
-        #     continue
-
-        tmp = (data_labels_pg_u == u)
-        print(tmp.min(), tmp.max())
-        # tmp_o = binary_opening(tmp, structure=kernel)
-
-        dt_tmp = distance_transform_edt(tmp)
-
-        tmp_o = dt_tmp > 1 # 1 will darken most smaller structures
-        # tmp_o = binary_erosion(tmp, structure=kernel)
-        # horizon(images=[(tmp.astype('i4'), np.eye(4), 'tmp'), (tmp_o.astype('i4'), np.eye(4), 'tmp_o')])
-        print(tmp_o.min(), tmp_o.max())
-
-        ratio = tmp_o.sum() / np.prod(data.shape)
-        print('>>', ratio)
-        ratio2 = tmp_o.sum() / tmp.sum()
-        print('>>', ratio2)
-
-        # if ratio > 0.04:
-        # if ratio > 0.001:
-        # if ratio > 0.000001:
-        if ratio2 > 0.1:
-
-            total[tmp_o == 1] = centroids_pg[int(u), 3]
-
-        """ heavy analysis
-        if tmp_o.max() > tmp_o.min():
-        
-            print('Running label ...')
-            res, num_res = label(tmp_o, structure=kernel)
-            sizes = analyze_labels(res, num_res, return_sizes=True)
-            print('> intermediate labels', num_res)
-            print('> 200 largest sizes', np.sort(sizes)[::-1][1:201])
-            favorites = np.argsort(sizes)[::-1][1:201]
-        
-            # res_mask = np.zeros(data.shape)
-            # res_mask[res == res_favorite] = 1
-            for fav in favorites:
-                total[res == fav] = u
-                total_cnt[res == fav] = cnt
-                cnt += 1
-            # images.append((res_mask, aff, str(u) + '!'))
-        print()
-        """
-
-    print('Duration ', time() - t)
-
-    # total_blur = np.zeros(data.shape)
-    # total_blur[total > 0] = 10.0
-    total_blur = total.copy()
-    total_blur = gaussian_filter(total_blur, sigma=1)
 
     aff = np.eye(4)
+    images = []
+    images.append((total_pg, aff, 'total_pg'))
+    images.append((total_blur_pg, aff, 'total_blur_pg'))
     images.append((total, aff, 'total'))
     images.append((total_blur, aff, 'total_blur'))
     # images.append((total_cnt, aff, 'total_cnt'))
     images.append((mask_pg, aff, 'mask_pg'))
     images.append((data_labels_pg, aff, 'dl_pg'))
+    images.append((data_labels, aff, 'dl'))
     images.append((imask_w, aff, 'imask_w'))
+    images.append((Wpg, aff, 'Wpg'))
+    images.append((Wgrad, aff, 'Wgrad'))
     images.append((W, aff, 'W'))
 
     return images
