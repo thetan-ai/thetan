@@ -1,6 +1,7 @@
 from time import time
 import numpy as np
 from patchify import patchify
+from skimage.morphology import ball
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
 from scipy.ndimage import generate_binary_structure, gaussian_filter
@@ -614,6 +615,45 @@ def labels_sp_centroids(labels, centroids):
     return tmp
 
 
+def ball_overlap(mask, radius=10, samples=100, perc=5):
+
+    print('Starting throwing solid balls in 3D space ... ')
+    t = time()   
+
+    # TODO: this part needs work
+    mask = gaussian_filter(10 * mask, sigma=3)
+    mask_tmp = mask.copy()
+    mask = (mask > 0.1).astype('int32')
+
+    tmp = mask.copy() * 0 
+    kernel = ball(radius)
+    kI, kJ, kK = np.asarray(kernel.shape) // 2    
+
+    I, J, K = tmp.shape
+
+    volcov = np.prod(kernel.shape)
+
+    perc = perc / 100.
+
+    i_s = np.random.randint(radius, I - radius, size=samples)
+    j_s = np.random.randint(radius, J - radius, size=samples)
+    k_s = np.random.randint(radius, K - radius, size=samples)
+
+    for i, j, k in zip(i_s, j_s, k_s):
+
+        hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
+
+        # if hit == 0:
+        if hit < perc * volcov:
+            tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
+
+
+    print('Duration ', time() - t)
+    print()
+
+    return tmp
+
+
 def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
 
     data_labels_pg_u = data_labels_pg.copy()    
@@ -653,15 +693,20 @@ def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
     return total, total_blur
 
 
-def berserker2_brain_seg(data, affine, return_all=False):
-
-    theta_value = 120.
+def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120.):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
     print('Preparing data')
     X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    mask_orig = W < orig_est
+    W[mask_orig] = 0
+    mask_orig = mask_orig.astype('uint8')
+
+    print('Time to start throwing snow balls ..')
+    ball_mask = ball_overlap(mask_orig, 15, 100000, perc=0.5)
 
     print('Calculating gradients')
     Wgrad = gaussian_gradient_magnitude(W, sigma=1)
@@ -682,8 +727,16 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids_pg)
 
-    mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=300)
+    mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
     dt_pg = distance_transform_edt(1 - mask_pg)
+
+    print('Calculating weights')
+    weights = dt_pg.copy()
+    weights[dt_pg > 5] = 5
+    weights_tmp = weights.copy()
+    weights = gaussian_filter(weights, sigma=1)
+    weights_tmp2 = weights.copy()
+    weights = weights * W
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
@@ -693,108 +746,11 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids)
 
-    mask = mask_lt(data_labels, centroids, bk_thr=300)
+    mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
     dt = distance_transform_edt(1 - mask)
-
-
-
-
-    ignore = True
-    if not ignore:
-        print('Applying Berserker 2 on X (i, j, k, 3w)')
-        t = time()
-        data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
-        print()
-
-        print_centroids(centroids)
-
-        mask = mask_lt(data_labels, centroids, bk_thr=300)
-        dt = distance_transform_edt(1 - mask)
-
-        print('Applying Berserker 2 on X (i, j, k, 3w - 2gradW)')
-        t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
-        print()
-
-        print_centroids(centroids_ng)
-
-        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=300)
-        mask_ngo = binary_opening(1 - mask_ng, iterations=5).astype('i4')
-
-        dt_ng = distance_transform_edt(1 - mask_ng)
-
-        dt_avg = 0.5 * dt_pg + 0.5 * dt
-        dt_avg2 = gaussian_filter(dt_avg, sigma=1)
-        dt_avg2 = dt_avg
-
-
-    weights = dt_pg.copy()
-    weights[dt_pg > 5] = 5
-    weights_tmp = weights.copy()
-    weights = gaussian_filter(weights, sigma=1)
-    weights_tmp2 = weights.copy()
-    weights = weights * W
-
-    ignore = True
-    if not ignore:
-        # kernel = np.ones((3, 3, 3))
-        kernel = generate_binary_structure(3, 1)
-        data_labels, num_labels = label(dt_pg > 5, structure=kernel)
-        favorite = analyze_labels(data_labels, num_labels)
-
-        locus = np.zeros(data.shape)
-        locus[data_labels == favorite] = 1
-
-        print('Re-weighting')
-        dist_from_focused = distance_transform_edt(1 - locus)
-        dist_from_focused[dist_from_focused > 10] = 10.0
-
-        dist_from_focused = (dist_from_focused.max() - dist_from_focused)
-        dist_from_focused = dist_from_focused + 10 * (1 - mask_pg) # + 1. * (W / 90.)
-
-        dff_ps = patch_sums(dist_from_focused, (5, 5, 5))
-
-        # from dipy.viz import horizon
-        # aff = np.eye(4)
-        # horizon(images=[(dt_pg, aff, 'dt_pg'),
-        #                 (dt, aff, 'dt'),
-        #                 (dt_ng, aff, 'dt_ng'),
-        #                 (dt_avg, aff, 'dt_avg'),
-        #                 (dist_from_focused, aff, 'dff'),
-        #                 (locus, aff, 'locus'),
-        #                 (Wgrad, aff, 'Wgrad'),
-        #                 (dff_ps, aff, 'dff_ps'),
-        #                 (1 - mask_pg, aff, '1 - mask_pg'),
-        #                 (1 - mask, aff, '1 - mask'),
-        #                 (1 - mask_ng, aff, '1 - mask_ng'),
-        #                 (W * locus, aff, 'W * locus'),
-        #                 (W, aff, 'W')])
-
-        Xd = X.copy()
-        Xd[:, 3] = 30 * dist_from_focused.ravel()
-
-        print('Applying Berserker 2 on Xd (re-weighted)')
-        t = time()
-        data_labels_d, centroids_d = berserker2_to_3D_labels(Xd, theta_value, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
-        print()
-
-
-        weights = (dist_from_focused.max() - dist_from_focused)
-        weights_from_focused = (weights / weights.max()) ** 4
-        weighted_image =  weights_from_focused * W
-
-    # print('Calculating gradients')
-    # Wgrad2 = gaussian_gradient_magnitude(weights, sigma=1)
-
-    # weights2 = weights + Wgrad2
-
+      
     Xw = X.copy()
     Xw[:, 3] = weights.ravel()
-
-    
     print('Applying Berserker 2 on Xw (re-weighted)')
     t = time()
     data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value * 5, data_dims=data.shape, verbose=False)
@@ -803,51 +759,30 @@ def berserker2_brain_seg(data, affine, return_all=False):
 
     print_centroids(centroids_w)
 
-    # TODO: given that there are only a few labels here
-    # it would be interesting if we could edt them individualy
-    # and check amount of volume change
-
     # 5 works but 6 also in some cases such as HH-1211
-    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * 300)
+    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * orig_est * m_est)
     imask_w = 1 - mask_w
 
-    imask_w_tmp = imask_w.copy()
- 
-    
-    ignore = True
-    if not ignore:
-        aff = np.eye(4)
-        images=[(final_mask, aff, 'final_mask'),
-                # (ps_iw, aff, 'ps_iw'),
-                (dt_iw, aff, 'dt_iw'),
-                (imask_w, aff, 'imask_w'), 
-                (imask_w2, aff, 'imask_w2'), 
-                (data_labels_w, aff, 'dl_w'),
-                (weights_tmp, aff, 'weights_tmp'),
-                (weights_tmp2, aff, 'weights_tmp2'),
-                (weights, aff, 'weights'),
-                (dt_pg, aff, 'dt_pg'),
-                (mask_pg, aff, 'mask_pg'),
-                # (Wgrad2, aff, 'Wgrad2'),            
-                (Wgrad, aff, 'Wgrad'),            
-                (3 * W + 2 * Wgrad, aff, '3W + 2Wgrad'),
-                (W, aff, 'W')]
-    
+    advanced_analysis = True
 
-    print('Starting cluster analysis of dl_pg ..')
-    total_pg, total_blur_pg = cluster_analysis(data_labels_pg, centroids_pg, 0.9)
+    if advanced_analysis: 
+        print('Starting cluster analysis of dl_pg ..')
+        total_pg, total_blur_pg = cluster_analysis(data_labels_pg, centroids_pg, 0.9)
 
-    print('Starting cluster analysis of dl ..')
-    total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
-    
-
+        print('Starting cluster analysis of dl ..')
+        total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
+        
     aff = np.eye(4)
     images = []
-    images.append((total_pg, aff, 'total_pg'))
-    images.append((total_blur_pg, aff, 'total_blur_pg'))
-    images.append((total, aff, 'total'))
-    images.append((total_blur, aff, 'total_blur'))
-    # images.append((total_cnt, aff, 'total_cnt'))
+    images.append((mask_orig, aff, 'mask_orig'))
+    images.append((ball_mask, aff, 'ball_mask'))
+
+    if advanced_analysis:
+        images.append((total_pg, aff, 'total_pg'))
+        images.append((total_blur_pg, aff, 'total_blur_pg'))
+        images.append((total, aff, 'total'))
+        images.append((total_blur, aff, 'total_blur'))
+
     images.append((mask_pg, aff, 'mask_pg'))
     images.append((data_labels_pg, aff, 'dl_pg'))
     images.append((data_labels, aff, 'dl'))
