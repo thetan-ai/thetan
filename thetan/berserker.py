@@ -619,7 +619,7 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
 
     mask_orig = mask.copy()
     print('Starting throwing solid balls in 3D space ... ')
-    t = time()   
+    t = time()
 
     mask = binary_closing(mask, iterations=1)
 
@@ -628,9 +628,9 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     mask_tmp = mask.copy()
     # mask = (mask > 0.1).astype('int32')
 
-    tmp = mask.copy() * 0 
+    tmp = mask.copy() * 0
     kernel = ball(radius)
-    kI, kJ, kK = np.asarray(kernel.shape) // 2    
+    kI, kJ, kK = np.asarray(kernel.shape) // 2
 
     I, J, K = tmp.shape
 
@@ -659,8 +659,8 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
 
 def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
 
-    data_labels_pg_u = data_labels_pg.copy()    
-    unq, cnts = np.unique(data_labels_pg_u.ravel(), return_counts=True)   
+    data_labels_pg_u = data_labels_pg.copy()
+    unq, cnts = np.unique(data_labels_pg_u.ravel(), return_counts=True)
 
     print('Further analyzing clusters')
     # from dipy.viz import horizon
@@ -754,7 +754,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
     dt = distance_transform_edt(1 - mask)
-      
+
     Xw = X.copy()
     Xw[:, 3] = weights.ravel()
     print('Applying Berserker 2 on Xw (re-weighted)')
@@ -769,15 +769,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * orig_est * m_est)
     imask_w = 1 - mask_w
 
-    advanced_analysis = True
+    advanced_analysis = False
 
-    if advanced_analysis: 
+    if advanced_analysis:
         print('Starting cluster analysis of dl_pg ..')
         total_pg, total_blur_pg = cluster_analysis(data_labels_pg, centroids_pg, 0.9)
 
         print('Starting cluster analysis of dl ..')
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
-        
+
     aff = np.eye(4)
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
@@ -793,7 +793,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((data_labels_pg, aff, 'dl_pg'))
     images.append((data_labels, aff, 'dl'))
     images.append((weights, aff, 'weights'))
-    images.append((data_labels_w, aff, 'dl_w'))    
+    images.append((data_labels_w, aff, 'dl_w'))
     images.append((imask_w, aff, 'imask_w'))
     images.append((Wpg, aff, 'Wpg'))
     images.append((Wgrad, aff, 'Wgrad'))
