@@ -615,7 +615,7 @@ def labels_sp_centroids(labels, centroids):
     return tmp
 
 
-def balls_walls(mask, radius=10, samples=100, perc=5):
+def throwing_balls(mask, radius=10, samples=100, perc=5):
 
     mask_orig = mask.copy()
     print('Starting throwing solid balls in 3D space ... ')
@@ -709,7 +709,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_orig = mask_orig.astype('uint8')
 
     print('Time to start throwing snow balls ..')
-    ball_mask = balls_walls(mask_orig, 15, 100000, perc=0.5)
+    ball_mask = throwing_balls(mask_orig, 15, 100000, perc=0.5)
 
     print('Calculating gradients')
     Wgrad = gaussian_gradient_magnitude(W, sigma=1)
@@ -798,12 +798,4 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     return images
 
-    images = [(mask_pg, aff, 'mask_pg'),
-              (data_labels_pg, aff, 'dl_pg'),
-              (dl_process, aff, 'dl_process'),
-              (imask_w, aff, 'imask_w'), 
-              (Wgrad, aff, 'Wgrad'),
-              (W, aff, 'W')]
-
-    return images
 
