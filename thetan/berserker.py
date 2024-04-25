@@ -615,15 +615,18 @@ def labels_sp_centroids(labels, centroids):
     return tmp
 
 
-def ball_overlap(mask, radius=10, samples=100, perc=5):
+def balls_walls(mask, radius=10, samples=100, perc=5):
 
+    mask_orig = mask.copy()
     print('Starting throwing solid balls in 3D space ... ')
     t = time()   
 
+    mask = binary_closing(mask, iterations=1)
+
     # TODO: this part needs work
-    mask = gaussian_filter(10 * mask, sigma=3)
+    # mask = gaussian_filter(10 * mask, sigma=3)
     mask_tmp = mask.copy()
-    mask = (mask > 0.1).astype('int32')
+    # mask = (mask > 0.1).astype('int32')
 
     tmp = mask.copy() * 0 
     kernel = ball(radius)
@@ -706,7 +709,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_orig = mask_orig.astype('uint8')
 
     print('Time to start throwing snow balls ..')
-    ball_mask = ball_overlap(mask_orig, 15, 100000, perc=0.5)
+    ball_mask = balls_walls(mask_orig, 15, 100000, perc=0.5)
 
     print('Calculating gradients')
     Wgrad = gaussian_gradient_magnitude(W, sigma=1)
@@ -786,6 +789,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((mask_pg, aff, 'mask_pg'))
     images.append((data_labels_pg, aff, 'dl_pg'))
     images.append((data_labels, aff, 'dl'))
+    images.append((weights, aff, 'weights'))
+    images.append((data_labels_w, aff, 'dl_w'))    
     images.append((imask_w, aff, 'imask_w'))
     images.append((Wpg, aff, 'Wpg'))
     images.append((Wgrad, aff, 'Wgrad'))
