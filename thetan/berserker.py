@@ -630,11 +630,15 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
 
     tmp = mask.copy() * 0
     kernel = ball(radius)
+    kernel_sum = kernel.sum()
+    print('>> Kernel sum', kernel_sum)
+
     kI, kJ, kK = np.asarray(kernel.shape) // 2
 
     I, J, K = tmp.shape
 
     volcov = np.prod(kernel.shape)
+    print('>> Kernel ratio ', kernel_sum / volcov)
 
     perc = perc / 100.
 
@@ -647,10 +651,12 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
         hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
 
         # if hit == 0:
-        if hit < perc * volcov:
+        if hit < perc  * kernel_sum:
             tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
 
-
+    from dipy.viz import horizon
+    aff = np.eye(4)
+    horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
     print('Duration ', time() - t)
     print()
 
@@ -696,7 +702,7 @@ def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
     return total, total_blur
 
 
-def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120.):
+def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1.):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -709,7 +715,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_orig = mask_orig.astype('uint8')
 
     print('Time to start throwing solid balls ..')
-    ball_mask = throwing_balls(mask_orig, 15, 100000, perc=0.5)
+    ball_mask = throwing_balls(mask_orig, 20, 100000, perc=percb)
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
