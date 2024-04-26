@@ -775,7 +775,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * orig_est * m_est)
     imask_w = 1 - mask_w
 
-    advanced_analysis = False
+    advanced_analysis = True
 
     if advanced_analysis:
         print('Starting cluster analysis of dl_pg ..')
