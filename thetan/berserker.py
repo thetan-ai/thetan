@@ -761,7 +761,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_orig = mask_orig.astype('uint8')
 
     print('Time to start throwing solid balls ..')
-    ball_mask = throwing_balls(mask_orig, 20, 100000, perc=percb)
+    ball_mask = throwing_balls(mask_orig, 15, 100000, perc=percb)
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
