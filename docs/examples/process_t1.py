@@ -411,7 +411,8 @@ def watershed_wgrad(Wgrad):
 # T1 dataset
 # fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
-# fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -425,9 +426,11 @@ def watershed_wgrad(Wgrad):
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
+
+
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
@@ -458,7 +461,7 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 print('Starting Thetan Berserker 2 for Brain Segmentation ...')
 t = time()
-images = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, percb=5)
+images = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, percb=2)
 print('Duration ', time() - t)
 print()
 

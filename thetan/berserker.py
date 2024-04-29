@@ -1,7 +1,6 @@
 from time import time
 import numpy as np
 from patchify import patchify
-from skimage.morphology import ball
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
 from scipy.ndimage import generate_binary_structure, gaussian_filter
@@ -614,6 +613,16 @@ def labels_sp_centroids(labels, centroids):
 
     return tmp
 
+def ball(radius, strict=True, dtype=np.uint8):
+    n = 2 * radius + 1
+    Z, Y, X = np.mgrid[-radius:radius:n * 1j,
+                        -radius:radius:n * 1j,
+                        -radius:radius:n * 1j]
+    s = X ** 2 + Y ** 2 + Z ** 2
+    if not strict:
+        radius += 0.5
+    return np.array(s <= radius * radius, dtype=dtype)
+
 
 def throwing_balls(mask, radius=10, samples=100, perc=5):
 
@@ -622,6 +631,7 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     t = time()
 
     mask = binary_closing(mask, iterations=1)
+    mask = binary_dilation(mask, iterations=1)
 
     # TODO: this part needs work
     # mask = gaussian_filter(10 * mask, sigma=3)
@@ -663,6 +673,17 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     return tmp
 
 
+def centroid_images(data_labels, centroids, round=False):
+
+    centroids_image = np.zeros(data_labels.shape)
+    for i in range(centroids.shape[0]):
+        centroids_image[data_labels == i] = centroids[i, -1]
+
+    if round:
+        return np.round(centroids_image, 0)
+    return centroids_image
+
+
 def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
 
     data_labels_pg_u = data_labels_pg.copy()
@@ -702,53 +723,26 @@ def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
     return total, total_blur
 
 
-def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1.):
+def weighted_image(dt_pg, W):
 
-    data = np.ascontiguousarray(data, dtype='f8')
-
-    print('Preparing data')
-    X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.)
-    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
-
-    mask_orig = W < orig_est
-    W[mask_orig] = 0
-    mask_orig = mask_orig.astype('uint8')
-
-    print('Time to start throwing solid balls ..')
-    ball_mask = throwing_balls(mask_orig, 20, 100000, perc=percb)
-    # TODO: I need to chose between this weighting strategy or the one
-    # below. I also need to use label to find the largest object
-    # Ideally the weighting process needs a tiny bit of optimization
-
-    print('Calculating gradients')
-    Wgrad = gaussian_gradient_magnitude(W, sigma=1)
-
-    Xpg = X.copy()
-    Xpg[:, 3] += 2 * Wgrad.ravel()
-    Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
-
-    Xng = X.copy()
-    Xng[:, 3] -= 2 * Wgrad.ravel()
-    Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
-
-    print('Applying Berserker 2 on Xg (i, j, k, 3w + 2gradW)')
-    t = time()
-    data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
-
-    print_centroids(centroids_pg)
-
-    mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
-    dt_pg = distance_transform_edt(1 - mask_pg)
-
-    print('Calculating weights')
     weights = dt_pg.copy()
     weights[dt_pg > 5] = 5
     weights_tmp = weights.copy()
     weights = gaussian_filter(weights, sigma=1)
     weights_tmp2 = weights.copy()
     weights = weights * W
+
+    return weights
+
+
+
+def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
@@ -761,52 +755,119 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
     dt = distance_transform_edt(1 - mask)
 
-    Xw = X.copy()
-    Xw[:, 3] = weights.ravel()
-    print('Applying Berserker 2 on Xw (re-weighted)')
-    t = time()
-    data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value * 5, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
 
-    print_centroids(centroids_w)
+    mask_orig = W < orig_est
+    W[mask_orig] = 0
+    mask_orig = mask_orig.astype('uint8')
 
-    # 5 works but 6 also in some cases such as HH-1211
-    mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * orig_est * m_est)
-    imask_w = 1 - mask_w
+    print('Time to start throwing solid balls ..')
+    ball_mask = throwing_balls(mask_orig, 20, 100000, perc=percb)
+    # TODO: I need to chose between this weighting strategy or the one
+    # below. I also need to use label to find the largest object
+    # Ideally the weighting process needs a tiny bit of optimization
 
-    advanced_analysis = True
+    if pg or ng:
+        print('Calculating gradients')
+        Wgrad = gaussian_gradient_magnitude(W, sigma=1)
 
-    if advanced_analysis:
+    if pg:
+        Xpg = X.copy()
+        Xpg[:, 3] += 2 * Wgrad.ravel()
+        Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
+
+        print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
+        t = time()
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_pg)
+
+        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
+        dt_pg = distance_transform_edt(1 - mask_pg)
+
+    if ng:
+        Xng = X.copy()
+        Xng[:, 3] -= 2 * Wgrad.ravel()
+        Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
+        print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
+        t = time()
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_ng)
+
+        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
+        dt_ng = distance_transform_edt(1 - mask_ng)
+
+    lightsoff = False
+    if lightsoff:
+        print('Calculating weights')
+        weights = weighted_image(dt_pg, W)
+        print('Applying Berserker 2 on X (i, j, k, 3w)')
+        t = time()
+        data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids)
+
+        mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+        dt = distance_transform_edt(1 - mask)
+
+        # TODO: this is useful needs cleaning
+        Xw = X.copy()
+        Xw[:, 3] = weights.ravel()
+        print('Applying Berserker 2 on Xw (re-weighted)')
+        t = time()
+        data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value * 5, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_w)
+        mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * orig_est * m_est)
+        imask_w = 1 - mask_w
+
+    auto_edt_rm = False
+    if auto_edt_rm:
         print('Starting cluster analysis of dl_pg ..')
         total_pg, total_blur_pg = cluster_analysis(data_labels_pg, centroids_pg, 0.9)
 
         print('Starting cluster analysis of dl ..')
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
+    centroids_im = centroid_images(data_labels, centroids)
+
     aff = np.eye(4)
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
     images.append((ball_mask, aff, 'ball_mask'))
 
-    if advanced_analysis:
+    if auto_edt_rm:
         images.append((total_pg, aff, 'total_pg'))
         images.append((total_blur_pg, aff, 'total_blur_pg'))
         images.append((total, aff, 'total'))
         images.append((total_blur, aff, 'total_blur'))
+    if pg:
+        images.append((mask_pg, aff, 'mask_pg'))
+        images.append((data_labels_pg, aff, 'dl_pg'))
+        images.append((Wpg, aff, 'Wpg'))
+    if lightsoff:
+        images.append((weights, aff, 'weights'))
+        images.append((data_labels_w, aff, 'dl_w'))
+        images.append((imask_w, aff, 'imask_w'))
 
-    images.append((mask_pg, aff, 'mask_pg'))
-    images.append((data_labels_pg, aff, 'dl_pg'))
+    images.append((centroids_im, aff, 'centroids_im'))
     images.append((data_labels, aff, 'dl'))
-    images.append((weights, aff, 'weights'))
-    images.append((data_labels_w, aff, 'dl_w'))
-    images.append((imask_w, aff, 'imask_w'))
-    images.append((Wpg, aff, 'Wpg'))
-    images.append((Wgrad, aff, 'Wgrad'))
+
+    if pg or ng:
+        images.append((Wgrad, aff, 'Wgrad'))
+
     images.append((W, aff, 'W'))
 
     t = 1
-    
+
     return images
 
 
