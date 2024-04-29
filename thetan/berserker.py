@@ -654,9 +654,9 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
         if hit < perc  * kernel_sum:
             tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
 
-    from dipy.viz import horizon
-    aff = np.eye(4)
-    horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
+    # from dipy.viz import horizon
+    # aff = np.eye(4)
+    # horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
     print('Duration ', time() - t)
     print()
 
@@ -805,6 +805,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((Wgrad, aff, 'Wgrad'))
     images.append((W, aff, 'W'))
 
+    t = 1
+    
     return images
 
 
