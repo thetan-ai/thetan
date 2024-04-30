@@ -3,7 +3,7 @@ import numpy as np
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
-from scipy.ndimage import generate_binary_structure, gaussian_filter
+from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 from thetan.theta import img3d_to_ijkv_features
@@ -735,6 +735,37 @@ def weighted_image(dt_pg, W):
     return weights
 
 
+def weighted_image2(dt, W, idt, masko):
+
+    weights = np.zeros(dt.shape)
+    weights[dt > 6] = 6
+    # weights = gaussian_filter(weights, sigma=1)
+    # weights[weights < .1] = 0
+    # weights[weights >= .1] = 1
+
+    data_labels_focused, num_focused = label(weights)
+    favorite = analyze_labels(data_labels_focused, num_focused)
+
+    focus  = np.zeros(dt.shape)
+    focus[data_labels_focused == favorite] = 1
+
+    cm = center_of_mass(focus)
+    cx, cy, cz = np.round(cm).astype('int32')
+
+    cm_im = np.ones(dt.shape)
+    cm_im[cx, cy, cz] = 0
+
+    dt2 = distance_transform_edt(cm_im)
+
+    dt2 < dt
+
+    t = 1
+    # weights_tmp = weights.copy()
+    # weights = gaussian_filter(weights, sigma=1)
+    # weights_tmp2 = weights.copy()
+    return focus * W
+
+
 
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
@@ -755,10 +786,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
     dt = distance_transform_edt(1 - mask)
 
-
     mask_orig = W < orig_est
     W[mask_orig] = 0
     mask_orig = mask_orig.astype('uint8')
+    dto = distance_transform_edt(1 - mask_orig.astype('f4'))
+    idto = distance_transform_edt(mask_orig.astype('f4'))
 
     psums = patch_sums(mask_orig, (5, 5, 5))
     mask2 = np.zeros(mask_orig.shape)
@@ -846,12 +878,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     centroids_im = centroid_images(data_labels, centroids)
 
+
+    w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
+
     aff = np.eye(4)
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
-    images.append((psums, aff, 'patch_sums'))
-    images.append((ball_mask, aff, 'ball_mask'))
-    images.append((mask2, aff, 'mask2'))
+    # images.append((psums, aff, 'patch_sums'))
+    # images.append((ball_mask, aff, 'ball_mask'))
+    # images.append((mask2, aff, 'mask2'))
     images.append((brain_mask, aff, 'brain_mask'))
 
     if auto_edt_rm:
@@ -869,6 +904,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((imask_w, aff, 'imask_w'))
 
     images.append((centroids_im, aff, 'centroids_im'))
+    images.append((w_im, aff, 'w_im'))
     images.append((data_labels, aff, 'dl'))
 
     if pg or ng:
