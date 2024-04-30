@@ -760,11 +760,18 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     W[mask_orig] = 0
     mask_orig = mask_orig.astype('uint8')
 
+    psums = patch_sums(mask_orig, (5, 5, 5))
+    mask2 = np.zeros(mask_orig.shape)
+    mask2[psums > 25] = 1
+
     print('Time to start throwing solid balls ..')
-    ball_mask = throwing_balls(mask_orig, 15, 100000, perc=percb)
+    ball_mask = throwing_balls(mask2, 20, 100000, perc=percb)
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
+
+    brain_mask = np.zeros(data.shape)
+    brain_mask[ball_mask > 5] = 1
 
     if pg or ng:
         print('Calculating gradients')
@@ -842,7 +849,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     aff = np.eye(4)
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
+    images.append((psums, aff, 'patch_sums'))
     images.append((ball_mask, aff, 'ball_mask'))
+    images.append((mask2, aff, 'mask2'))
+    images.append((brain_mask, aff, 'brain_mask'))
 
     if auto_edt_rm:
         images.append((total_pg, aff, 'total_pg'))
