@@ -670,7 +670,14 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     print('Duration ', time() - t)
     print()
 
-    return tmp
+    new_mask = np.ones(mask.shape)
+    new_mask[tmp < 115] = 0
+
+    new_mask += mask_orig
+
+    new_mask_dt = distance_transform_edt(1 - new_mask)
+
+    return tmp, new_mask, new_mask_dt
 
 
 def centroid_images(data_labels, centroids, round=False):
@@ -739,6 +746,7 @@ def weighted_image2(dt, W, idt, masko):
 
     weights = np.zeros(dt.shape)
     weights[dt > 6] = 6
+
     # weights = gaussian_filter(weights, sigma=1)
     # weights[weights < .1] = 0
     # weights[weights >= .1] = 1
@@ -757,7 +765,11 @@ def weighted_image2(dt, W, idt, masko):
 
     dt2 = distance_transform_edt(cm_im)
 
-    dt2 < dt
+
+
+    tmp = dt2 + 50 * masko
+    new_mask = np.zeros(dt.shape)
+    new_mask[tmp > 100] = 1
 
     t = 1
     # weights_tmp = weights.copy()
@@ -797,7 +809,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask2[psums > 25] = 1
 
     print('Time to start throwing solid balls ..')
-    ball_mask = throwing_balls(mask2, 20, 100000, perc=percb)
+    ball_mask, bm2, bm2_dt = throwing_balls(mask2, 20, 100000, perc=percb)
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
@@ -879,14 +891,16 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     centroids_im = centroid_images(data_labels, centroids)
 
 
-    w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
+    # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
 
     aff = np.eye(4)
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
     # images.append((psums, aff, 'patch_sums'))
-    # images.append((ball_mask, aff, 'ball_mask'))
-    # images.append((mask2, aff, 'mask2'))
+    images.append((ball_mask, aff, 'ball_mask'))
+    images.append((bm2, aff, 'bm2'))
+    images.append((bm2_dt, aff, 'bm2_dt'))
+
     images.append((brain_mask, aff, 'brain_mask'))
 
     if auto_edt_rm:
@@ -904,7 +918,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((imask_w, aff, 'imask_w'))
 
     images.append((centroids_im, aff, 'centroids_im'))
-    images.append((w_im, aff, 'w_im'))
+    
     images.append((data_labels, aff, 'dl'))
 
     if pg or ng:
