@@ -670,12 +670,40 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     print('Duration ', time() - t)
     print()
 
-    new_mask = np.ones(mask.shape)
-    new_mask[tmp < 115] = 0
+    new_mask = np.zeros(mask.shape)
+    new_mask[tmp > 115] = 1
 
-    new_mask += mask_orig
+    data_labels_nm, num_focused_nm = label(new_mask)
+    favorite_nm = analyze_labels(data_labels_nm, num_focused_nm)
 
-    new_mask_dt = distance_transform_edt(1 - new_mask)
+    focused = np.zeros(mask.shape)
+    focused[data_labels_nm==favorite_nm] = 1
+
+    focused += mask_orig
+
+    new_mask_dt = distance_transform_edt(focused)
+
+    new_mask2 = np.zeros(mask.shape)
+    new_mask2[new_mask_dt > 4] = 1
+
+    data_labels_nm2, num_focused_nm2 = label(new_mask2)
+    print(num_focused_nm2)
+
+    from dipy.viz import horizon
+
+    a = np.eye(4)
+    images=[(mask, a, 'mask'),
+            (tmp, a, 'tmp'),
+            (new_mask, a, 'new_mask'),
+            (data_labels_nm, a, 'dl_nm'),
+            (focused, a, 'focused'),
+            (new_mask_dt, a, 'new_mask_dt'),
+            (new_mask2, a, 'new_mask2'),
+            (data_labels_nm2, a, 'dl_nm2')]
+    horizon(images=images)
+
+
+    t = 1
 
     return tmp, new_mask, new_mask_dt
 
@@ -918,7 +946,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((imask_w, aff, 'imask_w'))
 
     images.append((centroids_im, aff, 'centroids_im'))
-    
+
     images.append((data_labels, aff, 'dl'))
 
     if pg or ng:
