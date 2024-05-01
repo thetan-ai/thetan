@@ -624,7 +624,7 @@ def ball(radius, strict=True, dtype=np.uint8):
     return np.array(s <= radius * radius, dtype=dtype)
 
 
-def throwing_balls(mask, radius=10, samples=100, perc=5):
+def throwing_balls(mask, W, radius=10, samples=100, perc=5):
 
     mask_orig = mask.copy()
     print('Starting throwing solid balls in 3D space ... ')
@@ -671,7 +671,7 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     print()
 
     new_mask = np.zeros(mask.shape)
-    new_mask[tmp > 115] = 1
+    new_mask[tmp > 100] = 1
 
     data_labels_nm, num_focused_nm = label(new_mask)
     favorite_nm = analyze_labels(data_labels_nm, num_focused_nm)
@@ -679,15 +679,27 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
     focused = np.zeros(mask.shape)
     focused[data_labels_nm==favorite_nm] = 1
 
-    focused += mask_orig
+    focused2 = focused.copy()
 
-    new_mask_dt = distance_transform_edt(focused)
+    focused2 += mask_orig
+
+    new_mask_dt = distance_transform_edt(1 - focused2)
 
     new_mask2 = np.zeros(mask.shape)
-    new_mask2[new_mask_dt > 4] = 1
+    new_mask2[new_mask_dt > 5] = 1
 
     data_labels_nm2, num_focused_nm2 = label(new_mask2)
     print(num_focused_nm2)
+
+    unq2, cnts2 = np.unique(data_labels_nm2, return_counts=True)
+
+    sizes = []
+    for i in range(num_focused_nm2):
+        sz = (data_labels_nm2==i).sum()
+        # print('>>', i, sz)
+        sizes.append(sz)
+
+    print(sorted(sizes))
 
     from dipy.viz import horizon
 
@@ -697,9 +709,11 @@ def throwing_balls(mask, radius=10, samples=100, perc=5):
             (new_mask, a, 'new_mask'),
             (data_labels_nm, a, 'dl_nm'),
             (focused, a, 'focused'),
+            (focused2, a, 'focused2'),
             (new_mask_dt, a, 'new_mask_dt'),
             (new_mask2, a, 'new_mask2'),
-            (data_labels_nm2, a, 'dl_nm2')]
+            (data_labels_nm2, a, 'dl_nm2'),
+            (W, a, 'W')]
     horizon(images=images)
 
 
@@ -837,7 +851,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask2[psums > 25] = 1
 
     print('Time to start throwing solid balls ..')
-    ball_mask, bm2, bm2_dt = throwing_balls(mask2, 20, 100000, perc=percb)
+    ball_mask, bm2, bm2_dt = throwing_balls(mask2, W, 20, 100000, perc=percb)
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
