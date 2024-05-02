@@ -631,7 +631,7 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
     t = time()
 
     mask = binary_closing(mask, iterations=1)
-    mask = binary_dilation(mask, iterations=1)
+    # mask = binary_dilation(mask, iterations=1)
 
     # TODO: this part needs work
     # mask = gaussian_filter(10 * mask, sigma=3)
@@ -688,6 +688,8 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
     new_mask2 = np.zeros(mask.shape)
     new_mask2[new_mask_dt > 5] = 1
 
+    # new_mask2 = binary_opening(new_mask2, iterations=1)
+
     data_labels_nm2, num_focused_nm2 = label(new_mask2)
     print(num_focused_nm2)
 
@@ -704,7 +706,8 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
     from dipy.viz import horizon
 
     a = np.eye(4)
-    images=[(mask, a, 'mask'),
+    images=[(mask_orig.astype('i4'), a, 'masko'),
+            (mask.astype('i4'), a, 'mask'),
             (tmp, a, 'tmp'),
             (new_mask, a, 'new_mask'),
             (data_labels_nm, a, 'dl_nm'),
