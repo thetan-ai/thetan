@@ -846,15 +846,16 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_orig = W < orig_est
     W[mask_orig] = 0
     mask_orig = mask_orig.astype('uint8')
-    dto = distance_transform_edt(1 - mask_orig.astype('f4'))
-    idto = distance_transform_edt(mask_orig.astype('f4'))
+    # dto = distance_transform_edt(1 - mask_orig.astype('f4'))
+    # idto = distance_transform_edt(mask_orig.astype('f4'))
 
-    psums = patch_sums(mask_orig, (5, 5, 5))
-    mask2 = np.zeros(mask_orig.shape)
-    mask2[psums > 25] = 1
+    # psums = patch_sums(mask_orig, (5, 5, 5))
+    # mask2 = np.zeros(mask_orig.shape)
+    # mask2[psums > 25] = 1
 
     print('Time to start throwing solid balls ..')
-    ball_mask, bm2, bm2_dt = throwing_balls(mask2, W, 20, 100000, perc=percb)
+    ball_mask, bm2, bm2_dt = throwing_balls(mask_orig, W, 20, 100000, perc=percb)
+
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
