@@ -7,6 +7,7 @@ from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 from thetan.theta import img3d_to_ijkv_features
+from skimage.segmentation import flood_fill
 
 
 def check_module_load():
@@ -823,6 +824,67 @@ def weighted_image2(dt, W, idt, masko):
     return focus * W
 
 
+def triangular_variance(mask, X, Y, Z, W, msamples=100, osamples=1000):
+
+    mask2 = binary_opening(mask, iterations=2).astype('i4')
+    mask3 = flood_fill(mask2, (1, 1, 1), 2, connectivity=1)
+    mask4 = (mask3 == 1).astype('i4')
+
+    a = np.eye(4)
+    from dipy.viz import horizon
+    horizon(images=[(mask3, a, 'm3'), (mask2, a, 'm3'), (mask, a, 'm3'), (W, a, 'W')])
+
+    Xr = X.ravel()
+    Yr = Y.ravel()
+    Zr = Z.ravel()
+    Wr = W.ravel()
+    maskr = mask.ravel()
+
+    mXr = Xr[maskr == 1]
+    mYr = Yr[maskr == 1]
+    mZr = Zr[maskr == 1]
+
+
+
+    mlength = mXr.shape[0]
+    msel = np.random.randint(0, mlength, size=msamples)
+
+    mXrsel = mXr[msel]
+    mYrsel = mYr[msel]
+    mZrsel = mZr[msel]
+
+    oXr = Xr[maskr == 0]
+    oYr = Yr[maskr == 0]
+    oZr = Zr[maskr == 0]
+
+    olength = oXr.shape[0]
+    osel = np.random.randint(0, olength, size=osamples)
+
+    oXrsel = oXr[osel]
+    oYrsel = oYr[osel]
+    oZrsel = oZr[osel]
+
+    t = 1
+
+    sums = []
+    for o in range(oXrsel.shape[0]):
+        res = np.sqrt((oXrsel[o] * mXrsel) ** 2 + (oYrsel[o] * mYrsel) ** 2 + (oZrsel[o] * mZrsel) ** 2)
+        sums.append(res.sum())
+        t = 2
+    sums = np.asarray(sums)
+
+    sums_im = np.zeros(W.shape)
+
+
+    imask = maskr == 0
+    imask = imask.astype('i4')
+    imask[osel] = 2
+    imask2 = imask.reshape(W.shape)
+
+    sums_im[imask2==2] = sums
+
+    return sums_im
+
 
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
@@ -853,15 +915,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # mask2 = np.zeros(mask_orig.shape)
     # mask2[psums > 25] = 1
 
-    print('Time to start throwing solid balls ..')
-    ball_mask, bm2, bm2_dt = throwing_balls(mask_orig, W, 20, 100000, perc=percb)
+    # print('Time to start throwing solid balls ..')
+    # ball_mask, bm2, bm2_dt = throwing_balls(mask_orig, W, 20, 100000, perc=percb)
 
     # TODO: I need to chose between this weighting strategy or the one
     # below. I also need to use label to find the largest object
     # Ideally the weighting process needs a tiny bit of optimization
 
-    brain_mask = np.zeros(data.shape)
-    brain_mask[ball_mask > 5] = 1
+    # brain_mask = np.zeros(data.shape)
+    # brain_mask[ball_mask > 5] = 1
 
     if pg or ng:
         print('Calculating gradients')
@@ -936,6 +998,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     centroids_im = centroid_images(data_labels, centroids)
 
+    sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
 
     # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
 
@@ -943,11 +1006,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
     # images.append((psums, aff, 'patch_sums'))
-    images.append((ball_mask, aff, 'ball_mask'))
-    images.append((bm2, aff, 'bm2'))
-    images.append((bm2_dt, aff, 'bm2_dt'))
+    # images.append((ball_mask, aff, 'ball_mask'))
+    # images.append((bm2, aff, 'bm2'))
+    # images.append((bm2_dt, aff, 'bm2_dt'))
 
-    images.append((brain_mask, aff, 'brain_mask'))
+    # images.append((brain_mask, aff, 'brain_mask'))
 
     if auto_edt_rm:
         images.append((total_pg, aff, 'total_pg'))
@@ -970,6 +1033,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     if pg or ng:
         images.append((Wgrad, aff, 'Wgrad'))
 
+    images.append((sums_im, aff, 'sums_im'))
     images.append((W, aff, 'W'))
 
     t = 1
