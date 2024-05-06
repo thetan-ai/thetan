@@ -471,14 +471,26 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
 def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None):
     """
     Deploying berserker v2 in imaging data and
-    returning labels as 3D volumes
+    returning labels as 3D volumes.
+    A mask can be provided in 1D form (ravelled)
     """
-    # if mask is not None:
-    #     Xp = X[mask, :].copy()
-    # else:
-    #     Xp = X
-    centroids, labels = berserker2(X, theta_value, all_out=False)
-    data_labels = labels.copy()
+
+    if mask is not None:
+        Xp = X[mask, :].copy()
+        imask = 1 - mask
+    else:
+        Xp = X
+
+    centroids, labels = berserker2(Xp, theta_value, all_out=False)
+
+    if mask is not None:
+        labelsp = np.zeros(np.prod(data_dims))
+        labelsp[imask] = -1
+        labelsp[mask] = labels.copy()
+    else:
+        labelsp = labels
+
+    data_labels = labelsp.copy()
     data_labels = data_labels.reshape(data_dims)
     data_labels = data_labels.astype('f8')
     return data_labels, centroids
@@ -1019,12 +1031,28 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Starting cluster analysis of dl ..')
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
-    centroids_im = centroid_images(data_labels, centroids)
-    centroids_imb = gaussian_filter(centroids_im, sigma=1)
-    centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
-    centroids_imm = median_filter(centroids_im, size=3)
-    
 
+    centroids_im = centroid_images(data_labels, centroids)
+    centroids_median_im = median_filter(centroids_im, size=3)
+
+    standard_filters = False
+    if standard_filters:
+
+        centroids_imb = gaussian_filter(centroids_im, sigma=1)
+        centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
+        centroids_imm = median_filter(centroids_im, size=3)
+
+
+
+
+    print('Applying Berserker 2 on X masked (i, j, k, 3w)')
+    t = time()
+    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=mask.ravel().astype('bool'))
+    print('Duration ', time() - t)
+    print()
+
+    centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
+    centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
     # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
 
     # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
@@ -1032,6 +1060,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     aff = np.eye(4)
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
+    images.append((mask, aff, 'mask'))
     # images.append((psums, aff, 'patch_sums'))
     # images.append((ball_mask, aff, 'ball_mask'))
     # images.append((bm2, aff, 'bm2'))
@@ -1053,17 +1082,26 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((data_labels_w, aff, 'dl_w'))
         images.append((imask_w, aff, 'imask_w'))
 
-    images.append((centroids_im, aff, 'centroids_im'))
-    images.append((centroids_imb, aff, 'centroids_imb'))
-    images.append((centroids_imb2, aff, 'centroids_imb2'))
-    images.append((centroids_imm, aff, 'centroids_imm'))
+    if standard_filters:
+        images.append((centroids_im, aff, 'centroids_im'))
+        images.append((centroids_imb, aff, 'centroids_imb'))
+        images.append((centroids_imb2, aff, 'centroids_imb2'))
+        images.append((centroids_imm, aff, 'centroids_imm'))
     images.append((data_labels, aff, 'dl'))
 
     if pg or ng:
         images.append((Wgrad, aff, 'Wgrad'))
 
     # images.append((sums_im, aff, 'sums_im'))
+
+    images.append((centroids_im, aff, 'centroids_im'))
+    images.append((centroids_median_im, aff, 'centroids_median_im'))
+    images.append((centroids_mask_im, aff, 'centroids_mask_im'))
+    images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
+
+    images.append((data_labels_mask, aff, 'dl_mask'))
     images.append((W, aff, 'W'))
+
 
     t = 1
 
