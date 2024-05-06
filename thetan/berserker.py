@@ -3,7 +3,7 @@ import numpy as np
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
-from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass
+from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 from thetan.theta import img3d_to_ijkv_features
@@ -468,11 +468,15 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
 
 
 
-def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False):
+def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None):
     """
     Deploying berserker v2 in imaging data and
     returning labels as 3D volumes
     """
+    # if mask is not None:
+    #     Xp = X[mask, :].copy()
+    # else:
+    #     Xp = X
     centroids, labels = berserker2(X, theta_value, all_out=False)
     data_labels = labels.copy()
     data_labels = data_labels.reshape(data_dims)
@@ -826,13 +830,23 @@ def weighted_image2(dt, W, idt, masko):
 
 def triangular_variance(mask, X, Y, Z, W, msamples=100, osamples=1000):
 
-    mask2 = binary_opening(mask, iterations=2).astype('i4')
-    mask3 = flood_fill(mask2, (1, 1, 1), 2, connectivity=1)
-    mask4 = (mask3 == 1).astype('i4')
+    mask2 = binary_opening(mask, iterations=1).astype('i4')
+    mask3 = binary_closing(mask2, iterations=1).astype('i4')
+    # mask3 = flood_fill(mask2, (1, 1, 1), 2, connectivity=1)
+    # mask4 = (mask3 == 1).astype('i4')
+
+    lab3, num3 = label(mask3)
+    fav = analyze_labels(lab3, num3)
+
+    mask4 = np.zeros(mask.shape)
+    mask4[lab3 == fav] = 1
+
+    mask5 = np.zeros(mask.shape)
+    mask5[mask4 == 1] = 1
 
     a = np.eye(4)
     from dipy.viz import horizon
-    horizon(images=[(mask3, a, 'm3'), (mask2, a, 'm3'), (mask, a, 'm3'), (W, a, 'W')])
+    horizon(images=[(mask5, a, 'mask5'), (lab3, a, 'lb3'), (mask4, a, 'm4'), (mask3, a, 'm3'), (mask2, a, 'm2'), (mask, a, 'm'), (W, a, 'W')])
 
     Xr = X.ravel()
     Yr = Y.ravel()
@@ -886,12 +900,21 @@ def triangular_variance(mask, X, Y, Z, W, msamples=100, osamples=1000):
     return sums_im
 
 
+def multi_scale_patches(mask):
+
+    mask2 = patchify(mask, (10, 10, 10), step=10)
+
+    t = 1
+
+
+    pass
+
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
     print('Preparing data')
-    X = prepare_data(data, affine, perc=(2, 98), mult=300., enh=3.)
+    X = prepare_data(data, affine, perc=(0, 98), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
@@ -997,8 +1020,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
     centroids_im = centroid_images(data_labels, centroids)
+    centroids_imb = gaussian_filter(centroids_im, sigma=1)
+    centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
+    centroids_imm = median_filter(centroids_im, size=3)
+    
 
-    sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
+    # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
 
     # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
 
@@ -1027,13 +1054,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((imask_w, aff, 'imask_w'))
 
     images.append((centroids_im, aff, 'centroids_im'))
-
+    images.append((centroids_imb, aff, 'centroids_imb'))
+    images.append((centroids_imb2, aff, 'centroids_imb2'))
+    images.append((centroids_imm, aff, 'centroids_imm'))
     images.append((data_labels, aff, 'dl'))
 
     if pg or ng:
         images.append((Wgrad, aff, 'Wgrad'))
 
-    images.append((sums_im, aff, 'sums_im'))
+    # images.append((sums_im, aff, 'sums_im'))
     images.append((W, aff, 'W'))
 
     t = 1
