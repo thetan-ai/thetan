@@ -530,6 +530,28 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
 
     return X
 
+def prepare_data_2d(data, affine, perc=(2, 99), mult=300, enh=3):
+
+    if perc is None:
+        data2 = data
+    else:
+        value_range = np.percentile(data, q=[2, 99])
+        data2 = np.interp(data, value_range, (0, 1))
+        data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+
+    X = img3d_to_ijkv_features(data2)
+    # move to world coordinates W (xyz)
+
+    # W = np.dot(affine[:3, :3], X[:, :3].T) + affine[:3, 3][:, None]
+    # X[:, :3] = W.T
+
+    # Intensity more important than location
+    X[:, 3] = enh * X[:, 3]
+
+    X = np.concatenate([X[..., :2], X[..., -1:]], axis=-1)
+
+    return X
+
 
 def analyze_labels(data_labels_focused, num_focused, verbose=False, return_sizes=False):
 
@@ -555,8 +577,8 @@ def mask_lt(data_labels, centroids, bk_thr=300, updated_labels=False):
     """
     # bk_thr = 300 # 400 or 250 interesting too
     data_labels_u = data_labels.copy()
-    indx = np.where(centroids[:, 3] < bk_thr)[0]
-    min_indx = np.argmin(centroids[:, 3])
+    indx = np.where(centroids[:, -1] < bk_thr)[0]
+    min_indx = np.argmin(centroids[:, -1])
 
     for indx_ in indx:
         data_labels_u[data_labels == indx_] = min_indx
@@ -575,8 +597,8 @@ def mask_gt(data_labels, centroids, bk_thr=300, updated_labels=False):
     """
 
     data_labels_u = data_labels.copy()
-    indx = np.where(centroids[:, 3] > bk_thr)[0]
-    max_indx = np.argmax(centroids[:, 3])
+    indx = np.where(centroids[:, -1] > bk_thr)[0]
+    max_indx = np.argmax(centroids[:, -1])
 
     for indx_ in indx:
         data_labels_u[data_labels == indx_] = max_indx
@@ -590,7 +612,7 @@ def mask_gt(data_labels, centroids, bk_thr=300, updated_labels=False):
 
 
 def print_centroids(centroids):
-    for idx, c in zip(range(centroids.shape[0]), centroids[:, 3]):
+    for idx, c in zip(range(centroids.shape[0]), centroids[:, -1]):
         print(idx, c)
     print()
 
@@ -927,6 +949,7 @@ def multi_scale_patches(mask):
 
     pass
 
+
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1116,3 +1139,130 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     return images
 
 
+def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data_2d(data, affine, perc=(0, 98), mult=300., enh=2.)
+    W = data
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids)
+
+    mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+    dt = distance_transform_edt(1 - mask)
+
+    mask_orig = W < orig_est
+    W[mask_orig] = 0
+    mask_orig = mask_orig.astype('uint8')
+
+    if pg or ng:
+        print('Calculating gradients')
+        Wgrad = gaussian_gradient_magnitude(W, sigma=1)
+
+    if pg:
+        Xpg = X.copy()
+        Xpg[:, 3] += 1.4 * Wgrad.ravel()
+        # Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
+
+        print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
+        t = time()
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_pg)
+
+        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
+        dt_pg = distance_transform_edt(1 - mask_pg)
+
+    if ng:
+        Xng = X.copy()
+        Xng[:, 3] -= 1.4 * Wgrad.ravel()
+        # Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
+        print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
+        t = time()
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_ng)
+
+        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
+        dt_ng = distance_transform_edt(1 - mask_ng)
+
+
+
+    centroids_im = centroid_images(data_labels, centroids)
+    centroids_median_im = median_filter(centroids_im, size=3)
+
+    standard_filters = False
+    if standard_filters:
+
+        centroids_imb = gaussian_filter(centroids_im, sigma=1)
+        centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
+        centroids_imm = median_filter(centroids_im, size=3)
+
+
+
+
+    print('Applying Berserker 2 on X masked (i, j, k, 3w)')
+    t = time()
+    maskr = mask.ravel().astype('bool')
+    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
+    print('Duration ', time() - t)
+    print()
+
+    centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
+    centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
+    # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
+
+    # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
+
+    aff = np.eye(4)
+    images = []
+    images.append((mask_orig, aff, 'mask_orig'))
+    images.append((mask, aff, 'mask'))
+    # images.append((psums, aff, 'patch_sums'))
+    # images.append((ball_mask, aff, 'ball_mask'))
+    # images.append((bm2, aff, 'bm2'))
+    # images.append((bm2_dt, aff, 'bm2_dt'))
+
+    # images.append((brain_mask, aff, 'brain_mask'))
+
+    if pg:
+        images.append((mask_pg, aff, 'mask_pg'))
+        images.append((data_labels_pg, aff, 'dl_pg'))
+        images.append((W+Wgrad*1.4, aff, 'Wpg'))
+
+    if standard_filters:
+        images.append((centroids_im, aff, 'centroids_im'))
+        images.append((centroids_imb, aff, 'centroids_imb'))
+        images.append((centroids_imb2, aff, 'centroids_imb2'))
+        images.append((centroids_imm, aff, 'centroids_imm'))
+    images.append((data_labels, aff, 'dl'))
+
+    if pg or ng:
+        images.append((Wgrad, aff, 'Wgrad'))
+
+    # images.append((sums_im, aff, 'sums_im'))
+
+    images.append((centroids_im, aff, 'centroids_im'))
+    images.append((centroids_median_im, aff, 'centroids_median_im'))
+    images.append((centroids_mask_im, aff, 'centroids_mask_im'))
+    images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
+
+    images.append((data_labels_mask, aff, 'dl_mask'))
+    images.append((W, aff, 'W'))
+    images.append((data, aff, 'data'))
+
+
+    t = 1
+
+    return images
