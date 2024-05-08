@@ -1,5 +1,5 @@
 import numpy as np
-from thetan.berserker import berserker2, X_to_many_2D, berserker2_to_2D_labels
+from thetan.berserker import berserker2, X_to_many_2D, berserker2_to_2D_labels, centroid_images
 from thetan.theta import img2d_to_ijv_features
 from scipy.ndimage import gaussian_gradient_magnitude
 import cv2
@@ -34,8 +34,8 @@ frames = np.swapaxes(frames, 0, 1)
 
 print(frames.shape)
 
-from dipy.viz import horizon
-horizon(images=[(frames, np.eye(4))])
+# from dipy.viz import horizon
+# horizon(images=[(frames, np.eye(4))], bg_color=(1, 1, 1))
 
 def prepare_2d_data(data):
 
@@ -54,17 +54,29 @@ def prepare_2d_data(data):
 
 
 data = frames[..., 1].astype('f8')
+values = np.unique(data)
+data = np.interp(data, (values[1], data.max()), (0, 255))
 X = prepare_2d_data(data)
 
 I, J, W = X_to_many_2D(X, data.shape)
 
-data_labels, centroids = berserker2_to_2D_labels(X, 60, data.shape)
+data_labels, centroids = berserker2_to_2D_labels(X, 80, data.shape)
 
-from pylab import imshow, figure, show
+centroids_im = centroid_images(data_labels, centroids)
+
+grads = gaussian_gradient_magnitude(W, sigma=1)
+
+from pylab import imshow, figure, show, title
 
 f = figure()
-imshow(data)
+title('W')
+imshow(W)
 f2 = figure()
-imshow(data_labels)
+title('grads')
+imshow(grads)
+f3 = figure()
+title('centroids_im')
+imshow(centroids_im)
+show()
 
 t = 1
