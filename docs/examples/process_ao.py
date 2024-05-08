@@ -1,7 +1,7 @@
 import numpy as np
 from thetan.berserker import berserker2, X_to_many_2D, berserker2_to_2D_labels, centroid_images
 from thetan.theta import img2d_to_ijv_features
-from scipy.ndimage import gaussian_gradient_magnitude
+from scipy.ndimage import gaussian_gradient_magnitude, gaussian_filter
 import cv2
 
 # Path to the video file
@@ -56,15 +56,16 @@ def prepare_2d_data(data):
 data = frames[..., 1].astype('f8')
 values = np.unique(data)
 data = np.interp(data, (values[1], data.max()), (0, 255))
+data = gaussian_filter(data, sigma=1)
 X = prepare_2d_data(data)
 
 I, J, W = X_to_many_2D(X, data.shape)
 
-data_labels, centroids = berserker2_to_2D_labels(X, 80, data.shape)
+data_labels, centroids = berserker2_to_2D_labels(X, 60, data.shape)
 
 centroids_im = centroid_images(data_labels, centroids)
 
-grads = gaussian_gradient_magnitude(W, sigma=1)
+grads = gaussian_gradient_magnitude(W, sigma=2)
 
 from pylab import imshow, figure, show, title
 
