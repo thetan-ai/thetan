@@ -1,7 +1,4 @@
-# distutils: language = c
 # cython: wraparound=False, cdivision=True, boundscheck=False
-
-cimport numpy as cnp
 
 cdef extern from "cythonutils.h":
     enum: MAX_NDIM
