@@ -530,6 +530,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
 
     return X
 
+
 def prepare_data_2d(data, affine, perc=(2, 99), mult=300, enh=3):
 
     if perc is None:
