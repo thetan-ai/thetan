@@ -509,6 +509,24 @@ def X_to_many_3D(X, data_dims):
 
     return X0, X1, X2, X3
 
+def berserker2_to_2D_labels(X, theta_value, data_dims):
+
+    centroids, labels = berserker2(X, theta_value, all_out=False)
+
+    data_labels = labels.copy()
+    data_labels = data_labels.reshape(data_dims)
+    data_labels = data_labels.astype('f8')
+    return data_labels, centroids
+
+
+def X_to_many_2D(X, data_dims):
+    """ Currently assuming only 4 features"""
+
+    X0 = X[:, 0].reshape(data_dims)
+    X1 = X[:, 1].reshape(data_dims)
+    X2 = X[:, 2].reshape(data_dims)
+
+    return X0, X1, X2
 
 def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
 

@@ -1,5 +1,5 @@
 import numpy as np
-from thetan.berserker import berserker2
+from thetan.berserker import berserker2, X_to_many_2D, berserker2_to_2D_labels
 from thetan.theta import img2d_to_ijv_features
 import cv2
 
@@ -38,6 +38,25 @@ horizon(images=[(frames, np.eye(4))])
 
 def prepare_2d_data(data):
 
+    data = np.ascontiguousarray(data)
 
+    ijv = img2d_to_ijv_features(data)
+
+    ci, cj = np.asarray(data.shape) / 2.0
+
+    X = ijv.copy()
+    X[:, 0] -= ci
+    X[:, 1] -= cj
+    X[:, 2] *= 2
+
+    return X
+
+
+data = frames[..., 0].astype('f8')
+X = prepare_2d_data(data)
+
+I, J, W = X_to_many_2D(X, data.shape)
+
+data_labels, centroids = berserker2_to_2D_labels(X, 60, data.shape)
 
 t = 1

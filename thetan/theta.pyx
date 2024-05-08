@@ -1618,7 +1618,8 @@ def img3d_to_ijkv_features(double[:, :, ::1] img3d):
 def img2d_to_ijv_features(double[:, ::1] img2d):
 
     cdef:
-        cnp.npy_intp i=0, j=0, k=0
+        cnp.npy_intp i=0, j=0
+        cnp.npy_intp cnt = 0
         cnp.npy_intp I = img2d.shape[0], J = img2d.shape[1]
         double * features = <double *> malloc(<size_t> I * J * 3 * sizeof(double))
 
@@ -1630,6 +1631,7 @@ def img2d_to_ijv_features(double[:, ::1] img2d):
                 features[cnt * 3 + 0] = i
                 features[cnt * 3 + 1] = j
                 features[cnt * 3 + 2] = img2d[i, j]
+                cnt += 1
 
     features_np = np.asarray(<double[:I * J, :3]> features)
 
