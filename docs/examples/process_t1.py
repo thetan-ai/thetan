@@ -473,4 +473,3 @@ horizon(images=images)
 t = 2
 
 print('Done')
-
