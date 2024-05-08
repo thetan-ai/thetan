@@ -484,9 +484,12 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None)
     centroids, labels = berserker2(Xp, theta_value, all_out=False)
 
     if mask is not None:
+        # We can calculate the centroids for label -1 on our own
         labelsp = np.zeros(np.prod(data_dims))
-        labelsp[imask] = -1
-        labelsp[mask] = labels.copy()
+        labelsp[imask == 1] = -1
+        labelsp[mask == 1] = labels.copy()
+        centroid_neg1 = np.mean(X[imask], axis=0)
+        centroids = np.vstack((centroid_neg1, centroids))
     else:
         labelsp = labels
 
@@ -744,9 +747,12 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
 
 def centroid_images(data_labels, centroids, round=False):
 
+    labels = np.unique(data_labels)
     centroids_image = np.zeros(data_labels.shape)
-    for i in range(centroids.shape[0]):
-        centroids_image[data_labels == i] = centroids[i, -1]
+    # for i in range(centroids.shape[0]):
+    #     centroids_image[data_labels == i] = centroids[i, -1]
+    for i, l in enumerate(labels):
+        centroids_image[data_labels == l] = centroids[i, -1]
 
     if round:
         return np.round(centroids_image, 0)
@@ -1047,7 +1053,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Applying Berserker 2 on X masked (i, j, k, 3w)')
     t = time()
-    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=mask.ravel().astype('bool'))
+    maskr = mask.ravel().astype('bool')
+    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
@@ -1101,6 +1108,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((data_labels_mask, aff, 'dl_mask'))
     images.append((W, aff, 'W'))
+    images.append((data, aff, 'data'))
 
 
     t = 1
