@@ -1,0 +1,127 @@
+[project]
+name = "thetan"
+description = "Fast and robust algorithms for advanced A.I."
+license = {file = "LICENSE"}
+readme = "README.rst"
+requires-python = ">=3.9"
+authors = [{ name = "Eleftherios Garyfallidis", email = "elef@indiana.edu" }]
+maintainers = [
+    {name = "Eleftherios Garyfallidis", email="elef@indiana.edu"},
+    {name = "Serge Koudoro", email="skoudoro@iu.edu"},
+]
+keywords = ["AI", "thetan"]
+classifiers = [
+    'Development Status :: 2 - Pre-Alpha',
+    'Environment :: Console',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: BSD License',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3 :: Only',
+    "Topic :: Software Development :: Libraries",
+    'Topic :: Scientific/Engineering',
+    "Operating System :: OS Independent",
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+    'Natural Language :: English',
+]
+dynamic = ['version']
+dependencies = [
+    "numpy>=1.22.4",
+    "scipy>=1.8",
+]
+
+[project.optional-dependencies]
+all = ["thetan[dev,doc,style,test, viz, ml]"]
+style = ["flake8", "isort"]
+viz = ["fury>=0.10.0", "matplotlib"]
+test = ["pytest", "coverage", "coveralls", "codecov", "asv"]
+ml = ["scikit_learn", "tensorflow"]
+dev = [
+    # Also update [build-system] -> requires
+    'meson-python>=0.13',
+    'wheel',
+    'setuptools>=67',
+    'packaging>=21',
+    'ninja',
+    'Cython>=0.29.35',
+    'numpy>=1.22',
+    # Developer UI
+    'spin>=0.5',
+    'build',
+]
+
+doc = [
+    "numpydoc",
+    "sphinx ~= 5.3",
+    "texext",
+    "tomli; python_version < \"3.11\"",
+    "sphinxcontrib-bibtex",
+    "sphinx_design",
+    "sphinx-gallery>=0.10.0",
+    "tomli>=2.0.1",
+    "grg-sphinx-theme>=0.2.0",
+    "Jinja2"
+]
+
+
+[project.urls]
+homepage = "https://github.com/garyfallidis/thetan"
+documentation = "https://github.com/garyfallidis/thetan"
+source = "https://github.com/garyfallidis/thetan"
+download = "https://pypi.org/project/thetan/#files"
+tracker = "https://github.com/garyfallidis/thetan/issues"
+
+[build-system]
+build-backend = "mesonpy"
+requires = [
+    "meson-python>=0.13.1",
+    "Cython>=0.29.35",
+    "packaging>21.0",
+    "wheel",
+    "numpy==1.19.5; python_version=='3.8' and platform_python_implementation != 'PyPy'",
+    "numpy==1.22.4; python_version=='3.9' and platform_python_implementation != 'PyPy'",
+    "numpy==1.22.4; python_version=='3.10' and platform_system=='Windows' and platform_python_implementation != 'PyPy'",
+    "numpy==1.22.4; python_version=='3.10' and platform_system != 'Windows' and platform_python_implementation != 'PyPy'",
+    "numpy==1.23.3; python_version=='3.11' and platform_python_implementation != 'PyPy'",
+    "numpy>=1.26.0b1; python_version>='3.12'",
+    "numpy; python_version>='3.8' and platform_python_implementation=='PyPy'",
+]
+
+[tool.spin]
+package = 'thetan'
+
+[tool.spin.commands]
+Build = [
+    "spin.cmds.meson.build",
+    "spin.cmds.meson.test",
+    "spin.cmds.build.sdist",
+    ".spin/cmds.py:clean"
+]
+
+Environments = [
+    "spin.cmds.meson.run",
+    "spin.shell",
+    "spin.ipython",
+    "spin.python"
+]
+
+"Documentation" = [
+    "spin.cmds.meson.docs",
+    # ".spin/cmds.py:docs"
+]
+Metrics = [
+    ".spin/cmds.py:bench",
+    # ".spin/cmds.py:coverage
+]
+# TODO: Add custom commands
+
+[tool.pytest.ini_options]
+addopts = "--ignore-glob='bench*.py' --ignore-glob=**/benchmarks/*"
+filterwarnings = []

@@ -2,12 +2,19 @@
 
 ## Index
 
+- [build.txt](default.txt) requirements for building the package
 - [default.txt](default.txt) Default requirements
 - [docs.txt](docs.txt) Documentation requirements
 - [optional.txt](optional.txt) Optional requirements
 - [test.txt](test.txt) Requirements for running test suite
 
 ## Examples
+
+### Installing Build tools
+
+```bash
+pip install -U -r requirements/build.txt
+```
 
 ### Installing requirements
 
@@ -16,7 +23,7 @@ $ pip install -U -r requirements/default.txt
 $ pip install -U -r requirements/optional.txt
 ```
 
-or 
+or
 
 ```bash
 conda install --yes --file=requirements/default.txt --file=requirements/optional.txt
@@ -29,7 +36,7 @@ $ pip install -U -r requirements/default.txt
 $ pip install -U -r requirements/test.txt
 ```
 
-or 
+or
 
 ```bash
 conda install --yes --file=requirements/default.txt --file=requirements/test.txt
@@ -43,7 +50,7 @@ $ pip install -U -r requirements/optional.txt
 $ pip install -U -r requirements/docs.txt
 ```
 
-or 
+or
 
 ```bash
 conda install --yes --file=requirements/default.txt --file=requirements/optional.txt --file=requirements/docs.txt
