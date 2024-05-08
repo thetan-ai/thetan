@@ -1140,6 +1140,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
 
 def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+    """ Process each slice of the volume independently """
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1266,3 +1267,8 @@ def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=
     t = 1
 
     return images
+
+
+def berserker2_seg_2d(data, theta_value):
+
+    pass
