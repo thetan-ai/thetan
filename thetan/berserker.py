@@ -6,7 +6,7 @@ from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binar
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features
+from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features
 from skimage.segmentation import flood_fill
 
 
@@ -528,6 +528,25 @@ def X_to_many_2D(X, data_dims):
 
     return X0, X1, X2
 
+
+def prepare_data_2d(data, enh=2.):
+    """ Returns feature space X(rows, cols, data) with rows and cols
+    coordinates originating at the center of the image."""
+
+    data = np.ascontiguousarray(data)
+
+    ijv = img2d_to_ijv_features(data)
+
+    ci, cj = np.asarray(data.shape) / 2.0
+
+    X = ijv.copy()
+    X[:, 0] -= ci
+    X[:, 1] -= cj
+    X[:, 2] *= enh
+
+    return X
+
+
 def prepare_data_3d(data, affine, perc=(2, 99), mult=300, enh=3):
 
     if perc is None:
@@ -648,6 +667,7 @@ def patch_sums(data, patch):
                                   patch[0] * patch[1] * patch[2])
 
     return np.sum(data2_enh, axis=-1)
+
 
 def patch_median(data, patch):
     """ Sums in linearized patches
@@ -1255,11 +1275,14 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
     return images
 
 
-
-
-
-
-def berserker2_seg_2d(data, theta_value):
+def berserker2_seg_2d(data, theta_value, enh=2):
     """Assuming data are gray scale and 2D"""
 
-    pass
+    X = prepare_data_2d(data, enh)
+    I, J, W = X_to_many_2D(X, data.shape)
+    data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
+    centroids_im = centroid_images(data_labels, centroids)
+
+    return data_labels, centroids, centroids_im
+
+
