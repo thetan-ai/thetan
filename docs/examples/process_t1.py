@@ -5,7 +5,7 @@ from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
 from dipy.align.reslice import reslice
 from dipy.align.scalespace import ScaleSpace
-from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg
+from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg, prepare_data_3d
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
@@ -33,6 +33,7 @@ def patch_sum_diffs(data, patch):
 
     return np.sum(np.diff(data2_enh, axis=-1), axis=-1)
 
+
 def patch_sums(data, patch):
     """ Sums in linearized patches
     """
@@ -56,6 +57,7 @@ def patch_features(data, patch, step):
 
     return data2_enh
 
+
 def patch_down(data, patch, step):
     """ Downsample using steps
     """
@@ -68,52 +70,6 @@ def patch_down(data, patch, step):
     data_step2 = data_step2.mean(axis=-1)
 
     return data_step2
-
-def prepare_data(data, affine, perc=(2, 99), mult=300, enh=2, center_dist=False, z_scoring=True, patch=None):
-
-    if perc is None:
-        data2 = data
-    else:
-        value_range = np.percentile(data, q=[2, 99])
-        data2 = np.interp(data, value_range, (0, 1))
-        data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
-
-    # This simply adds median information
-    # Currently not being used
-    if patch is not None:
-        data3 = np.pad(data2, patch[0]//2)
-        data3_enh = patchify(data3, patch)
-        data3_enh = data3_enh.reshape((data2.shape[0] * data2.shape[1] * data2.shape[2]),
-                                      (patch[0] * patch[1] * patch[2]))
-        mean_enh = np.mean(data3_enh, axis=-1)
-        median_enh = np.median(data3_enh, axis=-1)
-
-    X = img3d_to_ijkv_features(data2)
-
-    if patch is not None:
-        X[:, 3] = median_enh
-
-    # move to world coordinates W (xyz)
-
-    W = np.dot(affine[:3, :3], X[:, :3].T) + affine[:3, 3][:, None]
-    X[:, :3] = W.T
-
-    # add distance from world coordinates origin
-
-    if center_dist:
-
-        Wnorm = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
-        Xenh = np.concatenate((X, Wnorm[:, None]), axis=-1)
-        X = Xenh
-
-    if z_scoring:
-        # Calculating z-scores. It may help with metric spaces
-        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
-
-    # Intensity more important than location
-    X[:, 3] = enh * X[:, 3]
-
-    return X
 
 
 def find_theta(X, start, stop, step, data, matrix_calc=False):
@@ -166,6 +122,7 @@ def find_theta(X, start, stop, step, data, matrix_calc=False):
         plt.show()
 
     t = 1
+
 
 def volumetric_sphere(shape, radius, position):
     """Generate an n-dimensional spherical mask."""

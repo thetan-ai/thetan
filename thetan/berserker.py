@@ -528,7 +528,7 @@ def X_to_many_2D(X, data_dims):
 
     return X0, X1, X2
 
-def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
+def prepare_data_3d(data, affine, perc=(2, 99), mult=300, enh=3):
 
     if perc is None:
         data2 = data
@@ -549,7 +549,7 @@ def prepare_data(data, affine, perc=(2, 99), mult=300, enh=3):
     return X
 
 
-def prepare_data_2d(data, affine, perc=(2, 99), mult=300, enh=3):
+def prepare_data_3d_as_2d_series(data, affine, perc=(2, 99), mult=300, enh=3):
 
     if perc is None:
         data2 = data
@@ -974,7 +974,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     data = np.ascontiguousarray(data, dtype='f8')
 
     print('Preparing data')
-    X = prepare_data(data, affine, perc=(0, 98), mult=300., enh=3.)
+    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
@@ -991,22 +991,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_orig = W < orig_est
     W[mask_orig] = 0
     mask_orig = mask_orig.astype('uint8')
-    # dto = distance_transform_edt(1 - mask_orig.astype('f4'))
-    # idto = distance_transform_edt(mask_orig.astype('f4'))
-
-    # psums = patch_sums(mask_orig, (5, 5, 5))
-    # mask2 = np.zeros(mask_orig.shape)
-    # mask2[psums > 25] = 1
-
-    # print('Time to start throwing solid balls ..')
-    # ball_mask, bm2, bm2_dt = throwing_balls(mask_orig, W, 20, 100000, perc=percb)
-
-    # TODO: I need to chose between this weighting strategy or the one
-    # below. I also need to use label to find the largest object
-    # Ideally the weighting process needs a tiny bit of optimization
-
-    # brain_mask = np.zeros(data.shape)
-    # brain_mask[ball_mask > 5] = 1
 
     if pg or ng:
         print('Calculating gradients')
@@ -1079,7 +1063,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Starting cluster analysis of dl ..')
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
-
     centroids_im = centroid_images(data_labels, centroids)
     centroids_median_im = median_filter(centroids_im, size=3)
 
@@ -1089,9 +1072,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         centroids_imb = gaussian_filter(centroids_im, sigma=1)
         centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
         centroids_imm = median_filter(centroids_im, size=3)
-
-
-
 
     print('Applying Berserker 2 on X masked (i, j, k, 3w)')
     t = time()
@@ -1152,19 +1132,16 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
-
-    t = 1
-
     return images
 
 
-def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
     """ Process each slice of the volume independently """
 
     data = np.ascontiguousarray(data, dtype='f8')
 
     print('Preparing data')
-    X = prepare_data_2d(data, affine, perc=(0, 98), mult=300., enh=2.)
+    X = prepare_data_3d_as_2d_series(data, affine, perc=(0, 98), mult=300., enh=2.)
     W = data
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
@@ -1217,8 +1194,6 @@ def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=
         mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
         dt_ng = distance_transform_edt(1 - mask_ng)
 
-
-
     centroids_im = centroid_images(data_labels, centroids)
     centroids_median_im = median_filter(centroids_im, size=3)
 
@@ -1228,8 +1203,6 @@ def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=
         centroids_imb = gaussian_filter(centroids_im, sigma=1)
         centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
         centroids_imm = median_filter(centroids_im, size=3)
-
-
 
 
     print('Applying Berserker 2 on X masked (i, j, k, 3w)')
@@ -1249,12 +1222,6 @@ def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=
     images = []
     images.append((mask_orig, aff, 'mask_orig'))
     images.append((mask, aff, 'mask'))
-    # images.append((psums, aff, 'patch_sums'))
-    # images.append((ball_mask, aff, 'ball_mask'))
-    # images.append((bm2, aff, 'bm2'))
-    # images.append((bm2_dt, aff, 'bm2_dt'))
-
-    # images.append((brain_mask, aff, 'brain_mask'))
 
     if pg:
         images.append((mask_pg, aff, 'mask_pg'))
@@ -1288,6 +1255,11 @@ def berserker2_brain_seg_2d(data, affine, return_all=False, orig_est=100, m_est=
     return images
 
 
+
+
+
+
 def berserker2_seg_2d(data, theta_value):
+    """Assuming data are gray scale and 2D"""
 
     pass
