@@ -7,7 +7,8 @@ import cv2
 
 # Path to the video file
 # video_path = r'/Users/prajwal/Desktop/P2Video/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
-video_path = r'/home/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+# video_path = r'/home/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+video_path = r'C:/Users/Eleftherios/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
 
 
 def read_video(fname):
@@ -67,7 +68,34 @@ def hist_local_eq(data, disk_sz = 30):
     return img_eq
 
 
-def process_all_frames(frames, theta_value, limit=None, enh=2.0):
+def process_as_timeseries(frames, theta_value, limit=None, enh=2.0, srt=False):
+
+    sh = frames.shape
+    X = frames.reshape((sh[0] * sh[1], sh[2])).astype('f8')
+    if srt:
+        X = np.sort(X, axis=-1)
+    X = np.ascontiguousarray(X)
+
+
+    print(X.shape)
+
+    print('Starting Berserker 2 on timeseries')
+    t = time()
+    centroids, labels = berserker2(X, theta_value, all_out=False)
+    print('Duration ', time() - t)
+
+    labels_im = labels.reshape((sh[0], sh[1])).astype('f8')
+    
+    labels_unq = np.unique(labels_im)
+    centroids_im = np.zeros(frames.shape)
+    for i, l in enumerate(labels_unq):
+        centroids_im[labels_im == l] = centroids[i]
+
+    return X, centroids_im, labels_im
+
+
+
+def process_all_frames(frames, theta_value, limit=None, enh=2.0, pg=False, ng=False):
 
     print(frames.shape)
 
@@ -104,30 +132,47 @@ def process_all_frames(frames, theta_value, limit=None, enh=2.0):
         # data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
         # centroids_im = centroid_images(data_labels, centroids)
 
-        data_labels, centroids, centroids_im = berserker2_seg_2d(data, theta_value, enh=enh)
+        data_labels, centroids, centroids_im = berserker2_seg_2d(data, theta_value, enh=enh, pg=pg, ng=ng)
 
         new_frames[..., i] = centroids_im.copy()
         data_labels_all[..., i] = data_labels.copy()
 
         # grads = gaussian_gradient_magnitude(W, sigma=2)
+        print()
 
     return new_frames, data_labels_all
 
 
 frames = read_video(video_path)
 
-t = time()
-new_frames, dl_all = process_all_frames(frames, 60., 10, 2.)
-print('Duration is ', time() - t)
+timeseries = True
+if timeseries:
 
-from dipy.viz import horizon
-horizon(images=[(frames, np.eye(4), 'frames'),
-                (new_frames, np.eye(4), 'new_frames'),
-                (np.abs(frames - new_frames), np.eye(4), 'diff'),
-                (dl_all, np.eye(4), 'dl_all')],
-                bg_color=(1, 1, 1))
+    X, centroids_im, labels_im = process_as_timeseries(frames, 180, srt=False)
 
-avg_frame = np.mean(frames, axis=-1)
+    # Calculate time derivative but adjust shape
+    tmp = np.zeros(centroids_im.shape)
+    centroids_im_dt = np.diff(centroids_im, axis=-1)
+    tmp[..., 1:-1] = centroids_im_dt[..., 1:]
+
+    from dipy.viz import horizon
+    horizon(images=[(frames, np.eye(4), 'frames'), (centroids_im, np.eye(4), 'cim'), (tmp, np.eye(4), 'cim_dt')])
+
+indyframes = False
+if indyframes:
+
+    t = time()
+    new_frames, dl_all = process_all_frames(frames, 50., limit=None, enh=2., pg=True, ng=False)
+    print('Duration is ', time() - t)
+
+    from dipy.viz import horizon
+    horizon(images=[(frames, np.eye(4), 'frames'),
+                    (new_frames, np.eye(4), 'new_frames'),
+                    (np.abs(frames - new_frames), np.eye(4), 'diff'),
+                    (dl_all, np.eye(4), 'dl_all')],
+                    bg_color=(1, 1, 1))
+
+    avg_frame = np.mean(new_frames, axis=-1)
 
 
 from pylab import imshow, figure, show, title

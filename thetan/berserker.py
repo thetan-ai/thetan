@@ -1275,11 +1275,20 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
     return images
 
 
-def berserker2_seg_2d(data, theta_value, enh=2):
+def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
     """Assuming data are gray scale and 2D"""
 
     X = prepare_data_2d(data, enh)
     I, J, W = X_to_many_2D(X, data.shape)
+
+    if pg:
+        gradW = gaussian_gradient_magnitude(W, sigma=1)
+        X[:, 2] += 3 * gradW.ravel()
+
+    if ng:
+        gradW = gaussian_gradient_magnitude(W, sigma=1)
+        X[:, 2] -= 3 * gradW.ravel()
+
     data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
     centroids_im = centroid_images(data_labels, centroids)
 
