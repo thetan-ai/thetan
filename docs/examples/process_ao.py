@@ -158,7 +158,7 @@ if timeseries:
     from dipy.viz import horizon
     horizon(images=[(frames, np.eye(4), 'frames'), (centroids_im, np.eye(4), 'cim'), (tmp, np.eye(4), 'cim_dt')])
 
-indyframes = False
+indyframes = True
 if indyframes:
 
     t = time()
