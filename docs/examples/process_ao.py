@@ -7,8 +7,8 @@ import cv2
 
 # Path to the video file
 # video_path = r'/Users/prajwal/Desktop/P2Video/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
-# video_path = r'/home/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
-video_path = r'C:/Users/Eleftherios/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+video_path = r'/home/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+# video_path = r'C:/Users/Eleftherios/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
 
 
 def read_video(fname):
@@ -85,7 +85,7 @@ def process_as_timeseries(frames, theta_value, limit=None, enh=2.0, srt=False):
     print('Duration ', time() - t)
 
     labels_im = labels.reshape((sh[0], sh[1])).astype('f8')
-    
+
     labels_unq = np.unique(labels_im)
     centroids_im = np.zeros(frames.shape)
     for i, l in enumerate(labels_unq):
@@ -131,6 +131,7 @@ def process_all_frames(frames, theta_value, limit=None, enh=2.0, pg=False, ng=Fa
         # # I, J, W = X_to_many_2D(X, data.shape)
         # data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
         # centroids_im = centroid_images(data_labels, centroids)
+        data = gaussian_filter(data, sigma=1)
 
         data_labels, centroids, centroids_im = berserker2_seg_2d(data, theta_value, enh=enh, pg=pg, ng=ng)
 
@@ -145,7 +146,7 @@ def process_all_frames(frames, theta_value, limit=None, enh=2.0, pg=False, ng=Fa
 
 frames = read_video(video_path)
 
-timeseries = True
+timeseries = False
 if timeseries:
 
     X, centroids_im, labels_im = process_as_timeseries(frames, 180, srt=False)
@@ -162,7 +163,7 @@ indyframes = True
 if indyframes:
 
     t = time()
-    new_frames, dl_all = process_all_frames(frames, 50., limit=None, enh=2., pg=True, ng=False)
+    new_frames, dl_all = process_all_frames(frames, 30., limit=None, enh=2., pg=True, ng=False)
     print('Duration is ', time() - t)
 
     from dipy.viz import horizon
