@@ -1152,6 +1152,19 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
+    overshoot = np.zeros(data.shape)
+
+    combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
+    overshoot[combined_mask] = 1
+
+    kernel = ball(5)
+    overshoot2 = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
+
+    images.append((overshoot, aff, 'overshoot'))
+    images.append((overshoot2, aff, 'overshoot2'))
+
+    t = 1
+
     return images
 
 
