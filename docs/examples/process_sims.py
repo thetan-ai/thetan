@@ -2,7 +2,8 @@ from time import time
 import numpy as np
 import pylab as pl
 from thetan.berserker import berserker2
-from sklearn.cluster import KMeans, GaussianMixture
+from sklearn.mixture import GaussianMixture
+from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import BisectingKMeans, MeanShift
@@ -127,10 +128,6 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
 def simulate_data(dist_type='gaussian'):
   
     print('Simulating data')
-    evaluation_thr = 0.1
-    verbose = False
-    show_thr = False
-    
 
     if dist_type == 'gaussian':
         X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = 10, cluster_x = 30, cluster_y = 10)
@@ -166,22 +163,30 @@ def simulate_data(dist_type='gaussian'):
     return points, labels, gt_centroids
 
 
-X, L, gt_centroids = simulate_data()
+X, L, gt_centroids = simulate_data('gaussian')
 
 theta_value = 3.6
 
+print('Number of features ', X.shape[0])
+print('Number of GT centroids ', gt_centroids.shape[0])
+
+
+print('Starting Berserker')
+t = time()
 centroids, labels = berserker2(X, theta_value, all_out=False)
+print('Duration is ', time() - t)
 
 plot_centroids_clusters(X, centroids, labels, 'TB', exp_type='2D', initial_centroids=gt_centroids)
 
 
 n_clusters = gt_centroids.shape[0]
 
+print('Starting K-means++')
 t = time()
-kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init=50,
-                max_iter=300, tol=0.0001, random_state=0, n_jobs=1).fit(X)
+kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
+                max_iter=300, tol=0.0001).fit(X)
 kmeans_time = time() - t
-print('kmeans++ ', kmeans_time)
+print('Duration', kmeans_time)
 
 kcentroids = kmeans.cluster_centers_
 klabels = kmeans.labels_
@@ -193,32 +198,38 @@ if verbose:
                             'kmeans++', '-',
                             initial_centroids=gt_centroids)
 
-
-model = AgglomerativeClustering(
-        n_clusters=n_clusters, linkage="average", metric=metric
-    )
-model.fit(X)
-
-model = BisectingKMeans(n_clusters=n_clusters, n_init=1)
-model.fit(X)
+# model = AgglomerativeClustering(
+#         n_clusters=n_clusters, linkage="average", 
+#     )
+# ac = model.fit(X)
 
 
-bandwidth = theta_value
-model = MeanShift(bandwidth=bandwidth, cluster_all=True)
-model.fit(X)
 
+# model = BisectingKMeans(n_clusters=n_clusters, n_init=1)
+# model.fit(X)
+
+
+# bandwidth = theta_value
+# model = MeanShift(bandwidth=bandwidth, cluster_all=True)
+# model.fit(X)
+
+print('Starting EM_GMM')
 t = time()
 cov_type = ['spherical', 'diag', 'tied', 'full']
-gmm = GaussianMixture(n_components=int(np.prod(sz)),
+gmm = GaussianMixture(n_components=n_clusters,
                         covariance_type=cov_type[3],
                         max_iter=200, n_init=5, random_state=0).fit(X)
 gmm_time = time() - t
 print('# gmm_time ', gmm_time)
 
 gmm_centroids = gmm.means_
-gmm_labels = gmm.predict(X)
+gmm_labels = gmm.labels
 
 if verbose:
     plot_centroids_clusters(X, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
+
+
+# TODO
+# Add more methods and evaluations
 
 t = 1
