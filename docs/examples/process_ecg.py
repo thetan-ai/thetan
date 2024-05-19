@@ -114,9 +114,11 @@ window_size = 5
 
 data = patchify(signal, (window_size,))
 
-data = np.ascontiguousarray(data).astype('f8')
+scale = 100
 
-theta_value = .5
+data = scale * np.ascontiguousarray(data).astype('f8')
+
+theta_value = 40.
 
 print('Starting Berserker')
 t = time()
@@ -125,10 +127,9 @@ print('Duration is ', time() - t)
 
 # TODO use unpatchify
 ext_labels = []
-ext_labels.append(labels[0:window_size//2])
+ext_labels.extend((window_size // 2) * [labels[0]])
 ext_labels.extend(list(labels))
-ext_labels.append(labels[-window_size//2 -1:-1])
-
+ext_labels.extend((window_size // 2) * [labels[-1]])
 t = 1
 
 colors = np.random.rand(centroids.shape[0], 3)
@@ -143,9 +144,10 @@ for i, l in enumerate(ext_labels):
 from fury import actor, window
 
 scene = window.Scene()
+# scene.background((1, 1, 1))
 scene.projection('parallel')
 
-scale = 100
+
 
 pts = np.ascontiguousarray(np.vstack((np.arange(signal.shape[0]), scale * signal, np.zeros(signal.shape[0]))).T)
 
