@@ -110,13 +110,13 @@ t = 1
 
 signal = X_train[0, :, 0]
 
-window_size = 3
+window_size = 5
 
 data = patchify(signal, (window_size,))
 
 data = np.ascontiguousarray(data).astype('f8')
 
-theta_value = 0.05
+theta_value = .5
 
 print('Starting Berserker')
 t = time()
@@ -125,9 +125,11 @@ print('Duration is ', time() - t)
 
 # TODO use unpatchify
 ext_labels = []
-ext_labels.append(labels[0])
+ext_labels.append(labels[0:window_size//2])
 ext_labels.extend(list(labels))
-ext_labels.append(labels[-1])
+ext_labels.append(labels[-window_size//2 -1:-1])
+
+t = 1
 
 colors = np.random.rand(centroids.shape[0], 3)
 
@@ -136,4 +138,21 @@ for i, l in enumerate(ext_labels):
     fcolors[i] = colors[l]
 
 # pl.plot(range(signal.shape[0]), signal, c=fcolors)
-plot_lines_with_point_colors(np.arange(signal.shape[0]), signal, fcolors)
+# plot_lines_with_point_colors(np.arange(signal.shape[0]), signal, fcolors)
+
+from fury import actor, window
+
+scene = window.Scene()
+scene.projection('parallel')
+
+scale = 100
+
+pts = np.ascontiguousarray(np.vstack((np.arange(signal.shape[0]), scale * signal, np.zeros(signal.shape[0]))).T)
+
+cline = actor.line([pts], fcolors, linewidth=2)
+
+scene.add(cline)
+
+window.show(scene)
+
+t = 2
