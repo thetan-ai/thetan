@@ -19,7 +19,9 @@ from thetan.theta import distance_matrix as tdm
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 # from robotikos.metricspeed import distance_matrix
-from thetan.theta import thetan
+# from thetan.theta import thetan
+
+from thetan.berserker import berserker2 as thetan
 
 
 def labels_to_centroids(data, labels):
