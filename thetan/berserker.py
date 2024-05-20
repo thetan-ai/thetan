@@ -806,6 +806,107 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
     return tmp, new_mask, new_mask_dt
 
 
+def throwing_balls2(mask, W, radius=10, samples=100, perc=5):
+
+    mask_orig = mask.copy()
+    print('Starting throwing solid balls in 3D space ... ')
+    t = time()
+
+    mask = binary_closing(mask, iterations=1)
+    # mask = binary_dilation(mask, iterations=1)
+
+    # TODO: this part needs work
+    # mask = gaussian_filter(10 * mask, sigma=3)
+    mask_tmp = mask.copy()
+    # mask = (mask > 0.1).astype('int32')
+
+    tmp = mask.copy() * 0
+    kernel = ball(radius)
+    kernel_sum = kernel.sum()
+    print('>> Kernel sum', kernel_sum)
+
+    kI, kJ, kK = np.asarray(kernel.shape) // 2
+
+    I, J, K = tmp.shape
+
+    volcov = np.prod(kernel.shape)
+    print('>> Kernel ratio ', kernel_sum / volcov)
+
+    perc = perc / 100.
+
+    i_s = np.random.randint(radius, I - radius, size=samples)
+    j_s = np.random.randint(radius, J - radius, size=samples)
+    k_s = np.random.randint(radius, K - radius, size=samples)
+
+    for i, j, k in zip(i_s, j_s, k_s):
+
+        hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
+
+        # if hit == 0:
+        if hit < perc  * kernel_sum:
+            tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
+
+    # from dipy.viz import horizon
+    # aff = np.eye(4)
+    # horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
+    print('Duration ', time() - t)
+    print()
+
+    new_mask = np.zeros(mask.shape)
+    new_mask[tmp > 100] = 1
+
+    data_labels_nm, num_focused_nm = label(new_mask)
+    favorite_nm = analyze_labels(data_labels_nm, num_focused_nm)
+
+    focused = np.zeros(mask.shape)
+    focused[data_labels_nm==favorite_nm] = 1
+
+    focused2 = focused.copy()
+
+    focused2 += mask_orig
+
+    new_mask_dt = distance_transform_edt(1 - focused2)
+
+    new_mask2 = np.zeros(mask.shape)
+    new_mask2[new_mask_dt > 5] = 1
+
+    # new_mask2 = binary_opening(new_mask2, iterations=1)
+
+    data_labels_nm2, num_focused_nm2 = label(new_mask2)
+    print(num_focused_nm2)
+
+    unq2, cnts2 = np.unique(data_labels_nm2, return_counts=True)
+
+    sizes = []
+    for i in range(num_focused_nm2):
+        sz = (data_labels_nm2==i).sum()
+        # print('>>', i, sz)
+        sizes.append(sz)
+
+    print(sorted(sizes))
+
+    from dipy.viz import horizon
+
+    a = np.eye(4)
+    images=[(mask_orig.astype('i4'), a, 'masko'),
+            (mask.astype('i4'), a, 'mask'),
+            (tmp, a, 'tmp'),
+            (new_mask, a, 'new_mask'),
+            (data_labels_nm, a, 'dl_nm'),
+            (focused, a, 'focused'),
+            (focused2, a, 'focused2'),
+            (new_mask_dt, a, 'new_mask_dt'),
+            (new_mask2, a, 'new_mask2'),
+            (data_labels_nm2, a, 'dl_nm2'),
+            (W, a, 'W')]
+    horizon(images=images)
+
+
+    t = 1
+
+    return tmp, new_mask, new_mask_dt
+
+
 def centroid_images(data_labels, centroids, round=False):
 
     labels = np.unique(data_labels)
@@ -1152,8 +1253,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
-    overshoot = np.zeros(data.shape)
 
+    overshoot = np.zeros(data.shape)
     combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
     overshoot[combined_mask] = 1
 

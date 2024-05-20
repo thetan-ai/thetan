@@ -343,8 +343,12 @@ model.fit(X)
 duration = time() - t
 print('Duration', duration)
 
-dbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+unq = np.unique(model.labels_)
+db_nclusters = np.sum(unq>=0)
+
+dbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(db_nclusters)])
 dblabels = model.labels_
+
 
 print('Starting evaluation')
 t = time()
@@ -358,12 +362,15 @@ if verbose:
 
 print('Starting HDBSCAN ...')
 t = time()
-model = DBSCAN(eps=eps, min_samples=min_samples)
+model = HDBSCAN(min_samples=min_samples)
 model.fit(X)
 duration = time() - t
 print('Duration', duration)
 
-hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+unq = np.unique(model.labels_)
+hdb_nclusters = np.sum(unq>=0)
+
+hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
 hdblabels = model.labels_
 
 print('Starting evaluation')
