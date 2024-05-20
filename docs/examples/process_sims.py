@@ -392,8 +392,8 @@ evals = np.zeros((8, 5))
 rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TSG', 'bisecting', 'dbscan', 'hdbscan']
 cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Duration']
 
-for i, row in enumerate():
-    for j, col in enumerate():
+for i, row in enumerate(rows):
+    for j, col in enumerate(cols):
         evals[i, j] = evaluations[row][j]
 
 df = pd.DataFrame(evals, colums=cols, rows=rows)
