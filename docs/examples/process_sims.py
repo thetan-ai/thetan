@@ -113,7 +113,7 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     for ind in range(data.shape[0]):
         new_colors[ind] = cluster_colors[labels[ind]]
 
-    fig = pl.figure()
+    fig = pl.figure(figsize=(30, 15))
     pl.title(title)
     pl.axis('equal')
     pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
