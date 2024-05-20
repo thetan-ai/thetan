@@ -1589,6 +1589,51 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         return final_centroids, final_indices
 
 
+def img2d_to_ijv_features(double[:, ::1] img2d):
+
+    cdef:
+        cnp.npy_intp i=0, j=0
+        cnp.npy_intp I = img2d.shape[0], J = img2d.shape[1]
+        cnp.npy_intp cnt = 0
+        double * features = <double *> malloc(<size_t> I * J * 3 * sizeof(double))
+
+    with nogil:
+
+        for i in range(I):
+            for j in range(J):
+
+                    features[cnt * 3 + 0] = i
+                    features[cnt * 3 + 1] = j
+                    features[cnt * 3 + 2] = img2d[i, j]
+                    cnt += 1
+
+    features_np = np.asarray(<double[:I * J, :3]> features)
+
+    return features_np
+
+def img2d_to_ijv_color(double[:, :, ::1] img2d):
+
+    cdef:
+        cnp.npy_intp i=0, j=0
+        cnp.npy_intp I = img2d.shape[0], J = img2d.shape[1]
+        cnp.npy_intp cnt = 0
+        double * features = <double *> malloc(<size_t> I * J * 5 * sizeof(double))
+
+    with nogil:
+
+        for i in range(I):
+            for j in range(J):
+                    features[cnt * 5 + 0] = i
+                    features[cnt * 5 + 1] = j
+                    features[cnt * 5 + 2] = img2d[i, j, 0]
+                    features[cnt * 5 + 3] = img2d[i, j, 1]
+                    features[cnt * 5 + 4] = img2d[i, j, 2]
+                    cnt += 1
+
+    features_np = np.asarray(<double[:I * J, :5]> features)
+
+    return features_np
+
 def img3d_to_ijkv_features(double[:, :, ::1] img3d):
 
     cdef:

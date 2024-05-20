@@ -1407,5 +1407,3 @@ def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
     centroids_im = centroid_images(data_labels, centroids)
 
     return data_labels, centroids, centroids_im
-
-
