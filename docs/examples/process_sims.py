@@ -19,19 +19,19 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
     closest = np.min(D, axis=1)
     count = np.sum(closest < thr)
     ssd_score = count / len(ecentroids)
-    
+
     nmi_score = normalized_mutual_info_score(true_label, label)
 
     sil_score = silhouette_score(X, label)
 
     fms_score = fowlkes_mallows_score(true_label, label)
 
-    return ssd_score, nmi_score, sil_score, fms_score, duration
+    return ssd_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration
 
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
-        
+
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
     yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
 
@@ -54,7 +54,7 @@ def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y 
 
 
 def uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10):
-    
+
     xx = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
     yy = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
 
@@ -104,7 +104,7 @@ def disk_clusters(sz = (20, 6), scale=5, samples=100):
 
 def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
-                            merged_centroids=None, show=True):
+                            merged_centroids=None, show=True, dpath=None):
 
     new_colors = np.zeros((len(data), 3))
     no_clusters = len(centroids)
@@ -141,17 +141,17 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
 
     if show:
         pl.show()
-    
-    pl.savefig('2_' + exp_type + '_' + title + '.png', dpi=300)
+
+    pl.savefig(dpath + '2_' + exp_type + '_' + title + '.png', dpi=300)
     pl.close(fig)
 
 
-def simulate_data(dist_type='gaussian'):
-  
+def simulate_data(dist_type='gaussian',blob_dis=10):
+
     print('Simulating data')
 
     if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = 10, cluster_x = 30, cluster_y = 10)
+        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 30, cluster_y = 10)
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10)
@@ -166,7 +166,7 @@ def simulate_data(dist_type='gaussian'):
     # sz = len(n_centres)
 
     centroids = gt_centroids
-    
+
     print('Before shuffling')
     print(points[:10])
 
@@ -184,11 +184,12 @@ def simulate_data(dist_type='gaussian'):
     return points, labels, gt_centroids
 
 
+dpath = '/home/elef/Data/tb_output/'
 evaluations = {}
 evaluation_thr = 0.1
 verbose = True
 
-X, L, gt_centroids = simulate_data('gaussian')
+X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
 
 theta_value = 3.6
 
@@ -201,6 +202,9 @@ centroids, labels = berserker2(X, theta_value, all_out=False)
 duration = time() - t
 print('Duration is ', duration)
 
+if verbose:
+    plot_centroids_clusters(X, centroids, labels, 'TB', exp_type='2D', initial_centroids=gt_centroids, show=True, dpath=dpath)
+
 print('Starting evaluation')
 t = time()
 scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
@@ -209,8 +213,7 @@ print('Duration is ', time()-t)
 evaluations['TB'] = scores
 
 
-if verbose:
-    plot_centroids_clusters(X, centroids, labels, 'TB', exp_type='2D', initial_centroids=gt_centroids, show=False)
+
 
 
 n_clusters = gt_centroids.shape[0]
@@ -232,21 +235,21 @@ print(scores)
 print('Duration is ', time()-t)
 evaluations['kmeans++'] = scores
 if verbose:
-    plot_centroids_clusters(X, kcentroids, klabels, 'kmeans++', '-', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, kcentroids, klabels, 'kmeans++', '-', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 agglo = False # Due to large memory requirements - it kills my computer
 
 if agglo:
 
-    memory_dir = r"C:\\Users\\Eleftherios\\Devel\\data\\my_cached_memory_folder" 
+    memory_dir = r"C:\\Users\\Eleftherios\\Devel\\data\\my_cached_memory_folder"
     model = AgglomerativeClustering(n_clusters=n_clusters, linkage="average", memory="cachedir")
     ac = model.fit(X)
     agg_centroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
     agg_labels = model.labels_
 
     if verbose:
-        plot_centroids_clusters(X, agg_centroids, agg_labels, 'aggro', initial_centroids=centroids)
+        plot_centroids_clusters(X, agg_centroids, agg_labels, 'aggro', initial_centroids=centroids, dpath=dpath)
 
 
 
@@ -270,7 +273,7 @@ print('Duration is ', time()-t)
 evaluations['meanshift'] = scores
 
 if verbose:
-    plot_centroids_clusters(X, ms_centroids, ms_labels, 'meanshift', '-', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, ms_centroids, ms_labels, 'meanshift', '-', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 print('Starting EM_GMM .....')
@@ -294,7 +297,7 @@ print('Duration is ', time() - t)
 evaluations['EM_GMM'] = scores
 
 if verbose:
-    plot_centroids_clusters(X, gmm_centroids, gmm_labels, 'gmm', '_', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, gmm_centroids, gmm_labels, 'gmm', '_', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 print('Starting TSG')
@@ -311,7 +314,7 @@ print('Duration is ', time() - t)
 evaluations['TSG'] = scores
 
 if verbose:
-    plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', '_', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', '_', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 print('Starting Bisection K-means++ ...')
@@ -330,7 +333,7 @@ print(scores)
 print('Duration is ', time()-t)
 evaluations['bisecting'] = scores
 if verbose:
-    plot_centroids_clusters(X, bkcentroids, bklabels, 'bisecting', '-', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, bkcentroids, bklabels, 'bisecting', '-', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 eps = theta_value / 2.
@@ -357,7 +360,7 @@ print(scores)
 print('Duration is ', time()-t)
 evaluations['dbscan'] = scores
 if verbose:
-    plot_centroids_clusters(X, dbcentroids, dblabels, 'dbscan', '-', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, dbcentroids, dblabels, 'dbscan', '-', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 print('Starting HDBSCAN ...')
@@ -378,19 +381,19 @@ t = time()
 scores = evaluate(ecentroids=hdbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=hdblabels, true_label=L, duration=duration)
 print(scores)
 print('Duration is ', time()-t)
-evaluations['dbscan'] = scores
+evaluations['hdbscan'] = scores
 if verbose:
-    plot_centroids_clusters(X, hdbcentroids, hdblabels, 'hdbscan', '-', initial_centroids=gt_centroids, show=False)
+    plot_centroids_clusters(X, hdbcentroids, hdblabels, 'hdbscan', '-', initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
 
 print('ALL EVALUATIONS')
 print(evaluations)
 
-evals = np.zeros((8, 5))
+evals = np.zeros((8, 6))
 
 rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TSG', 'bisecting', 'dbscan', 'hdbscan']
-cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Duration']
+cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
 
 for i, row in enumerate(rows):
     for j, col in enumerate(cols):
@@ -398,7 +401,7 @@ for i, row in enumerate(rows):
 
 df = pd.DataFrame(evals, colums=cols, rows=rows)
 
-df.to_excel("evaluations" + '_' + str(theta_value) + ".xlsx")  
+df.to_excel(dpath + "evaluations" + '_' + str(theta_value) + ".xlsx")
 
 print('Saving evaluations')
 
