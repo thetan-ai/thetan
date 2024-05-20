@@ -1,12 +1,32 @@
 from time import time
 import numpy as np
 import pylab as pl
+import pandas as pd
 from thetan.berserker import berserker2
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN
 from sklearn.cluster import BisectingKMeans, MeanShift
+from thetan.theta import distance_matrix as tdm
+from thetan.theta import theta_g1 as tgs
+
+
+
+def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1):
+
+    D = np.sqrt(tdm(ecentroids, centroids))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+    ssd_score = count / len(ecentroids)
+    
+    nmi_score = normalized_mutual_info_score(true_label, label)
+
+    sil_score = silhouette_score(X, label)
+
+    fms_score = fowlkes_mallows_score(true_label, label)
+
+    return ssd_score, nmi_score, sil_score, fms_score, duration
 
 
 
@@ -121,8 +141,9 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
 
     if show:
         pl.show()
-    # pl.savefig('2_'+exp_type+'_'+title+'.png', dpi=300)
-    # pl.close(fig)
+    
+    pl.savefig('2_' + exp_type + '_' + title + '.png', dpi=300)
+    pl.close(fig)
 
 
 def simulate_data(dist_type='gaussian'):
@@ -163,6 +184,10 @@ def simulate_data(dist_type='gaussian'):
     return points, labels, gt_centroids
 
 
+evaluations = {}
+evaluation_thr = 0.1
+verbose = True
+
 X, L, gt_centroids = simulate_data('gaussian')
 
 theta_value = 3.6
@@ -170,66 +195,207 @@ theta_value = 3.6
 print('Number of features ', X.shape[0])
 print('Number of GT centroids ', gt_centroids.shape[0])
 
-
 print('Starting Berserker')
 t = time()
 centroids, labels = berserker2(X, theta_value, all_out=False)
-print('Duration is ', time() - t)
+duration = time() - t
+print('Duration is ', duration)
 
-plot_centroids_clusters(X, centroids, labels, 'TB', exp_type='2D', initial_centroids=gt_centroids)
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time()-t)
+evaluations['TB'] = scores
+
+
+if verbose:
+    plot_centroids_clusters(X, centroids, labels, 'TB', exp_type='2D', initial_centroids=gt_centroids, show=False)
 
 
 n_clusters = gt_centroids.shape[0]
 
-print('Starting K-means++')
+print('Starting K-means++ ...')
 t = time()
 kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
                 max_iter=300, tol=0.0001).fit(X)
-kmeans_time = time() - t
-print('Duration', kmeans_time)
+duration = time() - t
+print('Duration', duration)
 
 kcentroids = kmeans.cluster_centers_
 klabels = kmeans.labels_
 
-verbose = True
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time()-t)
+evaluations['kmeans++'] = scores
+if verbose:
+    plot_centroids_clusters(X, kcentroids, klabels, 'kmeans++', '-', initial_centroids=gt_centroids, show=False)
+
+
+agglo = False # Due to large memory requirements - it kills my computer
+
+if agglo:
+
+    memory_dir = r"C:\\Users\\Eleftherios\\Devel\\data\\my_cached_memory_folder" 
+    model = AgglomerativeClustering(n_clusters=n_clusters, linkage="average", memory="cachedir")
+    ac = model.fit(X)
+    agg_centroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+    agg_labels = model.labels_
+
+    if verbose:
+        plot_centroids_clusters(X, agg_centroids, agg_labels, 'aggro', initial_centroids=centroids)
+
+
+
+print('Starting with MeanShift ...')
+t = time()
+bandwidth = theta_value
+model = MeanShift(bandwidth=bandwidth, cluster_all=True)
+ms = model.fit(X)
+duration = time() - t
+print('Duration', duration)
+
+ms_centroids = model.cluster_centers_ # np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+ms_labels = model.labels_
+
+
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=ms_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=ms_labels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time()-t)
+evaluations['meanshift'] = scores
 
 if verbose:
-    plot_centroids_clusters(X, kcentroids, klabels,
-                            'kmeans++', '-',
-                            initial_centroids=gt_centroids)
-
-# model = AgglomerativeClustering(
-#         n_clusters=n_clusters, linkage="average", 
-#     )
-# ac = model.fit(X)
+    plot_centroids_clusters(X, ms_centroids, ms_labels, 'meanshift', '-', initial_centroids=gt_centroids, show=False)
 
 
-
-# model = BisectingKMeans(n_clusters=n_clusters, n_init=1)
-# model.fit(X)
-
-
-# bandwidth = theta_value
-# model = MeanShift(bandwidth=bandwidth, cluster_all=True)
-# model.fit(X)
-
-print('Starting EM_GMM')
+print('Starting EM_GMM .....')
 t = time()
 cov_type = ['spherical', 'diag', 'tied', 'full']
-gmm = GaussianMixture(n_components=n_clusters,
+model = GaussianMixture(n_components=n_clusters,
                         covariance_type=cov_type[3],
-                        max_iter=200, n_init=5, random_state=0).fit(X)
-gmm_time = time() - t
-print('# gmm_time ', gmm_time)
+                        max_iter=200, n_init=5, random_state=0)
+gmm = model.fit(X)
+duration = time() - t
+print('Duration ', duration)
 
 gmm_centroids = gmm.means_
-gmm_labels = gmm.labels
+gmm_labels = gmm.predict(X)
+
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=gmm_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=gmm_labels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time() - t)
+evaluations['EM_GMM'] = scores
 
 if verbose:
-    plot_centroids_clusters(X, gmm_centroids, gmm_labels, 'gmm', initial_centroids=centroids)
+    plot_centroids_clusters(X, gmm_centroids, gmm_labels, 'gmm', '_', initial_centroids=gt_centroids, show=False)
 
 
-# TODO
-# Add more methods and evaluations
+print('Starting TSG')
+t = time()
+tgs_centroids, tgs_labels = tgs(X, theta_value, all_out=False)
+duration = time() - t
+print('Duration is ', duration)
+
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=tgs_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=tgs_labels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time() - t)
+evaluations['TSG'] = scores
+
+if verbose:
+    plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', '_', initial_centroids=gt_centroids, show=False)
+
+
+print('Starting Bisection K-means++ ...')
+t = time()
+bkmeans = BisectingKMeans(n_clusters=n_clusters, n_init=1).fit(X)
+duration = time() - t
+print('Duration', duration)
+
+bkcentroids = bkmeans.cluster_centers_
+bklabels = bkmeans.labels_
+
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=bkcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=bklabels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time()-t)
+evaluations['bisecting'] = scores
+if verbose:
+    plot_centroids_clusters(X, bkcentroids, bklabels, 'bisecting', '-', initial_centroids=gt_centroids, show=False)
+
+
+eps = theta_value / 2.
+min_samples = 20
+
+print('Starting DBSCAN ...')
+t = time()
+model = DBSCAN(eps=eps, min_samples=min_samples)
+model.fit(X)
+duration = time() - t
+print('Duration', duration)
+
+dbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+dblabels = model.labels_
+
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=dbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=dblabels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time()-t)
+evaluations['dbscan'] = scores
+if verbose:
+    plot_centroids_clusters(X, dbcentroids, dblabels, 'dbscan', '-', initial_centroids=gt_centroids, show=False)
+
+
+print('Starting HDBSCAN ...')
+t = time()
+model = DBSCAN(eps=eps, min_samples=min_samples)
+model.fit(X)
+duration = time() - t
+print('Duration', duration)
+
+hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+hdblabels = model.labels_
+
+print('Starting evaluation')
+t = time()
+scores = evaluate(ecentroids=hdbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=hdblabels, true_label=L, duration=duration)
+print(scores)
+print('Duration is ', time()-t)
+evaluations['dbscan'] = scores
+if verbose:
+    plot_centroids_clusters(X, hdbcentroids, hdblabels, 'hdbscan', '-', initial_centroids=gt_centroids, show=False)
+
+
+
+print('ALL EVALUATIONS')
+print(evaluations)
+
+evals = np.zeros((8, 5))
+
+rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TSG', 'bisecting', 'dbscan', 'hdbscan']
+cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Duration']
+
+for i, row in enumerate():
+    for j, col in enumerate():
+        evals[i, j] = evaluations[row][j]
+
+df = pd.DataFrame(evals, colums=cols, rows=rows)
+
+df.to_excel("evaluations" + '_' + str(theta_value) + ".xlsx")  
+
+print('Saving evaluations')
+
+
+
 
 t = 1
