@@ -2,3 +2,4 @@
 numpy>=1.7.1
 scipy>=0.9
 cython>=0.25.1
+patchify>=0.2.3
