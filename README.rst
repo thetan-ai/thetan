@@ -6,16 +6,16 @@ Official library of ThetA (Theta Algorithms)
 Installation
 ============
 
-We assume you have scikit learn 0.20.4 and recent Anaconda distribution with scipy, numpy, cython and seaborn.
+We assume you have recent Anaconda distribution with scipy, numpy, cython and seaborn.
 
 For the cython parts of the code to compile you will need a compiler such as GCC or VC++.
 
-Create module and compile using the following command.
-
+To Install the packages and create module, compile using the following command.
 
 .. code-block::
 
-    pip install -e .
+    pip install -r requirements/build.txt
+    pip install --no-build-isolation  .
 
 To run the examples with ThetA (TSG, TDG) go to thetan/docs/examples
 
@@ -23,20 +23,15 @@ To run the examples with ThetA (TSG, TDG) go to thetan/docs/examples
 
     python filename.py
 
-    exp_2d_blobs.py
-    exp_ndim_hard.py
-    get_S1.py
-    get_S2.py
-    get_S3.py
-    get_S4.py
-    easy-between-hard.py
+    process_ao.py
+    process_ecg.py
+    process_sims.py
+    process_superpixel.py
+    process_t1_slices.py
+    process_t1.py
 
-There is also an available Jupyter notebook named
+To Find the dataset used in the examples, download the dataset from the following link:
 
-.. code-block::
-
-    jupyter notebook exp_deep_embedded_clustering.ipynb
-
-
-
+- ECG dataset: https://physionet.org/content/ptb-xl/1.0.3/
+- IXI dataset: https://brain-development.org/ixi-dataset/
 

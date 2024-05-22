@@ -1,3 +1,5 @@
+import platform
+from os.path import join as pjoin
 from time import time
 import numpy as np
 from thetan.theta import img3d_to_ijkv_features, centroids_from_labels, distance_matrix, img3d_integrals
@@ -387,7 +389,12 @@ fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
 
-
+if platform.node() == 'Serges-MacBook-Pro.local':
+    folder = '/Users/skoudoro/data/thetan_data/thetan_data'
+    fname = pjoin(folder, 'IXI002-Guys-0828-T1.nii.gz')
+    # fname = pjoin(folder, 'IXI012-HH-1211-T1.nii.gz')
+    # fname = pjoin(folder, 'T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz')
+    # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
