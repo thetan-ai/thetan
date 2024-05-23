@@ -38,7 +38,7 @@ dependencies = [
     "patchify>=0.2.3",
     "dipy",
     "fury",
-    "opencv",
+    "opencv-python",
     "scikit-learn",
     "scikit-image",
     "pandas",
