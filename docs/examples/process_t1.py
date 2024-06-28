@@ -442,9 +442,20 @@ if brainseg:
 
 simple3D = True
 if simple3D:
-    print('Starting Thetan Berserker 2 for ...')
-    t = time()
-    images = berserker2_3D(data, affine, perc=(0, 98), mult=300., enh=3.)
-    print('Total duration ', time() - t)
-    print()
+
+    c_f = np.zeros(data.shape, dtype='f8')
+    reps = 10
+    for i in range(reps):
+        print('Starting Thetan Berserker 2 applied to 3D images...')
+        t = time()
+        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=60., perc=(0, 98), mult=300., enh=2.5)
+        print('Total duration ', time() - t)
+        print()
+        c_f += centroids_im
+
+    c_f /= reps
+    
+    images = [(data, affine, 'data'), (W, affine, 'W'), (data_labels, affine, 'data_labels'), (centroids_im, affine, 'centroids_im'), (c_f, affine, 'c_f')]
+    horizon(images=images)
+
     t = 2

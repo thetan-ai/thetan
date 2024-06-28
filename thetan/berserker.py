@@ -1108,7 +1108,7 @@ def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3
     print_centroids(centroids)
     centroids_im = centroid_images(data_labels, centroids)
 
-    return data_labels, centroids, centroids_im
+    return data_labels, centroids, centroids_im, W
 
 
 
