@@ -1090,6 +1090,28 @@ def multi_scale_patches(mask):
     pass
 
 
+def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3.):
+    "Thetan Berserker2 applied on 3D images"
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data_3d(data, affine, perc=perc, mult=mult, enh=enh)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids)
+    centroids_im = centroid_images(data_labels, centroids)
+
+    return data_labels, centroids, centroids_im
+
+
+
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1254,15 +1276,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((data, aff, 'data'))
 
 
-    overshoot = np.zeros(data.shape)
-    combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
-    overshoot[combined_mask] = 1
+    # overshoot = np.zeros(data.shape)
+    # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
+    # overshoot[combined_mask] = 1
 
-    kernel = ball(5)
-    overshoot2 = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
+    # kernel = ball(5)
+    # overshoot2 = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
 
-    images.append((overshoot, aff, 'overshoot'))
-    images.append((overshoot2, aff, 'overshoot2'))
+    # images.append((overshoot, aff, 'overshoot'))
+    # images.append((overshoot2, aff, 'overshoot2'))
 
     t = 1
 

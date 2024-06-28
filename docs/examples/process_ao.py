@@ -7,8 +7,9 @@ import cv2
 
 # Path to the video file
 # video_path = r'/Users/prajwal/Desktop/P2Video/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
-video_path = r'/home/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
-# video_path = r'C:/Users/Eleftherios/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+# video_path = r'/home/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+#vvideo_path = r'C:/Users/Eleftherios/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
+video_path = r'C:/Users/elef/Downloads/576_RW_R_11_18_2019_103_dewarped_ch4201_packbits.avi'
 
 
 def read_video(fname):

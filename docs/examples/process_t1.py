@@ -7,7 +7,7 @@ from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
 from dipy.align.reslice import reslice
 from dipy.align.scalespace import ScaleSpace
-from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg, prepare_data_3d
+from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg, prepare_data_3d, berserker2_3D
 from thetan.chaining import chainer, chainer2
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
@@ -368,7 +368,8 @@ def watershed_wgrad(Wgrad):
 
 
 # T1 dataset
-fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
@@ -388,6 +389,9 @@ fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
+fname = 'C:/Users/elef/Downloads/Marcus1.nii.gz'
+
+
 
 if platform.node() == 'Serges-MacBook-Pro.local':
     folder = '/Users/skoudoro/data/thetan_data/thetan_data'
@@ -425,15 +429,22 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 # horizon(images=[(data, np.eye(4), 'orig')])
 
-print('Starting Thetan Berserker 2 for Brain Segmentation ...')
-t = time()
-images = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5)
-print('Total duration ', time() - t)
-print()
+brainseg = False
+if brainseg:
+    print('Starting Thetan Berserker 2 for Brain Segmentation ...')
+    t = time()
+    images = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5)
+    print('Total duration ', time() - t)
+    print()
 
-horizon(images=images)
+    horizon(images=images)
+    print('Done')
 
-
-t = 2
-
-print('Done')
+simple3D = True
+if simple3D:
+    print('Starting Thetan Berserker 2 for ...')
+    t = time()
+    images = berserker2_3D(data, affine, perc=(0, 98), mult=300., enh=3.)
+    print('Total duration ', time() - t)
+    print()
+    t = 2
