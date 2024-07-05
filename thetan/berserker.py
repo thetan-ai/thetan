@@ -1429,3 +1429,22 @@ def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
     centroids_im = centroid_images(data_labels, centroids)
 
     return data_labels, centroids, centroids_im
+
+
+def berserker2_denoising(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100):
+
+    t_start = time()
+    c_f = np.zeros(data.shape, dtype='f8')    
+    for i in range(reps):
+        print('>>> ', i)
+        print('Starting Thetan Berserker 2 applied to 3D images...')
+        t = time()
+        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=theta_value, perc=perc, mult=mult, enh=enh)
+        print('TB Duration ', time() - t)
+        print()
+        c_f += centroids_im
+
+    c_f /= reps
+    print('All runs ', time() - t_start)
+
+    return c_f
