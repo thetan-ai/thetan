@@ -1431,7 +1431,8 @@ def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
     return data_labels, centroids, centroids_im
 
 
-def berserker2_denoising(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100):
+def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100):
+    """Signal recovery"""
 
     t_start = time()
     c_f = np.zeros(data.shape, dtype='f8')    
