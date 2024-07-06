@@ -1448,4 +1448,4 @@ def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300.,
     c_f /= reps
     print('All runs ', time() - t_start)
 
-    return c_f
+    return c_f, W
