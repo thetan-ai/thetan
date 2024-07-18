@@ -705,7 +705,65 @@ def ball(radius, strict=True, dtype=np.uint8):
     return np.array(s <= radius * radius, dtype=dtype)
 
 
-def throwing_balls(mask, W, radius=10, samples=100, perc=5):
+def throwing_balls_light(mask, W, radius=10, samples=100, perc=5):
+
+    mask_orig = mask.copy()
+    print('Starting throwing solid balls in 3D space ... light version ')
+    t = time()
+
+    mask = binary_closing(mask, iterations=1)
+    # mask = binary_dilation(mask, iterations=1)
+
+    # TODO: this part needs work
+    # mask = gaussian_filter(10 * mask, sigma=3)
+    mask_tmp = mask.copy()
+    # mask = (mask > 0.1).astype('int32')
+
+    tmp = mask.copy() * 0
+    kernel = ball(radius)
+    kernel_sum = kernel.sum()
+    print('>> Kernel sum', kernel_sum)
+
+    kI, kJ, kK = np.asarray(kernel.shape) // 2
+
+    I, J, K = tmp.shape
+
+    volcov = np.prod(kernel.shape)
+    print('>> Kernel ratio ', kernel_sum / volcov)
+
+    perc = perc / 100.
+
+    i_s = np.random.randint(radius, I - radius, size=samples)
+    j_s = np.random.randint(radius, J - radius, size=samples)
+    k_s = np.random.randint(radius, K - radius, size=samples)
+
+    for i, j, k in zip(i_s, j_s, k_s):
+
+        hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
+
+        # if hit == 0:
+        if hit < perc * kernel_sum:
+            tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
+
+    # from dipy.viz import horizon
+    # aff = np.eye(4)
+    # horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
+    print('Duration ', time() - t)
+    print()
+
+    # from dipy.viz import horizon
+
+    # a = np.eye(4)
+    # images=[(W, a, 'W'),
+    #         (mask_orig.astype('i4'), a, 'masko'),
+    #         (mask.astype('i4'), a, 'mask'),
+    #         (tmp, a, 'tmp')]
+
+    # horizon(images=images)
+
+    return tmp
+
+def throwing_balls(mask, W, radius=10, samples=100, perc=5, thr=100):
 
     mask_orig = mask.copy()
     print('Starting throwing solid balls in 3D space ... ')
@@ -742,7 +800,7 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
         hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
 
         # if hit == 0:
-        if hit < perc  * kernel_sum:
+        if hit < perc * kernel_sum:
             tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
 
     # from dipy.viz import horizon
@@ -751,8 +809,18 @@ def throwing_balls(mask, W, radius=10, samples=100, perc=5):
     print('Duration ', time() - t)
     print()
 
+    from dipy.viz import horizon
+
+    a = np.eye(4)
+    images=[(W, a, 'W'),
+            (mask_orig.astype('i4'), a, 'masko'),
+            (mask.astype('i4'), a, 'mask'),
+            (tmp, a, 'tmp')]
+
+    horizon(images=images)
+
     new_mask = np.zeros(mask.shape)
-    new_mask[tmp > 100] = 1
+    new_mask[tmp > thr] = 1
 
     data_labels_nm, num_focused_nm = label(new_mask)
     favorite_nm = analyze_labels(data_labels_nm, num_focused_nm)
@@ -1219,6 +1287,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Applying Berserker 2 on X masked (i, j, k, 3w)')
     t = time()
     maskr = mask.ravel().astype('bool')
+    
     data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
@@ -1275,16 +1344,79 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
+    negone = False
+    if negone:
+        overshoot = np.zeros(data.shape)
+        # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
+        # overshoot[combined_mask] = 1
 
-    # overshoot = np.zeros(data.shape)
-    # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
-    # overshoot[combined_mask] = 1
+        kernel = ball(4)
+        # overshoot2 = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
+        # kernel = ball(5)
 
-    # kernel = ball(5)
-    # overshoot2 = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
+        # overshoot3 = binary_closing(overshoot2, structure=kernel, iterations=1).astype('f8')
+        
+        # kernel = ball(5)
+        # closing = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
 
-    # images.append((overshoot, aff, 'overshoot'))
+        # close same labels that are not -1 
+        unql, cntsl = np.unique(data_labels_mask, return_counts=True)
+        print('Unique >-1 labels')
+        print(unql)
+        print(cntsl)
+
+        together = np.zeros(data.shape, dtype='f8')
+        for l in unql:
+            print(l)
+            if l > -1:
+                together += binary_closing(data_labels_mask==l, structure=kernel, iterations=1, border_value=-2).astype('f8')
+                # TODO: the closing above should be applied to a padded input otherwise a border is drawn
+
+        blacky = together==0
+
+        # provides the largest object (second largest after background) in a binary image
+        data_labels_t, num_t = label(blacky, structure=np.ones((3, 3, 3)))
+        dlt_unq, dlt_cnts = np.unique(data_labels_t, return_counts=True)
+        dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
+        final = np.zeros(data.shape, dtype='f8')
+        final[data_labels_t == dl_final] = 1.
+
+        # images.append((overshoot, aff, 'overshoot'))
+        images.append((together, aff, 'together'))
+        images.append((blacky.astype('f8'), aff, 'blacky'))
+        images.append((data_labels_t, aff, 'dl_t'))
+        images.append((final, aff, 'final'))
+    
+    # TODO: pick the larger black object - it might be the brain
+    # use distance tranform with original mask
+
     # images.append((overshoot2, aff, 'overshoot2'))
+    # images.append((overshoot3, aff, 'overshoot3'))
+    # images.append((closing, aff, 'closing'))
+
+    tbl = throwing_balls_light(mask_orig, W=W, radius=34, samples=20000, perc=2)
+
+    images.append((tbl, aff, 'tbl'))
+
+    tbl2 = throwing_balls_light(mask_orig, W=W, radius=24, samples=20000, perc=2)
+
+    images.append((tbl2, aff, 'tbl2'))
+
+    radii = [14., 24., 34.]
+    percs = [5.]
+
+    tblns = np.zeros(data.shape, dtype='f8')
+
+    print('Starting throwing balls at different distributions')
+    t = time()
+    for r in radii:
+        for p in percs:
+            print(r, p)
+            tbl_tmp = throwing_balls_light(mask_orig, W=W, radius=r, samples=20000, perc=p)
+            tblns += tbl_tmp/tbl_tmp.max()
+    print('Total time ', t)
+    
+    images.append((tblns, aff, 'tblns'))
 
     t = 1
 
