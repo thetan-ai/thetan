@@ -1179,6 +1179,174 @@ def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3
     return data_labels, centroids, centroids_im, W
 
 
+def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+    """ Process each slice of the volume independently """
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data_3d_as_2d_series(data, affine, perc=(0, 98), mult=300., enh=2.)
+    W = data
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    print_centroids(centroids)
+
+    mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+    dt = distance_transform_edt(1 - mask)
+
+    mask_orig = W < orig_est
+    W[mask_orig] = 0
+    mask_orig = mask_orig.astype('uint8')
+
+    if pg or ng:
+        print('Calculating gradients')
+        Wgrad = gaussian_gradient_magnitude(W, sigma=1)
+
+    if pg:
+        Xpg = X.copy()
+        Xpg[:, 3] += 1.4 * Wgrad.ravel()
+        # Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
+
+        print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
+        t = time()
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_pg)
+
+        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
+        dt_pg = distance_transform_edt(1 - mask_pg)
+
+    if ng:
+        Xng = X.copy()
+        Xng[:, 3] -= 1.4 * Wgrad.ravel()
+        # Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
+        print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
+        t = time()
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+        print('Duration ', time() - t)
+        print()
+
+        print_centroids(centroids_ng)
+
+        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
+        dt_ng = distance_transform_edt(1 - mask_ng)
+
+    centroids_im = centroid_images(data_labels, centroids)
+    centroids_median_im = median_filter(centroids_im, size=3)
+
+    standard_filters = False
+    if standard_filters:
+
+        centroids_imb = gaussian_filter(centroids_im, sigma=1)
+        centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
+        centroids_imm = median_filter(centroids_im, size=3)
+
+
+    print('Applying Berserker 2 on X masked (i, j, k, 3w)')
+    t = time()
+    maskr = mask.ravel().astype('bool')
+    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
+    print('Duration ', time() - t)
+    print()
+
+    centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
+    centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
+    # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
+
+    # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
+
+    aff = np.eye(4)
+    images = []
+    images.append((mask_orig, aff, 'mask_orig'))
+    images.append((mask, aff, 'mask'))
+
+    if pg:
+        images.append((mask_pg, aff, 'mask_pg'))
+        images.append((data_labels_pg, aff, 'dl_pg'))
+        images.append((W+Wgrad*1.4, aff, 'Wpg'))
+
+    if standard_filters:
+        images.append((centroids_im, aff, 'centroids_im'))
+        images.append((centroids_imb, aff, 'centroids_imb'))
+        images.append((centroids_imb2, aff, 'centroids_imb2'))
+        images.append((centroids_imm, aff, 'centroids_imm'))
+    images.append((data_labels, aff, 'dl'))
+
+    if pg or ng:
+        images.append((Wgrad, aff, 'Wgrad'))
+
+    # images.append((sums_im, aff, 'sums_im'))
+
+    images.append((centroids_im, aff, 'centroids_im'))
+    images.append((centroids_median_im, aff, 'centroids_median_im'))
+    images.append((centroids_mask_im, aff, 'centroids_mask_im'))
+    images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
+
+    images.append((data_labels_mask, aff, 'dl_mask'))
+    images.append((W, aff, 'W'))
+    images.append((data, aff, 'data'))
+
+
+    t = 1
+
+    return images
+
+
+def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
+    """Assuming data are gray scale and 2D"""
+
+    X = prepare_data_2d(data, enh)
+    I, J, W = X_to_many_2D(X, data.shape)
+
+    if pg:
+        gradW = gaussian_gradient_magnitude(W, sigma=1)
+        X[:, 2] += 3 * gradW.ravel()
+
+    if ng:
+        gradW = gaussian_gradient_magnitude(W, sigma=1)
+        X[:, 2] -= 3 * gradW.ravel()
+
+    data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
+    centroids_im = centroid_images(data_labels, centroids)
+
+    return data_labels, centroids, centroids_im
+
+
+def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100):
+    """Signal recovery"""
+
+    t_start = time()
+    c_f = np.zeros(data.shape, dtype='f8')    
+    for i in range(reps):
+        print('>>> ', i)
+        print('Starting Thetan Berserker 2 applied to 3D images...')
+        t = time()
+        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=theta_value, perc=perc, mult=mult, enh=enh)
+        print('TB Duration ', time() - t)
+        print()
+        c_f += centroids_im
+
+    c_f /= reps
+    print('All runs ', time() - t_start)
+
+    return c_f, W
+
+
+def detect_largest_object(data, structure=np.ones((3, 3, 3))):
+    # returns the largest object (second largest after background) found in a binary image (data)
+    data_labels_t, num_t = label(data, structure=structure)
+    dlt_unq, dlt_cnts = np.unique(data_labels_t, return_counts=True)
+    dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
+    final = np.zeros(data.shape, dtype='f8')
+    final[data_labels_t == dl_final] = 1.
+    return final
 
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
@@ -1344,7 +1512,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
-    negone = False
+    negone = True
     if negone:
         overshoot = np.zeros(data.shape)
         # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
@@ -1375,16 +1543,18 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         blacky = together==0
 
         # provides the largest object (second largest after background) in a binary image
-        data_labels_t, num_t = label(blacky, structure=np.ones((3, 3, 3)))
-        dlt_unq, dlt_cnts = np.unique(data_labels_t, return_counts=True)
-        dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
-        final = np.zeros(data.shape, dtype='f8')
-        final[data_labels_t == dl_final] = 1.
+        final = detect_largest_object(blacky, structure=np.ones((3, 3, 3)))
+        # TODO: remove the piece below
+        # data_labels_t, num_t = label(blacky, structure=np.ones((3, 3, 3)))
+        # dlt_unq, dlt_cnts = np.unique(data_labels_t, return_counts=True)
+        # dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
+        # final = np.zeros(data.shape, dtype='f8')
+        # final[data_labels_t == dl_final] = 1.
 
         # images.append((overshoot, aff, 'overshoot'))
         images.append((together, aff, 'together'))
         images.append((blacky.astype('f8'), aff, 'blacky'))
-        images.append((data_labels_t, aff, 'dl_t'))
+        # images.append((data_labels_t, aff, 'dl_t'))
         images.append((final, aff, 'final'))
     
     # TODO: pick the larger black object - it might be the brain
@@ -1402,182 +1572,37 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((tbl2, aff, 'tbl2'))
 
-    radii = [14., 24., 34.]
-    percs = [5.]
+    tbl3 = throwing_balls_light(mask.copy(), W=W, radius=14, samples=20000, perc=2)
 
-    tblns = np.zeros(data.shape, dtype='f8')
+    images.append((tbl3, aff, 'tbl3'))
 
-    print('Starting throwing balls at different distributions')
-    t = time()
-    for r in radii:
-        for p in percs:
-            print(r, p)
-            tbl_tmp = throwing_balls_light(mask_orig, W=W, radius=r, samples=20000, perc=p)
-            tblns += tbl_tmp/tbl_tmp.max()
-    print('Total time ', t)
+    tbl4 = throwing_balls_light(mask.copy(), W=W, radius=9, samples=20000, perc=2)
+
+    images.append((tbl4, aff, 'tbl4'))
+
+    tbl5 = throwing_balls_light(mask.copy(), W=W, radius=6, samples=40000, perc=20)
+
+    images.append((tbl5, aff, 'tbl5'))
+
+
+    # radii = [14., 24., 34.]
+    # percs = [5., 10.] # only 5
+
+    # tblns = np.zeros(data.shape, dtype='f8')
+
+    # print('Starting throwing balls at different distributions')
+    # t = time()
+    # for r in radii:
+    #     for p in percs:
+    #         print(r, p)
+    #         tbl_tmp = throwing_balls_light(mask_orig, W=W, radius=r, samples=20000, perc=p)
+    #         tblns += tbl_tmp/tbl_tmp.max()
+    # print('Total time ', t)
     
-    images.append((tblns, aff, 'tblns'))
+    # images.append((tblns, aff, 'tblns'))
 
     t = 1
 
     return images
 
 
-def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
-    """ Process each slice of the volume independently """
-
-    data = np.ascontiguousarray(data, dtype='f8')
-
-    print('Preparing data')
-    X = prepare_data_3d_as_2d_series(data, affine, perc=(0, 98), mult=300., enh=2.)
-    W = data
-
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
-    t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
-
-    print_centroids(centroids)
-
-    mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
-    dt = distance_transform_edt(1 - mask)
-
-    mask_orig = W < orig_est
-    W[mask_orig] = 0
-    mask_orig = mask_orig.astype('uint8')
-
-    if pg or ng:
-        print('Calculating gradients')
-        Wgrad = gaussian_gradient_magnitude(W, sigma=1)
-
-    if pg:
-        Xpg = X.copy()
-        Xpg[:, 3] += 1.4 * Wgrad.ravel()
-        # Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
-
-        print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
-        t = time()
-        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
-        print()
-
-        print_centroids(centroids_pg)
-
-        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
-        dt_pg = distance_transform_edt(1 - mask_pg)
-
-    if ng:
-        Xng = X.copy()
-        Xng[:, 3] -= 1.4 * Wgrad.ravel()
-        # Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
-        print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
-        t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
-        print()
-
-        print_centroids(centroids_ng)
-
-        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
-        dt_ng = distance_transform_edt(1 - mask_ng)
-
-    centroids_im = centroid_images(data_labels, centroids)
-    centroids_median_im = median_filter(centroids_im, size=3)
-
-    standard_filters = False
-    if standard_filters:
-
-        centroids_imb = gaussian_filter(centroids_im, sigma=1)
-        centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
-        centroids_imm = median_filter(centroids_im, size=3)
-
-
-    print('Applying Berserker 2 on X masked (i, j, k, 3w)')
-    t = time()
-    maskr = mask.ravel().astype('bool')
-    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
-    print('Duration ', time() - t)
-    print()
-
-    centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
-    centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
-    # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
-
-    # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
-
-    aff = np.eye(4)
-    images = []
-    images.append((mask_orig, aff, 'mask_orig'))
-    images.append((mask, aff, 'mask'))
-
-    if pg:
-        images.append((mask_pg, aff, 'mask_pg'))
-        images.append((data_labels_pg, aff, 'dl_pg'))
-        images.append((W+Wgrad*1.4, aff, 'Wpg'))
-
-    if standard_filters:
-        images.append((centroids_im, aff, 'centroids_im'))
-        images.append((centroids_imb, aff, 'centroids_imb'))
-        images.append((centroids_imb2, aff, 'centroids_imb2'))
-        images.append((centroids_imm, aff, 'centroids_imm'))
-    images.append((data_labels, aff, 'dl'))
-
-    if pg or ng:
-        images.append((Wgrad, aff, 'Wgrad'))
-
-    # images.append((sums_im, aff, 'sums_im'))
-
-    images.append((centroids_im, aff, 'centroids_im'))
-    images.append((centroids_median_im, aff, 'centroids_median_im'))
-    images.append((centroids_mask_im, aff, 'centroids_mask_im'))
-    images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
-
-    images.append((data_labels_mask, aff, 'dl_mask'))
-    images.append((W, aff, 'W'))
-    images.append((data, aff, 'data'))
-
-
-    t = 1
-
-    return images
-
-
-def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
-    """Assuming data are gray scale and 2D"""
-
-    X = prepare_data_2d(data, enh)
-    I, J, W = X_to_many_2D(X, data.shape)
-
-    if pg:
-        gradW = gaussian_gradient_magnitude(W, sigma=1)
-        X[:, 2] += 3 * gradW.ravel()
-
-    if ng:
-        gradW = gaussian_gradient_magnitude(W, sigma=1)
-        X[:, 2] -= 3 * gradW.ravel()
-
-    data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
-    centroids_im = centroid_images(data_labels, centroids)
-
-    return data_labels, centroids, centroids_im
-
-
-def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100):
-    """Signal recovery"""
-
-    t_start = time()
-    c_f = np.zeros(data.shape, dtype='f8')    
-    for i in range(reps):
-        print('>>> ', i)
-        print('Starting Thetan Berserker 2 applied to 3D images...')
-        t = time()
-        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=theta_value, perc=perc, mult=mult, enh=enh)
-        print('TB Duration ', time() - t)
-        print()
-        c_f += centroids_im
-
-    c_f /= reps
-    print('All runs ', time() - t_start)
-
-    return c_f, W
