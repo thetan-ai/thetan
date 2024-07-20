@@ -3,7 +3,7 @@ import numpy as np
 from patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
-from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter
+from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features
@@ -1348,6 +1348,24 @@ def detect_largest_object(data, structure=np.ones((3, 3, 3))):
     final[data_labels_t == dl_final] = 1.
     return final
 
+def analyze_mask_centroids(centroids):
+
+    pass
+
+
+def gaussian_gradients(data, sigma=1):
+    # calculate gaussian gradients
+    # data should be f8
+
+    dx = gaussian_filter(data, sigma=sigma, order = (1, 0, 0))
+    dy = gaussian_filter(data, sigma=sigma, order = (0, 1, 0))
+    dz = gaussian_filter(data, sigma=sigma, order = (0, 0, 1))
+    
+    gm = np.sqrt(dx**2 + dy**2 + dz**2)
+
+    return dx, dy, dz, gm
+
+
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1512,7 +1530,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
-    negone = True
+    negone = False
     if negone:
         overshoot = np.zeros(data.shape)
         # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
@@ -1564,26 +1582,49 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((overshoot3, aff, 'overshoot3'))
     # images.append((closing, aff, 'closing'))
 
-    tbl = throwing_balls_light(mask_orig, W=W, radius=34, samples=20000, perc=2)
+    # tbl = throwing_balls_light(mask_orig, W=W, radius=24, samples=20000, perc=2)
 
-    images.append((tbl, aff, 'tbl'))
+    # images.append((tbl, aff, 'tbl'))
 
-    tbl2 = throwing_balls_light(mask_orig, W=W, radius=24, samples=20000, perc=2)
+    
+    mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
+    images.append((mask2, aff, 'mask2'))
+    
+    # tbl = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=2)
+    # images.append((tbl, aff, 'tbl'))
+    tbl2 = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=4)
+    # images.append((tbl2, aff, 'tbl2'))
+    # tbl3 = throwing_balls_light(mask2.copy(), W=W, radius=12, samples=20000, perc=4)
+    # images.append((tbl3, aff, 'tbl3'))
+    tbl4 = throwing_balls_light(mask2.copy(), W=W, radius=12, samples=40000, perc=4)
+    # images.append((tbl4, aff, 'tbl4'))
 
-    images.append((tbl2, aff, 'tbl2'))
+    tbl24 = 0.5 * (tbl2/tbl.max() + tbl4/tbl4.max())
+    images.append((tbl24, aff, 'tbl24'))
 
-    tbl3 = throwing_balls_light(mask.copy(), W=W, radius=14, samples=20000, perc=2)
+    dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
+    ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
 
-    images.append((tbl3, aff, 'tbl3'))
+    # images.append((dx, aff, 'dx'))
+    # images.append((dy, aff, 'dy'))
+    # images.append((dz, aff, 'dz'))
+    # images.append((gm, aff, 'gm'))
+    # images.append((ggm, aff, 'ggm'))
+    
 
-    tbl4 = throwing_balls_light(mask.copy(), W=W, radius=9, samples=20000, perc=2)
+    glap = gaussian_laplace(mask2.astype('f8'), sigma=3)
+    images.append((glap, aff, 'glap'))
 
-    images.append((tbl4, aff, 'tbl4'))
+    glap_zero = np.logical_and(glap < 0.1, glap > -0.1) 
 
-    tbl5 = throwing_balls_light(mask.copy(), W=W, radius=6, samples=40000, perc=20)
+    images.append((glap_zero.astype('f8'), aff, 'glap_zero'))
 
-    images.append((tbl5, aff, 'tbl5'))
 
+
+    # tbl3 = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=6)
+    # images.append((tbl3, aff, 'tbl3'))
+    # tbl4 = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=8)
+    # images.append((tbl4, aff, 'tbl4'))
 
     # radii = [14., 24., 34.]
     # percs = [5., 10.] # only 5
