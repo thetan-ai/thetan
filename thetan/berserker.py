@@ -706,26 +706,26 @@ def ball(radius, strict=True, dtype=np.uint8):
 
 
 def throwing_balls_light(mask, W, radius=10, samples=100, perc=5):
+    # keep the spheres that have overlaping volume of less than percentage above
 
     mask_orig = mask.copy()
     print('Starting throwing solid balls in 3D space ... light version ')
     t = time()
 
-    mask = binary_closing(mask, iterations=1)
+    # mask = binary_closing(mask, iterations=1)
     # mask = binary_dilation(mask, iterations=1)
 
     # TODO: this part needs work
     # mask = gaussian_filter(10 * mask, sigma=3)
-    mask_tmp = mask.copy()
+    # mask_tmp = mask.copy()
     # mask = (mask > 0.1).astype('int32')
 
-    tmp = mask.copy() * 0
+    tmp = mask * 0
     kernel = ball(radius)
     kernel_sum = kernel.sum()
     print('>> Kernel sum', kernel_sum)
 
     kI, kJ, kK = np.asarray(kernel.shape) // 2
-
     I, J, K = tmp.shape
 
     volcov = np.prod(kernel.shape)
@@ -740,28 +740,14 @@ def throwing_balls_light(mask, W, radius=10, samples=100, perc=5):
     for i, j, k in zip(i_s, j_s, k_s):
 
         hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
-
-        # if hit == 0:
         if hit < perc * kernel_sum:
             tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
 
-    # from dipy.viz import horizon
-    # aff = np.eye(4)
-    # horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
     print('Duration ', time() - t)
     print()
 
-    # from dipy.viz import horizon
-
-    # a = np.eye(4)
-    # images=[(W, a, 'W'),
-    #         (mask_orig.astype('i4'), a, 'masko'),
-    #         (mask.astype('i4'), a, 'mask'),
-    #         (tmp, a, 'tmp')]
-
-    # horizon(images=images)
-
     return tmp
+
 
 def throwing_balls(mask, W, radius=10, samples=100, perc=5, thr=100):
 
@@ -975,18 +961,23 @@ def throwing_balls2(mask, W, radius=10, samples=100, perc=5):
     return tmp, new_mask, new_mask_dt
 
 
-def centroid_images(data_labels, centroids, round=False):
+def centroid_images(data_labels, centroids):
 
     labels = np.unique(data_labels)
     centroids_image = np.zeros(data_labels.shape)
-    # for i in range(centroids.shape[0]):
-    #     centroids_image[data_labels == i] = centroids[i, -1]
     for i, l in enumerate(labels):
         centroids_image[data_labels == l] = centroids[i, -1]
 
-    if round:
-        return np.round(centroids_image, 0)
     return centroids_image
+
+
+def medroid_images(data_labels, data):
+
+    labels = np.unique(data_labels)
+    medroids_image = np.zeros(data_labels.shape)
+    for i, l in enumerate(labels):
+        medroids_image[data_labels == l] = np.median(data[data_labels == l])
+    return medroids_image
 
 
 def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
@@ -1158,7 +1149,7 @@ def multi_scale_patches(mask):
     pass
 
 
-def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3.):
+def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3., medroids=False):
     "Thetan Berserker2 applied on 3D images"
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1319,22 +1310,34 @@ def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
     return data_labels, centroids, centroids_im
 
 
-def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100):
+def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100, medroids=False):
     """Signal recovery"""
 
     t_start = time()
     c_f = np.zeros(data.shape, dtype='f8')    
+    m_f = np.zeros(data.shape, dtype='f8')    
+    
     for i in range(reps):
         print('>>> ', i)
         print('Starting Thetan Berserker 2 applied to 3D images...')
         t = time()
         data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=theta_value, perc=perc, mult=mult, enh=enh)
+    
         print('TB Duration ', time() - t)
         print()
         c_f += centroids_im
+        if medroids:
+            medroid_im = medroid_images(data_labels, W)
+            m_f += medroid_im
 
     c_f /= reps
+    if medroids:
+        m_f /= reps
+        return c_f, W, m_f
+    
     print('All runs ', time() - t_start)
+
+
 
     return c_f, W
 
@@ -1347,6 +1350,7 @@ def detect_largest_object(data, structure=np.ones((3, 3, 3))):
     final = np.zeros(data.shape, dtype='f8')
     final[data_labels_t == dl_final] = 1.
     return final
+
 
 def analyze_mask_centroids(centroids):
 
@@ -1461,7 +1465,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
     centroids_im = centroid_images(data_labels, centroids)
-    centroids_median_im = median_filter(centroids_im, size=3)
+    # centroids_median_im = median_filter(centroids_im, size=3)
 
     standard_filters = False
     if standard_filters:
@@ -1470,19 +1474,21 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
         centroids_imm = median_filter(centroids_im, size=3)
 
-    print('Applying Berserker 2 on X masked (i, j, k, 3w)')
-    t = time()
-    maskr = mask.ravel().astype('bool')
-    
-    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
-    print('Duration ', time() - t)
-    print()
+    masked_berserker = False
+    if masked_berserker:
+        print('Applying Berserker 2 on X masked (i, j, k, 3w)')
+        t = time()
+        maskr = mask.ravel().astype('bool')
+        
+        data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
+        print('Duration ', time() - t)
+        print()
 
-    centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
-    centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
-    # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
+        centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
+        # centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
+        # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
 
-    # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
+        # w_im = weighted_image2(dto, centroids_im, idto, mask_orig)
 
     aff = np.eye(4)
     images = []
@@ -1522,15 +1528,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((sums_im, aff, 'sums_im'))
 
     images.append((centroids_im, aff, 'centroids_im'))
-    images.append((centroids_median_im, aff, 'centroids_median_im'))
-    images.append((centroids_mask_im, aff, 'centroids_mask_im'))
-    images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
+    # images.append((centroids_median_im, aff, 'centroids_median_im'))
+    # images.append((centroids_mask_im, aff, 'centroids_mask_im'))
+    # images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
 
-    images.append((data_labels_mask, aff, 'dl_mask'))
+    # images.append((data_labels_mask, aff, 'dl_mask'))
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
 
-    negone = False
+    negone = False # requires masked berserker
     if negone:
         overshoot = np.zeros(data.shape)
         # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
@@ -1589,21 +1595,38 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     
     mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
     images.append((mask2, aff, 'mask2'))
-    
-    # tbl = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=2)
-    # images.append((tbl, aff, 'tbl'))
-    tbl2 = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=4)
-    # images.append((tbl2, aff, 'tbl2'))
-    # tbl3 = throwing_balls_light(mask2.copy(), W=W, radius=12, samples=20000, perc=4)
-    # images.append((tbl3, aff, 'tbl3'))
-    tbl4 = throwing_balls_light(mask2.copy(), W=W, radius=12, samples=40000, perc=4)
+
+    tbl2 = throwing_balls_light(mask2, W=W, radius=24, samples=20000, perc=4)
+    tbl4 = throwing_balls_light(mask2, W=W, radius=12, samples=40000, perc=4)
     # images.append((tbl4, aff, 'tbl4'))
 
-    tbl24 = 0.5 * (tbl2/tbl.max() + tbl4/tbl4.max())
+    tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
     images.append((tbl24, aff, 'tbl24'))
 
-    dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
-    ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
+    mask3 = tbl24 > 0.15    
+    images.append((mask3.astype('f8'), aff, 'mask3'))
+
+    mask4 = detect_largest_object(mask3)
+    images.append((mask4.astype('f8'), aff, 'mask4'))
+
+    mask5 = 0.5 * (mask4 + mask) 
+    images.append((mask5.astype('f8'), aff, 'mask5'))
+
+    kernel = ball(5)
+    closing = binary_closing(mask5 > 0, structure=kernel, iterations=1).astype('f8')
+
+    
+    images.append(((1 - closing).astype('f8'), aff, '1 - closing'))
+    
+
+    final = detect_largest_object(1 - closing)
+    images.append((final.astype('f8'), aff, 'final'))
+    
+
+
+
+    # dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
+    # ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
 
     # images.append((dx, aff, 'dx'))
     # images.append((dy, aff, 'dy'))
@@ -1612,12 +1635,19 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((ggm, aff, 'ggm'))
     
 
-    glap = gaussian_laplace(mask2.astype('f8'), sigma=3)
+    glap = gaussian_laplace(mask2.astype('f8'), sigma=2)
     images.append((glap, aff, 'glap'))
 
-    glap_zero = np.logical_and(glap < 0.1, glap > -0.1) 
+    # glap_zero = np.logical_and(glap < 0.1, glap > -0.1) 
+    # images.append((glap_zero.astype('f8'), aff, 'glap_zero'))
 
-    images.append((glap_zero.astype('f8'), aff, 'glap_zero'))
+    # glap_pos = glap > 0.05 
+    # images.append((glap_pos.astype('f8'), aff, 'glap_pos'))
+
+    # TODO: following recursively the laplacians may build a nice mask
+
+    # glap2 = gaussian_laplace(glap_pos.astype('f8'), sigma=2)
+    # images.append((glap2, aff, 'glap2'))
 
 
 
