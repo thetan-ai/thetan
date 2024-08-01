@@ -10,7 +10,10 @@ from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN
 from sklearn.cluster import BisectingKMeans, MeanShift
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
-
+from pyclustering.cluster.birch import birch
+from pyclustering.cluster.bsas import bsas
+from pyclustering.utils.metric import distance_metric, type_metric;
+from pyclustering.cluster.encoder import type_encoding, cluster_encoder
 
 
 def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1):
@@ -184,16 +187,19 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TSG', 'bisecting', 'dbscan', 'hdbscan']
+# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TSG', 'bisecting', 'dbscan', 'hdbscan']
 
 # rows = ['dbscan', 'hdbscan']
 
+rows = ['TB', 'sbas']
+
 cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
 
-dpath = '/home/elef/Data/tb_output/'
-    # dpath = '/home/elef/Data/tb_test2/'
+# dpath = '/home/elef/Data/tb_output/'
+# dpath = '/home/elef/Data/tb_test2/'
+dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 10
+reps = 1
 
 for expno in range(reps):
 
@@ -202,7 +208,7 @@ for expno in range(reps):
 
     evaluations = {}
     evaluation_thr = 0.1
-    verbose = True
+    verbose = False
 
     X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
 
@@ -410,21 +416,70 @@ for expno in range(reps):
 
 
 
+    if 'sbas' in rows:
+
+        print('Starting SBAS ...')
+        theta_value = 3.6
+        t = time()
+
+        metric = distance_metric(type_metric.EUCLIDEAN_SQUARE)
+        ccore = True
+    
+        # sample = read_sample(path);
+
+        # print("Sample: ", path);
+
+        amount = 300
+        threshold = theta_value
+        
+        bsas_instance = bsas(X, amount, threshold, ccore=ccore, metric=metric)
+        bsas_instance.process()
+
+        clusters = bsas_instance.get_clusters()
+        type_repr = bsas_instance.get_cluster_encoding()
+        encoder = cluster_encoder(type_repr, clusters, X)
+ 
+        # change representation from index list to label list
+        encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+        clusters = encoder.get_clusters()
+
+        representatives = bsas_instance.get_representatives()
+
+        labels = np.ascontiguousarray(clusters)
+        centroids = np.ascontiguousarray(representatives)
+
+        duration = time() - t
+        print('Duration is ', duration)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['SBAS'] = scores
+
+
     print('ALL EVALUATIONS')
     print(evaluations)
 
-    evals = np.zeros((len(rows), len(cols)))
+    save_results = False
+
+    if save_results:
+        evals = np.zeros((len(rows), len(cols)))
 
 
-    for i, row in enumerate(rows):
-        for j, col in enumerate(cols):
-            evals[i, j] = evaluations[row][j]
+        for i, row in enumerate(rows):
+            for j, col in enumerate(cols):
+                evals[i, j] = evaluations[row][j]
 
-    df = pd.DataFrame(evals, columns=cols)
-    df.index = rows
-    df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
+        df = pd.DataFrame(evals, columns=cols)
+        df.index = rows
+        df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
 
-    print('Saving evaluations')
+        print('Saving evaluations')
 
 
 
