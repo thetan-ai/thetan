@@ -1,13 +1,14 @@
 from time import time
 import numpy as np
 from patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt
-from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing
+from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes
+from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features
 from skimage.segmentation import flood_fill
+from skimage.morphology import reconstruction
 
 
 def check_module_load():
@@ -509,6 +510,7 @@ def X_to_many_3D(X, data_dims):
 
     return X0, X1, X2, X3
 
+
 def berserker2_to_2D_labels(X, theta_value, data_dims):
 
     centroids, labels = berserker2(X, theta_value, all_out=False)
@@ -683,6 +685,7 @@ def patch_median(data, patch):
     return np.median(data2_enh, axis=-1)
 
 
+
 def labels_sp_centroids(labels, centroids):
     """ count labels in patch
     """
@@ -747,218 +750,6 @@ def throwing_balls_light(mask, W, radius=10, samples=100, perc=5):
     print()
 
     return tmp
-
-
-def throwing_balls(mask, W, radius=10, samples=100, perc=5, thr=100):
-
-    mask_orig = mask.copy()
-    print('Starting throwing solid balls in 3D space ... ')
-    t = time()
-
-    mask = binary_closing(mask, iterations=1)
-    # mask = binary_dilation(mask, iterations=1)
-
-    # TODO: this part needs work
-    # mask = gaussian_filter(10 * mask, sigma=3)
-    mask_tmp = mask.copy()
-    # mask = (mask > 0.1).astype('int32')
-
-    tmp = mask.copy() * 0
-    kernel = ball(radius)
-    kernel_sum = kernel.sum()
-    print('>> Kernel sum', kernel_sum)
-
-    kI, kJ, kK = np.asarray(kernel.shape) // 2
-
-    I, J, K = tmp.shape
-
-    volcov = np.prod(kernel.shape)
-    print('>> Kernel ratio ', kernel_sum / volcov)
-
-    perc = perc / 100.
-
-    i_s = np.random.randint(radius, I - radius, size=samples)
-    j_s = np.random.randint(radius, J - radius, size=samples)
-    k_s = np.random.randint(radius, K - radius, size=samples)
-
-    for i, j, k in zip(i_s, j_s, k_s):
-
-        hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
-
-        # if hit == 0:
-        if hit < perc * kernel_sum:
-            tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
-
-    # from dipy.viz import horizon
-    # aff = np.eye(4)
-    # horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
-    print('Duration ', time() - t)
-    print()
-
-    from dipy.viz import horizon
-
-    a = np.eye(4)
-    images=[(W, a, 'W'),
-            (mask_orig.astype('i4'), a, 'masko'),
-            (mask.astype('i4'), a, 'mask'),
-            (tmp, a, 'tmp')]
-
-    horizon(images=images)
-
-    new_mask = np.zeros(mask.shape)
-    new_mask[tmp > thr] = 1
-
-    data_labels_nm, num_focused_nm = label(new_mask)
-    favorite_nm = analyze_labels(data_labels_nm, num_focused_nm)
-
-    focused = np.zeros(mask.shape)
-    focused[data_labels_nm==favorite_nm] = 1
-
-    focused2 = focused.copy()
-
-    focused2 += mask_orig
-
-    new_mask_dt = distance_transform_edt(1 - focused2)
-
-    new_mask2 = np.zeros(mask.shape)
-    new_mask2[new_mask_dt > 5] = 1
-
-    # new_mask2 = binary_opening(new_mask2, iterations=1)
-
-    data_labels_nm2, num_focused_nm2 = label(new_mask2)
-    print(num_focused_nm2)
-
-    unq2, cnts2 = np.unique(data_labels_nm2, return_counts=True)
-
-    sizes = []
-    for i in range(num_focused_nm2):
-        sz = (data_labels_nm2==i).sum()
-        # print('>>', i, sz)
-        sizes.append(sz)
-
-    print(sorted(sizes))
-
-    from dipy.viz import horizon
-
-    a = np.eye(4)
-    images=[(mask_orig.astype('i4'), a, 'masko'),
-            (mask.astype('i4'), a, 'mask'),
-            (tmp, a, 'tmp'),
-            (new_mask, a, 'new_mask'),
-            (data_labels_nm, a, 'dl_nm'),
-            (focused, a, 'focused'),
-            (focused2, a, 'focused2'),
-            (new_mask_dt, a, 'new_mask_dt'),
-            (new_mask2, a, 'new_mask2'),
-            (data_labels_nm2, a, 'dl_nm2'),
-            (W, a, 'W')]
-    horizon(images=images)
-
-
-    t = 1
-
-    return tmp, new_mask, new_mask_dt
-
-
-def throwing_balls2(mask, W, radius=10, samples=100, perc=5):
-
-    mask_orig = mask.copy()
-    print('Starting throwing solid balls in 3D space ... ')
-    t = time()
-
-    mask = binary_closing(mask, iterations=1)
-    # mask = binary_dilation(mask, iterations=1)
-
-    # TODO: this part needs work
-    # mask = gaussian_filter(10 * mask, sigma=3)
-    mask_tmp = mask.copy()
-    # mask = (mask > 0.1).astype('int32')
-
-    tmp = mask.copy() * 0
-    kernel = ball(radius)
-    kernel_sum = kernel.sum()
-    print('>> Kernel sum', kernel_sum)
-
-    kI, kJ, kK = np.asarray(kernel.shape) // 2
-
-    I, J, K = tmp.shape
-
-    volcov = np.prod(kernel.shape)
-    print('>> Kernel ratio ', kernel_sum / volcov)
-
-    perc = perc / 100.
-
-    i_s = np.random.randint(radius, I - radius, size=samples)
-    j_s = np.random.randint(radius, J - radius, size=samples)
-    k_s = np.random.randint(radius, K - radius, size=samples)
-
-    for i, j, k in zip(i_s, j_s, k_s):
-
-        hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
-
-        # if hit == 0:
-        if hit < perc  * kernel_sum:
-            tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
-
-    # from dipy.viz import horizon
-    # aff = np.eye(4)
-    # horizon(images=[(mask_orig, aff, 'mask_orig'), (mask.astype('int32'), aff, 'mask'), (tmp, aff, 'tmp')])
-    print('Duration ', time() - t)
-    print()
-
-    new_mask = np.zeros(mask.shape)
-    new_mask[tmp > 100] = 1
-
-    data_labels_nm, num_focused_nm = label(new_mask)
-    favorite_nm = analyze_labels(data_labels_nm, num_focused_nm)
-
-    focused = np.zeros(mask.shape)
-    focused[data_labels_nm==favorite_nm] = 1
-
-    focused2 = focused.copy()
-
-    focused2 += mask_orig
-
-    new_mask_dt = distance_transform_edt(1 - focused2)
-
-    new_mask2 = np.zeros(mask.shape)
-    new_mask2[new_mask_dt > 5] = 1
-
-    # new_mask2 = binary_opening(new_mask2, iterations=1)
-
-    data_labels_nm2, num_focused_nm2 = label(new_mask2)
-    print(num_focused_nm2)
-
-    unq2, cnts2 = np.unique(data_labels_nm2, return_counts=True)
-
-    sizes = []
-    for i in range(num_focused_nm2):
-        sz = (data_labels_nm2==i).sum()
-        # print('>>', i, sz)
-        sizes.append(sz)
-
-    print(sorted(sizes))
-
-    from dipy.viz import horizon
-
-    a = np.eye(4)
-    images=[(mask_orig.astype('i4'), a, 'masko'),
-            (mask.astype('i4'), a, 'mask'),
-            (tmp, a, 'tmp'),
-            (new_mask, a, 'new_mask'),
-            (data_labels_nm, a, 'dl_nm'),
-            (focused, a, 'focused'),
-            (focused2, a, 'focused2'),
-            (new_mask_dt, a, 'new_mask_dt'),
-            (new_mask2, a, 'new_mask2'),
-            (data_labels_nm2, a, 'dl_nm2'),
-            (W, a, 'W')]
-    horizon(images=images)
-
-
-    t = 1
-
-    return tmp, new_mask, new_mask_dt
 
 
 def centroid_images(data_labels, centroids):
@@ -1054,8 +845,6 @@ def weighted_image2(dt, W, idt, masko):
 
     dt2 = distance_transform_edt(cm_im)
 
-
-
     tmp = dt2 + 50 * masko
     new_mask = np.zeros(dt.shape)
     new_mask[tmp > 100] = 1
@@ -1065,88 +854,6 @@ def weighted_image2(dt, W, idt, masko):
     # weights = gaussian_filter(weights, sigma=1)
     # weights_tmp2 = weights.copy()
     return focus * W
-
-
-def triangular_variance(mask, X, Y, Z, W, msamples=100, osamples=1000):
-
-    mask2 = binary_opening(mask, iterations=1).astype('i4')
-    mask3 = binary_closing(mask2, iterations=1).astype('i4')
-    # mask3 = flood_fill(mask2, (1, 1, 1), 2, connectivity=1)
-    # mask4 = (mask3 == 1).astype('i4')
-
-    lab3, num3 = label(mask3)
-    fav = analyze_labels(lab3, num3)
-
-    mask4 = np.zeros(mask.shape)
-    mask4[lab3 == fav] = 1
-
-    mask5 = np.zeros(mask.shape)
-    mask5[mask4 == 1] = 1
-
-    a = np.eye(4)
-    from dipy.viz import horizon
-    horizon(images=[(mask5, a, 'mask5'), (lab3, a, 'lb3'), (mask4, a, 'm4'), (mask3, a, 'm3'), (mask2, a, 'm2'), (mask, a, 'm'), (W, a, 'W')])
-
-    Xr = X.ravel()
-    Yr = Y.ravel()
-    Zr = Z.ravel()
-    Wr = W.ravel()
-    maskr = mask.ravel()
-
-    mXr = Xr[maskr == 1]
-    mYr = Yr[maskr == 1]
-    mZr = Zr[maskr == 1]
-
-
-
-    mlength = mXr.shape[0]
-    msel = np.random.randint(0, mlength, size=msamples)
-
-    mXrsel = mXr[msel]
-    mYrsel = mYr[msel]
-    mZrsel = mZr[msel]
-
-    oXr = Xr[maskr == 0]
-    oYr = Yr[maskr == 0]
-    oZr = Zr[maskr == 0]
-
-    olength = oXr.shape[0]
-    osel = np.random.randint(0, olength, size=osamples)
-
-    oXrsel = oXr[osel]
-    oYrsel = oYr[osel]
-    oZrsel = oZr[osel]
-
-    t = 1
-
-    sums = []
-    for o in range(oXrsel.shape[0]):
-        res = np.sqrt((oXrsel[o] * mXrsel) ** 2 + (oYrsel[o] * mYrsel) ** 2 + (oZrsel[o] * mZrsel) ** 2)
-        sums.append(res.sum())
-        t = 2
-    sums = np.asarray(sums)
-
-    sums_im = np.zeros(W.shape)
-
-
-    imask = maskr == 0
-    imask = imask.astype('i4')
-    imask[osel] = 2
-    imask2 = imask.reshape(W.shape)
-
-    sums_im[imask2==2] = sums
-
-    return sums_im
-
-
-def multi_scale_patches(mask):
-
-    mask2 = patchify(mask, (10, 10, 10), step=10)
-
-    t = 1
-
-
-    pass
 
 
 def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3., medroids=False):
@@ -1352,8 +1059,7 @@ def detect_largest_object(data, structure=np.ones((3, 3, 3))):
     return final
 
 
-def analyze_mask_centroids(centroids):
-
+def generate_puzzle():
     pass
 
 
@@ -1492,8 +1198,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     aff = np.eye(4)
     images = []
+
+    images.append((W, aff, 'W'))
+    images.append((data, aff, 'data'))
     images.append((mask_orig, aff, 'mask_orig'))
     images.append((mask, aff, 'mask'))
+   
     # images.append((psums, aff, 'patch_sums'))
     # images.append((ball_mask, aff, 'ball_mask'))
     # images.append((bm2, aff, 'bm2'))
@@ -1529,12 +1239,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((centroids_im, aff, 'centroids_im'))
     # images.append((centroids_median_im, aff, 'centroids_median_im'))
-    # images.append((centroids_mask_im, aff, 'centroids_mask_im'))
-    # images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
-
-    # images.append((data_labels_mask, aff, 'dl_mask'))
-    images.append((W, aff, 'W'))
-    images.append((data, aff, 'data'))
+    if masked_berserker:
+        images.append((centroids_mask_im, aff, 'centroids_mask_im'))
+        # images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
+        images.append((data_labels_mask, aff, 'dl_mask'))
 
     negone = False # requires masked berserker
     if negone:
@@ -1593,38 +1301,113 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((tbl, aff, 'tbl'))
 
     
-    mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
+    # mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
+    mask2 = mask_orig.copy()
+
     images.append((mask2, aff, 'mask2'))
 
-    tbl2 = throwing_balls_light(mask2, W=W, radius=24, samples=20000, perc=4)
-    tbl4 = throwing_balls_light(mask2, W=W, radius=12, samples=40000, perc=4)
+    tbl2 = throwing_balls_light(mask2, W=W, radius=24, samples=40000, perc=4)
+    tbl4 = throwing_balls_light(mask2, W=W, radius=12, samples=80000, perc=4)
     # images.append((tbl4, aff, 'tbl4'))
 
     tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
     images.append((tbl24, aff, 'tbl24'))
 
-    mask3 = tbl24 > 0.15    
+    mask3 = tbl24 > 0.07
     images.append((mask3.astype('f8'), aff, 'mask3'))
 
     mask4 = detect_largest_object(mask3)
     images.append((mask4.astype('f8'), aff, 'mask4'))
 
-    mask5 = 0.5 * (mask4 + mask) 
+    ci, cj, ck = np.round(center_of_mass(mask4), 0).astype(int)
+
+    mask5 = mask4.copy()
+    mask5[ci, cj, ck] = 5
     images.append((mask5.astype('f8'), aff, 'mask5'))
 
-    kernel = ball(5)
-    closing = binary_closing(mask5 > 0, structure=kernel, iterations=1).astype('f8')
+
+    m42 = mask4 + mask2
+    images.append((m42.astype('f8'), aff, 'm42'))
+
+    im42 = 1 - mask4 - mask2
+    images.append((im42.astype('f8'), aff, 'im42'))
+
+    im42b = im42 > 0
+    edt_im42b = distance_transform_edt(im42b)
+    images.append((edt_im42b.astype('f8'), aff, 'edt_im42b'))
+
+
+    # bfh = m42
+
+    # for i in range(5):
+    #     bfh = binary_fill_holes(bfh)
+    
+    # images.append((bfh.astype('f8'), aff, 'bfh'))
+
+    # bfh2 = m42.copy()
+    # for x in range(m42.shape[0]):
+    #     bfh2[x, :, :] = binary_fill_holes(m42[x, :, :])
+    # for y in range(m42.shape[1]):
+    #     bfh2[:, y, :] = binary_fill_holes(m42[:, y, :])
+    # for z in range(m42.shape[2]):
+    #     bfh2[:, :, z] = binary_fill_holes(m42[:, :, z])
+    # images.append((bfh2.astype('f8'), aff, 'bfh2'))
+
+
+
+
+    # import fill_voids
+
+    # filled_image = fill_voids.fill(m42, in_place=False)
+    # images.append((filled_image.astype('f8'), aff, 'filled_void'))
+
+    # _, _, _, ggm_cim = gaussian_gradients(centroids_im, sigma=0.5)
+    # images.append((ggm_cim.astype('f8'), aff, 'ggm_cim'))
+
+    # _, _, _, ggm_dl = gaussian_gradients(data_labels, sigma=0.5)
+    # images.append((ggm_dl.astype('f8'), aff, 'ggm_dl'))
+
+    # maskdl = ggm_dl > 0.5
+    # centroids_im2 = centroids_im.copy()
+    # centroids_im2[maskdl] = -1 
+    # images.append((centroids_im2, aff, 'centroids_im2'))
+
+    # lap_cim = laplace(centroids_im)
+    # images.append((lap_cim.astype('f8'), aff, 'lap_cim'))
+
+    masked_berserker2 = False
+    if masked_berserker2:
+        print('Applying Berserker 2 on X masked (i, j, k, 3w) --')
+        t = time()
+        maskr2 = (1 - m42).ravel().astype('bool')
+
+        X3 = X.copy()
+        # X2[:, 3] = 900.0 * m42.ravel() # TODO: try also keeping the actual values (centroids_im) (only on m42 black regions)
+        X3[:, 3] = centroids_im.ravel()
+
+        data_labels_mask3, centroids_mask3 = berserker2_to_3D_labels(X3, theta_value, data_dims=data.shape, verbose=False, mask=maskr2)
+        print('Duration ', time() - t)
+        print()
+
+        centroids_mask_im3 = centroid_images(data_labels_mask3, centroids_mask3)
+
+        images.append((data_labels_mask3.astype('f8'), aff, 'dlm3'))
+        images.append((centroids_mask_im3.astype('f8'), aff, 'cim3'))
+    
+    # seed = 30 * (1 - mask2)
+    # filled = reconstruction(seed, 10 * m42, method='erosion')
+    # images.append((filled.astype('f8'), aff, 'filled'))
+
+    # mask5 = (2 * mask4 + mask)
+    # images.append((mask5.astype('f8'), aff, 'mask5'))
+
+    # mask6 = mask5 > 0
+    # kernel = ball(2)
+    # closing = binary_closing(mask6, structure=kernel, iterations=1).astype('f8')
 
     
-    images.append(((1 - closing).astype('f8'), aff, '1 - closing'))
+    # images.append((closing.astype('f8'), aff, 'closing'))
     
-
-    final = detect_largest_object(1 - closing)
-    images.append((final.astype('f8'), aff, 'final'))
-    
-
-
-
     # dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
     # ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
 
@@ -1633,29 +1416,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((dz, aff, 'dz'))
     # images.append((gm, aff, 'gm'))
     # images.append((ggm, aff, 'ggm'))
+
+
+
+
+
+    # glap = gaussian_laplace(mask2.astype('f8'), sigma=2)
+    # images.append((glap, aff, 'glap'))
+
     
-
-    glap = gaussian_laplace(mask2.astype('f8'), sigma=2)
-    images.append((glap, aff, 'glap'))
-
-    # glap_zero = np.logical_and(glap < 0.1, glap > -0.1) 
-    # images.append((glap_zero.astype('f8'), aff, 'glap_zero'))
-
-    # glap_pos = glap > 0.05 
-    # images.append((glap_pos.astype('f8'), aff, 'glap_pos'))
-
-    # TODO: following recursively the laplacians may build a nice mask
-
-    # glap2 = gaussian_laplace(glap_pos.astype('f8'), sigma=2)
-    # images.append((glap2, aff, 'glap2'))
-
-
-
-    # tbl3 = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=6)
-    # images.append((tbl3, aff, 'tbl3'))
-    # tbl4 = throwing_balls_light(mask2.copy(), W=W, radius=24, samples=20000, perc=8)
-    # images.append((tbl4, aff, 'tbl4'))
-
     # radii = [14., 24., 34.]
     # percs = [5., 10.] # only 5
 

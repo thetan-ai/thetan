@@ -16,10 +16,10 @@ from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg, prepare
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
-# fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
+fname = 'C:/Users/elef/Data/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/t1_ori.nii.gz'
 # fname = 'C:/Users/elef/Data/S00/b0_mean.nii.gz'
-fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
+# fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'

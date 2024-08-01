@@ -12,11 +12,11 @@ fname = 'C:/Users/elef/.dipy/tissue_data/t1_brain.nii.gz'
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
-rec, W, medrec = berserker2_recovery(data, affine, theta_value=100, perc=(0, 98), mult=300, enh=3, reps=5, medroids=True)
+rec, W, medrec = berserker2_recovery(data, affine, theta_value=100, perc=(0, 98), mult=300, enh=3, reps=15, medroids=True)
 
 # save_nifti(fname2, rec, affine)
 
-rec2, W, medrec2 = berserker2_recovery(data, affine, theta_value=100, perc=(0, 98), mult=300, enh=3, reps=5, medroids=True)
+rec2, W, medrec2 = berserker2_recovery(data, affine, theta_value=100, perc=(0, 98), mult=300, enh=3, reps=15, medroids=True)
 
 
 rec12 = 0.5 * (rec + rec2)
