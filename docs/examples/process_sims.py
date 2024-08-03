@@ -230,6 +230,10 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
 
 rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM']
 
+# rows = ['FCM']
+
+# rows = ['kmeans']
+
 cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
 
 # dpath = '/home/elef/Data/tb_output/'
@@ -333,7 +337,7 @@ for expno in range(reps):
         labels = np.argmax(u, axis=0)
 
         if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'FCM' + str(expon), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+            plot_centroids_clusters(X, centroids, labels, 'FCM', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
         print('Starting evaluation')
         t = time()
