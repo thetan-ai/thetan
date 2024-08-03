@@ -8,12 +8,42 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN
 from sklearn.cluster import BisectingKMeans, MeanShift
+from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
 from pyclustering.cluster.birch import birch
 from pyclustering.cluster.bsas import bsas
+from pyclustering.cluster.mbsas import mbsas
+from pyclustering.cluster.ttsas import ttsas
+from pyclustering.cluster.cure import cure
+from pyclustering.cluster.kmeans import kmeans as kmeanspy
+from pyclustering.cluster.kmedoids import kmedoids as kmedoidspy
 from pyclustering.utils.metric import distance_metric, type_metric;
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
+import skfuzzy as fuzz
+
+
+def pyclustering_utils(bsas_instance, repor=False):
+    clusters = bsas_instance.get_clusters()
+    type_repr = bsas_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, X)
+ 
+    # change representation from index list to label list
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+
+    if repor is True:
+        representors = bsas_instance.get_representors()
+        centroids = bsas_instance.get_means()
+
+    else:
+        centroids = bsas_instance.get_representatives()
+        # centroids = bsas_instance.get_means()
+
+    labels = np.ascontiguousarray(clusters)
+    centroids = np.ascontiguousarray(centroids)
+
+    return labels, centroids
 
 
 def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1):
@@ -154,7 +184,7 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     print('Simulating data')
 
     if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 30, cluster_y = 10)
+        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 30, cluster_y = 10) # cluster_x should be 30
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10)
@@ -191,24 +221,32 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
 
 # rows = ['dbscan', 'hdbscan']
 
-rows = ['TB', 'sbas']
+
+#rows = ['TB', 'BIRCH', 'CURE']
+
+# rows = ['BIRCH']
+
+# rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE']
+
+rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM']
 
 cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
 
 # dpath = '/home/elef/Data/tb_output/'
-# dpath = '/home/elef/Data/tb_test2/'
-dpath = 'C:/Users/elef/Data/tb_output/'
+dpath = '/home/elef/Data/tb_output_v2/'
+# dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 1
+reps = 10
+save_results = True
+
 
 for expno in range(reps):
 
     print('######################################### > Experiment ', str(expno), ' Go Go Team Thetan!')
 
-
     evaluations = {}
     evaluation_thr = 0.1
-    verbose = False
+    verbose = True
 
     X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
 
@@ -219,7 +257,7 @@ for expno in range(reps):
 
     if 'TB' in rows:
 
-        print('Starting Berserker')
+        print('\n >> Starting Berserker ...')
         theta_value = 3.6
         t = time()
         centroids, labels = berserker2(X, theta_value, all_out=False)
@@ -240,7 +278,7 @@ for expno in range(reps):
 
     if 'kmeans++' in rows:
 
-        print('Starting K-means++ ...')
+        print('\n >> Starting K-means++ ...')
         t = time()
         kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
                         max_iter=300, tol=0.0001).fit(X)
@@ -260,6 +298,50 @@ for expno in range(reps):
             plot_centroids_clusters(X, kcentroids, klabels, 'kmeans++', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
+    if 'kmeans' in rows:
+
+        print('\n >> Starting K-means (random) ...')
+        t = time()
+        kmeans = KMeans(n_clusters=n_clusters, init='random', n_init=1,
+                        max_iter=300, tol=0.0001).fit(X)
+        duration = time() - t
+        print('Duration', duration)
+
+        kcentroids = kmeans.cluster_centers_
+        klabels = kmeans.labels_
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['kmeans'] = scores
+        if verbose:
+            plot_centroids_clusters(X, kcentroids, klabels, 'kmeans', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+    if 'FCM' in rows:
+        print('\n >> Starting Fuzzy C-means ...')
+        # for expon in [2., 2.2, 3.]:
+        expon = 2.
+        print('Expon ', expon)
+        t = time()
+        cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(X.T, n_clusters, expon, error=0.005, maxiter=1000, init=None)
+        duration = time() - t
+        print('Duration', duration)
+
+        centroids = cntr
+        labels = np.argmax(u, axis=0)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'FCM' + str(expon), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['FCM'] = scores
+
     # agglo = False # Due to large memory requirements - it kills my computer
 
     # if agglo:
@@ -275,7 +357,7 @@ for expno in range(reps):
 
     if 'meanshift' in rows:
 
-        print('Starting with MeanShift ...')
+        print('\n >> Starting with MeanShift ...')
         t = time()
         bandwidth = theta_value
         model = MeanShift(bandwidth=bandwidth, cluster_all=True)
@@ -300,7 +382,7 @@ for expno in range(reps):
 
     if 'EM_GMM' in rows:
 
-        print('Starting EM_GMM .....')
+        print('\n >> Starting EM_GMM .....')
         t = time()
         cov_type = ['spherical', 'diag', 'tied', 'full']
         model = GaussianMixture(n_components=n_clusters,
@@ -325,7 +407,7 @@ for expno in range(reps):
 
     if 'TSG' in rows:
 
-        print('Starting TSG')
+        print('\n >> Starting TSG ...')
         t = time()
         tgs_centroids, tgs_labels = tgs(X, theta_value, all_out=False)
         duration = time() - t
@@ -343,7 +425,7 @@ for expno in range(reps):
 
     if 'bisecting' in rows:
 
-        print('Starting Bisection K-means++ ...')
+        print('\n >> Starting Bisection K-means++ ...')
         t = time()
         bkmeans = BisectingKMeans(n_clusters=n_clusters, n_init=1).fit(X)
         duration = time() - t
@@ -366,7 +448,7 @@ for expno in range(reps):
 
     if 'dbscan' in rows:
 
-        print('Starting DBSCAN ...')
+        print('\n >> Starting DBSCAN ...')
 
         t = time()
         model = DBSCAN(eps=eps, min_samples=min_samples)
@@ -392,7 +474,7 @@ for expno in range(reps):
 
     if 'hdbscan' in rows:
 
-        print('Starting HDBSCAN ...')
+        print('\n >> Starting HDBSCAN ...')
         t = time()
         model = HDBSCAN(min_samples=min_samples)
         model.fit(X)
@@ -416,72 +498,199 @@ for expno in range(reps):
 
 
 
-    if 'sbas' in rows:
+    if 'BSAS' in rows:
 
-        print('Starting SBAS ...')
+        print('\n >> Starting BSAS ...')
         theta_value = 3.6
         t = time()
 
-        metric = distance_metric(type_metric.EUCLIDEAN_SQUARE)
+        metric = distance_metric(type_metric.EUCLIDEAN)
         ccore = True
     
         # sample = read_sample(path);
-
         # print("Sample: ", path);
 
-        amount = 300
+        amount = n_clusters
         threshold = theta_value
         
         bsas_instance = bsas(X, amount, threshold, ccore=ccore, metric=metric)
         bsas_instance.process()
-
-        clusters = bsas_instance.get_clusters()
-        type_repr = bsas_instance.get_cluster_encoding()
-        encoder = cluster_encoder(type_repr, clusters, X)
- 
-        # change representation from index list to label list
-        encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
-        clusters = encoder.get_clusters()
-
-        representatives = bsas_instance.get_representatives()
-
-        labels = np.ascontiguousarray(clusters)
-        centroids = np.ascontiguousarray(representatives)
-
+        
         duration = time() - t
         print('Duration is ', duration)
 
+        labels, centroids = pyclustering_utils(bsas_instance)
+
         if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+            plot_centroids_clusters(X, centroids, labels, 'SBAS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
         print('Starting evaluation')
         t = time()
         scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
         print(scores)
         print('Duration is ', time()-t)
-        evaluations['SBAS'] = scores
+        evaluations['BSAS'] = scores
 
+
+    if 'MBSAS' in rows:
+
+        print('\n >> Starting MBSAS ...')
+        theta_value = 3.6
+        t = time()
+
+        metric = distance_metric(type_metric.EUCLIDEAN)
+        ccore = True
+
+        amount = n_clusters
+        threshold = theta_value
+        
+        bsas_instance = mbsas(X, amount, threshold, ccore=ccore, metric=metric)
+        bsas_instance.process()
+        
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels, centroids = pyclustering_utils(bsas_instance)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'SBAS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['MBSAS'] = scores
+
+
+    if 'TTSAS' in rows:
+
+        print('\n >> Starting TTSAS ...')
+        
+        # for threshold1 in np.arange(3, 5, 0.25):
+        #     for sp in np.arange(0.2, 0.6, 0.1):    
+                # threshold2 = threshold1 + sp
+        t = time()
+
+        metric = distance_metric(type_metric.EUCLIDEAN)
+        # ccore = True there is an issue with this variable
+
+        amount = n_clusters
+
+        threshold1 = 3.6
+        threshold2 = 4
+        # threshold1 = 3.75
+        # threshold2 = 4.15
+        print(threshold1)
+        print(threshold2)
+        # ttsas_instance = ttsas(X.tolist(), amount, threshold1, threshold2, metric=metric);
+        # ttsas_instance.process()
+        ccore = True
+        ttsas_instance = ttsas(X, threshold1, threshold2, ccore=ccore, metric=metric)
+        ttsas_instance.process()
+
+        clusters = ttsas_instance.get_clusters()
+        representatives = ttsas_instance.get_representatives()
+        centroids = np.ascontiguousarray(representatives)
+
+        labels = np.zeros(X.shape[0])
+        for i, c in enumerate(clusters):
+            labels[np.asarray(c)] = i
+        labels = labels.astype('i8')
+        duration = time() - t
+        print('Duration is ', duration)
+        print('# centroids ', len(centroids))
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'TTSAS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['TTSAS'] = scores
+
+
+    if 'BIRCH' in rows:
+
+        # for i, theta_value in enumerate([2., 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8]):
+        print('\n >> Starting BIRCH ...')
+        theta_value = 2.5 # 2.0 creates too many clusters. 3.0 too little.
+        print(theta_value)
+        t = time()
+
+        amount = n_clusters
+
+        birch = Birch(threshold=theta_value, branching_factor=500, n_clusters=amount).fit(X)
+                
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels = birch.labels_
+        centroids = birch.subcluster_centers_
+        print('# centroids ', len(centroids))
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'BIRCH', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['BIRCH'] = scores
+
+        t = 1
+
+    if 'CURE' in rows:
+
+        print('\n >> Starting CURE ...')
+        t = time()
+
+        metric = distance_metric(type_metric.EUCLIDEAN)
+        ccore = True
+
+        number_clusters = n_clusters
+        number_represent_points = 1
+        compression = 1.
+
+        bsas_instance = cure(X, number_clusters, number_represent_points, compression, ccore)
+        bsas_instance.process()
+        
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels, centroids = pyclustering_utils(bsas_instance, True)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'CURE', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['CURE'] = scores
 
     print('ALL EVALUATIONS')
     print(evaluations)
 
-    save_results = False
+    evals = np.zeros((len(rows), len(cols)))
+
+    for i, row in enumerate(rows):
+        for j, col in enumerate(cols):
+            evals[i, j] = evaluations[row][j]
+
+    df = pd.DataFrame(evals, columns=cols)
+    df.index = rows
+    
+    print('Printing dataframe of evaluations ... ' + str(expno))
+    print(df)
 
     if save_results:
-        evals = np.zeros((len(rows), len(cols)))
-
-
-        for i, row in enumerate(rows):
-            for j, col in enumerate(cols):
-                evals[i, j] = evaluations[row][j]
-
-        df = pd.DataFrame(evals, columns=cols)
-        df.index = rows
-        df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
-
+        df.to_excel(dpath + "expno_v2_" + str(expno) + ".xlsx")
         print('Saving evaluations')
-
-
-
-
+    
 t = 1
+

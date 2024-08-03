@@ -1313,7 +1313,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
     images.append((tbl24, aff, 'tbl24'))
 
-    mask3 = tbl24 > 0.07
+    mask3 = tbl24 > 0.12 # 0.07
     images.append((mask3.astype('f8'), aff, 'mask3'))
 
     mask4 = detect_largest_object(mask3)
