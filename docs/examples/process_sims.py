@@ -184,7 +184,7 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     print('Simulating data')
 
     if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 30, cluster_y = 10) # cluster_x should be 30
+        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 10, cluster_y = 10) # cluster_x should be 30
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10)
@@ -228,19 +228,21 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
 
 # rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE']
 
-rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM']
+rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 
 # rows = ['FCM']
 
 # rows = ['kmeans']
 
+# rows = ['TBK']
+
 cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
 
 # dpath = '/home/elef/Data/tb_output/'
-dpath = '/home/elef/Data/tb_output_v2/'
-# dpath = 'C:/Users/elef/Data/tb_output/'
+# dpath = '/home/elef/Data/tb_output_v2/'
+dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 10
+reps = 1
 save_results = True
 
 
@@ -676,6 +678,43 @@ for expno in range(reps):
         print(scores)
         print('Duration is ', time()-t)
         evaluations['CURE'] = scores
+
+
+    if 'TBK' in rows:
+
+        print('\n >> Starting Berserker ...')
+        theta_value = 3.6
+        t = time()
+        centroids, labels = berserker2(X, theta_value, all_out=False)
+        duration1 = time() - t
+        print('Duration is ', duration1)
+
+        uniq, sizes = np.unique(labels, return_counts=True)
+
+        biggest_k = np.argsort(sizes)[-n_clusters:]
+
+        centroids_tmp = np.ascontiguousarray(centroids[biggest_k].copy())
+        
+        print('\n >> Starting K-means (TB) ...')
+        t = time()
+        kmeans = KMeans(n_clusters=n_clusters, init=centroids_tmp, n_init=1,
+                        max_iter=300, tol=0.0001).fit(X)
+        duration2 = time() - t
+        print('Duration is', duration2)
+
+        kcentroids = kmeans.cluster_centers_
+        klabels = kmeans.labels_
+
+        if verbose:
+            plot_centroids_clusters(X, kcentroids, klabels, 'TBK', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration1 + duration2)
+        print(scores)
+        print('Duration is ', time() - t)
+        
+        evaluations['TBK'] = scores
 
     print('ALL EVALUATIONS')
     print(evaluations)

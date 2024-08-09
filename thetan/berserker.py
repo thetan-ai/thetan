@@ -1303,38 +1303,59 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     
     # mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
     mask2 = mask_orig.copy()
+    mask2 = mask2.astype('f8')
 
     images.append((mask2, aff, 'mask2'))
 
+    # tbl0 = throwing_balls_light(mask2, W=W, radius=36, samples=20000, perc=2)
+    tbl0 = throwing_balls_light(mask2, W=W, radius=28, samples=20000, perc=4)
     tbl2 = throwing_balls_light(mask2, W=W, radius=24, samples=40000, perc=4)
+    tbl3 = throwing_balls_light(mask2, W=W, radius=20, samples=40000, perc=4) # seems good
     tbl4 = throwing_balls_light(mask2, W=W, radius=12, samples=80000, perc=4)
-    # images.append((tbl4, aff, 'tbl4'))
+    
+    images.append((tbl0, aff, 'tbl0'))
+    images.append((tbl2, aff, 'tbl2'))
+    images.append((tbl3, aff, 'tbl3'))
+    images.append((tbl4, aff, 'tbl4'))
 
     tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
     images.append((tbl24, aff, 'tbl24'))
 
-    mask3 = tbl24 > 0.12 # 0.07
-    images.append((mask3.astype('f8'), aff, 'mask3'))
+    mask_tmp = tbl3/tbl3.max() > 0.06
+    images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
 
-    mask4 = detect_largest_object(mask3)
-    images.append((mask4.astype('f8'), aff, 'mask4'))
+    levels = [0.06, 0.08, 0.10, 0.12] # , 0.14, 0.16, 0.18, 0.20, 0.22, 0.24, 0.26, 0.28, 0.30, 0.32]
 
-    ci, cj, ck = np.round(center_of_mass(mask4), 0).astype(int)
+    # vol_lev = []
+    # for lev in levels:
+    #     mask3 = tbl24 > lev
+    #     vol_lev.append(np.sum(mask3))
+    #     images.append((mask3.astype('f8'), aff, 'mask3_' + str(lev)))
+    
+    # print(vol_lev)
 
-    mask5 = mask4.copy()
-    mask5[ci, cj, ck] = 5
-    images.append((mask5.astype('f8'), aff, 'mask5'))
+    t = 2
 
+    # images.append((mask3.astype('f8'), aff, 'mask3_' + str(lev)))
 
-    m42 = mask4 + mask2
-    images.append((m42.astype('f8'), aff, 'm42'))
+    # mask4 = detect_largest_object(mask3)
+    # images.append((mask4.astype('f8'), aff, 'mask4'))
 
-    im42 = 1 - mask4 - mask2
-    images.append((im42.astype('f8'), aff, 'im42'))
+    # ci, cj, ck = np.round(center_of_mass(mask4), 0).astype(int)
 
-    im42b = im42 > 0
-    edt_im42b = distance_transform_edt(im42b)
-    images.append((edt_im42b.astype('f8'), aff, 'edt_im42b'))
+    # mask5 = mask4.copy()
+    # mask5[ci, cj, ck] = 5
+    # images.append((mask5.astype('f8'), aff, 'mask5'))
+
+    # m42 = mask4 + mask2
+    # images.append((m42.astype('f8'), aff, 'm42'))
+
+    # im42 = 1 - mask4 - mask2
+    # images.append((im42.astype('f8'), aff, 'im42'))
+
+    # im42b = im42 > 0
+    # edt_im42b = distance_transform_edt(im42b)
+    # images.append((edt_im42b.astype('f8'), aff, 'edt_im42b'))
 
 
     # bfh = m42
