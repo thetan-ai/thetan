@@ -1311,7 +1311,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     tbl0 = throwing_balls_light(mask2, W=W, radius=28, samples=20000, perc=4)
 
     mask3 = mask2.copy()
-    mask3[tbl0 > 20] = 0
+    mask3[tbl0 > 50] = 0
 
     images.append((mask3, aff, 'mask3'))
 
@@ -1333,8 +1333,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
     images.append((tbl24, aff, 'tbl24'))
 
-    # mask_tmp = tbl3/tbl3.max() > 0.06
-    # images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
+    mask_tmp = tbl24 > 0.30
+    images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
 
     levels = [0.06, 0.08, 0.10, 0.12] # , 0.14, 0.16, 0.18, 0.20, 0.22, 0.24, 0.26, 0.28, 0.30, 0.32]
 
@@ -1350,8 +1350,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # images.append((mask3.astype('f8'), aff, 'mask3_' + str(lev)))
 
-    # mask4 = detect_largest_object(mask3)
-    # images.append((mask4.astype('f8'), aff, 'mask4'))
+    mask4 = detect_largest_object(mask_tmp)
+    images.append((mask4.astype('f8'), aff, 'mask4'))
 
     # ci, cj, ck = np.round(center_of_mass(mask4), 0).astype(int)
 
