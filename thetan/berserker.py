@@ -1021,15 +1021,15 @@ def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300.,
     """Signal recovery"""
 
     t_start = time()
-    c_f = np.zeros(data.shape, dtype='f8')    
-    m_f = np.zeros(data.shape, dtype='f8')    
-    
+    c_f = np.zeros(data.shape, dtype='f8')
+    m_f = np.zeros(data.shape, dtype='f8')
+
     for i in range(reps):
         print('>>> ', i)
         print('Starting Thetan Berserker 2 applied to 3D images...')
         t = time()
         data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=theta_value, perc=perc, mult=mult, enh=enh)
-    
+
         print('TB Duration ', time() - t)
         print()
         c_f += centroids_im
@@ -1041,7 +1041,7 @@ def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300.,
     if medroids:
         m_f /= reps
         return c_f, W, m_f
-    
+
     print('All runs ', time() - t_start)
 
 
@@ -1070,7 +1070,7 @@ def gaussian_gradients(data, sigma=1):
     dx = gaussian_filter(data, sigma=sigma, order = (1, 0, 0))
     dy = gaussian_filter(data, sigma=sigma, order = (0, 1, 0))
     dz = gaussian_filter(data, sigma=sigma, order = (0, 0, 1))
-    
+
     gm = np.sqrt(dx**2 + dy**2 + dz**2)
 
     return dx, dy, dz, gm
@@ -1185,7 +1185,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Applying Berserker 2 on X masked (i, j, k, 3w)')
         t = time()
         maskr = mask.ravel().astype('bool')
-        
+
         data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
         print('Duration ', time() - t)
         print()
@@ -1203,7 +1203,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((data, aff, 'data'))
     images.append((mask_orig, aff, 'mask_orig'))
     images.append((mask, aff, 'mask'))
-   
+
     # images.append((psums, aff, 'patch_sums'))
     # images.append((ball_mask, aff, 'ball_mask'))
     # images.append((bm2, aff, 'bm2'))
@@ -1255,11 +1255,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         # kernel = ball(5)
 
         # overshoot3 = binary_closing(overshoot2, structure=kernel, iterations=1).astype('f8')
-        
+
         # kernel = ball(5)
         # closing = binary_closing(overshoot, structure=kernel, iterations=1).astype('f8')
 
-        # close same labels that are not -1 
+        # close same labels that are not -1
         unql, cntsl = np.unique(data_labels_mask, return_counts=True)
         print('Unique >-1 labels')
         print(unql)
@@ -1288,7 +1288,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((blacky.astype('f8'), aff, 'blacky'))
         # images.append((data_labels_t, aff, 'dl_t'))
         images.append((final, aff, 'final'))
-    
+
     # TODO: pick the larger black object - it might be the brain
     # use distance tranform with original mask
 
@@ -1300,29 +1300,41 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # images.append((tbl, aff, 'tbl'))
 
-    
+
     # mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
     mask2 = mask_orig.copy()
     mask2 = mask2.astype('f8')
 
-    images.append((mask2, aff, 'mask2'))
+    # images.append((mask2, aff, 'mask2'))
 
     # tbl0 = throwing_balls_light(mask2, W=W, radius=36, samples=20000, perc=2)
     tbl0 = throwing_balls_light(mask2, W=W, radius=28, samples=20000, perc=4)
-    tbl2 = throwing_balls_light(mask2, W=W, radius=24, samples=40000, perc=4)
-    tbl3 = throwing_balls_light(mask2, W=W, radius=20, samples=40000, perc=4) # seems good
-    tbl4 = throwing_balls_light(mask2, W=W, radius=12, samples=80000, perc=4)
-    
+
+    mask3 = mask2.copy()
+    mask3[tbl0 > 20] = 0
+
+    images.append((mask3, aff, 'mask3'))
+
+    tbl2 = throwing_balls_light(mask3, W=W, radius=24, samples=40000, perc=4)
+    tbl3 = throwing_balls_light(mask3, W=W, radius=20, samples=40000, perc=4) # seems good
+    tbl4 = throwing_balls_light(mask3, W=W, radius=12, samples=80000, perc=4)
+    # tbl5 = throwing_balls_light(mask2, W=W, radius=8, samples=80000, perc=4)
+    # tbl6 = throwing_balls_light(mask2, W=W, radius=6, samples=160000, perc=4)
+    # tbl7 = throwing_balls_light(mask2, W=W, radius=4, samples=160000, perc=4)
+
     images.append((tbl0, aff, 'tbl0'))
     images.append((tbl2, aff, 'tbl2'))
     images.append((tbl3, aff, 'tbl3'))
     images.append((tbl4, aff, 'tbl4'))
+    # images.append((tbl5, aff, 'tbl5'))
+    # images.append((tbl6, aff, 'tbl6'))
+    # images.append((tbl7, aff, 'tbl7'))
 
     tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
     images.append((tbl24, aff, 'tbl24'))
 
-    mask_tmp = tbl3/tbl3.max() > 0.06
-    images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
+    # mask_tmp = tbl3/tbl3.max() > 0.06
+    # images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
 
     levels = [0.06, 0.08, 0.10, 0.12] # , 0.14, 0.16, 0.18, 0.20, 0.22, 0.24, 0.26, 0.28, 0.30, 0.32]
 
@@ -1331,7 +1343,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     #     mask3 = tbl24 > lev
     #     vol_lev.append(np.sum(mask3))
     #     images.append((mask3.astype('f8'), aff, 'mask3_' + str(lev)))
-    
+
     # print(vol_lev)
 
     t = 2
@@ -1362,7 +1374,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # for i in range(5):
     #     bfh = binary_fill_holes(bfh)
-    
+
     # images.append((bfh.astype('f8'), aff, 'bfh'))
 
     # bfh2 = m42.copy()
@@ -1390,7 +1402,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # maskdl = ggm_dl > 0.5
     # centroids_im2 = centroids_im.copy()
-    # centroids_im2[maskdl] = -1 
+    # centroids_im2[maskdl] = -1
     # images.append((centroids_im2, aff, 'centroids_im2'))
 
     # lap_cim = laplace(centroids_im)
@@ -1414,7 +1426,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
         images.append((data_labels_mask3.astype('f8'), aff, 'dlm3'))
         images.append((centroids_mask_im3.astype('f8'), aff, 'cim3'))
-    
+
     # seed = 30 * (1 - mask2)
     # filled = reconstruction(seed, 10 * m42, method='erosion')
     # images.append((filled.astype('f8'), aff, 'filled'))
@@ -1426,9 +1438,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # kernel = ball(2)
     # closing = binary_closing(mask6, structure=kernel, iterations=1).astype('f8')
 
-    
+
     # images.append((closing.astype('f8'), aff, 'closing'))
-    
+
     # dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
     # ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
 
@@ -1445,7 +1457,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # glap = gaussian_laplace(mask2.astype('f8'), sigma=2)
     # images.append((glap, aff, 'glap'))
 
-    
+
     # radii = [14., 24., 34.]
     # percs = [5., 10.] # only 5
 
@@ -1459,7 +1471,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     #         tbl_tmp = throwing_balls_light(mask_orig, W=W, radius=r, samples=20000, perc=p)
     #         tblns += tbl_tmp/tbl_tmp.max()
     # print('Total time ', t)
-    
+
     # images.append((tblns, aff, 'tblns'))
 
     t = 1
