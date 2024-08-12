@@ -1412,8 +1412,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # glap = gaussian_laplace(mask2.astype('f8'), sigma=2)
     # images.append((glap, aff, 'glap'))
 
-    big_objects = labels_analysis(data_labels, mask3_bc)
-    images.append((big_objects, aff, 'big_objects'))
+    la = False
+    if la:
+        big_objects = labels_analysis(data_labels, mask3_bc)
+        images.append((big_objects, aff, 'big_objects'))
+
+        
 
     return images
 
