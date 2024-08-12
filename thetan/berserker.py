@@ -833,9 +833,34 @@ def labels_analysis(data_labels, mask, grand_thr=100000):
 
     # t = 1
     print('Duration ', time() - t)
-
     return grand_labels
 
+
+def labels_analysis2(data_labels, mask, grand_thr=100000):
+
+    print('Focusing on the grand objects ...')
+    t = time()
+    unq, cnts = np.unique(data_labels.ravel(), return_counts=True)
+    lrg = grand_thr
+    print(cnts)
+    label_cnt = 1
+    grand_labels = 0 * data_labels
+    from dipy.viz import horizon
+    for l in unq:
+
+        if l > -1:
+            biggest = detect_largest_object(data_labels == l, structure=np.ones((3, 3, 3))) # second largest
+            if biggest.sum() > grand_thr:
+                kernel = ball(1)
+                biggest = binary_opening(biggest, structure=kernel, iterations=1, border_value=0)
+                grand_labels[biggest > 0] = label_cnt
+                print(biggest.max())
+                horizon(images=[(biggest.astype('f8'), np.eye(4), 'current')])
+                label_cnt += 1
+
+    # t = 1
+    print('Duration ', time() - t)
+    return grand_labels
 
 
 
@@ -1210,7 +1235,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     if pg:
         centroids_im_pg = centroid_images(data_labels_pg, centroids_pg)
-    
+
     if ng:
         centroids_im_ng = centroid_images(data_labels_ng, centroids_ng)
     centroids_median_im = median_filter(centroids_im, size=3)
@@ -1327,17 +1352,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         # images.append((data_labels_t, aff, 'dl_t'))
         images.append((final, aff, 'final'))
 
-    # TODO: pick the larger black object - it might be the brain
-    # use distance tranform with original mask
-
-    # images.append((overshoot2, aff, 'overshoot2'))
-    # images.append((overshoot3, aff, 'overshoot3'))
-    # images.append((closing, aff, 'closing'))
-
-    # tbl = throwing_balls_light(mask_orig, W=W, radius=24, samples=20000, perc=2)
-
-    # images.append((tbl, aff, 'tbl'))
-
 
     # mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
     mask2 = mask_orig.copy()
@@ -1386,9 +1400,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((data_labels2.astype('f8'), aff, 'data_labels2'))
 
+    grand_labels = labels_analysis2(data_labels2, None, grand_thr=100000)
+    images.append((grand_labels.astype('f8'), aff, 'grand_labels'))
+
     # TODO:!!! keep closest to center after separating each label
     # Maybe it works directly with centroids2 (xyz) without need for breaking clusters. Maybe ...
-    
+
 
     # Wgrad = gaussian_gradient_magnitude(W, sigma=1)
     # images.append((Wgrad.astype('f8'), aff, 'Wgrad'))
@@ -1401,7 +1418,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         tbl2 = throwing_balls_light(mask3, W=W, radius=24, samples=40000, perc=2)
         tbl3 = throwing_balls_light(mask3, W=W, radius=20, samples=40000, perc=2) # seems good ( perc 4 good too)
         tbl4 = throwing_balls_light(mask3, W=W, radius=12, samples=80000, perc=2)
-   
+
         images.append((tbl0, aff, 'tbl0'))
         images.append((tbl2, aff, 'tbl2'))
         images.append((tbl3, aff, 'tbl3'))
@@ -1412,7 +1429,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
         mask_tmp = tbl24 > 0.25
         # # images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
-        
+
         tbl34 = 0.5 * (tbl3/tbl3.max() + tbl4/tbl4.max())
         # # images.append((tbl34, aff, 'tbl34'))
 
@@ -1431,7 +1448,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         # mask5[ci, cj, ck] = 5
         # images.append((mask5.astype('f8'), aff, 'mask5'))
 
-   
+
     # dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
     # ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
 
