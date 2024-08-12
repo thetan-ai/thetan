@@ -1213,7 +1213,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     
     if ng:
         centroids_im_ng = centroid_images(data_labels_ng, centroids_ng)
-    # centroids_median_im = median_filter(centroids_im, size=3)
+    centroids_median_im = median_filter(centroids_im, size=3)
 
     standard_filters = False
     if standard_filters:
@@ -1222,7 +1222,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
         centroids_imm = median_filter(centroids_im, size=3)
 
-    masked_berserker = False
+    masked_berserker = True
     if masked_berserker:
         print('Applying Berserker 2 on X masked (i, j, k, 3w)')
         t = time()
@@ -1274,6 +1274,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((sums_im, aff, 'sums_im'))
 
     images.append((centroids_im, aff, 'centroids_im'))
+    images.append((centroids_median_im, aff, 'centroids_median_im'))
 
     if pg:
         images.append((centroids_im_pg, aff, 'centroids_im_pg'))
@@ -1356,8 +1357,38 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((mask3, aff, 'mask3'))
 
     kernel = ball(2)
-    mask3_bc = binary_closing(mask3, structure=kernel, iterations=2, border_value=-2)
+    mask3_bc = binary_closing(mask3, structure=kernel, iterations=3, border_value=-2)
     images.append((mask3_bc.astype('f8'), aff, 'mask3_bc'))
+
+    # tbl0 = throwing_balls_light(mask2, W=W, radius=36, samples=20000, perc=2)
+    tbl1 = throwing_balls_light(mask3_bc, W=W, radius=12, samples=80000, perc=10)
+    tbl1 = tbl1 / tbl1.max()
+    images.append((tbl1.astype('f8'), aff, 'tbl1'))
+
+    neg_mask3_bc = 1 - mask3_bc
+
+    mask4 = detect_largest_object(neg_mask3_bc, None)
+    images.append((mask4.astype('f8'), aff, 'mask4'))
+
+    # mask4[tbl1 < 0.3] = 0
+
+    centroids_median_im[mask4 == 0] = 0
+    X2 = X.copy()
+    X2[:, 3] = centroids_median_im.ravel()
+
+    # I need an aabb somewhere here
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 1.5, data_dims=data.shape, verbose=False, mask=mask4.ravel().astype('bool'))
+    print('Duration ', time() - t)
+    print()
+
+    images.append((data_labels2.astype('f8'), aff, 'data_labels2'))
+
+    # TODO:!!! keep closest to center after separating each label
+    # Maybe it works directly with centroids2 (xyz) without need for breaking clusters. Maybe ...
+    
 
     # Wgrad = gaussian_gradient_magnitude(W, sigma=1)
     # images.append((Wgrad.astype('f8'), aff, 'Wgrad'))
@@ -1417,7 +1448,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         big_objects = labels_analysis(data_labels, mask3_bc)
         images.append((big_objects, aff, 'big_objects'))
 
-        
+
+
 
     return images
 
