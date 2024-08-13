@@ -845,18 +845,18 @@ def labels_analysis2(data_labels, mask, grand_thr=100000):
     print(cnts)
     label_cnt = 1
     grand_labels = 0 * data_labels
-    from dipy.viz import horizon
+    # from dipy.viz import horizon
     for l in unq:
 
         if l > -1:
             biggest = detect_largest_object(data_labels == l, structure=np.ones((3, 3, 3))) # second largest
-            if biggest.sum() > grand_thr:
-                kernel = ball(1)
-                biggest = binary_opening(biggest, structure=kernel, iterations=1, border_value=0)
-                grand_labels[biggest > 0] = label_cnt
-                print(biggest.max())
-                horizon(images=[(biggest.astype('f8'), np.eye(4), 'current')])
-                label_cnt += 1
+           
+            kernel = ball(1)
+            biggest = binary_opening(biggest, structure=kernel, iterations=1, border_value=0)
+            grand_labels[biggest > 0] = label_cnt
+            print(biggest.max())
+            # horizon(images=[(biggest.astype('f8'), np.eye(4), 'current')])
+            label_cnt += 1
 
     # t = 1
     print('Duration ', time() - t)
@@ -1363,18 +1363,26 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     tbl0 = throwing_balls_light(mask2, W=W, radius=28, samples=20000, perc=2)
     tbl0 = tbl0 / tbl0.max()
 
+    images.append((tbl0, aff, 'tbl0'))
+
     mask3 = mask2.copy()
     # mask3 = mask_ext.copy()
     # mask3 = mask_ci.copy()
-    mask3[tbl0 > 0.2] = 0
 
+    potential_focus = tbl0 > 0.2
+    focus = detect_largest_object(potential_focus, None)
+    images.append((focus, aff, 'focus'))
+
+    ci, cj, ck = np.round(center_of_mass(focus), 0).astype(int)
+    print('Nicer center ...', ci, cj, ck)
+    
+    mask3[focus.astype('bool')] = 0
     images.append((mask3, aff, 'mask3'))
 
     kernel = ball(2)
     mask3_bc = binary_closing(mask3, structure=kernel, iterations=3, border_value=-2)
     images.append((mask3_bc.astype('f8'), aff, 'mask3_bc'))
 
-    # tbl0 = throwing_balls_light(mask2, W=W, radius=36, samples=20000, perc=2)
     tbl1 = throwing_balls_light(mask3_bc, W=W, radius=12, samples=80000, perc=10)
     tbl1 = tbl1 / tbl1.max()
     images.append((tbl1.astype('f8'), aff, 'tbl1'))
@@ -1384,7 +1392,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask4 = detect_largest_object(neg_mask3_bc, None)
     images.append((mask4.astype('f8'), aff, 'mask4'))
 
-    # mask4[tbl1 < 0.3] = 0
+    # tbl2 = throwing_balls_light(1 - mask4, W=W, radius=8, samples=80000, perc=2)
+    # tbl2 = tbl2 / tbl2.max()
+    # images.append((tbl2.astype('f8'), aff, 'tbl2'))
 
     centroids_median_im[mask4 == 0] = 0
     X2 = X.copy()
@@ -1392,16 +1402,51 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # I need an aabb somewhere here
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    # kernel = ball(9)
+    # mask4_bo = binary_opening(mask4, structure=kernel, iterations=1, border_value=-2)
+    # images.append((mask4_bo.astype('f8'), aff, 'mask4_bo'))
+    
+    # centroids2[]
+
+    # TODO: Rather than dividing by 4 just break labels in parts?
+    print('Applying Berserker 2 on X2 (i, j, k, 3w) ...')
     t = time()
-    data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 1.5, data_dims=data.shape, verbose=False, mask=mask4.ravel().astype('bool'))
+    data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 4., data_dims=data.shape, verbose=False, mask=mask4.ravel().astype('bool'))
     print('Duration ', time() - t)
     print()
 
     images.append((data_labels2.astype('f8'), aff, 'data_labels2'))
 
-    grand_labels = labels_analysis2(data_labels2, None, grand_thr=100000)
-    images.append((grand_labels.astype('f8'), aff, 'grand_labels'))
+
+    dcs = []
+    for c in centroids2[:, :3]:
+
+        fc = np.array([[ci, cj, ck]])
+        fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
+        fc_w = fc_w.T[0]
+        dc = np.sum((fc_w - c) ** 2)
+        dcs.append(dc)
+
+    t = 2
+
+    dist_im = np.zeros(data.shape)
+    unq2, cnts2 = np.unique(data_labels2.ravel(), return_counts=True)
+    for i, l in enumerate(unq2):
+        dist_im[data_labels2 == l] = dcs[i]
+
+    dist_im = dist_im / dist_im.max()
+    images.append((dist_im.astype('f8'), aff, 'dist_im'))
+
+    dist_focus = dist_im < 0.16
+    images.append((dist_focus.astype('f8'), aff, 'dist_focus'))
+    
+    mask5 = detect_largest_object(dist_focus, None)
+    images.append((mask5.astype('f8'), aff, 'mask5'))
+
+    # mask5[ci, cj, ck] = 2
+
+    # grand_labels = labels_analysis2(data_labels2, None, grand_thr=100000)
+    # images.append((grand_labels.astype('f8'), aff, 'grand_labels'))
 
     # TODO:!!! keep closest to center after separating each label
     # Maybe it works directly with centroids2 (xyz) without need for breaking clusters. Maybe ...
