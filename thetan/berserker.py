@@ -6,7 +6,7 @@ from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binar
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features
+from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 
@@ -84,6 +84,66 @@ def candidate_labels_outliers(centroids, candidates, initial_labels):
 
     return nice, updated_labels
 
+
+def labels_to_centroids(data, labels):
+
+    unique_labels, unique_counts = np.unique(labels,
+                                             return_counts=True)
+
+    centroids = np.zeros((len(unique_labels), data.shape[1]))
+
+    for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
+        centroids[i] = np.sum(data[labels == u], axis=0) / c
+
+    return centroids
+
+
+def tsg_randomized(X, theta, metric='euclidean', num_shuffles=10):
+    sum_of_time = 0
+    all_centroids = {}
+    X_work = X.copy()
+
+    num_centroids = []
+    timings = []
+    for s in range(num_shuffles):
+
+        np.random.shuffle(X_work)
+        X_work_cp = np.ascontiguousarray(X_work)
+        t1 = time()
+        centroids, _ = theta_g1(X_work_cp, theta=theta, metric=metric)
+        t2 = time()
+        timings.append(t2-t1)
+
+        all_centroids[s] = centroids
+        num_centroids.append(len(centroids))
+
+    print('Time for tg1 calls', np.sum(timings))
+    sum_of_time += np.sum(timings)
+    total_num_centroids = np.sum(num_centroids)
+    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype='f8')
+
+    offset = 0
+
+    for s in range(num_shuffles):
+
+        X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
+        offset += all_centroids[s].shape[0]
+
+    t1 = time()
+    new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
+    t2 = time()
+    sum_of_time += t2 - t1
+    print('Time for tg1 on centroids', t2 - t1)
+
+
+    t1 = time()
+    final_indices = assign(X, new_centroids, metric=metric)
+    t2 = time()
+    sum_of_time += t2 - t1
+    print('Time for assign calls', t2 - t1)
+    final_centroids = labels_to_centroids(X, final_indices)
+
+    return final_centroids, final_indices, sum_of_time
 
 
 def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
@@ -853,7 +913,7 @@ def labels_analysis2(data_labels, mask, grand_thr=100000):
 
         if l > -1:
             biggest = detect_largest_object(data_labels == l, structure=np.ones((3, 3, 3))) # second largest
-           
+
             kernel = ball(1)
             biggest = binary_opening(biggest, structure=kernel, iterations=1, border_value=0)
             grand_labels[biggest > 0] = label_cnt
@@ -1246,7 +1306,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     if ng:
         centroids_im_ng = centroid_images(data_labels_ng, centroids_ng)
- 
+
     masked_berserker = False
     if masked_berserker:
         print('Applying Berserker 2 on X masked (i, j, k, 3w)')
@@ -1305,7 +1365,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((centroids_im_pg, aff, 'centroids_im_pg'))
     if ng:
         images.append((centroids_im_ng, aff, 'centroids_im_ng'))
-        
+
     negone = False # requires masked berserker
     if negone:
         overshoot = np.zeros(data.shape)
@@ -1372,7 +1432,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     ci, cj, ck = np.round(center_of_mass(focus), 0).astype(int)
     print('Nicer center ...', ci, cj, ck)
-    
+
     mask3[focus.astype('bool')] = 0
     images.append((mask3, aff, 'mask3'))
 
@@ -1427,7 +1487,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # kernel = ball(9)
     # mask4_bo = binary_opening(mask4, structure=kernel, iterations=1, border_value=-2)
     # images.append((mask4_bo.astype('f8'), aff, 'mask4_bo'))
-    
+
     # centroids2[]
 
     # TODO: Rather than dividing by 4 just break labels in parts?
@@ -1462,7 +1522,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     dist_focus = dist_im < 0.16
     images.append((dist_focus.astype('f8'), aff, 'dist_focus'))
-    
+
     mask5 = detect_largest_object(dist_focus, None)
     images.append((mask5.astype('f8'), aff, 'mask5'))
 
@@ -1470,9 +1530,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Applying Berserker 2 on XC ... ')
     t = time()
     XC = np.ascontiguousarray(centroids2)
-    
+
     centroidsXC, labelsXC = berserker2(XC, theta_value * 1.2, all_out=False)
-    
+
     print('Duration ', time() - t)
     print()
 

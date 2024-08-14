@@ -26,7 +26,7 @@ def labels_to_centroids(data, labels):
 
     unique_labels, unique_counts = np.unique(labels,
                                              return_counts=True)
-    
+
     centroids = np.zeros((len(unique_labels), data.shape[1]))
 
     for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
@@ -48,7 +48,7 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
         centroids, _ = theta_g1(X_work_cp, theta=theta, metric=metric)
-        t2 = time()        
+        t2 = time()
         timings.append(t2-t1)
 
         all_centroids[s] = centroids
@@ -65,13 +65,13 @@ def theta_g2(X, theta, metric='euclidean', num_shuffles=10):
 
         X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
         offset += all_centroids[s].shape[0]
-    
+
     t1 = time()
     new_centroids, _ = theta_g1(X_centroids, theta=theta, metric=metric)
     t2 = time()
     sum_of_time += t2 - t1
     print('Time for tg1 on centroids', t2 - t1)
-    
+
 
     t1 = time()
     final_indices = assign(X, new_centroids, metric=metric)
@@ -99,16 +99,16 @@ def evaluate_centroids(ecentroids=None, centroids=None, thr=0.5, mode='NMI', X=N
 
     elif mode == 'SIL':
         score = silhouette_score(X, label)
-    
+
     elif mode == 'FMS':
         score = fowlkes_mallows_score(true_label, label)
 
     else:
         print('no mode')
         score = 0
-    
-    
-    
+
+
+
     print('>>>>> ', score)
     return score
 
@@ -287,7 +287,7 @@ for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [15.4, 15.4, 15.4, 
                     x1 = 5 * x + r * np.cos(theta)
                     y1 = 5 * y + r * np.sin(theta)
                     coords.append([x1, y1])
-                    
+
                 centroids.append([5 * x, 5 * y])
 
             points = np.array(coords)
@@ -326,7 +326,7 @@ for cluster_n, theta, exp_type in zip([10, 100, 1000, 2000], [15.4, 15.4, 15.4, 
                 plot_centroids_clusters(points, kcentroids, klabels,
                                         'kmeans',
                                         initial_centroids=centroids)
-                                    
+
             scores['method'].append('kmeans')
             for mode in modes:
                 if mode == 'SIL':
