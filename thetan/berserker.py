@@ -11,6 +11,9 @@ from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 
 
+def check_arr(a):
+    print(a.dtype, a.min(), a.max())
+
 def check_module_load():
 
     print('yep')
@@ -1103,11 +1106,15 @@ def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300.,
     return c_f, W
 
 
-def detect_largest_object(data, structure=np.ones((3, 3, 3))):
+def detect_largest_object(data, structure=np.ones((3, 3, 3)), actually=False):
     # returns the largest object (second largest after background) found in a binary image (data)
+    # or first if actually is True.
     data_labels_t, num_t = label(data, structure=structure)
     dlt_unq, dlt_cnts = np.unique(data_labels_t, return_counts=True)
-    dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
+    if actually:
+        dl_final = dlt_unq[np.argsort(dlt_cnts)[-1]]
+    else:
+        dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
     final = np.zeros(data.shape, dtype='f8')
     final[data_labels_t == dl_final] = 1.
     return final
@@ -1232,22 +1239,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
     centroids_im = centroid_images(data_labels, centroids)
+    centroids_median_im = median_filter(centroids_im, size=3)
 
     if pg:
         centroids_im_pg = centroid_images(data_labels_pg, centroids_pg)
 
     if ng:
         centroids_im_ng = centroid_images(data_labels_ng, centroids_ng)
-    centroids_median_im = median_filter(centroids_im, size=3)
-
-    standard_filters = False
-    if standard_filters:
-
-        centroids_imb = gaussian_filter(centroids_im, sigma=1)
-        centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
-        centroids_imm = median_filter(centroids_im, size=3)
-
-    masked_berserker = True
+ 
+    masked_berserker = False
     if masked_berserker:
         print('Applying Berserker 2 on X masked (i, j, k, 3w)')
         t = time()
@@ -1257,7 +1257,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Duration ', time() - t)
         print()
 
-        centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
+        # centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
         # centroids_mask_median_im = median_filter(centroids_mask_im, size=3)
         # sums_im = triangular_variance(mask_orig, Ivol, Jvol, Kvol, W, msamples=100, osamples=5000)
 
@@ -1272,11 +1272,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((mask_ext, aff, 'mask_ext'))
     # images.append((mask_ci, aff, 'mask_ci'))
 
+
     if masked_berserker:
-        # images.append((centroids_mask_im, aff, 'centroids_mask_im'))
-        #   images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
         images.append((data_labels_mask, aff, 'dl_mask'))
 
+        t = 2
     if auto_edt_rm:
         images.append((total_pg, aff, 'total_pg'))
         images.append((total_blur_pg, aff, 'total_blur_pg'))
@@ -1305,9 +1305,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         images.append((centroids_im_pg, aff, 'centroids_im_pg'))
     if ng:
         images.append((centroids_im_ng, aff, 'centroids_im_ng'))
-    # images.append((1 - (centroids_im_ng > 100).astype('f8'), aff, '1 - (centroids_im_ng > 100)'))
-    # images.append((centroids_median_im, aff, 'centroids_median_im'))
-
+        
     negone = False # requires masked berserker
     if negone:
         overshoot = np.zeros(data.shape)
@@ -1352,7 +1350,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         # images.append((data_labels_t, aff, 'dl_t'))
         images.append((final, aff, 'final'))
 
-
     # mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
     mask2 = mask_orig.copy()
     mask2 = mask2.astype('f8')
@@ -1379,6 +1376,31 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask3[focus.astype('bool')] = 0
     images.append((mask3, aff, 'mask3'))
 
+    # TODO: we need to implement our own label functions that accepts arbitrary sizes of kernels
+    # currently we need to use morphological filters to make it work with 3x3x3 kernels.
+
+    kernel = ball(2)
+    mask3_bo = binary_opening(mask3, structure=kernel, iterations=1, border_value=1) # check borders
+
+    # getting the background
+    bk = detect_largest_object(mask3_bo, structure=None, actually=True)
+    images.append((bk, aff, 'bk'))
+
+    mask_nobk = np.abs(mask3 - bk)
+    images.append((mask_nobk, aff, 'mask_nobk'))
+    # TODO: check borders
+
+    print('Applying Berserker 2 on X with nobk mask')
+    t = time()
+    maskr = mask_nobk.ravel().astype('bool')
+
+    data_labels_nobk, centroids_nobk = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
+    print('Duration ', time() - t)
+    print()
+
+    images.append((mask_nobk, aff, 'mask_nobk'))
+    images.append((data_labels_nobk, aff, 'data_labels_nobk'))
+
     kernel = ball(2)
     mask3_bc = binary_closing(mask3, structure=kernel, iterations=3, border_value=-2)
     images.append((mask3_bc.astype('f8'), aff, 'mask3_bc'))
@@ -1400,7 +1422,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     X2 = X.copy()
     X2[:, 3] = centroids_median_im.ravel()
 
-    # I need an aabb somewhere here
+    # TODO: I may need an aabb somewhere here
 
     # kernel = ball(9)
     # mask4_bo = binary_opening(mask4, structure=kernel, iterations=1, border_value=-2)
@@ -1416,7 +1438,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print()
 
     images.append((data_labels2.astype('f8'), aff, 'data_labels2'))
-
+    centroids_im2 = centroid_images(data_labels2, centroids2)
+    images.append((centroids_im2.astype('f8'), aff, 'centroids_im2'))
 
     dcs = []
     for c in centroids2[:, :3]:
@@ -1424,7 +1447,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         fc = np.array([[ci, cj, ck]])
         fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
         fc_w = fc_w.T[0]
-        dc = np.sum((fc_w - c) ** 2)
+        dc = np.sqrt(np.sum((fc_w - c) ** 2))
         dcs.append(dc)
 
     t = 2
@@ -1443,56 +1466,31 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask5 = detect_largest_object(dist_focus, None)
     images.append((mask5.astype('f8'), aff, 'mask5'))
 
-    # mask5[ci, cj, ck] = 2
 
-    # grand_labels = labels_analysis2(data_labels2, None, grand_thr=100000)
-    # images.append((grand_labels.astype('f8'), aff, 'grand_labels'))
+    print('Applying Berserker 2 on XC ... ')
+    t = time()
+    XC = np.ascontiguousarray(centroids2)
+    
+    centroidsXC, labelsXC = berserker2(XC, theta_value * 1.2, all_out=False)
+    
+    print('Duration ', time() - t)
+    print()
 
-    # TODO:!!! keep closest to center after separating each label
-    # Maybe it works directly with centroids2 (xyz) without need for breaking clusters. Maybe ...
+    from fury import actor, window
+    scene = window.Scene()
+    points = actor.dot(XC[:, :3], (1, 1, 1))
+    scene.add(points)
+    # points2 = actor.dot(centroids_mask[:, :3], (1, 0, 0))
+    points2 = actor.dot(centroids_nobk[:, :3], (1, 0, 0))
+    scene.add(points2)
+    window.show(scene)
 
+    t = 2
 
-    # Wgrad = gaussian_gradient_magnitude(W, sigma=1)
-    # images.append((Wgrad.astype('f8'), aff, 'Wgrad'))
-
-    # tblx = throwing_balls_light(mask3_bc.astype('f8'), W=W, radius=12, samples=80000, perc=6)
-    # images.append((tblx / tblx.max(), aff, 'tblxn'))
-
-    tbl_extras = False
-    if tbl_extras:
-        tbl2 = throwing_balls_light(mask3, W=W, radius=24, samples=40000, perc=2)
-        tbl3 = throwing_balls_light(mask3, W=W, radius=20, samples=40000, perc=2) # seems good ( perc 4 good too)
-        tbl4 = throwing_balls_light(mask3, W=W, radius=12, samples=80000, perc=2)
-
-        images.append((tbl0, aff, 'tbl0'))
-        images.append((tbl2, aff, 'tbl2'))
-        images.append((tbl3, aff, 'tbl3'))
-        images.append((tbl4, aff, 'tbl4'))
-
-        tbl24 = 0.5 * (tbl2/tbl2.max() + tbl4/tbl4.max())
-        # # images.append((tbl24, aff, 'tbl24'))
-
-        mask_tmp = tbl24 > 0.25
-        # # images.append((mask_tmp.astype('f8'), aff, 'mask_tmp'))
-
-        tbl34 = 0.5 * (tbl3/tbl3.max() + tbl4/tbl4.max())
-        # # images.append((tbl34, aff, 'tbl34'))
-
-        mask_tmp2 = tbl34 > 0.25
-        # # images.append((mask_tmp2.astype('f8'), aff, 'mask_tmp2'))
-
-        mask4 = detect_largest_object(mask_tmp)
-        # # images.append((mask4.astype('f8'), aff, 'mask24'))
-
-        mask5 = detect_largest_object(mask_tmp2)
-        # # images.append((mask5.astype('f8'), aff, 'mask34'))
-
-        # ci, cj, ck = np.round(center_of_mass(mask4), 0).astype(int)
-
-        # mask5 = mask4.copy()
-        # mask5[ci, cj, ck] = 5
-        # images.append((mask5.astype('f8'), aff, 'mask5'))
-
+    divider_im = np.zeros(data.shape)
+    for i, l in enumerate(unq2):
+        divider_im[data_labels2 == l] = labelsXC[i]
+    images.append((divider_im.astype('f8'), aff, 'divider_im'))
 
     # dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
     # ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
