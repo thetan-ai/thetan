@@ -1416,7 +1416,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # images.append((mask2, aff, 'mask2'))
 
-    # tbl0 = throwing_balls_light(mask2, W=W, radius=36, samples=20000, perc=2)
+    # currently using original mask
     tbl0 = throwing_balls_light(mask2, W=W, radius=28, samples=20000, perc=2)
     tbl0 = tbl0 / tbl0.max()
 
@@ -1426,26 +1426,32 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # mask3 = mask_ext.copy()
     # mask3 = mask_ci.copy()
 
+    # keep only a high focus area
     potential_focus = tbl0 > 0.2
+    # find largest object (after bk)
     focus = detect_largest_object(potential_focus, None)
     images.append((focus, aff, 'focus'))
 
+    # calculate center of mass
     ci, cj, ck = np.round(center_of_mass(focus), 0).astype(int)
     print('Nicer center ...', ci, cj, ck)
 
+    # make mask3 zero in the focus areas to remove errors from large ventricles etc.
     mask3[focus.astype('bool')] = 0
     images.append((mask3, aff, 'mask3'))
 
     # TODO: we need to implement our own label functions that accepts arbitrary sizes of kernels
     # currently we need to use morphological filters to make it work with 3x3x3 kernels.
 
+    # use opening to increase mask3 (cleared original mask)
     kernel = ball(2)
     mask3_bo = binary_opening(mask3, structure=kernel, iterations=1, border_value=1) # check borders
 
-    # getting the background
+    # getting the actual background (assuming it is the largest object) TODO: add a secondary method for detecting bk
     bk = detect_largest_object(mask3_bo, structure=None, actually=True)
     images.append((bk, aff, 'bk'))
 
+    # remove actual background. now only csf areas should remain.
     mask_nobk = np.abs(mask3 - bk)
     images.append((mask_nobk, aff, 'mask_nobk'))
     # TODO: check borders
@@ -1453,12 +1459,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Applying Berserker 2 on X with nobk mask')
     t = time()
     maskr = mask_nobk.ravel().astype('bool')
-
     data_labels_nobk, centroids_nobk = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
-    images.append((mask_nobk, aff, 'mask_nobk'))
     images.append((data_labels_nobk, aff, 'data_labels_nobk'))
 
     kernel = ball(2)
@@ -1493,7 +1497,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # TODO: Rather than dividing by 4 just break labels in parts?
     print('Applying Berserker 2 on X2 (i, j, k, 3w) ...')
     t = time()
-    data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 4., data_dims=data.shape, verbose=False, mask=mask4.ravel().astype('bool'))
+    data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 5., data_dims=data.shape, verbose=False, mask=mask4.ravel().astype('bool'))
     print('Duration ', time() - t)
     print()
 
@@ -1527,30 +1531,31 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((mask5.astype('f8'), aff, 'mask5'))
 
 
-    print('Applying Berserker 2 on XC ... ')
-    t = time()
-    XC = np.ascontiguousarray(centroids2)
+    # print('Applying Berserker 2 on XC ... ')
+    # t = time()
+    # XC = np.ascontiguousarray(centroids2)
 
-    centroidsXC, labelsXC = berserker2(XC, theta_value * 1.2, all_out=False)
+    # centroidsXC, labelsXC = berserker2(XC, theta_value * 1.2, all_out=False)
 
-    print('Duration ', time() - t)
-    print()
+    # print('Duration ', time() - t)
+    # print()
 
     from fury import actor, window
     scene = window.Scene()
-    points = actor.dot(XC[:, :3], (1, 1, 1))
+    points = actor.dot(centroids2[:, :3], (1, 1, 1))
     scene.add(points)
-    # points2 = actor.dot(centroids_mask[:, :3], (1, 0, 0))
     points2 = actor.dot(centroids_nobk[:, :3], (1, 0, 0))
     scene.add(points2)
     window.show(scene)
 
     t = 2
 
-    divider_im = np.zeros(data.shape)
-    for i, l in enumerate(unq2):
-        divider_im[data_labels2 == l] = labelsXC[i]
-    images.append((divider_im.astype('f8'), aff, 'divider_im'))
+    divider = False
+    if divider:
+        divider_im = np.zeros(data.shape)
+        for i, l in enumerate(unq2):
+            divider_im[data_labels2 == l] = labelsXC[i]
+        images.append((divider_im.astype('f8'), aff, 'divider_im'))
 
     # dx, dy, dz, gm = gaussian_gradients(mask2.astype('f8'), sigma=1)
     # ggm = gaussian_gradient_magnitude(mask2.astype('f8'), sigma=1)
