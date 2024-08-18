@@ -1468,7 +1468,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
+    centroids_im_nobk = centroid_images(data_labels_nobk, centroids_nobk)
     images.append((data_labels_nobk, aff, 'data_labels_nobk'))
+    
+
+
 
     # kernel = ball(2)
     # mask3_bc = binary_closing(mask3, structure=kernel, iterations=3, border_value=-2)
@@ -1494,12 +1498,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     # centroids2[]
 
-    # TODO: Rather than dividing by 4 just break labels in parts?
-    # print('Applying Berserker 2 on X2 (i, j, k, 3w) ...')
-    # t = time()
-    # data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 5., data_dims=data.shape, verbose=False, mask=mask4.ravel().astype('bool'))
-    # print('Duration ', time() - t)
-    # print()
 
     # images.append((data_labels2.astype('f8'), aff, 'data_labels2'))
     # centroids_im2 = centroid_images(data_labels2, centroids2)
@@ -1517,6 +1515,126 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     poi2center = np.asarray(poi2center)
 
+    
+    centroids_nobk2 = centroids_nobk.copy()
+    for i, d in enumerate(poi2center):
+        if d < 120:
+            centroids_nobk2[i, 3] = 1.
+
+    mask_reduced_nobk2 = centroid_images(data_labels_nobk, centroids_nobk2)
+    images.append((mask_reduced_nobk2, aff, 'mask_reduced_nobk2'))
+
+
+    centroids_im_sp  = np.round(centroids_median_im, 0).astype('i8')
+    vals, counts = np.unique(centroids_im_sp, return_counts=True)
+    images.append((centroids_im_sp, aff, 'centroids_im_sp'))
+
+    from dipy.viz import horizon
+
+    X_median = X.copy()
+    X_median[:, 3] = centroids_median_im.ravel()
+
+    print('Splitting parts ....')
+    print(vals)
+    print(counts)
+    final = np.zeros(data.shape)
+    final_exp = np.zeros(data.shape)
+
+    fc = np.array([[ci, cj, ck]])
+    fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
+    fc_w = fc_w.T[0]
+
+    cnt = 1
+
+    for v in vals:
+        print(v)
+        if v > 100:
+            mask_tmp = np.zeros(data.shape)
+            mask_tmp[centroids_im_sp == v] = 1
+            data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value / 8., data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
+            dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
+            # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
+            
+            # starting from 1 because we have -1 in dl_tmp
+            poi = centroids_tmp[1:, :3]
+
+            poi2center = []
+            for p in poi:
+                dc = np.sqrt(np.sum((fc_w - p) ** 2))
+                poi2center.append(dc)
+
+            poi2center = np.asarray(poi2center)
+
+            # TODO: get a percentage of the closest ones
+
+            for i, d in enumerate(poi2center):
+                if d < 100:
+                    final[data_labels_tmp == dl_tmp[i + 1]] = 1
+                    final_exp[data_labels_tmp == dl_tmp[i + 1]] = cnt
+                    cnt += 1
+
+            # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
+            # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
+            # dl_tmp, _ = np.unique(data_labels_tmp, return_counts=True)
+            # for l in dl_tmp: 
+            #     centroids_im_sp[data_labels_tmp == l]
+
+
+    images.append((final, aff, 'final'))
+    images.append((final_exp, aff, 'final_exp'))
+
+    # # TODO: Rather than dividing by 4 or 5 just break labels in parts?
+    # print('Applying Berserker 2 on X2 (i, j, k, 3w) ...')
+    # t = time()
+    # # TODO: only on the sphere (d < 120)
+    # mask_X2 = (1 - centroids_im_nobk2)
+    # data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 4., data_dims=data.shape, verbose=False, mask=mask_X2.ravel().astype('bool'))
+    # print('Duration ', time() - t)
+    # print()
+
+    # centroids_im2 = centroid_images(data_labels2, centroids2)
+    # images.append((data_labels2, aff, 'data_labels2'))
+    # images.append((centroids_im2, aff, 'centroids_im2'))
+    # images.append((mask_X2, aff, 'mask_X2'))
+
+    return images
+
+    # in_out_phase
+    dl2, dl_cnts2 = np.unique(data_labels2, return_counts=True)
+    
+    mask_tmp = np.zeros(data.shape)
+    final = np.zeros(data.shape)
+
+    for l in dl2:
+        print('>>> ', l)
+        mask_tmp[data_labels2 == l] = 1
+        print('Running Berserker2 on mask_tmp ...')
+        t = time()
+        data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X2, theta_value / 6., data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
+        print('Duration ', time() - t)
+        print()
+
+        poi = centroids_tmp[:, :3]
+        fc = np.array([[ci, cj, ck]])
+        fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
+        fc_w = fc_w.T[0]
+
+        poi2center = []
+        for p in poi:
+            dc = np.sqrt(np.sum((fc_w - p) ** 2))
+            poi2center.append(dc)
+
+        poi2center = np.asarray(poi2center)
+        # TODO: get a percentage of the closest ones
+
+        for i, d in enumerate(poi2center):
+            if d < 100:
+                final[data_labels_tmp == i] = 1
+
+    images.append((final, aff, 'final'))
+ 
+
+
     # t = 2
 
     # dist_im = np.zeros(data.shape)
@@ -1527,15 +1645,16 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # dist_im = dist_im / dist_im.max()
     # images.append((dist_im.astype('f8'), aff, 'dist_im'))
 
-   
-    from fury import actor, window, colormap
-    scene = window.Scene()
-    colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
-    points_ = actor.dot(np.array([fc_w]), (1, 1, 1))
-    points2_ = actor.dot(poi, colors)
-    scene.add(points_)
-    scene.add(points2_)
-    window.show(scene)
+    show_points = False
+    if show_points:
+        from fury import actor, window, colormap
+        scene = window.Scene()
+        colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
+        points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
+        points2_ = actor.point(poi, colors, point_radius=2.)
+        scene.add(points_)
+        scene.add(points2_)
+        window.show(scene)
 
     t = 2
 
