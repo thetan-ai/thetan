@@ -1564,8 +1564,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
             poi = np.ascontiguousarray(poi)
             puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
-            puzz2poi_mat[puzz2poi_mat < 50] = 0
-
              
 
             # TODO: get a percentage of the closest ones
