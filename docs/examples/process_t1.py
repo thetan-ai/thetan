@@ -76,7 +76,7 @@ if brainseg:
     print('Total duration ', time() - t)
     print()
 
-    horizon(images=images, bg_color=(1, 0.5, 0.5))
+    # horizon(images=images, bg_color=(1, 0.5, 0.5))
     print('Done')
 
 t = 1

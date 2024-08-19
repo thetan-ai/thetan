@@ -1,12 +1,12 @@
 from time import time
 import numpy as np
 from patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes
+from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes 
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign
+from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 
@@ -1529,8 +1529,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     vals, counts = np.unique(centroids_im_sp, return_counts=True)
     images.append((centroids_im_sp, aff, 'centroids_im_sp'))
 
-    from dipy.viz import horizon
-
     X_median = X.copy()
     X_median[:, 3] = centroids_median_im.ravel()
 
@@ -1556,18 +1554,23 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
             
             # starting from 1 because we have -1 in dl_tmp
-            poi = centroids_tmp[1:, :3]
+            puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
 
-            poi2center = []
-            for p in poi:
+            puzz2center = []
+            for p in puzz:
                 dc = np.sqrt(np.sum((fc_w - p) ** 2))
-                poi2center.append(dc)
+                puzz2center.append(dc)
+            puzz2center = np.asarray(puzz2center)
 
-            poi2center = np.asarray(poi2center)
+            poi = np.ascontiguousarray(poi)
+            puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
+            puzz2poi_mat[puzz2poi_mat < 50] = 0
+
+             
 
             # TODO: get a percentage of the closest ones
 
-            for i, d in enumerate(poi2center):
+            for i, d in enumerate(puzz2center):
                 if d < 100:
                     final[data_labels_tmp == dl_tmp[i + 1]] = 1
                     final_exp[data_labels_tmp == dl_tmp[i + 1]] = cnt
@@ -1592,58 +1595,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # print('Duration ', time() - t)
     # print()
 
-    # centroids_im2 = centroid_images(data_labels2, centroids2)
-    # images.append((data_labels2, aff, 'data_labels2'))
-    # images.append((centroids_im2, aff, 'centroids_im2'))
-    # images.append((mask_X2, aff, 'mask_X2'))
+
 
     return images
 
-    # in_out_phase
-    dl2, dl_cnts2 = np.unique(data_labels2, return_counts=True)
-    
-    mask_tmp = np.zeros(data.shape)
-    final = np.zeros(data.shape)
 
-    for l in dl2:
-        print('>>> ', l)
-        mask_tmp[data_labels2 == l] = 1
-        print('Running Berserker2 on mask_tmp ...')
-        t = time()
-        data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X2, theta_value / 6., data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
-        print('Duration ', time() - t)
-        print()
-
-        poi = centroids_tmp[:, :3]
-        fc = np.array([[ci, cj, ck]])
-        fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
-        fc_w = fc_w.T[0]
-
-        poi2center = []
-        for p in poi:
-            dc = np.sqrt(np.sum((fc_w - p) ** 2))
-            poi2center.append(dc)
-
-        poi2center = np.asarray(poi2center)
-        # TODO: get a percentage of the closest ones
-
-        for i, d in enumerate(poi2center):
-            if d < 100:
-                final[data_labels_tmp == i] = 1
-
-    images.append((final, aff, 'final'))
- 
-
-
-    # t = 2
-
-    # dist_im = np.zeros(data.shape)
-    # unq2, cnts2 = np.unique(data_labels2.ravel(), return_counts=True)
-    # for i, l in enumerate(unq2):
-    #     dist_im[data_labels2 == l] = dcs[i]
-
-    # dist_im = dist_im / dist_im.max()
-    # images.append((dist_im.astype('f8'), aff, 'dist_im'))
 
     show_points = False
     if show_points:
