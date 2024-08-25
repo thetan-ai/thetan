@@ -714,6 +714,7 @@ def mask_gt(data_labels, centroids, bk_thr=300, updated_labels=False):
     return mask
 
 
+
 def print_centroids(centroids):
     for idx, c in zip(range(centroids.shape[0]), centroids[:, -1]):
         print(idx, c)
@@ -1221,11 +1222,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     mask_ci = mask_lt(data_labels, centroids, bk_thr= orig_est * 1.5) # 1.2 previously - this parameter is important - it may need to be a hyperparameter
     mask_ext = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+
+
     # dt = distance_transform_edt(1 - mask_ext)
 
     mask_orig = W < orig_est
     W[mask_orig] = 0
     mask_orig = mask_orig.astype('uint8')
+
+    # mask_diff = mask_ext - mask_orig
 
     if pg or ng:
         print('Calculating gradients')
@@ -1330,6 +1335,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((data, aff, 'data'))
     images.append((mask_orig, aff, 'mask_orig'))
     images.append((mask_ext, aff, 'mask_ext'))
+    # images.append((mask_diff, aff, 'mask_diff'))
+
+
     # images.append((mask_ci, aff, 'mask_ci'))
 
 
@@ -1422,6 +1430,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((tbl0, aff, 'tbl0'))
 
+    # let's also use extended mask
+    # tble = throwing_balls_light(mask_ext, W=W, radius=5, samples=160000, perc=15)
+    # tble = tble / tble.max()
+
+    # images.append((tble, aff, 'tble'))
+
     mask3 = mask2.copy()
     # mask3 = mask_ext.copy()
     # mask3 = mask_ci.copy()
@@ -1448,8 +1462,17 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     bk = detect_largest_object(mask3_bo, structure=None, actually=True)
     images.append((bk, aff, 'bk'))
 
-    # remove actual background. now only darkish areas should remain.
-    mask_nobk = np.abs(mask3 - bk)
+    kernel = ball(8)
+    bk2 = binary_dilation(bk, structure=kernel, iterations=1)
+
+    images.append((bk2.astype('f8'), aff, 'bk2'))
+
+
+
+    # remove actual background.
+    mask_nobk = mask3.copy()
+    mask_nobk[bk2 > 0] = 0
+
 
     # remove any boundary issues
     mask_nobk[:2, :, :] = 0
@@ -1458,6 +1481,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_nobk[:,-2:, :] = 0
     mask_nobk[:, :, :2] = 0
     mask_nobk[:, :, -2:] = 0
+
+
   
     images.append((mask_nobk, aff, 'mask_nobk'))
 
@@ -1470,38 +1495,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     centroids_im_nobk = centroid_images(data_labels_nobk, centroids_nobk)
     images.append((data_labels_nobk, aff, 'data_labels_nobk'))
-    
-
-
-
-    # kernel = ball(2)
-    # mask3_bc = binary_closing(mask3, structure=kernel, iterations=3, border_value=-2)
-    # images.append((mask3_bc.astype('f8'), aff, 'mask3_bc'))
-
-    # tbl1 = throwing_balls_light(mask3_bc, W=W, radius=12, samples=80000, perc=10)
-    # tbl1 = tbl1 / tbl1.max()
-    # images.append((tbl1.astype('f8'), aff, 'tbl1'))
-
-    # neg_mask3_bc = 1 - mask3_bc
-
-    # mask4 = detect_largest_object(neg_mask3_bc, None)
-    # images.append((mask4.astype('f8'), aff, 'mask4'))
-
-    # X2 = X.copy()
-    # X2[:, 3] = centroids_median_im.ravel()
-
-    # TODO: I may need an aabb somewhere here
-
-    # kernel = ball(9)
-    # mask4_bo = binary_opening(mask4, structure=kernel, iterations=1, border_value=-2)
-    # images.append((mask4_bo.astype('f8'), aff, 'mask4_bo'))
-
-    # centroids2[]
-
-
-    # images.append((data_labels2.astype('f8'), aff, 'data_labels2'))
-    # centroids_im2 = centroid_images(data_labels2, centroids2)
-    # images.append((centroids_im2.astype('f8'), aff, 'centroids_im2'))
 
     poi = centroids_nobk[:, :3]
     fc = np.array([[ci, cj, ck]])
@@ -1513,9 +1506,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         dc = np.sqrt(np.sum((fc_w - p) ** 2))
         poi2center.append(dc)
 
-    poi2center = np.asarray(poi2center)
-
-    
+    poi2center = np.asarray(poi2center)    
     centroids_nobk2 = centroids_nobk.copy()
     for i, d in enumerate(poi2center):
         if d < 120:
@@ -1525,16 +1516,17 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((mask_reduced_nobk2, aff, 'mask_reduced_nobk2'))
 
 
-    centroids_im_sp  = np.round(centroids_median_im, 0).astype('i8')
-    vals, counts = np.unique(centroids_im_sp, return_counts=True)
-    images.append((centroids_im_sp, aff, 'centroids_im_sp'))
+    centroids_median_im_rnd  = np.round(centroids_median_im, 0).astype('i8')
+    vals, counts = np.unique(centroids_median_im_rnd, return_counts=True)
+    images.append((centroids_median_im_rnd, aff, 'centroids_median_im_rnd'))
 
+    print('Starting operating on median puzzles ...')
     X_median = X.copy()
-    X_median[:, 3] = centroids_median_im.ravel()
+    X_median[:, 3] = centroids_median_im_rnd.ravel().astype('f8')
 
-    print('Splitting parts ....')
-    print(vals)
-    print(counts)
+    print('Breaking phase ... with berserker 2 ...')
+    t = time()
+
     final = np.zeros(data.shape)
     final_exp = np.zeros(data.shape)
 
@@ -1544,17 +1536,23 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     cnt = 1
 
+    all_puzz_centroids = []
     for v in vals:
         print(v)
-        if v > 100:
+        if v > orig_est: # original mask intensity
+
             mask_tmp = np.zeros(data.shape)
-            mask_tmp[centroids_im_sp == v] = 1
+            mask_tmp[centroids_median_im_rnd == v] = 1
+
             data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value / 8., data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
             dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
+
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
             
             # starting from 1 because we have -1 in dl_tmp
             puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
+
+            all_puzz_centroids.extend(puzz)
 
             puzz2center = []
             for p in puzz:
@@ -1564,10 +1562,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
             poi = np.ascontiguousarray(poi)
             puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
-             
 
             # TODO: get a percentage of the closest ones
-
             for i, d in enumerate(puzz2center):
                 if d < 100:
                     final[data_labels_tmp == dl_tmp[i + 1]] = 1
@@ -1581,8 +1577,52 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
             #     centroids_im_sp[data_labels_tmp == l]
 
 
+    print('Duration ', time() - t)
+    print()
+
     images.append((final, aff, 'final'))
     images.append((final_exp, aff, 'final_exp'))
+
+    final_exp2 = final_exp.copy()
+    final_exp2[bk2 == 1] = 0
+    final_exp2[mask_nobk == 1] = 0
+
+    images.append((final_exp2, aff, 'final_exp2'))
+
+    final2 = np.zeros(data.shape)
+
+    mask_final_exp2 = final_exp2 > 0
+
+    images.append((mask_final_exp2.astype('f8'), aff, 'mask_final_exp2'))
+
+    final2[mask_final_exp2] = 1
+
+    images.append((final2.astype('f8'), aff, 'final2'))
+    
+    final2_smooth = gaussian_filter(10 * final2.astype('f8'), sigma=1)
+    images.append((final2_smooth.astype('f8'), aff, 'final2_smooth'))
+
+    print('Applying Berserker 2 on X with internal bk mask')
+    t = time()
+    maskr2 = ((final2_smooth > 0.2) & (final2_smooth < 1.2)).ravel()
+    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
+    print('Duration ', time() - t)
+    print()
+
+    images.extend([(final2_smooth, aff, 'f2smooth'), (boundary, aff, 'boundary')])
+
+    all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
+
+    allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, centroids_intbk, 'euclidean')
+
+    # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
+
+    kernel = ball(8)
+    final2o = binary_opening(final2, structure=kernel, iterations=1)
+
+    images.append((final2o.astype('f8'), aff, 'final_exp2o'))
+
+    print('Connected ', cnt, ' puzzles')
 
     # # TODO: Rather than dividing by 4 or 5 just break labels in parts?
     # print('Applying Berserker 2 on X2 (i, j, k, 3w) ...')

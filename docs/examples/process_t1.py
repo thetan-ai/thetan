@@ -4,7 +4,8 @@ from time import time
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
-from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg, prepare_data_3d, berserker2_3D
+from thetan.berserker import berserker2_brain_seg
+
 
 
 # T1 dataset
@@ -22,14 +23,14 @@ from thetan.berserker import berserker2, theta_g1, berserker2_brain_seg, prepare
 # fname = 'C:/Users/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
 # fname = 'C:/Users/elef/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+# fname = 'C:/Users/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
 
 
 # if platform.node() == 'Serges-MacBook-Pro.local':
@@ -68,16 +69,15 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 # horizon(images=[(data, np.eye(4), 'orig')])
 
-brainseg = True
-if brainseg:
-    print('Starting Thetan Berserker 2 for Brain Segmentation ...')
-    t = time()
-    images = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False)
-    print('Total duration ', time() - t)
-    print()
 
-    horizon(images=images, bg_color=(1, 0.5, 0.5))
-    print('Done')
+print('Starting Thetan Berserker 2 for Brain Segmentation ...')
+t = time()
+images = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False)
+print('Total duration ', time() - t)
+print()
+
+horizon(images=images, bg_color=(1, 0.5, 0.5))
+print('Done')
 
 t = 1
 
