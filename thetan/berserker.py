@@ -1,7 +1,7 @@
 from time import time
 import numpy as np
 from patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes 
+from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
@@ -1483,7 +1483,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_nobk[:, :, -2:] = 0
 
 
-  
+
     images.append((mask_nobk, aff, 'mask_nobk'))
 
     print('Applying Berserker 2 on X with nobk mask')
@@ -1506,7 +1506,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         dc = np.sqrt(np.sum((fc_w - p) ** 2))
         poi2center.append(dc)
 
-    poi2center = np.asarray(poi2center)    
+    poi2center = np.asarray(poi2center)
     centroids_nobk2 = centroids_nobk.copy()
     for i, d in enumerate(poi2center):
         if d < 120:
@@ -1548,7 +1548,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
             dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
 
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
-            
+
             # starting from 1 because we have -1 in dl_tmp
             puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
 
@@ -1573,7 +1573,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
             # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
             # dl_tmp, _ = np.unique(data_labels_tmp, return_counts=True)
-            # for l in dl_tmp: 
+            # for l in dl_tmp:
             #     centroids_im_sp[data_labels_tmp == l]
 
 
@@ -1601,7 +1601,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     final2[mask_final_exp2] = 1
 
     images2.append((final2.astype('f8'), aff, 'final2'))
-    
+
     final2_smooth = gaussian_filter(10 * final2.astype('f8'), sigma=4)
     images2.append((final2_smooth.astype('f8'), aff, 'final2_smooth'))
 
@@ -1622,12 +1622,24 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
 
     # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
-    
+
 
     kernel = ball(6)
     final2o = binary_opening(final2, structure=kernel, iterations=1)
 
     images2.append((final2o.astype('f8'), aff, 'final_exp2o'))
+
+
+    mask_reduced = binary_opening(mask_reduced_nobk2, structure=None, iterations=1)
+    images2.append((mask_reduced.astype('f8'), aff, 'masked_reduced'))
+
+    mask_reduced2 = (boundary + mask_reduced).astype('bool')
+    images2.append((mask_reduced2.astype('f8'), aff, 'masked_reduced2'))
+
+    kernel = ball(10)
+    mask_reduced3 = binary_closing(mask_reduced2, structure=kernel, iterations=1)
+    images2.append((mask_reduced3.astype('f8'), aff, 'masked_reduced3'))
+
 
     print('Connected ', cnt, ' puzzles')
 
