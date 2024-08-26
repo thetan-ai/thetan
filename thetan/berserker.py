@@ -1580,27 +1580,30 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
-    images.append((final, aff, 'final'))
-    images.append((final_exp, aff, 'final_exp'))
+    images2 = []
+    images2.append((W, aff, 'W'))
+    images2.append((mask_reduced_nobk2.astype('f8'), aff, 'mask_reduced_nobk2'))
+    images2.append((final, aff, 'final'))
+    images2.append((final_exp, aff, 'final_exp'))
 
     final_exp2 = final_exp.copy()
     final_exp2[bk2 == 1] = 0
     final_exp2[mask_nobk == 1] = 0
 
-    images.append((final_exp2, aff, 'final_exp2'))
+    images2.append((final_exp2, aff, 'final_exp2'))
 
     final2 = np.zeros(data.shape)
 
     mask_final_exp2 = final_exp2 > 0
 
-    images.append((mask_final_exp2.astype('f8'), aff, 'mask_final_exp2'))
+    images2.append((mask_final_exp2.astype('f8'), aff, 'mask_final_exp2'))
 
     final2[mask_final_exp2] = 1
 
-    images.append((final2.astype('f8'), aff, 'final2'))
+    images2.append((final2.astype('f8'), aff, 'final2'))
     
-    final2_smooth = gaussian_filter(10 * final2.astype('f8'), sigma=1)
-    images.append((final2_smooth.astype('f8'), aff, 'final2_smooth'))
+    final2_smooth = gaussian_filter(10 * final2.astype('f8'), sigma=4)
+    images2.append((final2_smooth.astype('f8'), aff, 'final2_smooth'))
 
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
@@ -1609,18 +1612,22 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
-    images.extend([(final2_smooth, aff, 'f2smooth'), (boundary, aff, 'boundary')])
+    boundary = ((final2_smooth > 0.2) & (final2_smooth < 1.2)).astype('f8')
+
+    images2.extend([(final2_smooth, aff, 'f2smooth'), (boundary, aff, 'boundary')])
 
     all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
     allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, centroids_intbk, 'euclidean')
 
-    # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
 
-    kernel = ball(8)
+    # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
+    
+
+    kernel = ball(6)
     final2o = binary_opening(final2, structure=kernel, iterations=1)
 
-    images.append((final2o.astype('f8'), aff, 'final_exp2o'))
+    images2.append((final2o.astype('f8'), aff, 'final_exp2o'))
 
     print('Connected ', cnt, ' puzzles')
 
@@ -1633,9 +1640,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # print('Duration ', time() - t)
     # print()
 
-
-
-    return images
+    return images, images2
 
 
 
