@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
-                            merged_centroids=None, show=True):
+                            merged_centroids=None, show=True, maxwindow=False, savefn=None, centroids_label=True):
 
     new_colors = np.zeros((len(data), 3))
 
@@ -27,8 +27,9 @@ def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=N
 
         plt.plot(centroids[:, 0], centroids[:, 1], 'rx')
 
-        for c in range(centroids.shape[0]):
-            plt.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
+        if centroids_label:
+            for c in range(centroids.shape[0]):
+                plt.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
 
     if gt_centroids is not None:
         plt.plot(gt_centroids[:, 0], gt_centroids[:, 1], 'bx')
@@ -48,7 +49,12 @@ def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=N
         plt.plot(merged_centroids[:, 0], merged_centroids[:, 1], 'mo')
 
     # pl.get_current_fig_manager().full_screen_toggle()
-    plt.get_current_fig_manager().window.showMaximized()
+    
+    if maxwindow:
+        plt.get_current_fig_manager().window.showMaximized()
 
     if show:
         plt.show()
+
+    if savefn is not None:
+        plt.savefig(savefn, bbox_inches='tight')

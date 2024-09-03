@@ -391,7 +391,7 @@ def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=Tru
         return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
 
     else:
-        return even_centroids_ex2
+        return even_centroids_ex2, updated_labels_ex2
 
 
 def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=True):
@@ -428,7 +428,6 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
 
     t5 = time()
 
-    # nice, candidates, _clusters, updated_labels = candidate_labels(c_centroids, c_labels, initial_labels)
     nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
 
     t6 = time()
@@ -441,7 +440,6 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
     t7 = time()
 
     info_dict['Shuffle 1 DEL'] = t7 - t6
-
 
     updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
                                                        updated_labels, nice,
