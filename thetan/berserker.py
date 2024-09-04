@@ -1465,12 +1465,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((bk2.astype('f8'), aff, 'bk2'))
 
-
-
     # remove actual background.
     mask_nobk = mask3.copy()
     mask_nobk[bk2 > 0] = 0
-
 
     # remove any boundary issues
     mask_nobk[:2, :, :] = 0
@@ -1479,8 +1476,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_nobk[:,-2:, :] = 0
     mask_nobk[:, :, :2] = 0
     mask_nobk[:, :, -2:] = 0
-
-
 
     images.append((mask_nobk, aff, 'mask_nobk'))
 
@@ -1617,16 +1612,23 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
     allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, centroids_intbk, 'euclidean')
-
+    print('Matrix shape', all_puzz_centroids.shape)
 
     # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
 
-
-    kernel = ball(6)
+    print('Opening and detecting largest object ... ')
+    # kernel = ball(6)
+    # kernel = ball(8)
     final2o = binary_opening(final2, structure=kernel, iterations=1)
 
-    images2.append((final2o.astype('f8'), aff, 'final_exp2o'))
+    images2.append((final2o.astype('f8'), aff, 'final2o'))
 
+    final2o_main = detect_largest_object(final2o, structure=None)
+    images2.append((final2o_main.astype('f8'), aff, 'final2o_main'))
+
+    t = 1
+
+    return images, images2
 
     mask_reduced = binary_opening(mask_reduced_nobk2, structure=None, iterations=1)
     images2.append((mask_reduced.astype('f8'), aff, 'masked_reduced'))

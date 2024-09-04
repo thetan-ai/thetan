@@ -5,8 +5,8 @@ from thetan.berserker import berserker2
 from thetan.viz import plot_centroids_clusters
 
 
-# spiral_data = np.genfromtxt("/home/elef/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
-spiral_data = np.genfromtxt("C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
+spiral_data = np.genfromtxt("/home/elef/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
+# spiral_data = np.genfromtxt("C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
 
 # first entry is nan
 spiral_data = np.delete(spiral_data, 0, 0)
@@ -17,7 +17,7 @@ epsilon_value = 2.0
 
 initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False)
 
-plot_centroids_clusters(X, initial_centroids, initial_labels, title='Berserker2', show=False)
+plot_centroids_clusters(X, initial_centroids, initial_labels, title='Berserker2', show=True)
 
 new_labels = chainer(X, initial_centroids, initial_labels, epsilon_value)
 new_labels = np.ascontiguousarray(new_labels, dtype='i8')
