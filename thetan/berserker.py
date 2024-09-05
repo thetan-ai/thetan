@@ -1643,6 +1643,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
                 between_region_mi[centroids_median_im_rnd == v] = mins_int2bk[i]
                 between_region_mb[centroids_median_im_rnd == v] = mins_bound[i]
 
+
+    t = 1
+
     images2.append((between_region.astype('f8'), aff, 'between_region'))
     images2.append((between_region_mi.astype('f8'), aff, 'between_region_mi'))
     images2.append((between_region_mb.astype('f8'), aff, 'between_region_mb'))
