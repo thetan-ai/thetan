@@ -12,7 +12,7 @@ from skimage.morphology import reconstruction
 
 
 def check_arr(a):
-    print(a.dtype, a.min(), a.max())
+    print(a.shape, a.dtype, a.min(), a.max())
 
 def check_module_load():
 
@@ -1596,9 +1596,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
-    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
+    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
+
+    images2.append((data_labels_intbk.astype('f8'), aff, 'data_labels_intbk'))
 
     boundary = ((final2_smooth > 0.2) & (final2_smooth < 1.2)).astype('f8')
     images2.extend([(final2_smooth, aff, 'f2smooth'), (boundary, aff, 'boundary')])
@@ -1610,7 +1612,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
-
+    images2.append((data_labels_boundary.astype('f8'), aff, 'data_labels_boundary'))
 
     all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
@@ -1633,12 +1635,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     between_region_mi = np.zeros(data.shape)
     between_region_mb = np.zeros(data.shape)
 
-    # for i, mi, mb in enumerate(zip(mi, mb)):
     cnt = 0
     for i, v in enumerate(vals):
         print(v)
         if v > orig_est:
-            if ((mins_int2bk[i] < between) & (mins_bound[i] < between)): 
+            # if ((mins_int2bk[i] < between) & (mins_bound[i] < between)):
+            if (mins_bound[i] < between):
                 between_region[centroids_median_im_rnd == v] = 1
                 between_region_mi[centroids_median_im_rnd == v] = mins_int2bk[i]
                 between_region_mb[centroids_median_im_rnd == v] = mins_bound[i]
@@ -1690,13 +1692,16 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
 
 
-    show_points = False
+    show_points = True
     if show_points:
         from fury import actor, window, colormap
         scene = window.Scene()
-        colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
-        points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
-        points2_ = actor.point(poi, colors, point_radius=2.)
+        # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
+        # points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
+        # points2_ = actor.point(poi, colors, point_radius=2.)
+        # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
+        points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.)
+        points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
         scene.add(points_)
         scene.add(points2_)
         window.show(scene)
