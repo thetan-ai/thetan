@@ -1630,6 +1630,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mins_bound = np.min(allpuzz2bound_mat, axis=-1)
 
     between_region = np.zeros(data.shape)
+    between_region_mi = np.zeros(data.shape)
+    between_region_mb = np.zeros(data.shape)
+
     # for i, mi, mb in enumerate(zip(mi, mb)):
     cnt = 0
     for i, v in enumerate(vals):
@@ -1637,8 +1640,12 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         if v > orig_est:
             if ((mins_int2bk[i] < between) & (mins_bound[i] < between)): 
                 between_region[centroids_median_im_rnd == v] = 1
+                between_region_mi[centroids_median_im_rnd == v] = mins_int2bk[i]
+                between_region_mb[centroids_median_im_rnd == v] = mins_bound[i]
 
     images2.append((between_region.astype('f8'), aff, 'between_region'))
+    images2.append((between_region_mi.astype('f8'), aff, 'between_region_mi'))
+    images2.append((between_region_mb.astype('f8'), aff, 'between_region_mb'))
 
     return images, images2
 
