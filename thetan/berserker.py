@@ -1202,7 +1202,7 @@ def auto_theta_rw(X):
     pass
 
 
-def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False, between=10):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1220,7 +1220,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     mask_ci = mask_lt(data_labels, centroids, bk_thr= orig_est * 1.5) # 1.2 previously - this parameter is important - it may need to be a hyperparameter
     mask_ext = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
-
 
     # dt = distance_transform_edt(1 - mask_ext)
 
@@ -1315,7 +1314,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Applying Berserker 2 on X masked (i, j, k, 3w)')
         t = time()
         maskr = mask_orig.ravel().astype('bool')
-
         data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
         print('Duration ', time() - t)
         print()
@@ -1513,15 +1511,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     vals, counts = np.unique(centroids_median_im_rnd, return_counts=True)
     images.append((centroids_median_im_rnd, aff, 'centroids_median_im_rnd'))
 
-    print('Starting operating on median puzzles ...')
+    print('Starting operating on median puzzle pieces ...')
     X_median = X.copy()
     X_median[:, 3] = centroids_median_im_rnd.ravel().astype('f8')
 
     print('Breaking phase ... with berserker 2 ...')
     t = time()
 
-    final = np.zeros(data.shape)
-    final_exp = np.zeros(data.shape)
+    puzz_mask = np.zeros(data.shape)
+    puzz_mask_cnt = np.zeros(data.shape)
 
     fc = np.array([[ci, cj, ck]])
     fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
@@ -1539,12 +1537,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
             data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value / 8., data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
             dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
-
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
 
             # starting from 1 because we have -1 in dl_tmp
             puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
-
             all_puzz_centroids.extend(puzz)
 
             puzz2center = []
@@ -1559,8 +1555,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
             # TODO: get a percentage of the closest ones
             for i, d in enumerate(puzz2center):
                 if d < 100:
-                    final[data_labels_tmp == dl_tmp[i + 1]] = 1
-                    final_exp[data_labels_tmp == dl_tmp[i + 1]] = cnt
+                    puzz_mask[data_labels_tmp == dl_tmp[i + 1]] = 1
+                    puzz_mask_cnt[data_labels_tmp == dl_tmp[i + 1]] = cnt
                     cnt += 1
 
             # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
@@ -1576,45 +1572,75 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images2 = []
     images2.append((W, aff, 'W'))
     images2.append((mask_reduced_nobk2.astype('f8'), aff, 'mask_reduced_nobk2'))
-    images2.append((final, aff, 'final'))
-    images2.append((final_exp, aff, 'final_exp'))
+    images2.append((puzz_mask, aff, 'puzz_mask'))
+    images2.append((puzz_mask_cnt, aff, 'puzz_mask_cnt'))
 
-    final_exp2 = final_exp.copy()
-    final_exp2[bk2 == 1] = 0
-    final_exp2[mask_nobk == 1] = 0
+    puzz_mask_cnt2 = puzz_mask_cnt.copy()
+    puzz_mask_cnt2[bk2 == 1] = 0
+    puzz_mask_cnt2[mask_nobk == 1] = 0
 
-    images2.append((final_exp2, aff, 'final_exp2'))
+    images2.append((puzz_mask_cnt2, aff, 'puzz_mask_cnt2'))
 
-    final2 = np.zeros(data.shape)
+    puzz_mask2 = np.zeros(data.shape)
 
-    mask_final_exp2 = final_exp2 > 0
+    mask_puzz_mask_cnt2 = puzz_mask_cnt2 > 0
 
-    images2.append((mask_final_exp2.astype('f8'), aff, 'mask_final_exp2'))
+    images2.append((mask_puzz_mask_cnt2.astype('f8'), aff, 'mask_puzz_mask_cnt2'))
 
-    final2[mask_final_exp2] = 1
+    puzz_mask2[mask_puzz_mask_cnt2] = 1
 
-    images2.append((final2.astype('f8'), aff, 'final2'))
+    images2.append((puzz_mask2.astype('f8'), aff, 'puzz_mask2'))
 
-    final2_smooth = gaussian_filter(10 * final2.astype('f8'), sigma=4)
+    final2_smooth = gaussian_filter(10 * puzz_mask2.astype('f8'), sigma=4)
     images2.append((final2_smooth.astype('f8'), aff, 'final2_smooth'))
 
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
-    maskr2 = ((final2_smooth > 0.2) & (final2_smooth < 1.2)).ravel()
     data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
     boundary = ((final2_smooth > 0.2) & (final2_smooth < 1.2)).astype('f8')
-
     images2.extend([(final2_smooth, aff, 'f2smooth'), (boundary, aff, 'boundary')])
+
+    print('Applying Berserker 2 on X external boundary')
+    t = time()
+    maskr3 = boundary.ravel().astype('bool')
+    data_labels_boundary, centroids_boundary = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr3)
+    print('Duration ', time() - t)
+    print()
+
+
 
     all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
-    allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, centroids_intbk, 'euclidean')
-    print('Matrix shape', all_puzz_centroids.shape)
+    tmp_cintbk = np.ascontiguousarray(centroids_intbk[:, :3])
+
+    allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, tmp_cintbk, 'euclidean')
+    print('Puzz2intbk Matrix shape', all_puzz_centroids.shape)
+
+    tmp_cboundary = np.ascontiguousarray(centroids_boundary[:, :3])
+
+    allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
+    print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
 
     # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
+
+    mins_int2bk = np.min(allpuzz2intbk_mat, axis=-1)
+    mins_bound = np.min(allpuzz2bound_mat, axis=-1)
+
+    between_region = np.zeros(data.shape)
+    # for i, mi, mb in enumerate(zip(mi, mb)):
+    cnt = 0
+    for i, v in enumerate(vals):
+        print(v)
+        if v > orig_est:
+            if ((mins_int2bk[i] < between) & (mins_bound[i] < between)): 
+                between_region[centroids_median_im_rnd == v] = 1
+
+    images2.append((between_region.astype('f8'), aff, 'between_region'))
+
+    return images, images2
 
     print('Opening and detecting largest object ... ')
     # kernel = ball(6)
@@ -1626,9 +1652,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     final2o_main = detect_largest_object(final2o, structure=None)
     images2.append((final2o_main.astype('f8'), aff, 'final2o_main'))
 
-    t = 1
 
-    return images, images2
 
     mask_reduced = binary_opening(mask_reduced_nobk2, structure=None, iterations=1)
     images2.append((mask_reduced.astype('f8'), aff, 'masked_reduced'))
