@@ -72,7 +72,7 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 
 print('Starting Thetan Berserker 2 for Brain Segmentation ...')
 t = time()
-images, images2 = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False, between=8.)
+images, images2 = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False, between=4.)
 print('Total duration ', time() - t)
 print()
 
