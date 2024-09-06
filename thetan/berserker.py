@@ -1527,6 +1527,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     cnt = 1
 
+    relabel_breaking = np.zeros(data.shape)
+
+    cnt_r = 1
+
     all_puzz_centroids = []
     for v in vals:
         print(v)
@@ -1542,6 +1546,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
             # starting from 1 because we have -1 in dl_tmp
             puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
             all_puzz_centroids.extend(puzz)
+
+            for i, p in enumerate(puzz):
+                relabel_breaking[data_labels_tmp==i] = cnt_r
+                cnt_r += 1
 
             puzz2center = []
             for p in puzz:
@@ -1572,6 +1580,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images2 = []
     images2.append((W, aff, 'W'))
     images2.append((mask_reduced_nobk2.astype('f8'), aff, 'mask_reduced_nobk2'))
+    images2.append((relabel_breaking, aff, 'relabel_breaking'))
     images2.append((puzz_mask, aff, 'puzz_mask'))
     images2.append((puzz_mask_cnt, aff, 'puzz_mask_cnt'))
 
@@ -1632,25 +1641,38 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mins_bound = np.min(allpuzz2bound_mat, axis=-1)
 
     between_region = np.zeros(data.shape)
-    between_region_mi = np.zeros(data.shape)
-    between_region_mb = np.zeros(data.shape)
+    # between_region_mi = np.zeros(data.shape)
+    # between_region_mb = np.zeros(data.shape)
 
-    cnt = 0
-    for i, v in enumerate(vals):
-        print(v)
-        if v > orig_est:
-            # if ((mins_int2bk[i] < between) & (mins_bound[i] < between)):
-            if (mins_bound[i] < between):
-                between_region[centroids_median_im_rnd == v] = 1
-                between_region_mi[centroids_median_im_rnd == v] = mins_int2bk[i]
-                between_region_mb[centroids_median_im_rnd == v] = mins_bound[i]
 
+    for i, mi, mb in zip(range(mins_int2bk.shape[0]), mins_int2bk, mins_bound):
+        if ((mi < between) & (mb < between)):
+            between_region[relabel_breaking == i] = 1
 
     t = 1
 
     images2.append((between_region.astype('f8'), aff, 'between_region'))
-    images2.append((between_region_mi.astype('f8'), aff, 'between_region_mi'))
-    images2.append((between_region_mb.astype('f8'), aff, 'between_region_mb'))
+    # images2.append((between_region_mi.astype('f8'), aff, 'between_region_mi'))
+    # images2.append((between_region_mb.astype('f8'), aff, 'between_region_mb'))
+
+
+    show_points = False
+    if show_points:
+        from fury import actor, window, colormap
+        scene = window.Scene()
+        # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
+        # points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
+        # points2_ = actor.point(poi, colors, point_radius=2.)
+        # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
+        points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.)
+        points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
+        points3 = actor.point(all_puzz_centroids, (0, 0, 1), point_radius=1.)
+        scene.add(points_)
+        scene.add(points2_)
+        scene.add(points3)
+        window.show(scene)
+
+
 
     return images, images2
 
@@ -1692,19 +1714,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
 
 
-    show_points = True
-    if show_points:
-        from fury import actor, window, colormap
-        scene = window.Scene()
-        # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
-        # points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
-        # points2_ = actor.point(poi, colors, point_radius=2.)
-        # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
-        points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.)
-        points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
-        scene.add(points_)
-        scene.add(points2_)
-        window.show(scene)
 
     t = 2
 
