@@ -1646,8 +1646,11 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
 
     for i, mi, mb in zip(range(mins_int2bk.shape[0]), mins_int2bk, mins_bound):
-        if ((mi < between) & (mb < between)):
-            between_region[relabel_breaking == i] = 1
+        # if ((mi < between) & (mb < between)):
+        if (mb < between):
+            between_region[relabel_breaking == i] = 1 # TODO: check that numbering corresponds
+        # TODO: add another mask just for mi
+        # and then show intersection at the end
 
     t = 1
 
