@@ -425,7 +425,7 @@ def thetan_density(double[:, ::1] X, double theta, cnp.npy_intp B, double ratio,
         return final_centroids, final_indices
 
 
-def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
+def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, verbose=False):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
@@ -499,7 +499,8 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
                 K += 1
 
 
-    print('Original calls ', cnt_orig)
+    if verbose:
+        print('Original calls ', cnt_orig)
 
     final_centroids = np.asarray(<double[:K, :D]> centroids)
     final_indices = np.asarray(indices)
