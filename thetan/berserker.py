@@ -1219,7 +1219,8 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
 
     all_puzz_centroids = []
 
-    print('Breaking ', str(vals.shape[0]), 'parts...')
+    print('Breaking ', str(vals.shape[0]), ' parts...')
+
     for v in vals:
 
         # print(v)
@@ -1574,7 +1575,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     X_median = X.copy()
     X_median[:, 3] = centroids_median_im_rnd.ravel().astype('f8')
 
-    print('Breaking phase ... with berserker 2 ...')
+    print('Breaking phase ... with Berserker 2 ...')
     t = time()
 
     theta_value_small = theta_value / 8.
@@ -1612,6 +1613,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     boundary = ((puzz_mask_smooth > 0.2) & (puzz_mask_smooth < 1.2)).astype('f8')
     images2.append((boundary.astype('f8'), aff, 'boundary'))
 
+    t = 5
+
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
     data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
@@ -1632,7 +1635,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
+    print('Early stop')
 
+    """
     tmp_cintbk = np.ascontiguousarray(centroids_intbk[:, :3])
 
     allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, tmp_cintbk, 'euclidean')
@@ -1692,7 +1697,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         window.show(scene)
 
     t = 2
-
+    """
     return images, images2
 
     print('Opening and detecting largest object ... ')
