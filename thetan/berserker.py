@@ -416,7 +416,8 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
 
     info_dict['Shuffle 1 TG1 X'] = t2 - t1
 
-    print('ic', initial_centroids.shape)
+    if verbose:
+        print('ic', initial_centroids.shape)
 
     t3 = time()
     c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric,
@@ -435,7 +436,8 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
     info_dict['Shuffle 1 CL'] = t6 - t5
 
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
-    print('ec', even_centroids.shape)
+    if verbose:
+        print('ec', even_centroids.shape)
 
     t7 = time()
 
@@ -471,7 +473,8 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
                                               all_out=True)
 
     t11 = time()
-    print('p_centroids', p_centroids.shape)
+    if verbose:
+        print('p_centroids', p_centroids.shape)
 
     info_dict['Shuffle 2 TM X'] = t11 - t10
 
@@ -495,7 +498,8 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
     even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
 
     t15 = time()
-    print('ec2 ', even_centroids2.shape)
+    if verbose:
+        print('ec2 ', even_centroids2.shape)
 
     info_dict['Shuffle 2 DEL'] = t15 - t14
 
@@ -512,14 +516,16 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
 
     t17 = time()
 
-    print('ec2x ', even_centroids_ex2.shape)
+    if verbose:
+        print('ec2x ', even_centroids_ex2.shape)
 
     info_dict['Shuffle 2 CEN_LA *'] = t17 - t16
 
     # quality over speed option not available in this version yet
+    if verbose:
+        print('Times')
+        print(info_dict)
 
-    print('Times')
-    print(info_dict)
     t = 1
 
     if all_out:
@@ -543,7 +549,7 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None)
     else:
         Xp = X
 
-    centroids, labels = berserker2(Xp, theta_value, all_out=False)
+    centroids, labels = berserker2(Xp, theta_value, all_out=False, verbose=verbose)
 
     if mask is not None:
         # We can calculate the centroids for label -1 on our own
@@ -770,11 +776,11 @@ def ball(radius, strict=True, dtype=np.uint8):
     return np.array(s <= radius * radius, dtype=dtype)
 
 
-def throwing_balls_light(mask, W, radius=10, samples=100, perc=5):
+def throwing_planets(mask, W, radius=10, samples=100, perc=5):
     # keep the spheres that have overlaping volume of less than percentage above
 
     mask_orig = mask.copy()
-    print('Starting throwing solid balls in 3D space ... light version ')
+    print('Starting throwing planets ... light version ')
     t = time()
 
     # mask = binary_closing(mask, iterations=1)
@@ -1202,6 +1208,70 @@ def auto_theta_rw(X):
     pass
 
 
+def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_im_rnd, X_median, theta_value_small):
+    
+    ci, cj, ck = center
+    puzz_mask = np.zeros(data.shape)
+    puzz_mask_cnt = np.zeros(data.shape)
+
+    fc = np.array([[ci, cj, ck]])
+    fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
+    fc_w = fc_w.T[0]
+
+    cnt = 1
+
+    relabel_breaking = np.zeros(data.shape)
+
+    cnt_r = 1
+
+    all_puzz_centroids = []
+    for v in vals:
+
+        print(v)
+
+        if v > orig_est: # original mask intensity
+
+            mask_tmp = np.zeros(data.shape)
+            mask_tmp[centroids_median_im_rnd == v] = 1
+
+            data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value_small, data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
+            dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
+            # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
+
+            # starting from 1 because we have -1 in dl_tmp
+            puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
+            all_puzz_centroids.extend(puzz)
+
+            for i, p in enumerate(puzz):
+                relabel_breaking[data_labels_tmp==i] = cnt_r
+                cnt_r += 1
+
+            puzz2center = []
+            for p in puzz:
+                dc = np.sqrt(np.sum((fc_w - p) ** 2))
+                puzz2center.append(dc)
+            puzz2center = np.asarray(puzz2center)
+
+            poi = np.ascontiguousarray(poi)
+            puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
+
+            # TODO: get a percentage of the closest ones
+            for i, d in enumerate(puzz2center):
+                if d < 100:
+                    puzz_mask[data_labels_tmp == dl_tmp[i + 1]] = 1
+                    puzz_mask_cnt[data_labels_tmp == dl_tmp[i + 1]] = cnt
+                    cnt += 1
+
+            # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
+            # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
+            # dl_tmp, _ = np.unique(data_labels_tmp, return_counts=True)
+            # for l in dl_tmp:
+            #     centroids_im_sp[data_labels_tmp == l]
+
+
+    return relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt
+
+
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False, between=10.):
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1421,13 +1491,13 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # images.append((mask2, aff, 'mask2'))
 
     # currently using original mask
-    tbl0 = throwing_balls_light(mask2, W=W, radius=28, samples=20000, perc=2)
+    tbl0 = throwing_planets(mask2, W=W, radius=28, samples=20000, perc=2)
     tbl0 = tbl0 / tbl0.max()
 
     images.append((tbl0, aff, 'tbl0'))
 
     # let's also use extended mask
-    # tble = throwing_balls_light(mask_ext, W=W, radius=5, samples=160000, perc=15)
+    # tble = throwing_planets(mask_ext, W=W, radius=5, samples=160000, perc=15)
     # tble = tble / tble.max()
 
     # images.append((tble, aff, 'tble'))
@@ -1518,61 +1588,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Breaking phase ... with berserker 2 ...')
     t = time()
 
-    puzz_mask = np.zeros(data.shape)
-    puzz_mask_cnt = np.zeros(data.shape)
-
-    fc = np.array([[ci, cj, ck]])
-    fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
-    fc_w = fc_w.T[0]
-
-    cnt = 1
-
-    relabel_breaking = np.zeros(data.shape)
-
-    cnt_r = 1
-
-    all_puzz_centroids = []
-    for v in vals:
-        print(v)
-        if v > orig_est: # original mask intensity
-
-            mask_tmp = np.zeros(data.shape)
-            mask_tmp[centroids_median_im_rnd == v] = 1
-
-            data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value / 8., data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
-            dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
-            # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
-
-            # starting from 1 because we have -1 in dl_tmp
-            puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
-            all_puzz_centroids.extend(puzz)
-
-            for i, p in enumerate(puzz):
-                relabel_breaking[data_labels_tmp==i] = cnt_r
-                cnt_r += 1
-
-            puzz2center = []
-            for p in puzz:
-                dc = np.sqrt(np.sum((fc_w - p) ** 2))
-                puzz2center.append(dc)
-            puzz2center = np.asarray(puzz2center)
-
-            poi = np.ascontiguousarray(poi)
-            puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
-
-            # TODO: get a percentage of the closest ones
-            for i, d in enumerate(puzz2center):
-                if d < 100:
-                    puzz_mask[data_labels_tmp == dl_tmp[i + 1]] = 1
-                    puzz_mask_cnt[data_labels_tmp == dl_tmp[i + 1]] = cnt
-                    cnt += 1
-
-            # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
-            # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
-            # dl_tmp, _ = np.unique(data_labels_tmp, return_counts=True)
-            # for l in dl_tmp:
-            #     centroids_im_sp[data_labels_tmp == l]
-
+    theta_value_small = theta_value / 8.
+    relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt = breaking_phase(data, affine, (ci, cj, ck),
+                                                                                    vals, orig_est, poi, centroids_median_im_rnd,
+                                                                                    X_median, theta_value_small)
 
     print('Duration ', time() - t)
     print()
@@ -1580,28 +1599,26 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images2 = []
     images2.append((W, aff, 'W'))
     images2.append((mask_reduced_nobk2.astype('f8'), aff, 'mask_reduced_nobk2'))
-    images2.append((relabel_breaking, aff, 'relabel_breaking'))
+    images2.append((relabel_breaking.astype('f8'), aff, 'relabel_breaking'))
     images2.append((puzz_mask, aff, 'puzz_mask'))
     images2.append((puzz_mask_cnt, aff, 'puzz_mask_cnt'))
 
+
+    # Remove obvious things from puzz_mask_cnt
     puzz_mask_cnt2 = puzz_mask_cnt.copy()
     puzz_mask_cnt2[bk2 == 1] = 0
     puzz_mask_cnt2[mask_nobk == 1] = 0
-
     images2.append((puzz_mask_cnt2, aff, 'puzz_mask_cnt2'))
 
     puzz_mask2 = np.zeros(data.shape)
+    
+    # images2.append((mask_puzz_mask_cnt2.astype('f8'), aff, 'mask_puzz_mask_cnt2'))
 
-    mask_puzz_mask_cnt2 = puzz_mask_cnt2 > 0
-
-    images2.append((mask_puzz_mask_cnt2.astype('f8'), aff, 'mask_puzz_mask_cnt2'))
-
-    puzz_mask2[mask_puzz_mask_cnt2] = 1
-
+    puzz_mask2[puzz_mask_cnt2 > 0] = 1
     images2.append((puzz_mask2.astype('f8'), aff, 'puzz_mask2'))
 
-    final2_smooth = gaussian_filter(10 * puzz_mask2.astype('f8'), sigma=4)
-    images2.append((final2_smooth.astype('f8'), aff, 'final2_smooth'))
+    puzz_mask_smooth = gaussian_filter(10 * puzz_mask2.astype('f8'), sigma=4)
+    images2.append((puzz_mask_smooth.astype('f8'), aff, 'puzz_mask_smooth'))
 
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
@@ -1611,8 +1628,8 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images2.append((data_labels_intbk.astype('f8'), aff, 'data_labels_intbk'))
 
-    boundary = ((final2_smooth > 0.2) & (final2_smooth < 1.2)).astype('f8')
-    images2.extend([(final2_smooth, aff, 'f2smooth'), (boundary, aff, 'boundary')])
+    boundary = ((puzz_mask_smooth > 0.2) & (puzz_mask_smooth < 1.2)).astype('f8')
+    images2.append((boundary.astype('f8'), aff, 'boundary'))
 
     print('Applying Berserker 2 on X external boundary')
     t = time()
@@ -1640,23 +1657,26 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mins_int2bk = np.min(allpuzz2intbk_mat, axis=-1)
     mins_bound = np.min(allpuzz2bound_mat, axis=-1)
 
-    between_region = np.zeros(data.shape)
-    # between_region_mi = np.zeros(data.shape)
-    # between_region_mb = np.zeros(data.shape)
+    # between_region = np.zeros(data.shape)
+    between_region_mi = np.zeros(data.shape, dtype=bool)
+    between_region_mb = np.zeros(data.shape, dtype=bool)
 
 
     for i, mi, mb in zip(range(mins_int2bk.shape[0]), mins_int2bk, mins_bound):
-        # if ((mi < between) & (mb < between)):
         if (mb < between):
-            between_region[relabel_breaking == i] = 1 # TODO: check that numbering corresponds
+            between_region_mb[relabel_breaking == i + 1] = 1
+        if (mi < between):
+            between_region_mi[relabel_breaking == i + 1] = 1   
         # TODO: add another mask just for mi
         # and then show intersection at the end
 
     t = 1
 
+    between_region = np.bitwise_and(between_region_mb, between_region_mi)
+
     images2.append((between_region.astype('f8'), aff, 'between_region'))
-    # images2.append((between_region_mi.astype('f8'), aff, 'between_region_mi'))
-    # images2.append((between_region_mb.astype('f8'), aff, 'between_region_mb'))
+    images2.append((between_region_mi.astype('f8'), aff, 'between_region_mi'))
+    images2.append((between_region_mb.astype('f8'), aff, 'between_region_mb'))
 
 
     show_points = False
