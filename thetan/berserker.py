@@ -1278,6 +1278,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
+    print('Intensity estimates ...')
     print_centroids(centroids)
 
     mask_ci = mask_lt(data_labels, centroids, bk_thr= orig_est * 1.5) # 1.2 previously - this parameter is important - it may need to be a hyperparameter
@@ -1650,11 +1651,16 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk ** 2, axis=-1))
 
+    mins_bound = np.min(allpuzz2bound_mat, axis=-1)
+    argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
+    corresponding_bound = tmp_cintbk[argmins_bound]
 
+    dist_bound_from_center = np.sqrt(np.sum(corresponding_bound ** 2, axis=-1))
 
     between_region = np.zeros(data.shape)
     enum_range = range(int(relabel_breaking.max()))
-    for i, dpc, dcc in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center):
+    for i, dpc, dcc, dpb in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center, dist_bound_from_center):
+    
         if dpc < 100:
             if (dpc < dcc):
                 between_region[relabel_breaking == i + 1] = 1
@@ -1662,24 +1668,29 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images2.append((between_region.astype('f8'), aff, 'between_region'))
 
     # TODO: calculate triangles
+    t = 1
 
-    show_points = False
+    show_points = True
     if show_points:
         from fury import actor, window, colormap
         scene = window.Scene()
+
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
         # points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
         # points2_ = actor.point(poi, colors, point_radius=2.)
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
+        center_ = actor.point(np.array([[ci, cj, ck]]), (1, 0, 0), point_radius=4.)
         points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.)
-        points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
+        # points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
         points3 = actor.point(all_puzz_centroids, (0, 0, 1), point_radius=1.)
+        scene.add(actor.axes())
+        scene.add(center_)
         scene.add(points_)
-        scene.add(points2_)
+        # scene.add(points2_)
         scene.add(points3)
         window.show(scene)
 
-
+    t = 2
 
     return images, images2
 
