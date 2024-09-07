@@ -1218,9 +1218,11 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
     cnt_r = 1
 
     all_puzz_centroids = []
+
+    print('Breaking ', str(vals.shape[0]), 'parts...')
     for v in vals:
 
-        print(v)
+        # print(v)
 
         if v > orig_est: # original mask intensity
 
@@ -1641,25 +1643,24 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
     print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
 
-    # TODO: how many times do we have neighbors from the boundary at less than e.g. 20?
-
     mins_int2bk = np.min(allpuzz2intbk_mat, axis=-1)
     argmins_int2bk = np.argmin(allpuzz2intbk_mat, axis=-1)
 
     dist_puzz_centroids_from_center = np.sqrt(np.sum(all_puzz_centroids ** 2, axis=-1))
-    corresponding_int2bk = tmp_cintbk[argmins_int2bk]
+    corresponding_int2bk = np.ascontiguousarray(tmp_cintbk[argmins_int2bk])
 
     dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk ** 2, axis=-1))
 
     mins_bound = np.min(allpuzz2bound_mat, axis=-1)
     argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
-    corresponding_bound = tmp_cintbk[argmins_bound]
+    corresponding_bound = np.ascontiguousarray(tmp_cintbk[argmins_bound])
 
     dist_bound_from_center = np.sqrt(np.sum(corresponding_bound ** 2, axis=-1))
 
     between_region = np.zeros(data.shape)
     enum_range = range(int(relabel_breaking.max()))
-    for i, dpc, dcc, dpb in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center, dist_bound_from_center):
+    
+    for i, dpc, dcc, dpb in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center):
     
         if dpc < 100:
             if (dpc < dcc):
