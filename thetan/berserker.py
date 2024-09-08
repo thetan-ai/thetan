@@ -1578,7 +1578,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Breaking phase ... with Berserker 2 ...')
     t = time()
 
-    theta_value_small = theta_value / 8.
+    theta_value_small = theta_value / 10.
     relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt = breaking_phase(data, affine, (ci, cj, ck),
                                                                                     vals, orig_est, poi, centroids_median_im_rnd,
                                                                                     X_median, theta_value_small)
@@ -1617,7 +1617,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
-    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
+    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 10.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
@@ -1633,39 +1633,42 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images2.append((data_labels_boundary.astype('f8'), aff, 'data_labels_boundary'))
 
+
+    print('Using geometry to separate internal from external ... ')
+
     all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
-    print('Early stop')
-
-    """
     tmp_cintbk = np.ascontiguousarray(centroids_intbk[:, :3])
+
 
     allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, tmp_cintbk, 'euclidean')
     print('Puzz2intbk Matrix shape', all_puzz_centroids.shape)
 
-    tmp_cboundary = np.ascontiguousarray(centroids_boundary[:, :3])
+    # tmp_cboundary = np.ascontiguousarray(centroids_boundary[:, :3])
 
-    allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
-    print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
+    # allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
+    # print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
 
     mins_int2bk = np.min(allpuzz2intbk_mat, axis=-1)
     argmins_int2bk = np.argmin(allpuzz2intbk_mat, axis=-1)
 
-    dist_puzz_centroids_from_center = np.sqrt(np.sum(all_puzz_centroids ** 2, axis=-1))
+    all_puzz_centroids_from_fcw = all_puzz_centroids - fc_w
+    dist_puzz_centroids_from_center = np.sqrt(np.sum(all_puzz_centroids_from_fcw ** 2, axis=-1))
+    
     corresponding_int2bk = np.ascontiguousarray(tmp_cintbk[argmins_int2bk])
+    corresponding_int2bk_from_fcw = corresponding_int2bk - fc_w 
+    dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk_from_fcw ** 2, axis=-1))
 
-    dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk ** 2, axis=-1))
+    # mins_bound = np.min(allpuzz2bound_mat, axis=-1)
+    # argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
+    # corresponding_bound = np.ascontiguousarray(tmp_cboundary[argmins_bound])
 
-    mins_bound = np.min(allpuzz2bound_mat, axis=-1)
-    argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
-    corresponding_bound = np.ascontiguousarray(tmp_cintbk[argmins_bound])
-
-    dist_bound_from_center = np.sqrt(np.sum(corresponding_bound ** 2, axis=-1))
+    # dist_bound_from_center = np.sqrt(np.sum(corresponding_bound ** 2, axis=-1))
 
     between_region = np.zeros(data.shape)
     enum_range = range(int(relabel_breaking.max()))
     
-    for i, dpc, dcc, dpb in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center):
+    for i, dpc, dcc in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center):
     
         if dpc < 100:
             if (dpc < dcc):
@@ -1673,10 +1676,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
    
     images2.append((between_region.astype('f8'), aff, 'between_region'))
 
-    # TODO: calculate triangles
     t = 1
 
-    show_points = True
+    show_points = False
     if show_points:
         from fury import actor, window, colormap
         scene = window.Scene()
@@ -1685,7 +1687,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         # points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
         # points2_ = actor.point(poi, colors, point_radius=2.)
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
-        center_ = actor.point(np.array([[ci, cj, ck]]), (1, 0, 0), point_radius=4.)
+        center_ = actor.point(np.array([fc_w]), (1, 0, 0), point_radius=4.)
         points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.)
         # points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
         points3 = actor.point(all_puzz_centroids, (0, 0, 1), point_radius=1.)
@@ -1697,7 +1699,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         window.show(scene)
 
     t = 2
-    """
+
     return images, images2
 
     print('Opening and detecting largest object ... ')
