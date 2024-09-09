@@ -1225,31 +1225,39 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
 
         # print(v)
 
-        if v > orig_est: # original mask intensity
+        # if v > orig_est: # original mask intensity
+        if True:
 
             mask_tmp = np.zeros(data.shape)
             mask_tmp[centroids_median_im_rnd == v] = 1
 
+            print('Working on ', str(v))
+            t1 = time()
             data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value_small, data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
-            dl_tmp, dl_tmp_cnts = np.unique(data_labels_tmp, return_counts=True)
+            t2 = time()
+            dl_tmp = np.unique(data_labels_tmp, return_counts=False)
+            t3 = time()
+            print('Durations ', t2-t1, t3-t2)
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
 
             # starting from 1 because we have -1 in dl_tmp
             puzz = np.ascontiguousarray(centroids_tmp[1:, :3])
             all_puzz_centroids.extend(puzz)
 
+            t4 = time()
             for i, p in enumerate(puzz):
                 relabel_breaking[data_labels_tmp==i] = cnt_r
                 cnt_r += 1
-
+            t5 = time()
             puzz2center = []
             for p in puzz:
                 dc = np.sqrt(np.sum((fc_w - p) ** 2))
                 puzz2center.append(dc)
             puzz2center = np.asarray(puzz2center)
-
+            t6 = time()
             poi = np.ascontiguousarray(poi)
-            puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
+            # TODO: check if this is needed for any reason
+            # puzz2poi_mat = distance_matrix(puzz, poi, 'euclidean')
 
             # TODO: get a percentage of the closest ones
             for i, d in enumerate(puzz2center):
@@ -1257,7 +1265,8 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
                     puzz_mask[data_labels_tmp == dl_tmp[i + 1]] = 1
                     puzz_mask_cnt[data_labels_tmp == dl_tmp[i + 1]] = cnt
                     cnt += 1
-
+            t7 = time()
+            print('Durations ', t5 - t4, t6 - t5, t7 - t6)
             # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
             # dl_tmp, _ = np.unique(data_labels_tmp, return_counts=True)
@@ -1578,7 +1587,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Breaking phase ... with Berserker 2 ...')
     t = time()
 
-    theta_value_small = theta_value / 10.
+    theta_value_small = theta_value / 8.
     relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt = breaking_phase(data, affine, (ci, cj, ck),
                                                                                     vals, orig_est, poi, centroids_median_im_rnd,
                                                                                     X_median, theta_value_small)
@@ -1617,7 +1626,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Applying Berserker 2 on X with internal bk mask')
     t = time()
-    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 10.0, data_dims=data.shape, verbose=False, mask=maskr)
+    data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
@@ -1644,10 +1653,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, tmp_cintbk, 'euclidean')
     print('Puzz2intbk Matrix shape', all_puzz_centroids.shape)
 
-    # tmp_cboundary = np.ascontiguousarray(centroids_boundary[:, :3])
-
-    # allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
-    # print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
+    tmp_cboundary = np.ascontiguousarray(centroids_boundary[:, :3])
+    allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
+    print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
 
     mins_int2bk = np.min(allpuzz2intbk_mat, axis=-1)
     argmins_int2bk = np.argmin(allpuzz2intbk_mat, axis=-1)
@@ -1659,21 +1667,25 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     corresponding_int2bk_from_fcw = corresponding_int2bk - fc_w 
     dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk_from_fcw ** 2, axis=-1))
 
-    # mins_bound = np.min(allpuzz2bound_mat, axis=-1)
-    # argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
-    # corresponding_bound = np.ascontiguousarray(tmp_cboundary[argmins_bound])
-
-    # dist_bound_from_center = np.sqrt(np.sum(corresponding_bound ** 2, axis=-1))
+    mins_bound = np.min(allpuzz2bound_mat, axis=-1)
+    argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
+    corresponding_bound = np.ascontiguousarray(tmp_cboundary[argmins_bound])
+    corresponding_bound_from_fcw = corresponding_bound - fc_w
+    dist_bound_from_center = np.sqrt(np.sum(corresponding_bound_from_fcw ** 2, axis=-1))
 
     between_region = np.zeros(data.shape)
     enum_range = range(int(relabel_breaking.max()))
     
-    for i, dpc, dcc in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center):
+    for i, dpc, dcc, dbc in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center, dist_bound_from_center):
     
         if dpc < 100:
-            if (dpc < dcc):
-                between_region[relabel_breaking == i + 1] = 1
+            if dpc < dbc:
+                if dpc < dcc:
+                    between_region[relabel_breaking == i + 1] = 1
    
+
+    # TODO: this is only temporary for debuggin purposes
+    between_region[ci, cj, ck] = 2
     images2.append((between_region.astype('f8'), aff, 'between_region'))
 
     t = 1
