@@ -1202,7 +1202,7 @@ def auto_theta_rw(X):
 
 
 def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_im_rnd, X_median, theta_value_small):
-    
+
     ci, cj, ck = center
     puzz_mask = np.zeros(data.shape)
     puzz_mask_cnt = np.zeros(data.shape)
@@ -1610,7 +1610,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images2.append((puzz_mask_cnt2, aff, 'puzz_mask_cnt2'))
 
     puzz_mask2 = np.zeros(data.shape)
-    
+
     # images2.append((mask_puzz_mask_cnt2.astype('f8'), aff, 'mask_puzz_mask_cnt2'))
 
     puzz_mask2[puzz_mask_cnt2 > 0] = 1
@@ -1662,9 +1662,9 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     all_puzz_centroids_from_fcw = all_puzz_centroids - fc_w
     dist_puzz_centroids_from_center = np.sqrt(np.sum(all_puzz_centroids_from_fcw ** 2, axis=-1))
-    
+
     corresponding_int2bk = np.ascontiguousarray(tmp_cintbk[argmins_int2bk])
-    corresponding_int2bk_from_fcw = corresponding_int2bk - fc_w 
+    corresponding_int2bk_from_fcw = corresponding_int2bk - fc_w
     dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk_from_fcw ** 2, axis=-1))
 
     mins_bound = np.min(allpuzz2bound_mat, axis=-1)
@@ -1675,14 +1675,14 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     between_region = np.zeros(data.shape)
     enum_range = range(int(relabel_breaking.max()))
-    
+
     for i, dpc, dcc, dbc in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center, dist_bound_from_center):
-    
+
         if dpc < 100:
             if dpc < dbc:
                 if dpc < dcc:
                     between_region[relabel_breaking == i + 1] = 1
-   
+
 
     # TODO: this is only temporary for debuggin purposes
     between_region[ci, cj, ck] = 2
