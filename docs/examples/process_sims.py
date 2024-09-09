@@ -27,7 +27,7 @@ def pyclustering_utils(bsas_instance, repor=False):
     clusters = bsas_instance.get_clusters()
     type_repr = bsas_instance.get_cluster_encoding()
     encoder = cluster_encoder(type_repr, clusters, X)
- 
+
     # change representation from index list to label list
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
@@ -512,16 +512,16 @@ for expno in range(reps):
 
         metric = distance_metric(type_metric.EUCLIDEAN)
         ccore = True
-    
+
         # sample = read_sample(path);
         # print("Sample: ", path);
 
         amount = n_clusters
         threshold = theta_value
-        
+
         bsas_instance = bsas(X, amount, threshold, ccore=ccore, metric=metric)
         bsas_instance.process()
-        
+
         duration = time() - t
         print('Duration is ', duration)
 
@@ -549,10 +549,10 @@ for expno in range(reps):
 
         amount = n_clusters
         threshold = theta_value
-        
+
         bsas_instance = mbsas(X, amount, threshold, ccore=ccore, metric=metric)
         bsas_instance.process()
-        
+
         duration = time() - t
         print('Duration is ', duration)
 
@@ -572,9 +572,9 @@ for expno in range(reps):
     if 'TTSAS' in rows:
 
         print('\n >> Starting TTSAS ...')
-        
+
         # for threshold1 in np.arange(3, 5, 0.25):
-        #     for sp in np.arange(0.2, 0.6, 0.1):    
+        #     for sp in np.arange(0.2, 0.6, 0.1):
                 # threshold2 = threshold1 + sp
         t = time()
 
@@ -629,7 +629,7 @@ for expno in range(reps):
         amount = n_clusters
 
         birch = Birch(threshold=theta_value, branching_factor=500, n_clusters=amount).fit(X)
-                
+
         duration = time() - t
         print('Duration is ', duration)
 
@@ -663,7 +663,7 @@ for expno in range(reps):
 
         bsas_instance = cure(X, number_clusters, number_represent_points, compression, ccore)
         bsas_instance.process()
-        
+
         duration = time() - t
         print('Duration is ', duration)
 
@@ -694,7 +694,7 @@ for expno in range(reps):
         biggest_k = np.argsort(sizes)[-n_clusters:]
 
         centroids_tmp = np.ascontiguousarray(centroids[biggest_k].copy())
-        
+
         print('\n >> Starting K-means (TB) ...')
         t = time()
         kmeans = KMeans(n_clusters=n_clusters, init=centroids_tmp, n_init=1,
@@ -713,7 +713,7 @@ for expno in range(reps):
         scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration1 + duration2)
         print(scores)
         print('Duration is ', time() - t)
-        
+
         evaluations['TBK'] = scores
 
     print('ALL EVALUATIONS')
@@ -727,13 +727,13 @@ for expno in range(reps):
 
     df = pd.DataFrame(evals, columns=cols)
     df.index = rows
-    
+
     print('Printing dataframe of evaluations ... ' + str(expno))
     print(df)
 
     if save_results:
         df.to_excel(dpath + "expno_v2_" + str(expno) + ".xlsx")
         print('Saving evaluations')
-    
+
 t = 1
 
