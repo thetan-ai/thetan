@@ -8,12 +8,12 @@ from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
 
 
-def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1):
+def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None):
 
     D = np.sqrt(tdm(ecentroids, centroids))
     closest = np.min(D, axis=1)
     count = np.sum(closest < thr)
-    ssd_score = count / len(ecentroids)
+    ac_score = count / len(ecentroids)
 
     nmi_score = normalized_mutual_info_score(true_label, label)
 
@@ -21,7 +21,7 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
 
     fms_score = fowlkes_mallows_score(true_label, label)
 
-    return ssd_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration
+    return ac_score, nmi_score, sil_score, fms_score, ecentroids.shape[0]
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -145,7 +145,7 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     print('Simulating data')
 
     if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 10, cluster_y = 10) # cluster_x should be 30
+        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 30, cluster_y = 10) # cluster_x should be 30
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10)
@@ -178,9 +178,9 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB']
+rows = ['TB', 'TS', 'TS+CL', 'TS+CL+TS(B)', 'TS+CL+TS(B)+CL2']
 
-cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
+cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
 # dpath = '/home/elef/Data/tb_output_ablation/'
@@ -189,7 +189,6 @@ dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
 
 reps = 1
 save_results = True
-
 
 for expno in range(reps):
 
@@ -220,7 +219,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TB'] = scores
@@ -242,7 +241,7 @@ for expno in range(reps):
         print('Starting evaluation')
         t = time()
 
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TS'] = scores
@@ -258,7 +257,7 @@ for expno in range(reps):
         print('Starting evaluation')
         t = time()
 
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TS+CL'] = scores
@@ -274,7 +273,7 @@ for expno in range(reps):
         print('Starting evaluation')
         t = time()
 
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TS+CL+TS(B)'] = scores
@@ -290,7 +289,7 @@ for expno in range(reps):
         print('Starting evaluation')
         t = time()
 
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TS+CL+TS(B)+CL2'] = scores
@@ -311,5 +310,5 @@ for expno in range(reps):
     print(df)
 
     if save_results:
-        df.to_excel(dpath + "expno_v2_" + str(expno) + ".xlsx")
+        df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
         print('Saving evaluations')
