@@ -546,7 +546,6 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-
     t1 = time()
     info_dict['Shuffle 1 X'] = t1 - t0
 
