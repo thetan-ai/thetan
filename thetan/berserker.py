@@ -671,7 +671,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
     if all_out:
         # return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
 
-        return even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels
+        return even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv
     else:
         return even_centroids_ex2, updated_labels_ex2
 
