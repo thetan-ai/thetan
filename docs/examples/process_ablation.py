@@ -187,133 +187,142 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 # dpath = 'C:/Users/elef/Data/tb_output_ablation/'
 dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
 
+run_experiments = False
+plot_results = True
+
 reps = 10
 save_results = True
 evaluation = True
 
-for expno in range(reps):
+if run_experiments:
+    for expno in range(reps):
 
-    print('######################################### > Experiment ', str(expno), ' Go Go Team Thetan!')
+        print('######################################### > Experiment ', str(expno), ' Go Go Team Thetan!')
 
-    evaluations = {}
-    evaluation_thr = 0.1
-    verbose = True
+        evaluations = {}
+        evaluation_thr = 0.1
+        verbose = True
 
-    X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
 
-    print('Number of features ', X.shape[0])
-    print('Number of GT centroids ', gt_centroids.shape[0])
+        print('Number of features ', X.shape[0])
+        print('Number of GT centroids ', gt_centroids.shape[0])
 
-    n_clusters = gt_centroids.shape[0]
+        n_clusters = gt_centroids.shape[0]
 
-    if 'TB' in rows:
+        if 'TB' in rows:
 
-        print('\n >> Starting Berserker ...')
-        theta_value = 3.6
-        t = time()
-        centroids, labels = berserker2(X, theta_value, all_out=False)
-        duration = time() - t
-        print('Duration is ', duration)
+            print('\n >> Starting Berserker ...')
+            theta_value = 3.6
+            t = time()
+            centroids, labels = berserker2(X, theta_value, all_out=False)
+            duration = time() - t
+            print('Duration is ', duration)
 
-        if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TB'] = scores
+
+        res = berserker2_ablation(X, theta_value, all_out=True)
+
+        even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv = res
+
+        t = 1
+
+        if 'TS' in rows:
+
+            print('>>> TS')
+            centroids = initial_centroids
+            labels = np.ascontiguousarray(initial_labels[ind_inv])
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TS'] = scores
+
+        if 'TS+CL' in rows:
+
+            print('>>> TS+CL')
+            centroids = even_centroids_ex
+            labels = np.ascontiguousarray(updated_labels2[ind_inv])
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TS+CL', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TS+CL'] = scores
+
+        if 'TS+CL+TS(B)' in rows:
+
+            print('>>> TS+CL+TS(B)')
+            centroids = p_centroids
+            labels = np.ascontiguousarray(p_labels[ind2_inv])
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS(B)', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TS+CL+TS(B)'] = scores
+
+        if 'TS+CL+TS(B)+CL2' in rows:
+
+            print('>>> TS+CL+TS(B)+CL2')
+            centroids = even_centroids_ex2
+            labels = updated_labels_ex2
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS(B)+CL2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TS+CL+TS(B)+CL2'] = scores
+
 
         if evaluation:
-            print('Starting evaluation')
-            t = time()
-            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-            print(scores)
-            print('Duration is ', time()-t)
-            evaluations['TB'] = scores
+            print('ALL EVALUATIONS')
+            print(evaluations)
 
-    res = berserker2_ablation(X, theta_value, all_out=True)
+            evals = np.zeros((len(rows), len(cols)))
 
-    even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv = res
+            for i, row in enumerate(rows):
+                for j, col in enumerate(cols):
+                    evals[i, j] = evaluations[row][j]
 
-    t = 1
+            df = pd.DataFrame(evals, columns=cols)
+            df.index = rows
 
-    if 'TS' in rows:
+            print('Printing dataframe of evaluations ... ' + str(expno))
+            print(df)
 
-        print('>>> TS')
-        centroids = initial_centroids
-        labels = np.ascontiguousarray(initial_labels[ind_inv])
-        if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
-
-        if evaluation:
-            print('Starting evaluation')
-            t = time()
-            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-            print(scores)
-            print('Duration is ', time()-t)
-            evaluations['TS'] = scores
-
-    if 'TS+CL' in rows:
-
-        print('>>> TS+CL')
-        centroids = even_centroids_ex
-        labels = np.ascontiguousarray(updated_labels2[ind_inv])
-        if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TS+CL', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
-
-        if evaluation:
-            print('Starting evaluation')
-            t = time()
-            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-            print(scores)
-            print('Duration is ', time()-t)
-            evaluations['TS+CL'] = scores
-
-    if 'TS+CL+TS(B)' in rows:
-
-        print('>>> TS+CL+TS(B)')
-        centroids = p_centroids
-        labels = np.ascontiguousarray(p_labels[ind2_inv])
-        if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS(B)', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
-
-        if evaluation:
-            print('Starting evaluation')
-            t = time()
-            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-            print(scores)
-            print('Duration is ', time()-t)
-            evaluations['TS+CL+TS(B)'] = scores
-
-    if 'TS+CL+TS(B)+CL2' in rows:
-
-        print('>>> TS+CL+TS(B)+CL2')
-        centroids = even_centroids_ex2
-        labels = updated_labels_ex2
-        if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS(B)+CL2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
-
-        if evaluation:
-            print('Starting evaluation')
-            t = time()
-
-            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-            print(scores)
-            print('Duration is ', time()-t)
-            evaluations['TS+CL+TS(B)+CL2'] = scores
+            if save_results:
+                df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
+                print('Saving evaluations')
 
 
-    if evaluation:
-        print('ALL EVALUATIONS')
-        print(evaluations)
-
-        evals = np.zeros((len(rows), len(cols)))
-
-        for i, row in enumerate(rows):
-            for j, col in enumerate(cols):
-                evals[i, j] = evaluations[row][j]
-
-        df = pd.DataFrame(evals, columns=cols)
-        df.index = rows
-
-        print('Printing dataframe of evaluations ... ' + str(expno))
-        print(df)
-
-        if save_results:
-            df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
-            print('Saving evaluations')
+if plot_results:
+    for expno in range(reps):
+        dpath + "expno_" + str(expno) + ".xlsx"
