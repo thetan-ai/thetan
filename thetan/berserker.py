@@ -676,6 +676,68 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
         return even_centroids_ex2, updated_labels_ex2
 
 
+def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, verbose=True, iter_max=2):
+
+    ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+    points2 = points[ind].copy()
+    ind_inv = np.argsort(ind)
+
+    initial_centroids, initial_labels, _, _ = theta_g1(points2, theta=theta_value, metric=metric,
+                                                       all_out=True)
+
+    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric,
+                                           all_out=True)
+
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+
+    even_centroids = np.delete(initial_centroids, candidates, axis=0)
+
+    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
+                                                       updated_labels, nice,
+                                                       metric=metric)
+
+    even_centroids_ex = centroids_from_labels(points2, updated_labels2)
+
+    iter_cnt = 1
+    while True:
+
+        # This second shuffle resolves many problems with centroids appearing between clusters
+        ind2 = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+        points3 = points[ind2].copy()
+        ind2_inv = np.argsort(ind2)
+
+        p_centroids, p_labels, _, _ = theta_means(points3, even_centroids_ex, theta=theta_value,
+                                                  metric=metric,
+                                                  all_out=True)
+
+        c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
+                                                metric=metric, all_out=True)
+
+        # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
+        nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+
+        even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
+
+        updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
+                                                              updated_labels2x, nice2,
+                                                              metric=metric)
+
+        # bring labels back from original points (not points3)
+        updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
+        even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
+
+        if iter_cnt == iter_max:
+            break
+        else:
+            even_centroids_ex = even_centroids_ex2.copy()
+            iter_cnt += 1
+
+    if all_out:
+        return even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv
+    else:
+        return even_centroids_ex2, updated_labels_ex2
+
+
 def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None):
     """
     Deploying berserker v2 in imaging data and

@@ -185,23 +185,29 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 # dpath = '/home/elef/Data/tb_output_ablation/'
 # dpath = 'C:/Users/elef/Data/tb_output_ablation/'
-dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
+# dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
+dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
 
-run_experiments = False
-plot_results = True
+run_experiments = True
+plot_results = False
 
-reps = 10
+reps = 20
 save_results = True
 evaluation = True
+theta_value = 3.6
+
 
 if run_experiments:
+
+    t_start = time()
+
     for expno in range(reps):
 
         print('######################################### > Experiment ', str(expno), ' Go Go Team Thetan!')
 
         evaluations = {}
         evaluation_thr = 0.1
-        verbose = True
+        verbose = False
 
         X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
 
@@ -210,25 +216,7 @@ if run_experiments:
 
         n_clusters = gt_centroids.shape[0]
 
-        if 'TB' in rows:
-
-            print('\n >> Starting Berserker ...')
-            theta_value = 3.6
-            t = time()
-            centroids, labels = berserker2(X, theta_value, all_out=False)
-            duration = time() - t
-            print('Duration is ', duration)
-
-            if verbose:
-                plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
-
-            if evaluation:
-                print('Starting evaluation')
-                t = time()
-                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-                print(scores)
-                print('Duration is ', time()-t)
-                evaluations['TB'] = scores
+        
 
         res = berserker2_ablation(X, theta_value, all_out=True)
 
@@ -302,6 +290,27 @@ if run_experiments:
                 evaluations['TS+CL+TS(B)+CL2'] = scores
 
 
+        if 'TB' in rows:
+
+            print('\n >> Starting Berserker ...')
+
+            t = time()
+            centroids, labels = berserker2(X, theta_value, all_out=False)
+            duration = time() - t
+            print('Duration is ', duration)
+
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TB'] = scores
+
+
         if evaluation:
             print('ALL EVALUATIONS')
             print(evaluations)
@@ -321,8 +330,46 @@ if run_experiments:
             if save_results:
                 df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
                 print('Saving evaluations')
+    t_end = time()
+    print('Total Duration ', t_end - t_start)
 
-
+files = []
 if plot_results:
     for expno in range(reps):
-        dpath + "expno_" + str(expno) + ".xlsx"
+        fname_ = dpath + "expno_" + str(expno) + ".xlsx"
+        files.append(fname_)
+        print(pd.read_excel(fname_))
+        print()
+
+df = pd.concat([pd.read_excel(f) for f in files])
+result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.array([1, 2, 3, 4, 5])
+y = result['AC']['mean'].values
+e = result['AC']['std'].values
+
+plt.figure()
+plt.title('Ablation study - AC - Error plot')
+plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
+plt.xticks(x, result.index.tolist())
+plt.grid()
+
+
+ac = df['AC'].to_numpy()
+data = ac.reshape(10, 5)
+plt.figure()
+plt.title('Ablation study - AC - Violin plot')
+plt.violinplot(data, showmeans=True)
+plt.xticks(x, result.index.tolist())
+plt.grid()
+
+plt.figure()
+plt.title('Ablation study - AC - Box plot')
+plt.boxplot(data)
+plt.xticks(x, result.index.tolist())
+plt.grid()
+
+plt.show()
