@@ -184,12 +184,14 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
 # dpath = '/home/elef/Data/tb_output_ablation/'
+dpath = '/home/elef/Data/tb_output_ablation_v2/'
+
 # dpath = 'C:/Users/elef/Data/tb_output_ablation/'
 # dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
-dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
+# dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
 
-run_experiments = True
-plot_results = False
+run_experiments = False
+plot_results = True
 
 reps = 20
 save_results = True
@@ -216,7 +218,7 @@ if run_experiments:
 
         n_clusters = gt_centroids.shape[0]
 
-        
+
 
         res = berserker2_ablation(X, theta_value, all_out=True)
 
@@ -333,6 +335,7 @@ if run_experiments:
     t_end = time()
     print('Total Duration ', t_end - t_start)
 
+
 files = []
 if plot_results:
     for expno in range(reps):
@@ -359,7 +362,7 @@ plt.grid()
 
 
 ac = df['AC'].to_numpy()
-data = ac.reshape(10, 5)
+data = ac.reshape(20, 5)
 plt.figure()
 plt.title('Ablation study - AC - Violin plot')
 plt.violinplot(data, showmeans=True)
@@ -373,3 +376,5 @@ plt.xticks(x, result.index.tolist())
 plt.grid()
 
 plt.show()
+
+
