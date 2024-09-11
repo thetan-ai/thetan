@@ -178,7 +178,7 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'TS', 'TS+CL', 'TS+CL+TS(B)', 'TS+CL+TS(B)+CL2']
+rows = ['TB']
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
