@@ -264,7 +264,7 @@ if run_experiments:
             centroids = p_centroids
             labels = np.ascontiguousarray(p_labels[ind2_inv])
             if verbose:
-                plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS(B)', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+                plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
             if evaluation:
                 print('Starting evaluation')
@@ -274,13 +274,13 @@ if run_experiments:
                 print('Duration is ', time()-t)
                 evaluations['TS+CL+TS2'] = scores
 
-        if 'TS+CL+TS(B)+CL2' in rows:
+        if 'TS+CL+TS2+CL2' in rows:
 
             print('>>> TS+CL+TS2+CL2')
             centroids = even_centroids_ex2
             labels = updated_labels_ex2
             if verbose:
-                plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS(B)+CL2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+                plot_centroids_clusters(X, centroids, labels, 'TS+CL+TS2+CL2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
             if evaluation:
                 print('Starting evaluation')
