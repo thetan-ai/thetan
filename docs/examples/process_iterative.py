@@ -178,7 +178,9 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB']
+# rows = ['TB2', 'TB4', 'TB6', 'TB8', 'TB10', 'TB12']
+
+rows = ['TB' + str(i) for i in range(2, 15)]
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
@@ -217,26 +219,28 @@ if run_experiments:
 
         n_clusters = gt_centroids.shape[0]
 
-        print('Actual iter_max ', iter_max * expno + 2)
+        for i in range(2, 15):
 
-        res = berserker2_iterative(X, theta_value, all_out=True, iter_max=iter_max * expno + 2)
+            print('Actual iter_max ', iter_max * expno + 2)
 
-        even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv = res
+            res = berserker2_iterative(X, theta_value, all_out=True, iter_max=i)
 
-       
-        centroids = even_centroids_ex2
-        labels = updated_labels_ex2
+            even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv = res
 
-        if verbose:
-            plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+        
+            centroids = even_centroids_ex2
+            labels = updated_labels_ex2
 
-        if evaluation:
-            print('Starting evaluation')
-            t = time()
-            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-            print(scores)
-            print('Duration is ', time()-t)
-            evaluations['TB'] = scores
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if evaluation:
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TB' + str(i)] = scores
 
 
         if evaluation:
@@ -258,6 +262,7 @@ if run_experiments:
             if save_results:
                 df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
                 print('Saving evaluations')
+    
     t_end = time()
     print('Total Duration ', t_end - t_start)
 
