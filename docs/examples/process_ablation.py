@@ -184,13 +184,13 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
 # dpath = '/home/elef/Data/tb_output_ablation/'
-dpath = '/home/elef/Data/tb_output_ablation_v2/'
+# dpath = '/home/elef/Data/tb_output_ablation_v2/'
 
 # dpath = 'C:/Users/elef/Data/tb_output_ablation/'
 # dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
-# dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
+dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
 
-run_experiments = False
+run_experiments = True
 plot_results = True
 
 reps = 20
@@ -258,9 +258,9 @@ if run_experiments:
                 print('Duration is ', time()-t)
                 evaluations['TS+CL'] = scores
 
-        if 'TS+CL+TS(B)' in rows:
+        if 'TS+CL+TS2' in rows:
 
-            print('>>> TS+CL+TS(B)')
+            print('>>> TS+CL+TS2')
             centroids = p_centroids
             labels = np.ascontiguousarray(p_labels[ind2_inv])
             if verbose:
@@ -272,11 +272,11 @@ if run_experiments:
                 scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
                 print(scores)
                 print('Duration is ', time()-t)
-                evaluations['TS+CL+TS(B)'] = scores
+                evaluations['TS+CL+TS2'] = scores
 
         if 'TS+CL+TS(B)+CL2' in rows:
 
-            print('>>> TS+CL+TS(B)+CL2')
+            print('>>> TS+CL+TS2+CL2')
             centroids = even_centroids_ex2
             labels = updated_labels_ex2
             if verbose:
@@ -289,28 +289,28 @@ if run_experiments:
                 scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
                 print(scores)
                 print('Duration is ', time()-t)
-                evaluations['TS+CL+TS(B)+CL2'] = scores
+                evaluations['TS+CL+TS2+CL2'] = scores
 
 
-        if 'TB' in rows:
+        # if 'TB' in rows:
 
-            print('\n >> Starting Berserker ...')
+        #     print('\n >> Starting Berserker ...')
 
-            t = time()
-            centroids, labels = berserker2(X, theta_value, all_out=False)
-            duration = time() - t
-            print('Duration is ', duration)
+        #     t = time()
+        #     centroids, labels = berserker2(X, theta_value, all_out=False)
+        #     duration = time() - t
+        #     print('Duration is ', duration)
 
-            if verbose:
-                plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+        #     if verbose:
+        #         plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
-            if evaluation:
-                print('Starting evaluation')
-                t = time()
-                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-                print(scores)
-                print('Duration is ', time()-t)
-                evaluations['TB'] = scores
+        #     if evaluation:
+        #         print('Starting evaluation')
+        #         t = time()
+        #         scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+        #         print(scores)
+        #         print('Duration is ', time()-t)
+        #         evaluations['TB'] = scores
 
 
         if evaluation:
@@ -350,7 +350,7 @@ result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
 import matplotlib.pyplot as plt
 import numpy as np
 
-x = np.array([1, 2, 3, 4, 5])
+x = np.array([1, 2, 3, 4])
 y = result['AC']['mean'].values
 e = result['AC']['std'].values
 
@@ -360,9 +360,8 @@ plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
 plt.xticks(x, result.index.tolist())
 plt.grid()
 
-
 ac = df['AC'].to_numpy()
-data = ac.reshape(20, 5)
+data = ac.reshape(20, 4)
 plt.figure()
 plt.title('Ablation study - AC - Violin plot')
 plt.violinplot(data, showmeans=True)
