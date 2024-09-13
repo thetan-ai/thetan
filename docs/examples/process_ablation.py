@@ -184,13 +184,13 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
 # dpath = '/home/elef/Data/tb_output_ablation/'
-# dpath = '/home/elef/Data/tb_output_ablation_v2/'
+dpath = '/home/elef/Data/tb_output_ablation_v2/'
 
 # dpath = 'C:/Users/elef/Data/tb_output_ablation/'
 # dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
-dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
+# dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
 
-run_experiments = True
+run_experiments = False
 plot_results = True
 
 reps = 20

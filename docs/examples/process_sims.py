@@ -1,4 +1,5 @@
 from time import time
+import tracemalloc
 import numpy as np
 import pylab as pl
 import pandas as pd
@@ -46,7 +47,7 @@ def pyclustering_utils(bsas_instance, repor=False):
     return labels, centroids
 
 
-def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1):
+def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
 
     D = np.sqrt(tdm(ecentroids, centroids))
     closest = np.min(D, axis=1)
@@ -59,7 +60,7 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
 
     fms_score = fowlkes_mallows_score(true_label, label)
 
-    return ssd_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration
+    return ssd_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration, memory
 
 
 
@@ -179,12 +180,12 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.close(fig)
 
 
-def simulate_data(dist_type='gaussian',blob_dis=10):
+def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 
     print('Simulating data')
 
     if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 10, cluster_y = 10) # cluster_x should be 30
+        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = cluster_x, cluster_y = cluster_y) # cluster_x should be 30
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10)
@@ -217,30 +218,14 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
     return points, labels, gt_centroids
 
 
-# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TSG', 'bisecting', 'dbscan', 'hdbscan']
-
-# rows = ['dbscan', 'hdbscan']
+rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 
 
-#rows = ['TB', 'BIRCH', 'CURE']
-
-# rows = ['BIRCH']
-
-# rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE']
-
-rows = ['TB', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-
-# rows = ['FCM']
-
-# rows = ['kmeans']
-
-# rows = ['TBK']
-
-cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration']
+cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 
 # dpath = '/home/elef/Data/tb_output/'
-# dpath = '/home/elef/Data/tb_output_v2/'
-dpath = 'C:/Users/elef/Data/tb_output/'
+dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
+# dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 1
 save_results = True
@@ -254,10 +239,11 @@ for expno in range(reps):
     evaluation_thr = 0.1
     verbose = True
 
-    X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
+    X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=10, cluster_y=10)
 
     print('Number of features ', X.shape[0])
     print('Number of GT centroids ', gt_centroids.shape[0])
+    print('Size in Bytes', X.nbytes / 1024 ** 2)
 
     n_clusters = gt_centroids.shape[0]
 
@@ -266,7 +252,11 @@ for expno in range(reps):
         print('\n >> Starting Berserker ...')
         theta_value = 3.6
         t = time()
+        tracemalloc.start()
         centroids, labels = berserker2(X, theta_value, all_out=False)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration is ', duration)
 
@@ -274,8 +264,7 @@ for expno in range(reps):
             plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
         print('Starting evaluation')
-        t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TB'] = scores
@@ -286,8 +275,12 @@ for expno in range(reps):
 
         print('\n >> Starting K-means++ ...')
         t = time()
+        tracemalloc.start()
         kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
                         max_iter=300, tol=0.0001).fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -296,7 +289,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['kmeans++'] = scores
@@ -308,8 +301,12 @@ for expno in range(reps):
 
         print('\n >> Starting K-means (random) ...')
         t = time()
+        tracemalloc.start()
         kmeans = KMeans(n_clusters=n_clusters, init='random', n_init=1,
                         max_iter=300, tol=0.0001).fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -318,7 +315,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['kmeans'] = scores
@@ -331,7 +328,11 @@ for expno in range(reps):
         expon = 2.
         print('Expon ', expon)
         t = time()
+        tracemalloc.start()
         cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(X.T, n_clusters, expon, error=0.005, maxiter=1000, init=None)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -343,7 +344,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['FCM'] = scores
@@ -366,8 +367,12 @@ for expno in range(reps):
         print('\n >> Starting with MeanShift ...')
         t = time()
         bandwidth = theta_value
+        tracemalloc.start()
         model = MeanShift(bandwidth=bandwidth, cluster_all=True)
         ms = model.fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -377,7 +382,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=ms_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=ms_labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=ms_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=ms_labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['meanshift'] = scores
@@ -391,10 +396,14 @@ for expno in range(reps):
         print('\n >> Starting EM_GMM .....')
         t = time()
         cov_type = ['spherical', 'diag', 'tied', 'full']
+        tracemalloc.start()
         model = GaussianMixture(n_components=n_clusters,
                                 covariance_type=cov_type[3],
                                 max_iter=200, n_init=5, random_state=0)
         gmm = model.fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration ', duration)
 
@@ -403,7 +412,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=gmm_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=gmm_labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=gmm_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=gmm_labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time() - t)
         evaluations['EM_GMM'] = scores
@@ -411,20 +420,24 @@ for expno in range(reps):
         if verbose:
             plot_centroids_clusters(X, gmm_centroids, gmm_labels, 'gmm', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
-    if 'TSG' in rows:
+    if 'TS' in rows:
 
-        print('\n >> Starting TSG ...')
+        print('\n >> Starting TS ...')
         t = time()
+        tracemalloc.start()
         tgs_centroids, tgs_labels = tgs(X, theta_value, all_out=False)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration is ', duration)
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=tgs_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=tgs_labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=tgs_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=tgs_labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time() - t)
-        evaluations['TSG'] = scores
+        evaluations['TS'] = scores
 
         if verbose:
             plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
@@ -433,7 +446,11 @@ for expno in range(reps):
 
         print('\n >> Starting Bisection K-means++ ...')
         t = time()
+        tracemalloc.start()
         bkmeans = BisectingKMeans(n_clusters=n_clusters, n_init=1).fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -442,7 +459,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=bkcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=bklabels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=bkcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=bklabels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['bisecting'] = scores
@@ -457,8 +474,12 @@ for expno in range(reps):
         print('\n >> Starting DBSCAN ...')
 
         t = time()
+        tracemalloc.start()
         model = DBSCAN(eps=eps, min_samples=min_samples)
         model.fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -470,7 +491,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=dbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=dblabels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=dbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=dblabels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['dbscan'] = scores
@@ -482,8 +503,12 @@ for expno in range(reps):
 
         print('\n >> Starting HDBSCAN ...')
         t = time()
+        tracemalloc.start()
         model = HDBSCAN(min_samples=min_samples)
         model.fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
         duration = time() - t
         print('Duration', duration)
 
@@ -495,7 +520,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=hdbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=hdblabels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=hdbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=hdblabels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['hdbscan'] = scores
@@ -509,7 +534,7 @@ for expno in range(reps):
         print('\n >> Starting BSAS ...')
         theta_value = 3.6
         t = time()
-
+        tracemalloc.start()
         metric = distance_metric(type_metric.EUCLIDEAN)
         ccore = True
 
@@ -521,6 +546,9 @@ for expno in range(reps):
 
         bsas_instance = bsas(X, amount, threshold, ccore=ccore, metric=metric)
         bsas_instance.process()
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
 
         duration = time() - t
         print('Duration is ', duration)
@@ -532,7 +560,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['BSAS'] = scores
@@ -543,7 +571,7 @@ for expno in range(reps):
         print('\n >> Starting MBSAS ...')
         theta_value = 3.6
         t = time()
-
+        tracemalloc.start()
         metric = distance_metric(type_metric.EUCLIDEAN)
         ccore = True
 
@@ -552,6 +580,9 @@ for expno in range(reps):
 
         bsas_instance = mbsas(X, amount, threshold, ccore=ccore, metric=metric)
         bsas_instance.process()
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
 
         duration = time() - t
         print('Duration is ', duration)
@@ -563,7 +594,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['MBSAS'] = scores
@@ -577,7 +608,7 @@ for expno in range(reps):
         #     for sp in np.arange(0.2, 0.6, 0.1):
                 # threshold2 = threshold1 + sp
         t = time()
-
+        tracemalloc.start()
         metric = distance_metric(type_metric.EUCLIDEAN)
         # ccore = True there is an issue with this variable
 
@@ -594,6 +625,10 @@ for expno in range(reps):
         ccore = True
         ttsas_instance = ttsas(X, threshold1, threshold2, ccore=ccore, metric=metric)
         ttsas_instance.process()
+
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
 
         clusters = ttsas_instance.get_clusters()
         representatives = ttsas_instance.get_representatives()
@@ -612,7 +647,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TTSAS'] = scores
@@ -625,10 +660,13 @@ for expno in range(reps):
         theta_value = 2.5 # 2.0 creates too many clusters. 3.0 too little.
         print(theta_value)
         t = time()
-
+        tracemalloc.start()
         amount = n_clusters
 
         birch = Birch(threshold=theta_value, branching_factor=500, n_clusters=amount).fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
 
         duration = time() - t
         print('Duration is ', duration)
@@ -642,7 +680,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['BIRCH'] = scores
@@ -653,7 +691,7 @@ for expno in range(reps):
 
         print('\n >> Starting CURE ...')
         t = time()
-
+        tracemalloc.start()
         metric = distance_metric(type_metric.EUCLIDEAN)
         ccore = True
 
@@ -663,6 +701,9 @@ for expno in range(reps):
 
         bsas_instance = cure(X, number_clusters, number_represent_points, compression, ccore)
         bsas_instance.process()
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
 
         duration = time() - t
         print('Duration is ', duration)
@@ -674,7 +715,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration)
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
         print(scores)
         print('Duration is ', time()-t)
         evaluations['CURE'] = scores
@@ -685,8 +726,10 @@ for expno in range(reps):
         print('\n >> Starting Berserker ...')
         theta_value = 3.6
         t = time()
+        tracemalloc.start()
         centroids, labels = berserker2(X, theta_value, all_out=False)
         duration1 = time() - t
+
         print('Duration is ', duration1)
 
         uniq, sizes = np.unique(labels, return_counts=True)
@@ -702,6 +745,10 @@ for expno in range(reps):
         duration2 = time() - t
         print('Duration is', duration2)
 
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+
         kcentroids = kmeans.cluster_centers_
         klabels = kmeans.labels_
 
@@ -710,7 +757,7 @@ for expno in range(reps):
 
         print('Starting evaluation')
         t = time()
-        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration1 + duration2)
+        scores = evaluate(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration1 + duration2, memory=peakmem)
         print(scores)
         print('Duration is ', time() - t)
 

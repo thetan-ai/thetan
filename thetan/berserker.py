@@ -676,7 +676,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
         return even_centroids_ex2, updated_labels_ex2
 
 
-def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, verbose=True, iter_max=2):
+def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, verbose=True, iter_max=1):
 
     ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
     points2 = points[ind].copy()

@@ -140,12 +140,12 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.close(fig)
 
 
-def simulate_data(dist_type='gaussian',blob_dis=10):
+def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10):
 
     print('Simulating data')
 
     if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = 30, cluster_y = 10) # cluster_x should be 30
+        X, y, gt_centroids = gaussian_clusters(n_local_samples=500, blob_dis = blob_dis, cluster_x = cluster_x, cluster_y = 10) # cluster_x should be 30
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10)
@@ -180,16 +180,16 @@ def simulate_data(dist_type='gaussian',blob_dis=10):
 
 # rows = ['TB2', 'TB4', 'TB6', 'TB8', 'TB10', 'TB12']
 
-rows = ['TB' + str(i) for i in range(2, 15)]
+rows = ['TB' + str(i) for i in range(1, 15)]
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
-# dpath = '/home/elef/Data/tb_output_iteration/'
+dpath = '/home/elef/Data/tb_output_iteration/'
 # dpath = 'C:/Users/elef/Data/tb_output_iteration/'
-dpath = 'C:/Users/Eleftherios/Data/tb_output_iteration/'
+# dpath = 'C:/Users/Eleftherios/Data/tb_output_iteration/'
 
-run_experiments = True
+run_experiments = False
 plot_results = True
 
 reps = 4
@@ -197,8 +197,6 @@ save_results = True
 evaluation = True
 
 theta_value = 3.6
-iter_max = 2
-
 
 if run_experiments:
 
@@ -212,22 +210,21 @@ if run_experiments:
         evaluation_thr = 0.1
         verbose = False
 
-        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=10)
 
         print('Number of features ', X.shape[0])
         print('Number of GT centroids ', gt_centroids.shape[0])
 
         n_clusters = gt_centroids.shape[0]
 
-        for i in range(2, 15):
+        for i in range(1, 15):
 
-            print('Actual iter_max ', iter_max * expno + 2)
+            print('Actual iter_max ', i)
 
             res = berserker2_iterative(X, theta_value, all_out=True, iter_max=i)
 
             even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv = res
 
-        
             centroids = even_centroids_ex2
             labels = updated_labels_ex2
 
@@ -262,7 +259,7 @@ if run_experiments:
             if save_results:
                 df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
                 print('Saving evaluations')
-    
+
     t_end = time()
     print('Total Duration ', t_end - t_start)
 
@@ -278,27 +275,25 @@ df = pd.concat([pd.read_excel(f) for f in files])
 result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 t = 1
+
+print()
+print(df)
+print()
+print(result)
 
 # x = np.array([1, 2, 3, 4, 5])
 # y = result['AC']['mean'].values
 # e = result['AC']['std'].values
 
-# plt.figure()
-# plt.title('Iteration study - AC - Error plot')
-# plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
-# plt.xticks(x, result.index.tolist())
-# plt.grid()
-
-# ac = df['AC'].to_numpy()
-# data = ac.reshape(10, 5)
-# plt.figure()
-# plt.title('Iteration study - AC - Violin plot')
-# plt.violinplot(data, showmeans=True)
-# plt.xticks(x, result.index.tolist())
-# plt.grid()
+ac = df['AC'].to_numpy()
+data = ac.reshape(10, 5)
+plt.figure()
+plt.title('Iteration study - AC - Violin plot')
+plt.violinplot(data, showmeans=True)
+plt.xticks(x, result.index.tolist())
+plt.grid()
 
 # plt.figure()
 # plt.title('Iteration study - AC - Box plot')
