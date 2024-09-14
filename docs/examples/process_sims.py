@@ -218,13 +218,17 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
+# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 
+rows = ['meanshift']
+
+rows_extra = ['kmedoids', 'kmedian', 'meanshift++', 'affinity_prop', 'OPTICS', 'CLARANS', 'ROCK']
 
 cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 
 # dpath = '/home/elef/Data/tb_output/'
-dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
+# dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
+dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 1
@@ -366,7 +370,7 @@ for expno in range(reps):
 
         print('\n >> Starting with MeanShift ...')
         t = time()
-        bandwidth = theta_value
+        bandwidth = 3 * 3.6
         tracemalloc.start()
         model = MeanShift(bandwidth=bandwidth, cluster_all=True)
         ms = model.fit(X)
