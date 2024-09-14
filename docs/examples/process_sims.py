@@ -52,7 +52,7 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
     D = np.sqrt(tdm(ecentroids, centroids))
     closest = np.min(D, axis=1)
     count = np.sum(closest < thr)
-    ssd_score = count / len(ecentroids)
+    ac_score = count / len(ecentroids)
 
     nmi_score = normalized_mutual_info_score(true_label, label)
 
@@ -60,7 +60,7 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
 
     fms_score = fowlkes_mallows_score(true_label, label)
 
-    return ssd_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration, memory
+    return ac_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration, memory
 
 
 
@@ -224,7 +224,7 @@ rows = ['meanshift']
 
 rows_extra = ['kmedoids', 'kmedian', 'meanshift++', 'affinity_prop', 'OPTICS', 'CLARANS', 'ROCK']
 
-cols = ['SSD', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
+cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 
 # dpath = '/home/elef/Data/tb_output/'
 # dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
@@ -370,7 +370,7 @@ for expno in range(reps):
 
         print('\n >> Starting with MeanShift ...')
         t = time()
-        bandwidth = 3 * 3.6
+        bandwidth = 3.6
         tracemalloc.start()
         model = MeanShift(bandwidth=bandwidth, cluster_all=True)
         ms = model.fit(X)
