@@ -180,19 +180,19 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10):
 
 # rows = ['TB2', 'TB4', 'TB6', 'TB8', 'TB10', 'TB12']
 
-rows = ['TB' + str(i) for i in range(1, 15)]
+rows = ['TB' + str(i).zfill(2) for i in range(1, 15)]
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
-dpath = '/home/elef/Data/tb_output_iteration/'
+dpath = '/home/elef/Data/tb_output_iteration_v2/'
 # dpath = 'C:/Users/elef/Data/tb_output_iteration/'
 # dpath = 'C:/Users/Eleftherios/Data/tb_output_iteration/'
 
-run_experiments = False
+run_experiments = True
 plot_results = True
 
-reps = 4
+reps = 20
 save_results = True
 evaluation = True
 
@@ -237,7 +237,7 @@ if run_experiments:
                 scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
                 print(scores)
                 print('Duration is ', time()-t)
-                evaluations['TB' + str(i)] = scores
+                evaluations['TB' + str(i).zfill(2)] = scores
 
 
         if evaluation:
@@ -283,18 +283,25 @@ print(df)
 print()
 print(result)
 
-# x = np.array([1, 2, 3, 4, 5])
+x = np.arange(1, 15)
 # y = result['AC']['mean'].values
 # e = result['AC']['std'].values
 
 ac = df['AC'].to_numpy()
-data = ac.reshape(10, 5)
+ac_data = ac.reshape(20, 14)
+
+nmi = df['NMI'].to_numpy()
+nmi_data = nmi.reshape(20, 14)
+
 plt.figure()
 plt.title('Iteration study - AC - Violin plot')
-plt.violinplot(data, showmeans=True)
+plt.violinplot(ac_data, showmeans=True, label='AC')
+plt.violinplot(nmi_data, showmeans=True, label='NMI')
+plt.legend()
 plt.xticks(x, result.index.tolist())
 plt.grid()
 
+t = 1
 # plt.figure()
 # plt.title('Iteration study - AC - Box plot')
 # plt.boxplot(data)
