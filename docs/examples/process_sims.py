@@ -109,12 +109,12 @@ def pyclustering_utils_clarans(bsas_instance):
     # change representation from index list to label list
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
-    centroids = bsas_instance.get_medoids()
+    medoids_indices = bsas_instance.get_medoids()
 
     labels = np.ascontiguousarray(clusters)
-    centroids = np.ascontiguousarray(centroids)
+    # centroids = np.ascontiguousarray(centroids)
 
-    return labels, centroids
+    return labels, medoids_indices
 
 
 def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
@@ -1008,7 +1008,8 @@ for expno in range(reps):
         duration = time() - t
         print('Duration is ', duration)
 
-        labels, centroids = pyclustering_utils_clarans(clarans_instance)
+        labels, medroid_indices = pyclustering_utils_clarans(clarans_instance)
+        centroids = np.ascontiguousarray(X[medroid_indices])
 
         if verbose:
             plot_centroids_clusters(X, centroids, labels, 'CLARANS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
