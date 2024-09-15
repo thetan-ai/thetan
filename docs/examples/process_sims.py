@@ -301,7 +301,7 @@ dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 10
-save_results = False
+save_results = True
 verbose = True
 theta_value = 3.6
 
