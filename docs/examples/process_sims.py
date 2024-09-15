@@ -109,12 +109,12 @@ def pyclustering_utils_clarans(bsas_instance):
     # change representation from index list to label list
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
-    centroids = bsas_instance.get_medoids()
+    medoids_indices = bsas_instance.get_medoids()
 
     labels = np.ascontiguousarray(clusters)
-    centroids = np.ascontiguousarray(centroids)
+    # centroids = np.ascontiguousarray(centroids)
 
-    return labels, centroids
+    return labels, medoids_indices
 
 
 def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
@@ -223,8 +223,8 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
 
-    for c in range(centroids.shape[0]):
-        pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
+    # for c in range(centroids.shape[0]):
+    #    pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
 
     if initial_centroids is not None:
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
@@ -288,13 +288,9 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-
-# rows = ['kmedians', 'kmedoids', 'xmeans', 'TSR']
-# rows = ['OPTICS', 'CLARANS', 'meanshift++']
-# rows = ['meanshift++']
-rows = ['CLARANS']
-
+rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
+rows += ['kmedians', 'kmedoids', 'xmeans', 'TSR']
+rows += ['OPTICS', 'CLARANS', 'meanshift++']
 
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
@@ -304,11 +300,12 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 1
-save_results = False
+reps = 10
+save_results = True
 verbose = True
 theta_value = 3.6
 
+t_start = time()
 
 for expno in range(reps):
 
@@ -1008,7 +1005,8 @@ for expno in range(reps):
         duration = time() - t
         print('Duration is ', duration)
 
-        labels, centroids = pyclustering_utils_clarans(clarans_instance)
+        labels, medroid_indices = pyclustering_utils_clarans(clarans_instance)
+        centroids = np.ascontiguousarray(X[medroid_indices])
 
         if verbose:
             plot_centroids_clusters(X, centroids, labels, 'CLARANS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
@@ -1082,5 +1080,22 @@ for expno in range(reps):
         df.to_excel(dpath + "expno_v2_" + str(expno) + ".xlsx")
         print('Saving evaluations')
 
+t_end = time()
+
+print('Total duration is ', t_end - t_start, ' seconds')
+
 t = 1
 
+combine_results = False
+
+if combine_results:
+    files = []
+    for expno in range(reps):
+        fname_ = dpath + "expno_" + str(expno) + ".xlsx"
+        files.append(fname_)
+        print(pd.read_excel(fname_))
+        print()
+
+    df = pd.concat([pd.read_excel(f) for f in files])
+    result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
+    print(result)
