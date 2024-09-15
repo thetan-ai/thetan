@@ -3,11 +3,11 @@ import tracemalloc
 import numpy as np
 import pylab as pl
 import pandas as pd
-from thetan.berserker import berserker2
+from thetan.berserker import berserker2, tsg_randomized
 from sklearn.mixture import GaussianMixture
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, OPTICS
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
-from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN
+from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN, affinity_propagation
 from sklearn.cluster import BisectingKMeans, MeanShift
 from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
@@ -17,11 +17,16 @@ from pyclustering.cluster.bsas import bsas
 from pyclustering.cluster.mbsas import mbsas
 from pyclustering.cluster.ttsas import ttsas
 from pyclustering.cluster.cure import cure
-from pyclustering.cluster.kmeans import kmeans as kmeanspy
-from pyclustering.cluster.kmedoids import kmedoids as kmedoidspy
+from pyclustering.cluster.kmedians import kmedians
+from pyclustering.cluster.xmeans import xmeans
+from pyclustering.cluster.clarans import clarans
+from pyclustering.cluster.rock import rock
+from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer, random_center_initializer
 from pyclustering.utils.metric import distance_metric, type_metric;
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
 import skfuzzy as fuzz
+from sklearn_extra.cluster import KMedoids
+import MeanShiftPP
 
 
 def pyclustering_utils(bsas_instance, repor=False):
@@ -40,6 +45,71 @@ def pyclustering_utils(bsas_instance, repor=False):
     else:
         centroids = bsas_instance.get_representatives()
         # centroids = bsas_instance.get_means()
+
+    labels = np.ascontiguousarray(clusters)
+    centroids = np.ascontiguousarray(centroids)
+
+    return labels, centroids
+
+
+def pyclustering_utils_kmedians(bsas_instance):
+    clusters = bsas_instance.get_clusters()
+    type_repr = bsas_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, X)
+
+    # change representation from index list to label list
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+    centroids = bsas_instance.get_medians()
+
+    labels = np.ascontiguousarray(clusters)
+    centroids = np.ascontiguousarray(centroids)
+
+    return labels, centroids
+
+
+def pyclustering_utils_kmedoids(bsas_instance):
+    clusters = bsas_instance.get_clusters()
+    type_repr = bsas_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, X)
+
+    # change representation from index list to label list
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+    centroids = bsas_instance.get_medoids()
+
+    labels = np.ascontiguousarray(clusters)
+    centroids = np.ascontiguousarray(centroids)
+
+    return labels, centroids
+
+def pyclustering_utils_xmeans(bsas_instance):
+    clusters = bsas_instance.get_clusters()
+
+    centroids = bsas_instance.get_centers()
+    type_repr = bsas_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, X)
+
+    # change representation from index list to label list
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+
+
+    labels = np.ascontiguousarray(clusters)
+    centroids = np.ascontiguousarray(centroids)
+
+    return labels, centroids
+
+
+def pyclustering_utils_clarans(bsas_instance):
+    clusters = bsas_instance.get_clusters()
+    type_repr = bsas_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, X)
+
+    # change representation from index list to label list
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+    centroids = bsas_instance.get_medoids()
 
     labels = np.ascontiguousarray(clusters)
     centroids = np.ascontiguousarray(centroids)
@@ -220,9 +290,12 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 
 # rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 
-rows = ['meanshift']
+# rows = ['kmedians', 'kmedoids', 'xmeans', 'TSR']
+# rows = ['OPTICS', 'CLARANS', 'meanshift++']
+# rows = ['meanshift++']
+rows = ['CLARANS']
 
-rows_extra = ['kmedoids', 'kmedian', 'meanshift++', 'affinity_prop', 'OPTICS', 'CLARANS', 'ROCK']
+
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 
@@ -232,7 +305,9 @@ dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 1
-save_results = True
+save_results = False
+verbose = True
+theta_value = 3.6
 
 
 for expno in range(reps):
@@ -241,7 +316,7 @@ for expno in range(reps):
 
     evaluations = {}
     evaluation_thr = 0.1
-    verbose = True
+
 
     X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=10, cluster_y=10)
 
@@ -254,7 +329,7 @@ for expno in range(reps):
     if 'TB' in rows:
 
         print('\n >> Starting Berserker ...')
-        theta_value = 3.6
+
         t = time()
         tracemalloc.start()
         centroids, labels = berserker2(X, theta_value, all_out=False)
@@ -272,7 +347,6 @@ for expno in range(reps):
         print(scores)
         print('Duration is ', time()-t)
         evaluations['TB'] = scores
-
 
 
     if 'kmeans++' in rows:
@@ -368,9 +442,11 @@ for expno in range(reps):
 
     if 'meanshift' in rows:
 
+        # for bandwidth in [2.4, 2.6, 2.8, 3.0, 3.2, 3.4]:
         print('\n >> Starting with MeanShift ...')
         t = time()
-        bandwidth = 3.6
+        bandwidth = 2.6
+        print('bandwidth ', bandwidth)
         tracemalloc.start()
         model = MeanShift(bandwidth=bandwidth, cluster_all=True)
         ms = model.fit(X)
@@ -393,6 +469,37 @@ for expno in range(reps):
 
         if verbose:
             plot_centroids_clusters(X, ms_centroids, ms_labels, 'meanshift', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+
+    if 'meanshift++' in rows:
+
+        # for bandwidth in [2.6, 3.0, 3.2, 3.4, 3.6, 3.8]:
+        print('\n >> Starting with MeanShift++ ...')
+        t = time()
+        bandwidth = 3.4
+        print('bandwidth ', bandwidth)
+        tracemalloc.start()
+        model = MeanShiftPP.MeanShiftPP(bandwidth=bandwidth, threshold=0.00001, iterations=1000)
+        cluster_centers_, labels_ = model.fit_predict(X, True)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+        duration = time() - t
+        print('Duration', duration)
+
+        ms_centroids = np.ascontiguousarray(cluster_centers_, dtype='f8')
+        ms_labels = labels_
+
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=ms_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=ms_labels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['meanshift++'] = scores
+
+        if verbose:
+            plot_centroids_clusters(X, ms_centroids, ms_labels, 'meanshift++', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
     if 'EM_GMM' in rows:
@@ -427,6 +534,7 @@ for expno in range(reps):
     if 'TS' in rows:
 
         print('\n >> Starting TS ...')
+
         t = time()
         tracemalloc.start()
         tgs_centroids, tgs_labels = tgs(X, theta_value, all_out=False)
@@ -445,6 +553,30 @@ for expno in range(reps):
 
         if verbose:
             plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+    if 'TSR' in rows:
+
+        print('\n >> Starting TSR ...')
+        t = time()
+        tracemalloc.start()
+        tgs_centroids, tgs_labels, tsg_sot = tsg_randomized(X, theta_value, num_shuffles=10)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+        duration = time() - t
+        print('Duration is ', duration)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=tgs_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=tgs_labels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time() - t)
+        evaluations['TSR'] = scores
+
+        if verbose:
+            plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+
 
     if 'bisecting' in rows:
 
@@ -531,6 +663,33 @@ for expno in range(reps):
         if verbose:
             plot_centroids_clusters(X, hdbcentroids, hdblabels, 'hdbscan', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
+    if 'OPTICS' in rows:
+
+        print('\n >> Starting OPTICS ...')
+        t = time()
+        tracemalloc.start()
+        model = OPTICS(min_samples=min_samples, xi=0.05, min_cluster_size=5)
+        model.fit(X)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+        duration = time() - t
+        print('Duration', duration)
+
+        unq = np.unique(model.labels_)
+        optics_nclusters = np.sum(unq>=0)
+
+        opticscentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(optics_nclusters)])
+        opticslabels = model.labels_
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=opticscentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=opticslabels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['OPTICS'] = scores
+        if verbose:
+            plot_centroids_clusters(X, opticscentroids, opticslabels, 'OPTICS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
 
     if 'BSAS' in rows:
@@ -723,6 +882,143 @@ for expno in range(reps):
         print(scores)
         print('Duration is ', time()-t)
         evaluations['CURE'] = scores
+
+    if 'kmedians' in rows:
+
+        print('\n >> Starting kmedians ...')
+
+        t = time()
+        tracemalloc.start()
+        metric = distance_metric(type_metric.EUCLIDEAN)
+        ccore = True
+
+        init_centers = random_center_initializer(X, n_clusters).initialize()
+        init_centers = np.ascontiguousarray(init_centers)
+
+        kmedians_instance = kmedians(X, init_centers, ccore=ccore, metric=metric)
+        kmedians_instance.process()
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels, centroids = pyclustering_utils_kmedians(kmedians_instance)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'kmedians', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['kmedians'] = scores
+
+    if 'kmedoids' in rows:
+
+        print('\n >> Starting kmedoids ...')
+
+        t = time()
+        tracemalloc.start()
+
+        kmedoids = KMedoids(n_clusters=n_clusters, random_state=0, init='k-medoids++').fit(X)
+
+
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels, centroids = kmedoids.labels_, kmedoids.cluster_centers_
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'kmedoids', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['kmedoids'] = scores
+
+    if 'xmeans' in rows:
+
+        print('\n >> Starting xmeans ...')
+
+        t = time()
+        tracemalloc.start()
+        metric = distance_metric(type_metric.EUCLIDEAN)
+        ccore = True
+
+        # init_centers = kmeans_plusplus_initializer(X, n_clusters).initialize()
+        init_centers = random_center_initializer(X, n_clusters).initialize()
+
+        init_centers = np.ascontiguousarray(init_centers)
+
+        xmeans_instance = xmeans(X, init_centers, n_clusters, ccore=ccore, metric=metric)
+        xmeans_instance.process()
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels, centroids = pyclustering_utils_xmeans(xmeans_instance)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'xmeans', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['xmeans'] = scores
+
+
+    if 'CLARANS' in rows:
+
+        print('\n >> Starting CLARANS ...')
+
+        t = time()
+        tracemalloc.start()
+        # metric = distance_metric(type_metric.EUCLIDEAN)
+        # ccore = True
+
+        # # init_centers = kmeans_plusplus_initializer(X, n_clusters).initialize()
+        # init_centers = random_center_initializer(X, n_clusters).initialize()
+
+        # init_centers = np.ascontiguousarray(init_centers)
+
+        # xmeans_instance = xmeans(X, init_centers, n_clusters, ccore=ccore, metric=metric)
+        # xmeans_instance.process()
+
+        clarans_instance = clarans(X.tolist(), n_clusters, 6, 4)
+        clarans_instance.process()
+
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+
+        duration = time() - t
+        print('Duration is ', duration)
+
+        labels, centroids = pyclustering_utils_clarans(clarans_instance)
+
+        if verbose:
+            plot_centroids_clusters(X, centroids, labels, 'CLARANS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+        print('Starting evaluation')
+        t = time()
+        scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+        print(scores)
+        print('Duration is ', time()-t)
+        evaluations['CLARANS'] = scores
 
 
     if 'TBK' in rows:
