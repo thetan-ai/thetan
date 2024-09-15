@@ -1086,3 +1086,16 @@ print('Total duration is ', t_end - t_start, ' seconds')
 
 t = 1
 
+combine_results = False
+
+if combine_results:
+    files = []
+    for expno in range(reps):
+        fname_ = dpath + "expno_" + str(expno) + ".xlsx"
+        files.append(fname_)
+        print(pd.read_excel(fname_))
+        print()
+
+    df = pd.concat([pd.read_excel(f) for f in files])
+    result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
+    print(result)
