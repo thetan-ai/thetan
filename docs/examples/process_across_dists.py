@@ -178,25 +178,22 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-rows = ['TS', 'TS+CL', 'TS+CL+TS2', 'TS+CL+TS2+CL2']
+rows = ['TB']
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
 
 
-# dpath = '/home/elef/Data/tb_output_ablation/'
-dpath = '/home/elef/Data/tb_output_ablation_v2/'
+# dpath = '/home/elef/Data/tb_output_across_dists/'
+dpath = 'C:/Users/Eleftherios/Data/tb_output_across_dists/'
 
-# dpath = 'C:/Users/elef/Data/tb_output_ablation/'
-# dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation/'
-# dpath = 'C:/Users/Eleftherios/Data/tb_output_ablation_v2/'
-
-run_experiments = False
+run_experiments = True
 plot_results = True
 
 reps = 1
 save_results = True
 evaluation = True
 theta_value = 3.6
+verbose = True
 
 
 if run_experiments:
@@ -209,57 +206,61 @@ if run_experiments:
 
         evaluations = {}
         evaluation_thr = 0.1
-        verbose = False
 
-        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5)
+        for blob_dis in [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5]:
 
-        print('Number of features ', X.shape[0])
-        print('Number of GT centroids ', gt_centroids.shape[0])
+            print('>>>> Blob distance ', blob_dis)
 
-        n_clusters = gt_centroids.shape[0]
+            X, L, gt_centroids = simulate_data('gaussian', blob_dis=blob_dis, cluster_x=10, cluster_y=10)
 
-        t = 1
+            print('Number of features ', X.shape[0])
+            print('Number of GT centroids ', gt_centroids.shape[0])
 
-        if 'TB' in rows:
+            n_clusters = gt_centroids.shape[0]
 
-            print('\n >> Starting Berserker ...')
+            t = 1
 
-            t = time()
-            centroids, labels = berserker2(X, theta_value, all_out=False)
-            duration = time() - t
-            print('Duration is ', duration)
+            if 'TB' in rows:
 
-            if verbose:
-                plot_centroids_clusters(X, centroids, labels, 'TB', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+                print('\n >> Starting Berserker ...')
+
+                t = time()
+                centroids, labels = berserker2(X, theta_value, all_out=False)
+                duration = time() - t
+                print('Duration is ', duration)
+
+                if verbose:
+                    plot_centroids_clusters(X, centroids, labels, 'TB' + str(blob_dis), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+                if evaluation:
+                    print('Starting evaluation')
+                    t = time()
+                    scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
+                    print(scores)
+                    print('Duration is ', time()-t)
+                    evaluations['TB'] = scores
+
 
             if evaluation:
-                print('Starting evaluation')
-                t = time()
-                scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-                print(scores)
-                print('Duration is ', time()-t)
-                evaluations['TB'] = scores
+                print('ALL EVALUATIONS')
+                print(evaluations)
 
+                evals = np.zeros((len(rows), len(cols)))
 
-        if evaluation:
-            print('ALL EVALUATIONS')
-            print(evaluations)
+                for i, row in enumerate(rows):
+                    for j, col in enumerate(cols):
+                        evals[i, j] = evaluations[row][j]
 
-            evals = np.zeros((len(rows), len(cols)))
+                df = pd.DataFrame(evals, columns=cols)
+                df.index = rows
 
-            for i, row in enumerate(rows):
-                for j, col in enumerate(cols):
-                    evals[i, j] = evaluations[row][j]
+                print('Printing dataframe of evaluations ... ' + str(expno))
+                print(df)
 
-            df = pd.DataFrame(evals, columns=cols)
-            df.index = rows
+                if save_results:
+                    df.to_excel(dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx")
+                    print('Saving evaluations')
 
-            print('Printing dataframe of evaluations ... ' + str(expno))
-            print(df)
-
-            if save_results:
-                df.to_excel(dpath + "expno_" + str(expno) + ".xlsx")
-                print('Saving evaluations')
     t_end = time()
     print('Total Duration ', t_end - t_start)
 
@@ -267,7 +268,7 @@ if run_experiments:
 files = []
 if plot_results:
     for expno in range(reps):
-        fname_ = dpath + "expno_" + str(expno) + ".xlsx"
+        fname_ = dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx"
         files.append(fname_)
         print(pd.read_excel(fname_))
         print()
