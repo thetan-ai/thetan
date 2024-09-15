@@ -223,8 +223,8 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
     pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
 
-    for c in range(centroids.shape[0]):
-        pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
+    # for c in range(centroids.shape[0]):
+    #    pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
 
     if initial_centroids is not None:
         pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
@@ -288,13 +288,9 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-
-# rows = ['kmedians', 'kmedoids', 'xmeans', 'TSR']
-# rows = ['OPTICS', 'CLARANS', 'meanshift++']
-# rows = ['meanshift++']
-rows = ['CLARANS']
-
+rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
+rows += ['kmedians', 'kmedoids', 'xmeans', 'TSR']
+rows += ['OPTICS', 'CLARANS', 'meanshift++']
 
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
@@ -304,7 +300,7 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 1
+reps = 10
 save_results = False
 verbose = True
 theta_value = 3.6
