@@ -189,7 +189,7 @@ dpath = 'C:/Users/Eleftherios/Data/tb_output_across_dists/'
 run_experiments = True
 plot_results = True
 
-reps = 1
+reps = 2
 save_results = True
 evaluation = True
 theta_value = 3.6
@@ -200,16 +200,19 @@ if run_experiments:
 
     t_start = time()
 
-    for expno in range(reps):
+    # blob_dists = [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5]
+    blob_dists = [3., 3.5]
 
-        print('######################################### > Experiment ', str(expno), ' Go Go Team Thetan!')
+    evaluations = {}
+    evaluation_thr = 0.1
 
-        evaluations = {}
-        evaluation_thr = 0.1
+    for blob_dis in blob_dists:
 
-        for blob_dis in [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5]:
+        print('>>>>>> Blob distance ', blob_dis)
 
-            print('>>>> Blob distance ', blob_dis)
+        for expno in range(reps):
+
+            print('### > Experiment ', str(expno), ' Go Go Team Thetan!')
 
             X, L, gt_centroids = simulate_data('gaussian', blob_dis=blob_dis, cluster_x=10, cluster_y=10)
 
@@ -238,71 +241,71 @@ if run_experiments:
                     scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
                     print(scores)
                     print('Duration is ', time()-t)
-                    evaluations['TB'] = scores
+                    evaluations['TB' + str(blob_dis) + ' ' + str(expno)] = scores
 
 
-            if evaluation:
-                print('ALL EVALUATIONS')
-                print(evaluations)
+    if evaluation:
+        print('ALL EVALUATIONS')
+        print(evaluations)
 
-                evals = np.zeros((len(rows), len(cols)))
+        evals = np.zeros((len(rows) * len(blob_dists), len(cols)))
 
-                for i, row in enumerate(rows):
-                    for j, col in enumerate(cols):
-                        evals[i, j] = evaluations[row][j]
+        for i, row in enumerate(rows):
+            for j, col in enumerate(cols):
+                evals[i, j] = evaluations[row][j]
 
-                df = pd.DataFrame(evals, columns=cols)
-                df.index = rows
+        df = pd.DataFrame(evals, columns=cols)
+        df.index = rows
 
-                print('Printing dataframe of evaluations ... ' + str(expno))
-                print(df)
+        print('Printing dataframe of evaluations ... ' + str(expno))
+        print(df)
 
-                if save_results:
-                    df.to_excel(dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx")
-                    print('Saving evaluations')
+        if save_results:
+            df.to_excel(dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx")
+            print('Saving evaluations')
 
     t_end = time()
     print('Total Duration ', t_end - t_start)
 
 
-files = []
-if plot_results:
-    for expno in range(reps):
-        fname_ = dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx"
-        files.append(fname_)
-        print(pd.read_excel(fname_))
-        print()
+# files = []
+# if plot_results:
+#     for expno in range(reps):
+#         fname_ = dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx"
+#         files.append(fname_)
+#         print(pd.read_excel(fname_))
+#         print()
 
-df = pd.concat([pd.read_excel(f) for f in files])
-result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
+# df = pd.concat([pd.read_excel(f) for f in files])
+# result = df.groupby('Unnamed: 0').agg(['mean', 'std'])
 
-import matplotlib.pyplot as plt
-import numpy as np
+# import matplotlib.pyplot as plt
+# import numpy as np
 
-x = np.array([1, 2, 3, 4])
-y = result['AC']['mean'].values
-e = result['AC']['std'].values
+# x = np.array([1, 2, 3, 4])
+# y = result['AC']['mean'].values
+# e = result['AC']['std'].values
 
-plt.figure()
-plt.title('Ablation study - AC - Error plot')
-plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
-plt.xticks(x, result.index.tolist())
-plt.grid()
+# plt.figure()
+# plt.title('Ablation study - AC - Error plot')
+# plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
+# plt.xticks(x, result.index.tolist())
+# plt.grid()
 
-ac = df['AC'].to_numpy()
-data = ac.reshape(20, 4)
-plt.figure()
-plt.title('Ablation study - AC - Violin plot')
-plt.violinplot(data, showmeans=True)
-plt.xticks(x, result.index.tolist())
-plt.grid()
+# ac = df['AC'].to_numpy()
+# data = ac.reshape(20, 4)
+# plt.figure()
+# plt.title('Ablation study - AC - Violin plot')
+# plt.violinplot(data, showmeans=True)
+# plt.xticks(x, result.index.tolist())
+# plt.grid()
 
-plt.figure()
-plt.title('Ablation study - AC - Box plot')
-plt.boxplot(data)
-plt.xticks(x, result.index.tolist())
-plt.grid()
+# plt.figure()
+# plt.title('Ablation study - AC - Box plot')
+# plt.boxplot(data)
+# plt.xticks(x, result.index.tolist())
+# plt.grid()
 
-plt.show()
+# plt.show()
 
 
