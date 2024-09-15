@@ -305,6 +305,7 @@ save_results = True
 verbose = True
 theta_value = 3.6
 
+t_start = time()
 
 for expno in range(reps):
 
@@ -1078,6 +1079,10 @@ for expno in range(reps):
     if save_results:
         df.to_excel(dpath + "expno_v2_" + str(expno) + ".xlsx")
         print('Saving evaluations')
+
+t_end = time()
+
+print('Total duration is ', t_end - t_start, ' seconds')
 
 t = 1
 
