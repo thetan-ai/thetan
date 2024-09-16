@@ -201,8 +201,8 @@ if run_experiments:
 
     t_start = time()
 
-    # blob_dists = [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5]
-    blob_dists = [3., 3.5]
+    blob_dists = [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5]
+    # blob_dists = [3., 3.5]
 
     evaluations = {}
     evaluation_thr = 0.1
@@ -268,18 +268,13 @@ if run_experiments:
         plt.title('Inter class distance changes')
         upper = []
         lower = []
+        m = []
         for blobd in blob_dists:
-            upper.append(summary['TB']['mean'] + summary['TB']['std']) 
-            lower.append(summary['TB']['mean'] - summary['TB']['std']) 
+            upper.append(summary['TB'][blobd]['mean'] + summary['TB'][blobd]['std'])
+            lower.append(summary['TB'][blobd]['mean'] - summary['TB'][blobd]['std'])
+            m.append(summary['TB'][blobd]['mean'])
+        plt.plot(blob_dists, m)
         plt.fill_between(blob_dists, upper, lower)
-        plt.show()
-        t = 1
-
-        # evals = np.zeros((len(rows) * len(blob_dists), len(cols)))
-
-        # for i, row in enumerate(rows):
-        #     for j, col in enumerate(cols):
-        #         evals[i, j] = evaluations[row][j]
 
 
     t_end = time()
