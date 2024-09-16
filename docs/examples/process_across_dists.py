@@ -201,7 +201,7 @@ if run_experiments:
 
     t_start = time()
 
-    blob_dists = [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5]
+    blob_dists = [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5, 8.0, 8.5, 9.0, 9.5, 10.]
     # blob_dists = [3., 3.5]
 
     evaluations = {}
