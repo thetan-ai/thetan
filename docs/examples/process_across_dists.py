@@ -6,6 +6,7 @@ from thetan.berserker import berserker2, berserker2_ablation
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
+import matplotlib.pyplot as plt
 
 
 def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None):
@@ -241,28 +242,45 @@ if run_experiments:
                     scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
                     print(scores)
                     print('Duration is ', time()-t)
-                    evaluations['TB' + str(blob_dis) + ' ' + str(expno)] = scores
+                    evaluations['TB ' + str(blob_dis) + ' ' + str(expno)] = scores
 
 
     if evaluation:
         print('ALL EVALUATIONS')
         print(evaluations)
 
-        evals = np.zeros((len(rows) * len(blob_dists), len(cols)))
+        for c, metric in enumerate(cols):
+            print(metric)
+            summary = {}
+            for row in rows:
+                summary[row] = {}
+                for bdist in blob_dists:
+                    summary[row][bdist] = {}
+                    vals = []
+                    for i in range(reps):
+                        vals.append(evaluations[row + ' ' + str(blob_dis) + ' ' + str(expno)][c])
+                    summary[row][bdist]['mean'] = np.mean(vals)
+                    summary[row][bdist]['std'] = np.std(vals)
+            break
 
-        for i, row in enumerate(rows):
-            for j, col in enumerate(cols):
-                evals[i, j] = evaluations[row][j]
 
-        df = pd.DataFrame(evals, columns=cols)
-        df.index = rows
+        plt.figure()
+        plt.title('Inter class distance changes')
+        upper = []
+        lower = []
+        for blobd in blob_dists:
+            upper.append(summary['TB']['mean'] + summary['TB']['std']) 
+            lower.append(summary['TB']['mean'] - summary['TB']['std']) 
+        plt.fill_between(blob_dists, upper, lower)
+        plt.show()
+        t = 1
 
-        print('Printing dataframe of evaluations ... ' + str(expno))
-        print(df)
+        # evals = np.zeros((len(rows) * len(blob_dists), len(cols)))
 
-        if save_results:
-            df.to_excel(dpath + "expno_" + str(expno).zfill(2) + '_' + str(blob_dis) + ".xlsx")
-            print('Saving evaluations')
+        # for i, row in enumerate(rows):
+        #     for j, col in enumerate(cols):
+        #         evals[i, j] = evaluations[row][j]
+
 
     t_end = time()
     print('Total Duration ', t_end - t_start)
