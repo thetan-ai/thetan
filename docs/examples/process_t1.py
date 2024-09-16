@@ -5,7 +5,7 @@ import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
 from thetan.berserker import berserker2_brain_seg
-
+from sklearn.cluster import KMeans
 
 
 # T1 dataset

@@ -289,8 +289,12 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 
 
 rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-rows += ['kmedians', 'kmedoids', 'xmeans', 'TSR']
+# rows += ['kmedians', 'kmedoids', 'xmeans', 'TSR']
+rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids and hierarchical clustering removed due to large memory needs
 rows += ['OPTICS', 'CLARANS', 'meanshift++']
+
+
+
 
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']

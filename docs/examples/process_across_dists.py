@@ -1,12 +1,31 @@
 from time import time
 import numpy as np
+import tracemalloc
 import pylab as pl
 import pandas as pd
 from thetan.berserker import berserker2, berserker2_ablation
+from sklearn.cluster import HDBSCAN, KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
+from sklearn.cluster import MeanShift
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
 import matplotlib.pyplot as plt
+
+
+def evaluate_v2(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
+
+    D = np.sqrt(tdm(ecentroids, centroids))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+    ac_score = count / len(ecentroids)
+
+    nmi_score = normalized_mutual_info_score(true_label, label)
+
+    sil_score = silhouette_score(X, label)
+
+    fms_score = fowlkes_mallows_score(true_label, label)
+
+    return ac_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration, memory
 
 
 def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None):
@@ -141,6 +160,51 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.close(fig)
 
 
+def plot_centroids_clusters_v2(data, centroids, labels, title, exp_type, initial_centroids=None,
+                               uncertain_data=None, final_counts=None, final_nearc_value=None,
+                               merged_centroids=None, show=True, dpath=None):
+
+    new_colors = np.zeros((len(data), 3))
+    no_clusters = len(centroids)
+    cluster_colors = np.random.rand(no_clusters, 3)
+
+    for ind in range(data.shape[0]):
+        new_colors[ind] = cluster_colors[labels[ind]]
+
+    fig = pl.figure(figsize=(30, 15))
+    pl.title(title)
+    pl.axis('equal')
+    pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
+    pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
+
+    # for c in range(centroids.shape[0]):
+    #    pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
+
+    if initial_centroids is not None:
+        pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
+
+    if uncertain_data is not None:
+        pl.plot(uncertain_data[:, 0], uncertain_data[:, 1], 'g.')
+
+    cnt = 0
+    if final_counts is not None:
+        for i in range(final_counts.shape[0]):
+            prev = cnt
+            cnt += final_counts[i]
+            if final_counts[i] > 1:
+                pl.text(data[i, 0], data[i, 1], str(final_nearc_value[prev: cnt]) + ' ' + str(labels[i]), fontsize=8)
+
+    if merged_centroids is not None:
+        pl.plot(merged_centroids[:, 0], merged_centroids[:, 1], 'mo')
+
+    if show:
+        pl.show()
+
+    pl.savefig(dpath + '2_' + exp_type + '_' + title + '.png', dpi=300)
+    pl.close(fig)
+
+
+
 def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 
     print('Simulating data')
@@ -179,22 +243,26 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB']
+rows = ['TB', 'kmeans++', 'MeanShift', 'hdbscan']
 
-cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters']
+cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Time']
 
 
 # dpath = '/home/elef/Data/tb_output_across_dists/'
-dpath = 'C:/Users/Eleftherios/Data/tb_output_across_dists/'
+dpath = '/home/elef/Data/tb_output_across_dists_v2/'
+# dpath = 'C:/Users/Eleftherios/Data/tb_output_across_dists/'
+# dpath = 'C:/Users/Eleftherios/Data/tb_output_across_dists_v2/'
 
 run_experiments = True
 plot_results = True
 
-reps = 2
+reps = 5
 save_results = True
 evaluation = True
 theta_value = 3.6
 verbose = True
+eps = 0.5
+min_samples = 40
 
 
 if run_experiments:
@@ -203,6 +271,7 @@ if run_experiments:
 
     blob_dists = [3., 3.5, 4., 4.5, 5., 5.5, 6., 6.5, 7., 7.5, 8.0, 8.5, 9.0, 9.5, 10.]
     # blob_dists = [3., 3.5]
+    # blob_dists = [3., 3.5, 5.0, 10]
 
     evaluations = {}
     evaluation_thr = 0.1
@@ -224,62 +293,169 @@ if run_experiments:
 
             t = 1
 
+
             if 'TB' in rows:
 
                 print('\n >> Starting Berserker ...')
 
                 t = time()
+                tracemalloc.start()
                 centroids, labels = berserker2(X, theta_value, all_out=False)
+                amem, peakmem = tracemalloc.get_traced_memory()
+                peakmem = peakmem // (1024**2)
+                tracemalloc.stop()
                 duration = time() - t
                 print('Duration is ', duration)
 
                 if verbose:
-                    plot_centroids_clusters(X, centroids, labels, 'TB' + str(blob_dis), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+                    plot_centroids_clusters_v2(X, centroids, labels, 'TB'+ ' ' + str(blob_dis) + ' ' + str(expno), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
-                if evaluation:
-                    print('Starting evaluation')
-                    t = time()
-                    scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L)
-                    print(scores)
-                    print('Duration is ', time()-t)
-                    evaluations['TB ' + str(blob_dis) + ' ' + str(expno)] = scores
+                print('Starting evaluation')
+                scores = evaluate_v2(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['TB' + ' ' + str(blob_dis) + ' ' + str(expno)] = scores
 
+
+            if 'kmeans++' in rows:
+
+                print('\n >> Starting K-means++ ...')
+                t = time()
+                tracemalloc.start()
+                kmeans = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
+                                max_iter=300, tol=0.0001).fit(X)
+                amem, peakmem = tracemalloc.get_traced_memory()
+                peakmem = peakmem // (1024**2)
+                tracemalloc.stop()
+                duration = time() - t
+                print('Duration', duration)
+
+                kcentroids = kmeans.cluster_centers_
+                klabels = kmeans.labels_
+
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate_v2(ecentroids=kcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=klabels, true_label=L, duration=duration, memory=peakmem)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['kmeans++' + ' ' + str(blob_dis) + ' ' + str(expno)] = scores
+                if verbose:
+                    plot_centroids_clusters_v2(X, kcentroids, klabels, 'kmeans++' + ' ' + str(blob_dis) + ' ' + str(expno), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+
+            if 'meanshift' in rows:
+
+                # for bandwidth in [2.4, 2.6, 2.8, 3.0, 3.2, 3.4]:
+                print('\n >> Starting with MeanShift ...')
+                t = time()
+                bandwidth = 2.6
+                print('bandwidth ', bandwidth)
+                tracemalloc.start()
+                model = MeanShift(bandwidth=bandwidth, cluster_all=True)
+                ms = model.fit(X)
+                amem, peakmem = tracemalloc.get_traced_memory()
+                peakmem = peakmem // (1024**2)
+                tracemalloc.stop()
+                duration = time() - t
+                print('Duration', duration)
+
+                ms_centroids = model.cluster_centers_ # np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
+                ms_labels = model.labels_
+
+
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate_v2(ecentroids=ms_centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=ms_labels, true_label=L, duration=duration, memory=peakmem)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['meanshift' + ' ' + str(blob_dis) + ' ' + str(expno)] = scores
+
+                if verbose:
+                    plot_centroids_clusters_v2(X, ms_centroids, ms_labels, 'meanshift' + ' ' + str(blob_dis) + ' ' + str(expno), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            if 'hdbscan' in rows:
+
+                print('\n >> Starting HDBSCAN ...')
+                t = time()
+                tracemalloc.start()
+                model = HDBSCAN(min_samples=min_samples)
+                model.fit(X)
+                amem, peakmem = tracemalloc.get_traced_memory()
+                peakmem = peakmem // (1024**2)
+                tracemalloc.stop()
+                duration = time() - t
+                print('Duration', duration)
+
+                unq = np.unique(model.labels_)
+                hdb_nclusters = np.sum(unq>=0)
+
+                hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
+                hdblabels = model.labels_
+
+                print('Starting evaluation')
+                t = time()
+                scores = evaluate_v2(ecentroids=hdbcentroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=hdblabels, true_label=L, duration=duration, memory=peakmem)
+                print(scores)
+                print('Duration is ', time()-t)
+                evaluations['hdbscan' + ' ' + str(blob_dis) + ' ' + str(expno)] = scores
+                if verbose:
+                    plot_centroids_clusters_v2(X, hdbcentroids, hdblabels, 'hdbscan' + ' ' + str(blob_dis) + ' ' + str(expno), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
     if evaluation:
         print('ALL EVALUATIONS')
         print(evaluations)
 
-        for c, metric in enumerate(cols):
+        summary = {}
+        for i_metric, metric in enumerate(cols):
             print(metric)
-            summary = {}
-            for row in rows:
-                summary[row] = {}
-                for bdist in blob_dists:
-                    summary[row][bdist] = {}
+            summary[metric] = {}
+            for method in rows:
+                summary[metric][method] = {}
+
+                means = []
+                stds = []
+                for blob_dis in blob_dists:
+
                     vals = []
-                    for i in range(reps):
-                        vals.append(evaluations[row + ' ' + str(blob_dis) + ' ' + str(expno)][c])
-                    summary[row][bdist]['mean'] = np.mean(vals)
-                    summary[row][bdist]['std'] = np.std(vals)
-            break
+                    for expno in range(reps):
+                        vals.append(evaluations[method + ' ' + str(blob_dis) + ' ' + str(expno)][i_metric])
+
+                    mean_ = np.mean(vals)
+                    std_ = np.std(vals)
+                    means.append(mean_)
+                    stds.append(std_)
+
+                summary[metric][method]['means'] = np.asarray(means)
+                summary[metric][method]['stds'] = np.asarray(stds)
+
+            # break
+
+        t = 1
+
+        fig = plt.figure()
+        plt.title('Across inter-class distances')
+        for i_metric, metric in enumerate(cols):
+            for method in rows:
 
 
-        plt.figure()
-        plt.title('Inter class distance changes')
-        upper = []
-        lower = []
-        m = []
-        for blobd in blob_dists:
-            upper.append(summary['TB'][blobd]['mean'] + summary['TB'][blobd]['std'])
-            lower.append(summary['TB'][blobd]['mean'] - summary['TB'][blobd]['std'])
-            m.append(summary['TB'][blobd]['mean'])
-        plt.plot(blob_dists, m)
-        plt.fill_between(blob_dists, upper, lower)
 
+                upper = summary[metric][method]['means'] + summary['AC']['TB']['stds']
+                lower = summary[metric][method]['means'] - summary['AC']['TB']['stds']
+                central = summary[metric][method]['means']
+
+                plt.plot(blob_dists, central)
+                plt.fill_between(blob_dists, upper, lower, alpha=0.2, label=method)
+
+        plt.grid()
+        plt.legend()
+        # plt.show()
+        plt.savefig(dpath + 'final.png', dpi=300)
+        plt.close(fig)
 
     t_end = time()
     print('Total Duration ', t_end - t_start)
 
+t = 2
 
 # files = []
 # if plot_results:
