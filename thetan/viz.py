@@ -11,7 +11,10 @@ def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=N
     if centroids is not None:
         no_clusters = len(centroids)
         cluster_colors = np.random.rand(no_clusters, 3)
-
+    else:
+        if labels is not None:
+            no_clusters = np.max(labels) + 1
+            cluster_colors = np.random.rand(no_clusters, 3)
 
     if labels is not None:
 
@@ -49,7 +52,7 @@ def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=N
         plt.plot(merged_centroids[:, 0], merged_centroids[:, 1], 'mo')
 
     # pl.get_current_fig_manager().full_screen_toggle()
-    
+
     if maxwindow:
         plt.get_current_fig_manager().window.showMaximized()
 

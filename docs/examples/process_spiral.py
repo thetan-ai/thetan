@@ -1,13 +1,14 @@
 import numpy as np
-from thetan.theta import centroids_from_labels
+from thetan.theta import centroids_from_labels, assign
 from thetan.chaining import chainer, chainer2
 from thetan.berserker import berserker2
 from thetan.viz import plot_centroids_clusters
 from sklearn.cluster import DBSCAN, HDBSCAN
 from time import time
 
-# fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
-fname = 'C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv'
+fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
+# fname = 'C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv'
+# fname_save
 
 spiral_data = np.genfromtxt(fname, delimiter=',')
 # spiral_data = np.genfromtxt("C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
@@ -42,9 +43,7 @@ times['chainer'] = duration
 new_centroids = centroids_from_labels(X, new_labels)
 plot_centroids_clusters(X, centroids=new_centroids, labels=new_labels, title='Chainer', show=True)
 
-
-
-eps = 0.5 
+eps = 0.5
 min_samples = 1
 
 t = time()
@@ -62,8 +61,7 @@ times['dbscan'] = duration
 
 plot_centroids_clusters(X, centroids=dbcentroids, labels=dblabels, title='DBSCAN', show=True)
 
-# TB-HDBSCAN
-
+# TB-DBSCAN
 
 eps = 2.
 min_samples = 1
@@ -80,7 +78,30 @@ dblabels = model.labels_
 duration = time() - t
 times['tb-dbscan'] = duration
 
-plot_centroids_clusters(initial_centroids, centroids=dbcentroids, labels=dblabels, title='TB-DBSCAN', show=True)
+plot_centroids_clusters(initial_centroids, centroids=dbcentroids, labels=dblabels, title='TB-DBSCAN (init)', show=True)
+
+
+final_labels = initial_labels.copy()
+
+for i, l in enumerate(initial_labels):
+    final_labels[i] = dblabels[l]
+
+plot_centroids_clusters(X, None, labels=final_labels, title='TB-DBSCAN', show=True)
+
+print('\n >> Starting HDBSCAN ...')
+t = time()
+model = HDBSCAN(min_samples=min_samples)
+model.fit(X)
+duration = time() - t
+print('Duration', duration)
+
+unq = np.unique(model.labels_)
+hdb_nclusters = np.sum(unq>=0)
+
+hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
+hdblabels = model.labels_
+
+plot_centroids_clusters(X, None, labels=hdblabels, title='TB-HDBSCAN', show=True)
 
 print(times)
 
