@@ -10,6 +10,8 @@ from sklearn.cluster import MeanShift
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
 import matplotlib.pyplot as plt
+import pickle
+
 
 
 def evaluate_v2(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
@@ -401,8 +403,13 @@ if run_experiments:
                 if verbose:
                     plot_centroids_clusters_v2(X, hdbcentroids, hdblabels, 'hdbscan' + ' ' + str(blob_dis) + ' ' + str(expno), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
+    t_end = time()
+    print('Total Duration ', t_end - t_start)
 
     t = 2
+
+    with open(dpath + 'evaluations.pkl', 'wb') as f:
+        pickle.dump(evaluations, f)
 
     if evaluation:
         print('ALL EVALUATIONS')
@@ -435,28 +442,48 @@ if run_experiments:
 
         t = 1
 
-        fig = plt.figure()
-        plt.title('Across inter-class distances')
+
+
+        # Standard
         for i_metric, metric in enumerate(cols):
+            fig = plt.figure()
+            plt.title('Across inter-class distances - ' + metric)
             for method in rows:
-
-
 
                 upper = summary[metric][method]['means'] + summary['AC']['TB']['stds']
                 lower = summary[metric][method]['means'] - summary['AC']['TB']['stds']
                 central = summary[metric][method]['means']
 
-                plt.plot(blob_dists, central)
-                plt.fill_between(blob_dists, upper, lower, alpha=0.2, label=method)
+                plt.plot(blob_dists, central, label=method)
+                plt.fill_between(blob_dists, upper, lower, alpha=0.2)
 
-        plt.grid()
-        # plt.legend()
-        # plt.show()
-        plt.savefig(dpath + 'final_v2.png', dpi=300)
-        plt.close(fig)
+            plt.grid()
+            plt.legend()
+            # plt.show()
+            plt.savefig(dpath + metric + '.png', dpi=300)
+            plt.close(fig)
 
-    t_end = time()
-    print('Total Duration ', t_end - t_start)
+
+        # Log
+        # for i_metric, metric in enumerate(cols):
+        #     fig = plt.figure()
+        #     plt.title('Across inter-class distances (log) - ' + metric)
+        #     for method in rows:
+
+        #         upper = summary[metric][method]['means'] + summary['AC']['TB']['stds']
+        #         lower = summary[metric][method]['means'] - summary['AC']['TB']['stds']
+        #         central = summary[metric][method]['means']
+
+        #         plt.plot(blob_dists, np.log(central), label=method)
+        #         plt.fill_between(blob_dists, np.log(upper), np.log(lower), alpha=0.2)
+
+        #     plt.grid()
+        #     plt.legend()
+        #     # plt.show()
+        #     plt.savefig(dpath + 'log ' + metric + '.png', dpi=300)
+        #     plt.close(fig)
+
+
 
 t = 2
 
