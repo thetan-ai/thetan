@@ -243,7 +243,7 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'kmeans++', 'MeanShift', 'hdbscan']
+rows = ['TB', 'kmeans++', 'meanshift', 'hdbscan']
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Time']
 
@@ -400,6 +400,9 @@ if run_experiments:
                 evaluations['hdbscan' + ' ' + str(blob_dis) + ' ' + str(expno)] = scores
                 if verbose:
                     plot_centroids_clusters_v2(X, hdbcentroids, hdblabels, 'hdbscan' + ' ' + str(blob_dis) + ' ' + str(expno), exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+
+    t = 2
 
     if evaluation:
         print('ALL EVALUATIONS')
