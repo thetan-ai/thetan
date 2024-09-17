@@ -738,6 +738,55 @@ def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, 
         return even_centroids_ex2, updated_labels_ex2
 
 
+def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
+    sum_of_time = 0
+    all_centroids = {}
+    X_work = X.copy()
+
+    num_centroids = []
+    timings = []
+    for s in range(num_shuffles):
+
+        np.random.shuffle(X_work)
+        X_work_cp = np.ascontiguousarray(X_work)
+        t1 = time()
+        centroids, _ = berserker2(X_work_cp, theta_value=theta, metric=metric, all_out=False, verbose=False)
+        t2 = time()
+        timings.append(t2-t1)
+
+        all_centroids[s] = centroids
+        num_centroids.append(len(centroids))
+
+    print('Time for TB calls', np.sum(timings))
+    sum_of_time += np.sum(timings)
+    total_num_centroids = np.sum(num_centroids)
+    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype='f8')
+
+    offset = 0
+
+    for s in range(num_shuffles):
+
+        X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
+        offset += all_centroids[s].shape[0]
+
+    t1 = time()
+    new_centroids, _ = berserker2(X_centroids, theta_value=theta, metric=metric, all_out=False, verbose=False)
+    t2 = time()
+    sum_of_time += t2 - t1
+    print('Time for tg1 on centroids', t2 - t1)
+
+
+    t1 = time()
+    final_indices = assign(X, new_centroids, metric=metric)
+    t2 = time()
+    sum_of_time += t2 - t1
+    print('Time for assign calls', t2 - t1)
+    final_centroids = labels_to_centroids(X, final_indices)
+
+    return final_centroids, final_indices, sum_of_time
+
+
+
 def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None):
     """
     Deploying berserker v2 in imaging data and

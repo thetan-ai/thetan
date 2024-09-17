@@ -450,9 +450,9 @@ if run_experiments:
                 plt.fill_between(blob_dists, upper, lower, alpha=0.2, label=method)
 
         plt.grid()
-        plt.legend()
+        # plt.legend()
         # plt.show()
-        plt.savefig(dpath + 'final.png', dpi=300)
+        plt.savefig(dpath + 'final_v2.png', dpi=300)
         plt.close(fig)
 
     t_end = time()
