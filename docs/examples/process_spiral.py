@@ -32,7 +32,7 @@ epsilon_value = 2.0
 times = {}
 
 t = time()
-initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False)
+initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False, verbose=False)
 duration = time() - t
 times['TB'] = duration
 
