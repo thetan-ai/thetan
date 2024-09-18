@@ -302,7 +302,7 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 # dpath = '/home/elef/Data/tb_output/'
 # dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
 # dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
-dpath = '/home/elef/Data/tb_output_v5/gaussian_200x100/'
+dpath = '/home/elef/Data/tb_output_v5/gaussian_300x100/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 10
@@ -324,7 +324,7 @@ if run_experiments:
         evaluation_thr = 0.1
 
 
-        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=20, cluster_y=10)
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=30, cluster_y=10)
 
         print('Number of features ', X.shape[0])
         print('Number of GT centroids ', gt_centroids.shape[0])

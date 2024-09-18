@@ -101,7 +101,7 @@ hdb_nclusters = np.sum(unq>=0)
 hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
 hdblabels = model.labels_
 
-plot_centroids_clusters(X, None, labels=hdblabels, title='TB-HDBSCAN', show=True)
+plot_centroids_clusters(X, None, labels=hdblabels, title='HDBSCAN', show=True)
 
 print(times)
 
