@@ -17,4 +17,16 @@ x.shape
 # X, y = digits.data, digits.target
 # n_samples, n_features = X.shape
 
+from thetan.berserker import berserker2
 
+centroids, labels = berserker2(x, theta_value=8.5, metric='euclidean', all_out=False, verbose=True)
+
+t = 1
+
+import matplotlib.pyplot as plt
+
+for i in range(18):
+    plt.figure()
+    plt.title('Label ' + str(i))
+    plt.imshow(centroids[i].reshape(28, 28))
+    plt.show()
