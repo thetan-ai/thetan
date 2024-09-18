@@ -148,8 +148,8 @@ if __name__ == "__main__":
     data2 = load_sequoia_data(folder="point")
     print("Loading Sequoia data named Polygon...")
     data3 = load_sequoia_data(folder="polygon")
-    print("Loading Sequoia data named Raster...")
-    data4 = load_sequoia_data(folder="raster")
+    # print("Loading Sequoia data named Raster...")
+    # data4 = load_sequoia_data(folder="raster")
 
 
     t = 1

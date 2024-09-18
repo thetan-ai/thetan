@@ -6,16 +6,25 @@ from thetan.viz import plot_centroids_clusters
 from sklearn.cluster import DBSCAN, HDBSCAN
 from time import time
 
-fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
-# fname = 'C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv'
-# fname_save
+# fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
+fname = 'C:/Users/Eleftherios/Data/spiral/SpiralData_Clean_Spread.csv'
+dname_save = 'C:/Users/Eleftherios/Data/tb_output_spiral/' #_small_set/'
 
 spiral_data = np.genfromtxt(fname, delimiter=',')
+
+
 # spiral_data = np.genfromtxt("C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
 
 # first entry is nan
 spiral_data = np.delete(spiral_data, 0, 0)
 X = spiral_data.copy()
+X = np.ascontiguousarray(np.tile(X, (50, 1)))
+
+print('>>> # points ', X.shape[0])
+
+show = False
+
+print('\n >> Starting TB ...')
 
 theta_value = 1.0
 epsilon_value = 2.0
@@ -27,7 +36,7 @@ initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False)
 duration = time() - t
 times['TB'] = duration
 
-plot_centroids_clusters(X, initial_centroids, initial_labels, title='Berserker2', show=True)
+plot_centroids_clusters(X, initial_centroids, initial_labels, title='TB', show=show, savefn=dname_save + 'TB.png')
 
 t = time()
 new_labels = chainer(X, initial_centroids, initial_labels, epsilon_value)
@@ -41,7 +50,11 @@ times['chainer'] = duration
 # sorted_labels = new_labels[indices_arg]
 
 new_centroids = centroids_from_labels(X, new_labels)
-plot_centroids_clusters(X, centroids=new_centroids, labels=new_labels, title='Chainer', show=True)
+plot_centroids_clusters(X, centroids=None, labels=new_labels, title='Chainer', show=show, savefn=dname_save + 'Chainer.png')
+
+
+print('\n >> Starting DBSCAN ...')
+
 
 eps = 0.5
 min_samples = 1
@@ -59,9 +72,10 @@ duration = time() - t
 times['dbscan'] = duration
 
 
-plot_centroids_clusters(X, centroids=dbcentroids, labels=dblabels, title='DBSCAN', show=True)
+plot_centroids_clusters(X, centroids=None, labels=dblabels, title='DBSCAN', show=show, savefn=dname_save + 'DBSCAN.png')
 
-# TB-DBSCAN
+
+print('\n >> Starting TB-DBSCAN ...')
 
 eps = 2.
 min_samples = 1
@@ -78,7 +92,7 @@ dblabels = model.labels_
 duration = time() - t
 times['tb-dbscan'] = duration
 
-plot_centroids_clusters(initial_centroids, centroids=dbcentroids, labels=dblabels, title='TB-DBSCAN (init)', show=True)
+plot_centroids_clusters(initial_centroids, centroids=None, labels=dblabels, title='TB-DBSCAN (init)', show=show, savefn=dname_save + 'TB-DBSCAN (init).png')
 
 
 final_labels = initial_labels.copy()
@@ -86,22 +100,55 @@ final_labels = initial_labels.copy()
 for i, l in enumerate(initial_labels):
     final_labels[i] = dblabels[l]
 
-plot_centroids_clusters(X, None, labels=final_labels, title='TB-DBSCAN', show=True)
+plot_centroids_clusters(X, None, labels=final_labels, title='TB-DBSCAN', show=show, savefn=dname_save + 'TB-DBSCAN.png')
+
+
 
 print('\n >> Starting HDBSCAN ...')
 t = time()
 model = HDBSCAN(min_samples=min_samples)
 model.fit(X)
-duration = time() - t
-print('Duration', duration)
 
 unq = np.unique(model.labels_)
 hdb_nclusters = np.sum(unq>=0)
 
 hdbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
 hdblabels = model.labels_
+duration = time() - t
 
-plot_centroids_clusters(X, None, labels=hdblabels, title='TB-HDBSCAN', show=True)
+times['hdbscan'] = duration
+print('Duration', duration)
+
+plot_centroids_clusters(X, None, labels=hdblabels, title='HDBSCAN', show=show, savefn=dname_save + 'HDBSCAN.png')
+
+
+print('\n >> Starting TB-HDBSCAN ...')
+
+min_samples = 1
+
+t = time()
+model = HDBSCAN(min_samples=min_samples)
+model.fit(initial_centroids)
+
+unq = np.unique(model.labels_)
+hdb_nclusters = np.sum(unq>=0)
+
+hdbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
+hdblabels = model.labels_
+
+
+plot_centroids_clusters(initial_centroids, centroids=None, labels=hdblabels, title='TB-DBSCAN (init)', show=show, savefn=dname_save + 'TB-DBSCAN (init).png')
+
+final_labels = initial_labels.copy()
+
+for i, l in enumerate(initial_labels):
+    final_labels[i] = hdblabels[l]
+
+duration = time() - t
+times['tb-hdbscan'] = duration
+
+plot_centroids_clusters(X, None, labels=final_labels, title='TB-HDBSCAN', show=show, savefn=dname_save + 'TB-HDBSCAN.png')
+
 
 print(times)
 
