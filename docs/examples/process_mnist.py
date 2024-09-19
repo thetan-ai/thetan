@@ -65,12 +65,12 @@ corresponding_labels_train = []
 # metric = 'euclidean'
 
 # Dot Product
-theta_value = 50000.
-metric = 'dot_prod'
+# theta_value = 100.
+# metric = 'dot_prod'
 
 # L1
-# theta_value = 18000.
-# metric = 'l1_norm'
+theta_value = 18000.
+metric = 'l1_norm'
 
 
 for y_t in range(10):

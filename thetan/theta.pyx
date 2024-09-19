@@ -135,6 +135,26 @@ cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) noexcept nogil:
     return result / D
 
 
+def distance_funcptr(metric):
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
+
+    return metric_func
+
+
+
+
 def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
     cdef:
@@ -463,18 +483,20 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         metricp metric_func = &euclidean
         double cnt_orig = 0
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
+    # if metric == 'euclidean':
+    #     metric_func = &euclidean
+    # if metric == 'ssd':
+    #     metric_func = &ssd
+    # if metric == 'norm_ssd':
+    #     metric_func = &norm_ssd
+    # if metric == 'norm_ssd_un':
+    #     metric_func = &norm_ssd_un
+    # if metric == 'dot_prod':
+    #     metric_func = &dot_prod
+    # if metric == 'l1_norm':
+    #     metric_func = &l1_norm
+
+    metric_func = distance_funcptr(metric)
 
     with nogil:
 
