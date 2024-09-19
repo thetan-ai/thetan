@@ -59,8 +59,12 @@ x_test_cp = np.ascontiguousarray(x_test.reshape(10000, 28*28), dtype='f8')
 
 centroids_train = []
 corresponding_labels_train = []
-theta_value = 1800.
-metric = 'euclidean'
+# theta_value = 1800.
+# theta_value = 1700.
+# metric = 'euclidean'
+theta_value = 1000000.
+metric = 'dot_prod'
+
 
 for y_t in range(10):
     x_tmp = np.ascontiguousarray(x_train_cp[y_train == y_t].copy())
@@ -106,6 +110,7 @@ ac_train = accuracy_score(y_train, y_train_pred)
 
 ac_test = accuracy_score(y_test, y_test_pred)
 
+print('Reporting scores ...')
 print('AC Train ', ac_train, ' AC Test ', ac_test)
 
 t = 3

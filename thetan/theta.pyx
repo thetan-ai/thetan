@@ -98,7 +98,18 @@ cdef double dot_prod(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogi
         double summ = 0.0
 
     for d in range(D):
-        summ += ptr1[d] * ptr2[d]
+        summ += fabs(ptr1[d] - ptr2[d])
+
+    return summ
+
+
+cdef double l1_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
+    cdef:
+        cnp.npy_intp d
+        double summ = 0.0
+
+    for d in range(D):
+        summ += ptr1[d] - ptr2[d]
 
     return summ
 
@@ -462,6 +473,8 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -678,6 +691,8 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -911,6 +926,8 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -968,6 +985,8 @@ def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metri
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1102,6 +1121,8 @@ def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1206,6 +1227,8 @@ def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, 
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1297,6 +1320,8 @@ def theta_delta(double[:, ::1] X, double theta, metric='euclidean', double w=1.0
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1395,6 +1420,8 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1447,6 +1474,8 @@ def gravity(double[:, ::1] X, double[:, ::1] centroids,
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1493,6 +1522,8 @@ def calibrate(double[:, ::1] X, double[:, ::1] centroids, cnp.npy_intp[:] indice
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
@@ -1549,6 +1580,8 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         metric_func = &norm_ssd_un
     if metric == 'dot_prod':
         metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
 
     with nogil:
 
