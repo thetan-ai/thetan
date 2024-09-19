@@ -32,5 +32,8 @@ images = [(t1, t1_aff, 't1'), (seg, seg_aff, 'seg'), (data_labels, t1_aff, 'dl')
 
 horizon(images=images)
 
+wm_mask = (seg == 41) & (seg == 2)
+
+
 
 t = 1
