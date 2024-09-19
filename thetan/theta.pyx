@@ -98,7 +98,7 @@ cdef double dot_prod(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogi
         double summ = 0.0
 
     for d in range(D):
-        summ += fabs(ptr1[d] - ptr2[d])
+        summ += ptr1[d] * ptr2[d]
 
     return summ
 
@@ -109,7 +109,7 @@ cdef double l1_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil
         double summ = 0.0
 
     for d in range(D):
-        summ += ptr1[d] - ptr2[d]
+        summ += fabs(ptr1[d] - ptr2[d])
 
     return summ
 

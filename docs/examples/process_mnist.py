@@ -59,11 +59,18 @@ x_test_cp = np.ascontiguousarray(x_test.reshape(10000, 28*28), dtype='f8')
 
 centroids_train = []
 corresponding_labels_train = []
+# L2
 # theta_value = 1800.
 # theta_value = 1700.
 # metric = 'euclidean'
-theta_value = 1000000.
+
+# Dot Product
+theta_value = 50000.
 metric = 'dot_prod'
+
+# L1
+# theta_value = 18000.
+# metric = 'l1_norm'
 
 
 for y_t in range(10):
