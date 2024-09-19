@@ -8,7 +8,7 @@ from time import time
 
 # fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
 fname = 'C:/Users/Eleftherios/Data/spiral/SpiralData_Clean_Spread.csv'
-dname_save = 'C:/Users/Eleftherios/Data/tb_output_spiral/' #_small_set/'
+dname_save = 'C:/Users/Eleftherios/Data/tb_output_spiral_v2/' #_small_set/'
 
 spiral_data = np.genfromtxt(fname, delimiter=',')
 
@@ -149,13 +149,10 @@ times['tb-hdbscan'] = duration
 
 plot_centroids_clusters(X, None, labels=final_labels, title='TB-HDBSCAN', show=show, savefn=dname_save + 'TB-HDBSCAN.png')
 
-<<<<<<< HEAD
-plot_centroids_clusters(X, None, labels=hdblabels, title='HDBSCAN', show=True)
-=======
->>>>>>> 9f77994fec79cafcd0ce579d36ef1c0d21c03072
 
 print(times)
 
 t = 1
+
 
 

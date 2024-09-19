@@ -460,6 +460,8 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         metric_func = &norm_ssd
     if metric == 'norm_ssd_un':
         metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
 
     with nogil:
 
