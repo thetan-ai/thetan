@@ -52,7 +52,7 @@ x_train_cp = np.ascontiguousarray(x_train.reshape(60000, 28*28), dtype='f8')
 
 centroids_train = centroids_from_labels(x_train_cp, y_train.astype('i8'))
 
-centroids, labels = berserker2(x_train_cp, theta_value=8.5, metric='euclidean', all_out=False, verbose=True)
+centroids, labels = berserker2(x_train_cp, theta_value=2000., metric='euclidean', all_out=False, verbose=True)
 
 
 
