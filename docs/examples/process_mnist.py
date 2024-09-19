@@ -31,12 +31,12 @@ def plot_centroid_images_obo(centroids):
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-x = np.concatenate((x_train, x_test))
-y = np.concatenate((y_train, y_test))  ## labels (used for verification)
-x = x.reshape((x.shape[0], -1))
-x = np.divide(x, 255.)
-n_clusters = len(np.unique(y))
-print(n_clusters)
+# x = np.concatenate((x_train, x_test))
+# y = np.concatenate((y_train, y_test))  ## labels (used for verification)
+# x = x.reshape((x.shape[0], -1))
+# x = np.divide(x, 255.)
+# n_clusters = len(np.unique(y))
+# print(n_clusters)
 
 
 # from sklearn import datasets, manifold
@@ -49,35 +49,63 @@ from thetan.berserker import berserker2
 from thetan.theta import theta_g1, assign, centroids_from_labels
 
 x_train_cp = np.ascontiguousarray(x_train.reshape(60000, 28*28), dtype='f8')
+x_test_cp = np.ascontiguousarray(x_test.reshape(10000, 28*28), dtype='f8')
 
-centroids_train = centroids_from_labels(x_train_cp, y_train.astype('i8'))
-
-centroids, labels = berserker2(x_train_cp, theta_value=2000., metric='euclidean', all_out=False, verbose=True)
+# centroids_train_avgs = centroids_from_labels(x_train_cp, x_test.astype('i8'))
 
 
+
+# centroids, labels = berserker2(x_train_cp, theta_value=1900., metric='euclidean', all_out=False, verbose=True)
+
+centroids_train = []
+corresponding_labels_train = []
+theta_value = 1800.
+metric = 'euclidean'
+
+for y_t in range(10):
+    x_tmp = np.ascontiguousarray(x_train_cp[y_train == y_t].copy())
+    centroids, labels = berserker2(x_tmp, theta_value=theta_value, metric=metric, all_out=False, verbose=False)
+    centroids_train.append(centroids)
+    corresponding_labels_train.extend(centroids.shape[0] * [y_t])
+    print(y_t, centroids.shape)
+
+
+centroids_train = np.ascontiguousarray(np.concatenate(centroids_train))
 
 # dot product needs work - it creates NaNs for ber
 # centroids, labels = berserker2(x, theta_value=80, metric='dot_prod', all_out=False, verbose=True)
 
 # TS does not create NaN but not helping much
 # centroids, labels = theta_g1(x, theta=70, metric='dot_prod', all_out=False, verbose=False)
-
-print('Number of centroids found ', centroids.shape[0])
+print('Number of centroids found ', centroids_train.shape[0])
 
 t = 1
 
-plot_centroid_images(centroids)
+# plot_centroid_images(centroids)
 
 
 t = 2
 
- 
-labels_x = assign(x, centroids, metric='euclidean')
+
+labels_x_train = assign(x_train_cp, centroids_train, metric=metric)
+
+y_train_pred = []
+for i, l in enumerate(labels_x_train):
+    y_train_pred.append(corresponding_labels_train[l])
+y_train_pred = np.ascontiguousarray(y_train_pred, dtype='i8')
+
+labels_x_test = assign(x_test_cp, centroids_train, metric=metric)
+
+y_test_pred = []
+for i, l in enumerate(labels_x_test):
+    y_test_pred.append(corresponding_labels_train[l])
+y_test_pred = np.ascontiguousarray(y_test_pred, dtype='i8')
 
 
+ac_train = accuracy_score(y_train, y_train_pred)
 
-labels_y = assign(y, centroids, metric='euclidean')
+ac_test = accuracy_score(y_test, y_test_pred)
 
-accuracy_score(y_train, labels_x)
+print('AC Train ', ac_train, ' AC Test ', ac_test)
 
-accuracy_score(y_test, labels_y)
+t = 3
