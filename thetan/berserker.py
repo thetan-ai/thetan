@@ -1248,6 +1248,28 @@ def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3
     return data_labels, centroids, centroids_im, W
 
 
+def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3., medroids=False):
+    "Thetan Berserker2 applied on 3D images"
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data_3d(data, affine, perc=perc, mult=mult, enh=enh)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    duration = time() - t
+    print('Duration ', duration)
+    print()
+
+    print_centroids(centroids)
+    centroids_im = centroid_images(data_labels, centroids)
+
+    return data_labels, centroids, centroids_im, W, duration
+
+
 def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
     """ Process each slice of the volume independently """
 

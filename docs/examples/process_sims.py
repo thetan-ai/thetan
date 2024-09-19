@@ -309,7 +309,7 @@ reps = 10
 
 verbose = True
 theta_value = 3.6
-run_experiments = True
+run_experiments = False
 save_results = run_experiments
 summarize_results = True
 
