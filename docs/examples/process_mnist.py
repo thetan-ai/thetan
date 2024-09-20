@@ -45,7 +45,7 @@ def plot_centroid_images_obo(centroids):
 # X, y = digits.data, digits.target
 # n_samples, n_features = X.shape
 
-from thetan.berserker import berserker2
+from thetan.berserker import berserker2, tb_randomized
 from thetan.theta import theta_g1, assign, centroids_from_labels
 
 x_train_cp = np.ascontiguousarray(x_train.reshape(60000, 28*28), dtype='f8')
@@ -69,13 +69,16 @@ corresponding_labels_train = []
 # metric = 'dot_prod'
 
 # L1
-theta_value = 18000.
+theta_value = 18000. # AC: Train 0.9476 Test 0.935
+theta_value = 15000. # AC: Train 0.9739 Test 0.943
+theta_value = 17000. # AC: Train 0.9554 Test 0.935
 metric = 'l1_norm'
 
 
 for y_t in range(10):
     x_tmp = np.ascontiguousarray(x_train_cp[y_train == y_t].copy())
     centroids, labels = berserker2(x_tmp, theta_value=theta_value, metric=metric, all_out=False, verbose=False)
+    # centroids, labels, sot = tb_randomized(x_tmp, theta=theta_value, metric=metric, num_shuffles=10)
     centroids_train.append(centroids)
     corresponding_labels_train.extend(centroids.shape[0] * [y_t])
     print(y_t, centroids.shape)
