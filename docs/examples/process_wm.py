@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from glob import glob
+from time import time
 from thetan.berserker import berserker2_3D_rt
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
@@ -12,9 +13,11 @@ search_fname = dname + '*_T1w.nii.gz'
 verbose = False
 theta_value = 150  # 120
 
-how_many = 10
+how_many = 1000
 
 save_info_fname = dname + 'info_' + str(theta_value) + '_' + str(how_many) + '.npy'
+
+t = time()
 
 res = sorted(glob(search_fname))[:how_many]
 
@@ -58,7 +61,10 @@ for i, fname in enumerate(res):
     info[i, 3] = np.prod(t1.shape)
 
 
+print('Saving result at ', save_info_fname)
 np.save(save_info_fname, info)
+
+print('Total duration ', time() - t)
 
 t = 1
 t = 2
