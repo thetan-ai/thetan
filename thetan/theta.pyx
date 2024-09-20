@@ -1733,7 +1733,7 @@ def img3d_to_ijkv_features(double[:, :, ::1] img3d):
 
 def img3d_to_ijkv_features_free(double[:, ::1] img3d):
 
-    def double * features = &img3d[0][0]
+    cdef double * features = &img3d[0][0]
 
     with nogil:
         free(features)

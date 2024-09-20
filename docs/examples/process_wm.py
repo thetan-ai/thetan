@@ -72,31 +72,28 @@ for i, fname in enumerate(res):
     print('>>>> Acurrent before ', amem_)
     print('>>>> Acurrent after ', amem)
 
-    # print('Number of labels ', centroids.shape[0])
+    print('Number of labels ', centroids.shape[0])
 
     # if verbose:
     #     images = [(t1, t1_aff, 't1'), (seg, seg_aff, 'seg'), (data_labels, t1_aff, 'dl'), (centroids_im, t1_aff, 'cim'), (W, t1_aff, 'W')]
     #     horizon(images=images)
 
-    # wm_mask = (seg == 41) | (seg == 2)
+    wm_mask = (seg == 41) | (seg == 2)
 
-    # overlap = data_labels[wm_mask == True]
+    overlap = data_labels[wm_mask == True]
 
-    # unq, cnts = np.unique(overlap.ravel(), return_counts=True)
+    unq, cnts = np.unique(overlap.ravel(), return_counts=True)
 
-    # print('>>>> ', unq, cnts)
+    print('>>>> ', unq, cnts)
 
-    # ratio = cnts.max() / wm_mask.sum()
-    # print('>##> ', ratio)
+    ratio = cnts.max() / wm_mask.sum()
+    print('>##> ', ratio)
 
-    # info[i, 0] = rt
-    # info[i, 1] = centroids.shape[0]
-    # info[i, 2] = ratio
-    # info[i, 3] = np.prod(t1.shape)
+    info[i, 0] = rt
+    info[i, 1] = centroids.shape[0]
+    info[i, 2] = ratio
+    info[i, 3] = np.prod(t1.shape)
 
-    # del t1, seg, data_labels, centroids, centroids_im, W, rt
-
-    # gc.collect()
 
 
 print('Saving result at ', save_info_fname)
