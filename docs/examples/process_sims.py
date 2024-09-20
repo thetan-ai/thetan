@@ -289,7 +289,6 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 
 
 rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-# rows += ['kmedians', 'kmedoids', 'xmeans', 'TSR']
 rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids and hierarchical clustering removed due to large memory needs
 rows += ['OPTICS', 'CLARANS', 'meanshift++']
 
@@ -311,7 +310,9 @@ verbose = True
 theta_value = 3.6
 run_experiments = False
 save_results = run_experiments
-summarize_results = True
+summarize_results = False
+generate_plots = True
+
 
 if run_experiments:
     t_start = time()
@@ -1109,5 +1110,11 @@ if summarize_results:
     print(result)
 
     result.to_excel(dpath + "summary.xlsx")
+
+
+if generate_plots:
+
+    summary = pd.read_excel(dpath + "summary.xlsx")
+
 
 t = 2
