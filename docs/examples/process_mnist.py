@@ -71,6 +71,7 @@ corresponding_labels_train = []
 # L1
 theta_value = 18000. # AC: Train 0.9476 Test 0.935
 theta_value = 15000. # AC: Train 0.9739 Test 0.943
+theta_value = 17000. # AC: Train 0.9554 Test 0.935
 metric = 'l1_norm'
 
 
