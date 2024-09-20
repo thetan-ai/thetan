@@ -8,19 +8,24 @@ from dipy.viz import horizon
 
 dname = '/tmp/HCP_labels/'
 search_fname = dname + '*_T1w.nii.gz'
+
 verbose = False
-theta_value = 150. # 120.
+theta_value = 150  # 120
 
-res = sorted(glob(search_fname))[:10]
+how_many = 10
 
-info = np.zeros((10, 5))
+save_info_fname = dname + 'info_' + str(theta_value) + '_' + str(how_many) + '.npy'
+
+res = sorted(glob(search_fname))[:how_many]
+
+info = np.zeros((how_many, 5))
 
 for i, fname in enumerate(res):
 
     subj_id = os.path.basename(fname).split('.nii.gz')[0].split('_')[0]
 
     print()
-    print('# Participant id ', subj_id)
+    print('# Participant ID ', subj_id)
 
     fname_t1 = dname + subj_id + '_T1w.nii.gz'
     fname_seg = dname + subj_id + '_seg.nii.gz'
@@ -32,9 +37,8 @@ for i, fname in enumerate(res):
 
     print('Number of labels ', centroids.shape[0])
 
-    images = [(t1, t1_aff, 't1'), (seg, seg_aff, 'seg'), (data_labels, t1_aff, 'dl'), (centroids_im, t1_aff, 'cim'), (W, t1_aff, 'W')]
-
     if verbose:
+        images = [(t1, t1_aff, 't1'), (seg, seg_aff, 'seg'), (data_labels, t1_aff, 'dl'), (centroids_im, t1_aff, 'cim'), (W, t1_aff, 'W')]
         horizon(images=images)
 
     wm_mask = (seg == 41) | (seg == 2)
@@ -51,5 +55,10 @@ for i, fname in enumerate(res):
     info[i, 0] = rt
     info[i, 1] = centroids.shape[0]
     info[i, 2] = ratio
+    info[i, 3] = np.prod(t1.shape)
+
+
+np.save(save_info_fname, info)
 
 t = 1
+t = 2
