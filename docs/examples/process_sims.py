@@ -27,6 +27,7 @@ from pyclustering.cluster.encoder import type_encoding, cluster_encoder
 import skfuzzy as fuzz
 from sklearn_extra.cluster import KMedoids
 import MeanShiftPP
+import matplotlib.pyplot as plt
 
 
 def pyclustering_utils(bsas_instance, repor=False):
@@ -1116,5 +1117,25 @@ if generate_plots:
 
     summary = pd.read_excel(dpath + "summary.xlsx")
 
+    for i_metric, metric in enumerate(cols):
+            fig = plt.figure()
+            plt.title('Across Metrics - ' + metric)
+            for method in range(2, 5):
+
+                entire_row = summary.iloc(method)
+                method_name = entire_row[0]
+                print(method_name)
+
+                method_mean = entire_row[1::2]
+                method_std = entire_row[2::2]
+
+                # plt.plot(blob_dists, central, label=method)
+                # plt.fill_between(blob_dists, upper, lower, alpha=0.2)
+
+            plt.grid()
+            plt.legend()
+            # plt.show()
+            plt.savefig(dpath + metric + '.png', dpi=300)
+            plt.close(fig)
 
 t = 2

@@ -877,7 +877,14 @@ def prepare_data_3d(data, affine, perc=(2, 99), mult=300, enh=3):
         data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
 
     X = img3d_to_ijkv_features(data2)
+    # X = np.zeros((np.prod(data2.shape), 4), dtype='f8')
+    # cnt = 0
+    # for index in np.ndindex(*data2.shape):
+    #     i, j, k = index
+    #     X[cnt] = (i, j, k, data2[i, j, k])
+
     # move to world coordinates W (xyz)
+
 
     W = np.dot(affine[:3, :3], X[:, :3].T) + affine[:3, 3][:, None]
     X[:, :3] = W.T
@@ -1267,7 +1274,12 @@ def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., en
     print_centroids(centroids)
     centroids_im = centroid_images(data_labels, centroids)
 
+    # del data, Ivol, Jvol, Kvol, X
+    del X
+    X = None
+
     return data_labels, centroids, centroids_im, W, duration
+
 
 
 def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):

@@ -1731,6 +1731,14 @@ def img3d_to_ijkv_features(double[:, :, ::1] img3d):
     return features_np
 
 
+def img3d_to_ijkv_features_free(double[:, ::1] img3d):
+
+    def double * features = &img3d[0][0]
+
+    with nogil:
+        free(features)
+
+
 def img2d_to_ijv_features(double[:, ::1] img2d):
 
     cdef:
