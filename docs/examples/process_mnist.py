@@ -69,7 +69,8 @@ corresponding_labels_train = []
 # metric = 'dot_prod'
 
 # L1
-theta_value = 18000.
+theta_value = 18000. # AC: Train 0.9476 Test 0.935
+theta_value = 15000. # AC: Train 0.9739 Test 0.943
 metric = 'l1_norm'
 
 
