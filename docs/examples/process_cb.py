@@ -2,6 +2,8 @@
 
 git submodule update --remote
 
+dataset url: https://clustering-benchmarks.gagolewski.com/weave/data-v1.html#wut/circles
+
 """
 from dataclasses import make_dataclass
 import os
@@ -191,11 +193,15 @@ def load_dataset(battery, dataset, *, preprocess=True, random_state=None):
 if __name__ == "__main__":
     print(get_battery_names())
     print(get_dataset_names(battery_name='mnist'))
-    dataset = load_dataset('wut', 'x2')
+    # dataset = load_dataset('wut', 'x2')
+    # dataset = load_dataset('wut', 'circles')
+    dataset = load_dataset('wut', 'cross')
     # plot_dataset(dataset)
 
     print('Starting Berserker')
-    theta_value = 1.75
+    # theta_value = 1.85  # x2
+    # theta_value = 1.20  # circles
+    theta_value = 2.7 # cross
     t_start = time.perf_counter()
     centroids, labels = berserker2(np.ascontiguousarray(dataset.data),
                                    theta_value, all_out=False, verbose=False)
