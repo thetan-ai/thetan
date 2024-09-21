@@ -49,7 +49,7 @@ def plot_dataset(dataset, axis=None, title=None, xlabel=None, ylabel=None,
         for i in range(len(data.labels)):
             plt.subplot(1, nb_subplot, k+i)
             plot_scatter(data.data, labels=data.labels[i]-1,
-                         axis="equal", title=f"labels{k+i}")
+                         axis="equal", title=f"labels{k+i}", alpha=0.05)
     plt.show()
 
 
@@ -195,13 +195,18 @@ if __name__ == "__main__":
     print(get_dataset_names(battery_name='mnist'))
     # dataset = load_dataset('wut', 'x2')
     # dataset = load_dataset('wut', 'circles')
-    dataset = load_dataset('wut', 'cross')
+    # dataset = load_dataset('wut', 'cross')
+    # dataset = load_dataset('wut', 'z3')
+    dataset = load_dataset('sipu', 'birch1')
+    # dataset = load_dataset('other', 'hdbscan')
     # plot_dataset(dataset)
 
     print('Starting Berserker')
     # theta_value = 1.85  # x2
-    # theta_value = 1.20  # circles
-    theta_value = 2.7 # cross
+    # theta_value = 1.20  # circles -> GOOD
+    # theta_value = 2.7 # cross
+    # theta_value = 1.1 # z3 -> GOOD
+    theta_value = 0.25 # birch1 -> GOOD
     t_start = time.perf_counter()
     centroids, labels = berserker2(np.ascontiguousarray(dataset.data),
                                    theta_value, all_out=False, verbose=False)
