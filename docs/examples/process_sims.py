@@ -30,6 +30,31 @@ import MeanShiftPP
 import matplotlib.pyplot as plt
 
 
+def parallel_bar(species, penguin_means, width):
+
+    x = np.arange(len(species))  # the label locations
+    # width = 0.25  # the width of the bars
+    multiplier = 0
+
+    fig, ax = plt.subplots(layout='constrained')
+
+    for attribute, measurement in penguin_means.items():
+        offset = width * multiplier
+        rects = ax.bar(x + offset, measurement, width, label=attribute, alpha=0.5)
+        ax.bar_label(rects, padding=3)
+        multiplier += 1
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Length (mm)')
+    ax.set_title('Top performing')
+    ax.set_xticks(x + width, species)
+    ax.legend(loc='upper left', ncols=4)
+    # ax.set_ylim(0, 250)
+    ax.grid()
+
+    plt.show()
+
+
 def pyclustering_utils(bsas_instance, repor=False):
     clusters = bsas_instance.get_clusters()
     type_repr = bsas_instance.get_cluster_encoding()
@@ -1116,26 +1141,48 @@ if summarize_results:
 if generate_plots:
 
     summary = pd.read_excel(dpath + "summary.xlsx")
+    print(summary)
 
-    for i_metric, metric in enumerate(cols):
-            fig = plt.figure()
-            plt.title('Across Metrics - ' + metric)
-            for method in range(2, 5):
+    # parallel_bar(species, penguin_means)
 
-                entire_row = summary.iloc(method)
-                method_name = entire_row[0]
-                print(method_name)
+    species = ['TB', 'TBK', 'CURE', 'kmeans++', 'meanshift', 'hdbscan']
+    species_id = [10, 11, 5, 19, 21, 17]
 
-                method_mean = entire_row[1::2]
-                method_std = entire_row[2::2]
 
-                # plt.plot(blob_dists, central, label=method)
-                # plt.fill_between(blob_dists, upper, lower, alpha=0.2)
+    ACs = []
+    NMIs = []
+    SILs = []
+    FMSs = []
+    CLUSTERs = []
+    DURATIONs = []
+    MEMORYs = []
 
-            plt.grid()
-            plt.legend()
-            # plt.show()
-            plt.savefig(dpath + metric + '.png', dpi=300)
-            plt.close(fig)
+    for sp in species_id:
 
-t = 2
+        entire_row = summary.iloc[sp]
+
+        method_mean = entire_row[1::2].to_numpy().astype('f8')# [:4]
+        method_std = entire_row[2::2].to_numpy().astype('f8')# [:4]
+
+        # method_mean[method_mean < 0 ] = 0
+
+        ACs.append(method_mean[0])
+        NMIs.append(method_mean[1])
+        SILs.append(method_mean[2])
+        FMSs.append(method_mean[3])
+        CLUSTERs.append(method_mean[4])
+        DURATIONs.append(method_mean[5])
+        MEMORYs.append(method_mean[6])
+
+    penguin_means = {'AC':ACs, 'NMI':NMIs, 'SIL':SILs, 'FMS':FMSs}
+
+    penguin_means2 = {'Clusters':CLUSTERs, 'Duration':DURATIONs, 'Memory':MEMORYs}
+
+    parallel_bar(species, penguin_means, 0.2)
+
+    parallel_bar(species, penguin_means2, 0.2)
+
+    # TODO:
+    # look at clusters, duration and memory
+
+t = 3
