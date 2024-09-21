@@ -1712,7 +1712,9 @@ def img3d_to_ijkv_features(double[:, :, ::1] img3d):
         cnp.npy_intp i=0, j=0, k=0
         cnp.npy_intp I = img3d.shape[0], J = img3d.shape[1], K = img3d.shape[2]
         cnp.npy_intp cnt = 0
-        double * features = <double *> malloc(<size_t> I * J * K * 4 * sizeof(double))
+        double[:, ::1] features_np = np.empty((I * J * K, 4), dtype='f8')
+        # double * features = <double *> malloc(<size_t> I * J * K * 4 * sizeof(double))
+        double * features = &features_np[0][0]
 
     with nogil:
 
@@ -1726,17 +1728,17 @@ def img3d_to_ijkv_features(double[:, :, ::1] img3d):
                         features[cnt * 4 + 3] = img3d[i, j, k]
                         cnt += 1
 
-    features_np = np.asarray(<double[:I * J * K, :4]> features)
+    # features_np = np.asarray(<double[:I * J * K, :4]> features)
 
-    return features_np
+    return np.asarray(features_np)
 
 
-def img3d_to_ijkv_features_free(double[:, ::1] img3d):
+# def img3d_to_ijkv_features_free(double[:, ::1] img3d):
 
-    cdef double * features = &img3d[0][0]
+#     cdef double * features = &img3d[0][0]
 
-    with nogil:
-        free(features)
+#     with nogil:
+#         free(features)
 
 
 def img2d_to_ijv_features(double[:, ::1] img2d):

@@ -6,7 +6,7 @@ from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binar
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix, img3d_to_ijkv_features_free
+from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 
@@ -882,10 +882,9 @@ def prepare_data_3d(data, affine, perc=(2, 99), mult=300, enh=3):
     # for index in np.ndindex(*data2.shape):
     #     i, j, k = index
     #     X[cnt] = (i, j, k, data2[i, j, k])
+    #     cnt += 1
 
     # move to world coordinates W (xyz)
-
-
     W = np.dot(affine[:3, :3], X[:, :3].T) + affine[:3, 3][:, None]
     X[:, :3] = W.T
 
@@ -1255,7 +1254,7 @@ def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3
     # this needs some rethinking (but okay for now)
     # the problem is that we are creating memory with malloc
     # that cannot be released directly from python
-    img3d_to_ijkv_features_free(X)
+    # img3d_to_ijkv_features_free(X)
     # del data, Ivol, Jvol, Kvol, X
     del X
     X = None
@@ -1282,7 +1281,7 @@ def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., en
     print_centroids(centroids)
     centroids_im = centroid_images(data_labels, centroids)
 
-    img3d_to_ijkv_features_free(X)
+    # img3d_to_ijkv_features_free(X)
     # del data, Ivol, Jvol, Kvol, X
 
     del X
