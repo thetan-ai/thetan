@@ -37,21 +37,25 @@ def parallel_bar(species, penguin_means, width, savefn=None):
     multiplier = 0
 
     # fig, ax = plt.subplots(layout='constrained')
+    plt.rcParams.update({'font.size': 14})
     fig, ax = plt.subplots()
-    fig.set_figheight(16)
-    fig.set_figwidth(16)
+    fig.set_figheight(14)
+    fig.set_figwidth(14)
 
     for attribute, measurement in penguin_means.items():
         offset = width * multiplier
-        rects = ax.bar(x + offset, measurement, width, label=attribute, alpha=0.5)
+        measurement = np.round(measurement, 3)
+        rects = ax.bar(x + offset, measurement, width, label=attribute.format('.3f'), alpha=0.5)
         ax.bar_label(rects, padding=3)
+        ax.set_yscale("log")
         multiplier += 1
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     # ax.set_ylabel('Length (mm)')
     # ax.set_title('Top performing')
     ax.set_xticks(x + width, species)
-    ax.legend(loc='upper left', ncols=4)
+    # ax.legend(loc='upper left', ncols=4)
+    ax.legend(loc='lower right', ncols=4)
     # ax.set_ylim(0, 250)
     # ax.grid()
     if savefn is None:
@@ -1185,7 +1189,12 @@ def gen_plot(summary, species, species_id, fname_save_ac, fname_save_time):
 if generate_plots:
 
     summary = pd.read_excel(dpath + "summary.xlsx")
+
+    # Correction (berserker2_clean) should be used for memory studies
+    summary.loc[10, 'Memory'] = 8
     print(summary)
+
+    t = 2
 
     # parallel_bar(species, penguin_means)
 
@@ -1194,6 +1203,9 @@ if generate_plots:
     fname_save_ac = dpath + 'top_ac.png'
     fname_save_time = dpath + 'top_time.png'
 
+    # fname_save_ac = None
+    # fname_save_time = None
+
     gen_plot(summary, species, species_id, fname_save_ac, fname_save_time)
 
     species = ['TB', 'TS', 'BIRCH', 'BSAS', 'MBSAS', 'TTSAS']
@@ -1201,7 +1213,14 @@ if generate_plots:
     fname_save_ac = dpath + 'similar_ac.png'
     fname_save_time = dpath + 'similar_time.png'
 
+
+
+    # fname_save_ac = None
+    # fname_save_time = None
+
     gen_plot(summary, species, species_id, fname_save_ac, fname_save_time)
+
+    print(summary.to_latex())
 
 
 t = 3
