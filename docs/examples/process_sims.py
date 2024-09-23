@@ -30,29 +30,38 @@ import MeanShiftPP
 import matplotlib.pyplot as plt
 
 
-def parallel_bar(species, penguin_means, width):
+def parallel_bar(species, penguin_means, width, savefn=None):
 
     x = np.arange(len(species))  # the label locations
     # width = 0.25  # the width of the bars
     multiplier = 0
 
-    fig, ax = plt.subplots(layout='constrained')
+    # fig, ax = plt.subplots(layout='constrained')
+    plt.rcParams.update({'font.size': 14})
+    fig, ax = plt.subplots()
+    fig.set_figheight(14)
+    fig.set_figwidth(14)
 
     for attribute, measurement in penguin_means.items():
         offset = width * multiplier
-        rects = ax.bar(x + offset, measurement, width, label=attribute, alpha=0.5)
+        measurement = np.round(measurement, 3)
+        rects = ax.bar(x + offset, measurement, width, label=attribute.format('.3f'), alpha=0.5)
         ax.bar_label(rects, padding=3)
+        ax.set_yscale("log")
         multiplier += 1
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel('Length (mm)')
-    ax.set_title('Top performing')
+    # ax.set_ylabel('Length (mm)')
+    # ax.set_title('Top performing')
     ax.set_xticks(x + width, species)
-    ax.legend(loc='upper left', ncols=4)
+    # ax.legend(loc='upper left', ncols=4)
+    ax.legend(loc='lower right', ncols=4)
     # ax.set_ylim(0, 250)
-    ax.grid()
-
-    plt.show()
+    # ax.grid()
+    if savefn is None:
+        plt.show()
+    else:
+        plt.savefig(savefn, dpi=300)
 
 
 def pyclustering_utils(bsas_instance, repor=False):
@@ -1138,16 +1147,10 @@ if summarize_results:
     result.to_excel(dpath + "summary.xlsx")
 
 
-if generate_plots:
 
-    summary = pd.read_excel(dpath + "summary.xlsx")
-    print(summary)
 
-    # parallel_bar(species, penguin_means)
 
-    species = ['TB', 'TBK', 'CURE', 'kmeans++', 'meanshift', 'hdbscan']
-    species_id = [10, 11, 5, 19, 21, 17]
-
+def gen_plot(summary, species, species_id, fname_save_ac, fname_save_time):
 
     ACs = []
     NMIs = []
@@ -1178,11 +1181,46 @@ if generate_plots:
 
     penguin_means2 = {'Clusters':CLUSTERs, 'Duration':DURATIONs, 'Memory':MEMORYs}
 
-    parallel_bar(species, penguin_means, 0.2)
+    parallel_bar(species, penguin_means, 0.2, savefn=fname_save_ac)
 
-    parallel_bar(species, penguin_means2, 0.2)
+    parallel_bar(species, penguin_means2, 0.2, savefn=fname_save_time)
 
-    # TODO:
-    # look at clusters, duration and memory
+
+if generate_plots:
+
+    summary = pd.read_excel(dpath + "summary.xlsx")
+
+    # Correction (berserker2_clean) should be used for memory studies
+    summary.loc[10, 'Memory'] = 8
+    print(summary)
+
+    t = 2
+
+    # parallel_bar(species, penguin_means)
+
+    species = ['TB', 'TBK', 'CURE', 'kmeans++', 'meanshift', 'hdbscan']
+    species_id = [10, 11, 5, 19, 21, 17]
+    fname_save_ac = dpath + 'top_ac.png'
+    fname_save_time = dpath + 'top_time.png'
+
+    # fname_save_ac = None
+    # fname_save_time = None
+
+    gen_plot(summary, species, species_id, fname_save_ac, fname_save_time)
+
+    species = ['TB', 'TS', 'BIRCH', 'BSAS', 'MBSAS', 'TTSAS']
+    species_id = [10, 12, 2, 3, 8, 14]
+    fname_save_ac = dpath + 'similar_ac.png'
+    fname_save_time = dpath + 'similar_time.png'
+
+
+
+    # fname_save_ac = None
+    # fname_save_time = None
+
+    gen_plot(summary, species, species_id, fname_save_ac, fname_save_time)
+
+    print(summary.to_latex())
+
 
 t = 3
