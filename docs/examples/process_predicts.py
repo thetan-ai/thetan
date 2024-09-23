@@ -161,7 +161,7 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 
 if __name__ == '__main__':
 
-    X, L, gt_centroids = simulate_data('gaussian', blob_dis=20, cluster_x=30, cluster_y=10)
+    X, L, gt_centroids = simulate_data('gaussian', blob_dis=60, cluster_x=30, cluster_y=10)
 
     print('Number of features ', X.shape[0])
     print('Number of GT centroids ', gt_centroids.shape[0])
@@ -171,14 +171,16 @@ if __name__ == '__main__':
 
     print('\n >> Aiming to predict theta ...')
 
-    dists = random_walk_auto(X, reps=10)
+    dists = random_walk_auto(X, reps=100)
     dists = np.asarray(dists)
 
-    pl.figure()
+    fig = pl.figure()
     # pl.plot(dists, '*', alpha=0.2)
 
-    pl.hist(dists.ravel(), bins=50)
-    pl.show()
+    pl.hist(dists.ravel(), bins=100)
+    # pl.show()
+    fig.savefig('at60.png')
+    exit()
 
     theta_value = 5.0
 
