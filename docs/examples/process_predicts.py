@@ -169,7 +169,7 @@ if __name__ == '__main__':
 
     verbose = True
 
-    print('\n >> Aiming to predict theta in linear time ...')
+    print('\n >> Aiming to predict theta ...')
 
     dists = random_walk_auto(X, reps=10)
     dists = np.asarray(dists)
