@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats.kde import gaussian_kde
 from scipy.stats import norm
-
+# import os
+# os.environ["XDG_SESSION_TYPE"] = "xcb"
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
@@ -93,6 +94,8 @@ def ridgeline(data, overlap=0, fill=True, labels=None, n_points=150):
         plt.plot(xx, curve+y, c='k', zorder=len(data)-i+1)
     if labels:
         plt.yticks(ys, labels)
+
+    plt.show()
 
 
 def plot_stacked_dists():
