@@ -3,6 +3,10 @@ import numpy as np
 from thetan.berserker import berserker2, berserker2_clean, random_walk_auto
 import pylab as pl
 import tracemalloc
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KernelDensity
+import matplotlib as mpl
+import matplotlib.gridspec as grid_spec
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -159,28 +163,117 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
+def plot_ridge(countries, colors, data):
+
+    gs = grid_spec.GridSpec(len(countries), 1)
+    fig = plt.figure(figsize=(16,9))
+
+    i = 0
+
+    ax_objs = []
+    for country in countries:
+        print('in plot_ridge >>>  ', country)
+        # country = countries[i]
+        # x = np.array(data[data.country == country].score)
+        x = data[:, i]
+        # x_d = np.linspace(0, 1, 1000)
+        x_d = np.arange(len(x))
+
+        # kde = KernelDensity(bandwidth=0.03, kernel='gaussian')
+        # kde.fit(x[:, None])
+
+        # logprob = kde.score_samples(x_d[:, None])
+
+        # creating new axes object
+        ax_objs.append(fig.add_subplot(gs[i:i+1, 0:]))
+
+        # plotting the distribution
+        ax_objs[-1].plot(x_d, x,color="#f0f0f0",lw=1)
+        ax_objs[-1].fill_between(x_d, x, alpha=1,color=colors[i])
+
+
+        # setting uniform x and y lims
+        ax_objs[-1].set_xlim(0,100000)
+        ax_objs[-1].set_ylim(0,50000)
+
+        # make background transparent
+        rect = ax_objs[-1].patch
+        rect.set_alpha(0)
+
+        # remove borders, axis ticks, and labels
+        ax_objs[-1].set_yticklabels([])
+
+        if i == len(countries)-1:
+            ax_objs[-1].set_xlabel("Test Score", fontsize=16,fontweight="bold")
+        else:
+            ax_objs[-1].set_xticklabels([])
+
+        spines = ["top","right","left","bottom"]
+        for s in spines:
+            ax_objs[-1].spines[s].set_visible(False)
+
+        # adj_country = country.replace(" ","\n")
+        # ax_objs[-1].text(-0.02,0,adj_country,fontweight="bold",fontsize=14,ha="right")
+
+
+        i += 1
+
+    gs.update(hspace=-0.7)
+
+    # fig.text(0.07,0.85,"Distribution of Aptitude Test Results from 18 – 24 year-olds",fontsize=20)
+
+    plt.tight_layout()
+    plt.show()
+
+
+
 if __name__ == '__main__':
 
-    X, L, gt_centroids = simulate_data('gaussian', blob_dis=60, cluster_x=30, cluster_y=10)
+    dpath = '/home/elef/Data/tb_output_predicts/'
 
-    print('Number of features ', X.shape[0])
-    print('Number of GT centroids ', gt_centroids.shape[0])
-    print('Size in Bytes', X.nbytes // 1024 ** 2)
+    data = []
+    fig = plt.figure()
+    for blob_dis in  [5, 25, 45]: # [5, 15, 25, 35, 45]: # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]:
 
-    verbose = True
+        print('Blob dis', blob_dis)
 
-    print('\n >> Aiming to predict theta ...')
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=blob_dis, cluster_x=30, cluster_y=10)
 
-    dists = random_walk_auto(X, reps=100)
-    dists = np.asarray(dists)
+        print('Number of features ', X.shape[0])
+        print('Number of GT centroids ', gt_centroids.shape[0])
+        print('Size of X in MBytes', X.nbytes // 1024 ** 2)
 
-    fig = pl.figure()
-    # pl.plot(dists, '*', alpha=0.2)
+        verbose = True
 
-    pl.hist(dists.ravel(), bins=100)
-    # pl.show()
-    fig.savefig('at60.png')
-    exit()
+        print('\n >> Aiming to predict theta ...')
+
+        dists = random_walk_auto(X, reps=100)
+        dists = np.asarray(dists)
+
+        print('Size of Dists in MBytes', dists.nbytes // 1024 ** 2)
+
+        # fig = plt.figure()
+
+        # plt.title('Inter-class distance at ' + str(blob_dis))
+        axes = plt.gca()
+        axes.set_xlim(0, 1000)
+        axes.set_ylim(0, 1000000)
+
+        plt.hist(dists.ravel(), bins=100, alpha=0.2)
+        # # pl.show()
+
+        # fig.savefig(dpath + 'hist_' + str(blob_dis) + '.png', dpi=300)
+        # data.append(dists.ravel())
+
+    fig.savefig(dpath + 'hist_all.png', dpi=300)
+
+    # countries = [5, 15, 25, 35, 45]
+    # colors = ['#0000ff', '#3300cc', '#660099', '#990066', '#cc0033', '#ff0000']
+    # data = np.ascontiguousarray(np.asarray(data).T)
+
+    # plot_ridge(countries, colors, data)
+
+    t = 1
 
     theta_value = 5.0
 
@@ -199,4 +292,4 @@ if __name__ == '__main__':
     if verbose:
         plot_centroids_clusters(X, centroids, labels, 'TB_cln_', exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
 
-    
+

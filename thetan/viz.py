@@ -89,7 +89,7 @@ def ridgeline(data, overlap=0, fill=True, labels=None, n_points=150):
         ys.append(y)
         curve = pdf(xx)
         if fill:
-            plt.fill_between(xx, np.ones(n_points)*y, 
+            plt.fill_between(xx, np.ones(n_points)*y,
                              curve+y, zorder=len(data)-i+1, color=fill)
         plt.plot(xx, curve+y, c='k', zorder=len(data)-i+1)
     if labels:
