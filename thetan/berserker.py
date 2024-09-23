@@ -1553,10 +1553,26 @@ def gaussian_gradients(data, sigma=1):
     return dx, dy, dz, gm
 
 
-def auto_theta_rw(X):
+def random_walk_auto(X, reps=1):
     # randomly pick M number of features and calculate the direct distance
     # study the distribution of distances
-    pass
+    # currently assuming L2 metric
+
+    points = X.copy()
+
+    all_dists = []
+    for i in range(reps):
+        ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+        points2 = points[ind].copy()
+
+        dx = np.diff(points2[:, 0])
+        dy = np.diff(points2[:, 1])
+
+        dists = np.sqrt(dx ** 2 + dy ** 2)
+        all_dists.append(dists)
+
+    return all_dists
+
 
 
 def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_im_rnd, X_median, theta_value_small):
