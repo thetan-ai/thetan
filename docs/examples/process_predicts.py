@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
 import matplotlib as mpl
 import matplotlib.gridspec as grid_spec
+from thetan.viz import ridgeline
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -232,7 +233,7 @@ if __name__ == '__main__':
     dpath = '/home/elef/Data/tb_output_predicts/'
 
     data = []
-    fig = plt.figure()
+    # fig = plt.figure()
     for blob_dis in  [5, 25, 45]: # [5, 15, 25, 35, 45]: # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]:
 
         print('Blob dis', blob_dis)
@@ -247,7 +248,7 @@ if __name__ == '__main__':
 
         print('\n >> Aiming to predict theta ...')
 
-        dists = random_walk_auto(X, reps=100)
+        dists = random_walk_auto(X, reps=10)
         dists = np.asarray(dists)
 
         print('Size of Dists in MBytes', dists.nbytes // 1024 ** 2)
@@ -255,17 +256,22 @@ if __name__ == '__main__':
         # fig = plt.figure()
 
         # plt.title('Inter-class distance at ' + str(blob_dis))
-        axes = plt.gca()
-        axes.set_xlim(0, 1000)
-        axes.set_ylim(0, 1000000)
+        # axes = plt.gca()
+        # axes.set_xlim(0, 1000)
+        # axes.set_ylim(0, 1000000)
 
-        plt.hist(dists.ravel(), bins=100, alpha=0.2)
+        # plt.hist(dists.ravel(), bins=100, alpha=0.2)
         # # pl.show()
 
         # fig.savefig(dpath + 'hist_' + str(blob_dis) + '.png', dpi=300)
         # data.append(dists.ravel())
+        for d in dists:
+            data.append(d)
 
-    fig.savefig(dpath + 'hist_all.png', dpi=300)
+        ridgeline(data, overlap=0, fill=True, labels=None, n_points=d.shape[0])
+
+
+    # fig.savefig(dpath + 'hist_all.png', dpi=300)
 
     # countries = [5, 15, 25, 35, 45]
     # colors = ['#0000ff', '#3300cc', '#660099', '#990066', '#cc0033', '#ff0000']
