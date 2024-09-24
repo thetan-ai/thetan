@@ -4,10 +4,7 @@ from thetan.berserker import berserker2, berserker2_clean, random_walk_auto
 import pylab as pl
 import tracemalloc
 import matplotlib.pyplot as plt
-from sklearn.neighbors import KernelDensity
-import matplotlib as mpl
-import matplotlib.gridspec as grid_spec
-from thetan.viz import ridgeline
+from scipy.ndimage import gaussian_filter1d
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -164,68 +161,47 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-def plot_ridge(countries, colors, data):
+def ridgeline(data, bins, overlap=0, fill=True, labels=None, n_points=150):
+    """
+    Creates a standard ridgeline plot.
 
-    gs = grid_spec.GridSpec(len(countries), 1)
-    fig = plt.figure(figsize=(16,9))
+    data, list of lists.
+    overlap, overlap between distributions. 1 max overlap, 0 no overlap.
+    fill, matplotlib color to fill the distributions.
+    n_points, number of points to evaluate each distribution function.
+    labels, values to place on the y axis to describe the distributions.
+    """
+    if overlap > 1 or overlap < 0:
+        raise ValueError('overlap must be in [0 1]')
+    xx = np.linspace(np.min(np.concatenate(data)),
+                     np.max(np.concatenate(data)), n_points)
+    curves = []
+    ys = []
+    for i, d in enumerate(data):
+        d2 = gaussian_filter1d(d, sigma=2.)
+        # x = np.linspace(d2.min(), d2.max(), n_points)
+        # pdf = gaussian_kde(d)
+        # y = i*(1.0-overlap)
+        # ys.append(y)
+        # curve = pdf(xx)
+        # if fill:
+        #     plt.fill_between(xx, np.ones(n_points)*y,
+        #                      curve+y, zorder=len(data)-i+1)
+        # plt.plot(xx, curve+y, c='k', zorder=len(data)-i+1)
+        # plt.plot(xx, d2, label=str(i)) # + i * 200000)
+        plt.plot(bins[i][:-1], d2, label=labels[i])
+        plt.fill_between(bins[i][:-1], np.zeros(n_points), d2, alpha=0.5)
+    # if labels:
+    #     plt.yticks(ys, labels)
 
-    i = 0
-
-    ax_objs = []
-    for country in countries:
-        print('in plot_ridge >>>  ', country)
-        # country = countries[i]
-        # x = np.array(data[data.country == country].score)
-        x = data[:, i]
-        # x_d = np.linspace(0, 1, 1000)
-        x_d = np.arange(len(x))
-
-        # kde = KernelDensity(bandwidth=0.03, kernel='gaussian')
-        # kde.fit(x[:, None])
-
-        # logprob = kde.score_samples(x_d[:, None])
-
-        # creating new axes object
-        ax_objs.append(fig.add_subplot(gs[i:i+1, 0:]))
-
-        # plotting the distribution
-        ax_objs[-1].plot(x_d, x,color="#f0f0f0",lw=1)
-        ax_objs[-1].fill_between(x_d, x, alpha=1,color=colors[i])
-
-
-        # setting uniform x and y lims
-        ax_objs[-1].set_xlim(0,100000)
-        ax_objs[-1].set_ylim(0,50000)
-
-        # make background transparent
-        rect = ax_objs[-1].patch
-        rect.set_alpha(0)
-
-        # remove borders, axis ticks, and labels
-        ax_objs[-1].set_yticklabels([])
-
-        if i == len(countries)-1:
-            ax_objs[-1].set_xlabel("Test Score", fontsize=16,fontweight="bold")
-        else:
-            ax_objs[-1].set_xticklabels([])
-
-        spines = ["top","right","left","bottom"]
-        for s in spines:
-            ax_objs[-1].spines[s].set_visible(False)
-
-        # adj_country = country.replace(" ","\n")
-        # ax_objs[-1].text(-0.02,0,adj_country,fontweight="bold",fontsize=14,ha="right")
-
-
-        i += 1
-
-    gs.update(hspace=-0.7)
-
-    # fig.text(0.07,0.85,"Distribution of Aptitude Test Results from 18 – 24 year-olds",fontsize=20)
-
-    plt.tight_layout()
+    plt.legend()
     plt.show()
 
+
+# def plot_stacked_dists():
+
+#     data = [norm.rvs(loc=i, scale=2, size=50) for i in range(8)]
+#     ridgeline(data, overlap=.85, fill='y')
 
 
 if __name__ == '__main__':
@@ -233,8 +209,12 @@ if __name__ == '__main__':
     dpath = '/home/elef/Data/tb_output_predicts/'
 
     data = []
+    bins = []
     # fig = plt.figure()
-    for blob_dis in  [5, 25, 45]: # [5, 15, 25, 35, 45]: # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]:
+    # [5, 25, 45]: # [5, 15, 25, 35, 45]
+    # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+    inter_dists = [5, 15, 25, 35, 45]
+    for blob_dis in inter_dists:
 
         print('Blob dis', blob_dis)
 
@@ -248,7 +228,7 @@ if __name__ == '__main__':
 
         print('\n >> Aiming to predict theta ...')
 
-        dists = random_walk_auto(X, reps=10)
+        dists = random_walk_auto(X, reps=100)
         dists = np.asarray(dists)
 
         print('Size of Dists in MBytes', dists.nbytes // 1024 ** 2)
@@ -265,10 +245,15 @@ if __name__ == '__main__':
 
         # fig.savefig(dpath + 'hist_' + str(blob_dis) + '.png', dpi=300)
         # data.append(dists.ravel())
-        for d in dists:
-            data.append(d)
+        # for d in dists:
+        #     data.append(d)
 
-        ridgeline(data, overlap=0, fill=True, labels=None, n_points=d.shape[0])
+        hist_, binv = np.histogram(dists.ravel(), bins=100)
+        data.append(hist_)
+        bins.append(binv)
+
+    labels = [str(i).zfill(2) for i in inter_dists]
+    ridgeline(data, bins, overlap=0, fill=True, labels=labels, n_points=100)
 
 
     # fig.savefig(dpath + 'hist_all.png', dpi=300)
