@@ -30,6 +30,35 @@ def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y 
     return X, y, gt_centroids
 
 
+def escape_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10, i_x = 0, escape_x = 50):
+
+    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
+    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+
+    xx, yy = np.meshgrid(xx, yy)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
+                        np.ravel(yy)[:, np.newaxis]))
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+    for i in range(n_centres.shape[0]):
+
+        if i == i_x:
+            cpos = n_centres[i] + np.array([[escape_x, 0]])
+        else:
+            cpos = n_centres[i]
+
+        local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+
+
+    return X, y, gt_centroids
+
+
 def uniform_clusters(scale = 4, n_local_samples = 30, blob_dis = 33, cluster_per_dim = 10):
 
     xx = np.arange(-1*blob_dis, blob_dis, blob_dis / cluster_per_dim*2)
