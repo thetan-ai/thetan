@@ -339,4 +339,5 @@ if __name__ == '__main__':
             plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
 
         # TODO: find a nice way to demonstrate this subsampling result
+        # Try different evaluation metrics
 
