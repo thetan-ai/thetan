@@ -327,8 +327,8 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
 # rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
 # rows += ['OPTICS', 'CLARANS', 'meanshift++']
 
-rows = ['TB', 'TBSCAN', 'TBSCAN2']
-
+rows = ['TB', 'TBSCAN']
+# rows = ['TBSCAN2'] # Needs thinking on how to connect those
 
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
@@ -339,7 +339,7 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 dpath = '/home/elef/Data/tb_output_v5/gaussian_300x100/tbscan/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 1
+reps = 10
 
 verbose = True
 theta_value = 3.6
@@ -444,14 +444,13 @@ if run_experiments:
 
             theta_value = 3.6
 
-            eps = 2.
             min_samples = 1
 
             t = time()
             tracemalloc.start()
             initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False, verbose=False)
 
-            model = HDBSCAN(min_samples=min_samples)
+            model = HDBSCAN(min_cluster_size=2, min_samples=min_samples)
             model.fit(initial_centroids)
 
             unq = np.unique(model.labels_)
