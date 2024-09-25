@@ -323,11 +323,11 @@ def simulate_data(dist_type='gaussian',blob_dis=10, cluster_x=10, cluster_y=10):
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids and hierarchical clustering removed due to large memory needs
-rows += ['OPTICS', 'CLARANS', 'meanshift++']
+# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
+# rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
+# rows += ['OPTICS', 'CLARANS', 'meanshift++']
 
-
+rows = ['TB', 'TBSCAN', 'TBSCAN2']
 
 
 
@@ -336,17 +336,17 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'Clusters', 'Duration', 'Memory']
 # dpath = '/home/elef/Data/tb_output/'
 # dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
 # dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
-dpath = '/home/elef/Data/tb_output_v5/gaussian_300x100/'
+dpath = '/home/elef/Data/tb_output_v5/gaussian_300x100/tbscan/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 10
+reps = 1
 
 verbose = True
 theta_value = 3.6
-run_experiments = False
+run_experiments = True
 save_results = run_experiments
-summarize_results = False
-generate_plots = True
+summarize_results = True
+generate_plots = False
 
 
 if run_experiments:
@@ -360,7 +360,7 @@ if run_experiments:
         evaluation_thr = 0.1
 
 
-        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=30, cluster_y=10)
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=5, cluster_y=5)
 
         print('Number of features ', X.shape[0])
         print('Number of GT centroids ', gt_centroids.shape[0])
@@ -370,7 +370,7 @@ if run_experiments:
 
         if 'TB' in rows:
 
-            print('\n >> Starting Berserker ...')
+            print('\n >> Starting Thetan Berserker ...')
 
             t = time()
             tracemalloc.start()
@@ -389,6 +389,94 @@ if run_experiments:
             print(scores)
             print('Duration is ', time()-t)
             evaluations['TB'] = scores
+
+
+        if 'TBSCAN' in rows:
+
+            print('\n >> Starting TBSCAN .. ')
+
+            theta_value = 3.6
+
+            eps = 2.
+            min_samples = 1
+
+            t = time()
+            tracemalloc.start()
+            initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False, verbose=False)
+
+            model = DBSCAN(eps=eps, min_samples=min_samples)
+            model.fit(initial_centroids)
+
+            unq = np.unique(model.labels_)
+            db_nclusters = np.sum(unq>=0)
+
+            dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
+            dblabels = model.labels_
+
+            final_labels = initial_labels.copy()
+
+            for i, l in enumerate(initial_labels):
+                final_labels[i] = dblabels[l]
+
+            amem, peakmem = tracemalloc.get_traced_memory()
+            peakmem = peakmem // (1024**2)
+            tracemalloc.stop()
+            duration = time() - t
+            print('Duration is ', time()-t)
+
+
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TBSCAN', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            print('Starting evaluation')
+            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+            print(scores)
+            print('Duration is ', time()-t)
+            evaluations['TBSCAN'] = scores
+
+
+        if 'TBSCAN2' in rows:
+
+            print('\n >> Starting TBSCAN2 .. ')
+
+            theta_value = 3.6
+
+            eps = 2.
+            min_samples = 1
+
+            t = time()
+            tracemalloc.start()
+            initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False, verbose=False)
+
+            model = HDBSCAN(min_samples=min_samples)
+            model.fit(initial_centroids)
+
+            unq = np.unique(model.labels_)
+            hdb_nclusters = np.sum(unq>=0)
+
+            hdbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(hdb_nclusters)])
+            hdblabels = model.labels_
+
+            final_labels = initial_labels.copy()
+
+            for i, l in enumerate(initial_labels):
+                final_labels[i] = hdblabels[l]
+
+            amem, peakmem = tracemalloc.get_traced_memory()
+            peakmem = peakmem // (1024**2)
+            tracemalloc.stop()
+            duration = time() - t
+            print('Duration is ', time()-t)
+
+            if verbose:
+                plot_centroids_clusters(X, centroids, labels, 'TBSCAN2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+
+            print('Starting evaluation')
+            scores = evaluate(ecentroids=centroids, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels, true_label=L, duration=duration, memory=peakmem)
+            print(scores)
+            print('Duration is ', time()-t)
+            evaluations['TBSCAN2'] = scores
+
 
 
         if 'kmeans++' in rows:
