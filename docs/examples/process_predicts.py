@@ -379,6 +379,7 @@ if __name__ == '__main__':
         # Try also TBSCAN
         # ###
 
+        t = time()
         scores = evaluate(ecentroids=centroids2, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels2, true_label=L, duration=duration + duration2, memory=max(peakmem, peakmem2))
         print(scores)
 
@@ -387,8 +388,8 @@ if __name__ == '__main__':
         nca = normalized_clustering_accuracy(labels2, L)
         print(nca)
 
-        all_scores.extend([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory])
-
+        all_scores.append([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory])
+        print('Evaluation duration is ', time() - t)
 
 
 print(all_scores)
