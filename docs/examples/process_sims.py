@@ -424,6 +424,9 @@ if run_experiments:
             duration = time() - t
             print('Duration is ', time()-t)
 
+            centroids = dbcentroids
+            labels = final_labels
+
 
             if verbose:
                 plot_centroids_clusters(X, centroids, labels, 'TBSCAN', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
@@ -467,6 +470,9 @@ if run_experiments:
             tracemalloc.stop()
             duration = time() - t
             print('Duration is ', time()-t)
+
+            centroids = hdbcentroids
+            labels = final_labels
 
             if verbose:
                 plot_centroids_clusters(X, centroids, labels, 'TBSCAN2', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
