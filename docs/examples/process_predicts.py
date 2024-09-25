@@ -5,6 +5,7 @@ import pylab as pl
 import tracemalloc
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
+from thetan.theta import assign, centroids_from_labels
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -227,14 +228,7 @@ def ridgeline(data, bins, overlap=0, fill=True, labels=None, n_points=150):
     plt.show()
 
 
-# def plot_stacked_dists():
-
-#     data = [norm.rvs(loc=i, scale=2, size=50) for i in range(8)]
-#     ridgeline(data, overlap=.85, fill='y')
-
-
-if __name__ == '__main__':
-
+def random_walks():
     dpath = '/home/elef/Data/tb_output_predicts/'
 
     # X, y, gt_centroids = escape_clusters(500, blob_dis = 10, cluster_x = 10, cluster_y = 10, i_x = 0, escape_x = -50)
@@ -257,11 +251,11 @@ if __name__ == '__main__':
         X, L, gt_centroids = simulate_data('gaussian', blob_dis=blob_dis, cluster_x=30, cluster_y=10)
         gt_centroids = np.asarray(gt_centroids)
 
-        X2, y2, gt_centroids2 = escape_clusters(500, blob_dis = 10, cluster_x = 10, cluster_y = 10, i_x = 0, escape_x = -blob_dis)
-        gt_centroids2 = np.asarray(gt_centroids2)
+        # X2, y2, gt_centroids2 = escape_clusters(500, blob_dis = 10, cluster_x = 10, cluster_y = 10, i_x = 0, escape_x = -blob_dis)
+        # gt_centroids2 = np.asarray(gt_centroids2)
 
-        X = np.concatenate((X, X2))
-        gt_centroids = np.concatenate((gt_centroids, gt_centroids2))
+        # X = np.concatenate((X, X2))
+        # gt_centroids = np.concatenate((gt_centroids, gt_centroids2))
 
         # plot_centroids_clusters(X, gt_centroids, y, 'Escape', 'large')
 
@@ -301,6 +295,10 @@ if __name__ == '__main__':
     ridgeline(data, bins, overlap=0, fill=True, labels=labels, n_points=100)
 
 
+if __name__ == '__main__':
+
+    verbose = True
+
     # fig.savefig(dpath + 'hist_all.png', dpi=300)
 
     # countries = [5, 15, 25, 35, 45]
@@ -309,23 +307,35 @@ if __name__ == '__main__':
 
     # plot_ridge(countries, colors, data)
 
-    t = 1
+    # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+    sampling_percents = [90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+    for sper in sampling_percents:
 
-    theta_value = 5.0
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=10, cluster_x=10, cluster_y=10)
+        gt_centroids = np.asarray(gt_centroids)
 
-    print('\n >> Starting Berserker 2 (clean version)...')
+        ind = np.random.choice(np.arange(X.shape[0]), int(np.round((sper / 100.) * X.shape[0], 0)), replace=False)
+        points = X[ind].copy()
 
-    t = time()
-    tracemalloc.start()
-    centroids, labels = berserker2_clean(X, theta_value)
-    amem, peakmem = tracemalloc.get_traced_memory()
-    peakmem = peakmem // (1024**2)
-    tracemalloc.stop()
-    duration = time() - t
-    print('Duration is ', duration)
-    print('Peak memory ', peakmem)
+        theta_value = 5.0
 
-    if verbose:
-        plot_centroids_clusters(X, centroids, labels, 'TB_cln_', exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
+        print('\n >> Starting Berserker 2 (clean version)...')
+
+        t = time()
+        tracemalloc.start()
+        centroids, labels = berserker2_clean(points, theta_value)
+        amem, peakmem = tracemalloc.get_traced_memory()
+        peakmem = peakmem // (1024**2)
+        tracemalloc.stop()
+        duration = time() - t
+        print('Duration is ', duration)
+        print('Peak memory ', peakmem)
+
+        labels2 = assign(X, centroids)
+        centroids2 = centroids_from_labels(X, labels2)
+
+        if verbose:
+            plot_centroids_clusters(points, centroids, labels, 'TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
+            plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
 
 
