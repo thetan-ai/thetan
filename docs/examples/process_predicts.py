@@ -6,6 +6,26 @@ import tracemalloc
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from thetan.theta import assign, centroids_from_labels
+from thetan.theta import distance_matrix as tdm
+
+from genieclust.compare_partitions import normalized_clustering_accuracy
+from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
+
+
+def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
+
+    D = np.sqrt(tdm(ecentroids, centroids))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+    ac_score = count / len(ecentroids)
+
+    nmi_score = normalized_mutual_info_score(true_label, label)
+
+    sil_score = silhouette_score(X, label)
+
+    fms_score = fowlkes_mallows_score(true_label, label)
+
+    return ac_score, nmi_score, sil_score, fms_score, ecentroids.shape[0], duration, memory
 
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -298,6 +318,8 @@ def random_walks():
 if __name__ == '__main__':
 
     verbose = True
+    dpath = '/home/elef/Data/tb_output_subsampling/'
+    show = True
 
     # fig.savefig(dpath + 'hist_all.png', dpi=300)
 
@@ -308,8 +330,15 @@ if __name__ == '__main__':
     # plot_ridge(countries, colors, data)
 
     # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
-    sampling_percents = [90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+    sampling_percents = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+
+    all_scores = []
+    show = False
+    evaluation_thr = 0.1
+
     for sper in sampling_percents:
+
+        print('Sampling percentage is ... ', sper)
 
         X, L, gt_centroids = simulate_data('gaussian', blob_dis=10, cluster_x=10, cluster_y=10)
         gt_centroids = np.asarray(gt_centroids)
@@ -328,19 +357,40 @@ if __name__ == '__main__':
         peakmem = peakmem // (1024**2)
         tracemalloc.stop()
         duration = time() - t
-        print('Duration is ', duration)
-        print('Peak memory ', peakmem)
+        print('Sub Duration is ', duration)
+        print('Sub Peak memory ', peakmem)
 
+        t = time()
+        tracemalloc.start()
         labels2 = assign(X, centroids)
         centroids2 = centroids_from_labels(X, labels2)
+        amem2, peakmem2 = tracemalloc.get_traced_memory()
+        peakmem2 = peakmem2 // (1024**2)
+        tracemalloc.stop()
+        duration2 = time() - t
+        print('Assign Duration is ', duration2)
+        print('Assign Peak memory ', peakmem2)
 
-        if verbose:
-            plot_centroids_clusters(points, centroids, labels, 'TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
-            plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=True, dpath=None)
+        # plot_centroids_clusters(points, centroids, labels, 'TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
+        # plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
 
         # TODO: find a nice way to demonstrate this subsampling result
         # Try different evaluation metrics
         # Try also TBSCAN
         # ###
 
+        scores = evaluate(ecentroids=centroids2, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels2, true_label=L, duration=duration + duration2, memory=max(peakmem, peakmem2))
+        print(scores)
+
+        ac_score, nmi_score, sil_score, fms_score, K_, duration, memory = scores
+
+        nca = normalized_clustering_accuracy(labels2, L)
+        print(nca)
+
+        all_scores.extend([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory])
+
+
+
+print(all_scores)
+t = 1
 
