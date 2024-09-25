@@ -330,7 +330,7 @@ if __name__ == '__main__':
     # plot_ridge(countries, colors, data)
 
     # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
-    sampling_percents = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5]
+    sampling_percents = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5, 2, 1]
 
     all_scores = []
     show = False
@@ -391,6 +391,10 @@ if __name__ == '__main__':
         all_scores.append([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory])
         print('Evaluation duration is ', time() - t)
 
+
+    data = np.asarray(all_scores)
+    np.set_printoptions(3, suppress=True)
+    print(data)
 
 print(all_scores)
 t = 1
