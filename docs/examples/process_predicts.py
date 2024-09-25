@@ -237,6 +237,13 @@ if __name__ == '__main__':
 
     dpath = '/home/elef/Data/tb_output_predicts/'
 
+    # X, y, gt_centroids = escape_clusters(500, blob_dis = 10, cluster_x = 10, cluster_y = 10, i_x = 0, escape_x = -50)
+    # gt_centroids = np.asarray(gt_centroids)
+
+    # plot_centroids_clusters(X, gt_centroids, y, 'Escape', 'large')
+
+    t = 1
+
     data = []
     bins = []
     # fig = plt.figure()
@@ -248,6 +255,15 @@ if __name__ == '__main__':
         print('Blob dis', blob_dis)
 
         X, L, gt_centroids = simulate_data('gaussian', blob_dis=blob_dis, cluster_x=30, cluster_y=10)
+        gt_centroids = np.asarray(gt_centroids)
+
+        X2, y2, gt_centroids2 = escape_clusters(500, blob_dis = 10, cluster_x = 10, cluster_y = 10, i_x = 0, escape_x = -blob_dis)
+        gt_centroids2 = np.asarray(gt_centroids2)
+
+        X = np.concatenate((X, X2))
+        gt_centroids = np.concatenate((gt_centroids, gt_centroids2))
+
+        # plot_centroids_clusters(X, gt_centroids, y, 'Escape', 'large')
 
         print('Number of features ', X.shape[0])
         print('Number of GT centroids ', gt_centroids.shape[0])
