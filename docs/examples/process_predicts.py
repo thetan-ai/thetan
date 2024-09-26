@@ -8,7 +8,7 @@ from scipy.ndimage import gaussian_filter1d
 from thetan.theta import assign, centroids_from_labels
 from thetan.theta import distance_matrix as tdm
 
-from genieclust.compare_partitions import normalized_clustering_accuracy
+# from genieclust.compare_partitions import normalized_clustering_accuracy
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 
 
@@ -320,6 +320,7 @@ if __name__ == '__main__':
     verbose = True
     dpath = '/home/elef/Data/tb_output_subsampling/'
     show = True
+    run_experiment = False
 
     # fig.savefig(dpath + 'hist_all.png', dpi=300)
 
@@ -332,71 +333,102 @@ if __name__ == '__main__':
     # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
     sampling_percents = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
 
-    all_scores = []
-    show = False
-    evaluation_thr = 0.1
+    if run_experiment:
 
-    for sper in sampling_percents:
+        
 
-        print('Sampling percentage is ... ', sper)
+        all_scores = []
+        show = False
+        evaluation_thr = 0.1
 
-        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=10, cluster_y=10)
-        gt_centroids = np.asarray(gt_centroids)
+        for sper in sampling_percents:
 
-        print('Selecting ...', int(np.round((sper / 100.) * X.shape[0], 0)))
-        ind = np.random.choice(np.arange(X.shape[0]), int(np.round((sper / 100.) * X.shape[0], 0)), replace=False)
-        points = X[ind].copy()
+            print('Sampling percentage is ... ', sper)
 
-        theta_value = 3.6
+            X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=10, cluster_y=10)
+            gt_centroids = np.asarray(gt_centroids)
 
-        print('\n >> Starting Berserker 2 (clean version)...')
+            print('Selecting ...', int(np.round((sper / 100.) * X.shape[0], 0)))
+            ind = np.random.choice(np.arange(X.shape[0]), int(np.round((sper / 100.) * X.shape[0], 0)), replace=False)
+            points = X[ind].copy()
 
-        t = time()
-        tracemalloc.start()
-        centroids, labels = berserker2_clean(points, theta_value)
-        amem, peakmem = tracemalloc.get_traced_memory()
-        peakmem1 = peakmem // (1024**2)
-        tracemalloc.stop()
-        duration1 = time() - t
-        print('Sub Duration is ', duration1)
-        print('Sub Peak memory ', peakmem1)
+            theta_value = 3.6
 
-        t = time()
-        tracemalloc.start()
-        labels2 = assign(X, centroids)
-        centroids2 = centroids_from_labels(X, labels2)
-        amem2, peakmem2 = tracemalloc.get_traced_memory()
-        peakmem2 = peakmem2 // (1024**2)
-        tracemalloc.stop()
-        duration2 = time() - t
-        print('Assign Duration is ', duration2)
-        print('Assign Peak memory ', peakmem2)
+            print('\n >> Starting Berserker 2 (clean version)...')
 
-        # plot_centroids_clusters(points, centroids, labels, 'TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
-        plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
+            t = time()
+            tracemalloc.start()
+            centroids, labels = berserker2_clean(points, theta_value)
+            amem, peakmem = tracemalloc.get_traced_memory()
+            peakmem1 = peakmem // (1024**2)
+            tracemalloc.stop()
+            duration1 = time() - t
+            print('Sub Duration is ', duration1)
+            print('Sub Peak memory ', peakmem1)
 
-        # TODO: find a nice way to demonstrate this subsampling result
-        # Try different evaluation metrics
-        # Try also TBSCAN
-        # ###
+            t = time()
+            tracemalloc.start()
+            labels2 = assign(X, centroids)
+            centroids2 = centroids_from_labels(X, labels2)
+            amem2, peakmem2 = tracemalloc.get_traced_memory()
+            peakmem2 = peakmem2 // (1024**2)
+            tracemalloc.stop()
+            duration2 = time() - t
+            print('Assign Duration is ', duration2)
+            print('Assign Peak memory ', peakmem2)
 
-        t = time()
-        scores = evaluate(ecentroids=centroids2, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels2, true_label=L, duration=duration1 + duration2, memory=max(peakmem1, peakmem2))
-        print(scores)
+            # plot_centroids_clusters(points, centroids, labels, 'TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
+            plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
 
-        ac_score, nmi_score, sil_score, fms_score, K_, duration, memory = scores
+            # TODO: find a nice way to demonstrate this subsampling result
+            # Try different evaluation metrics
+            # Try also TBSCAN
+            # ###
 
-        nca = normalized_clustering_accuracy(labels2, L)
-        print(nca)
+            t = time()
+            scores = evaluate(ecentroids=centroids2, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels2, true_label=L, duration=duration1 + duration2, memory=max(peakmem1, peakmem2))
+            print(scores)
 
-        all_scores.append([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory, duration1, duration2])
-        print('Evaluation duration is ', time() - t)
+            ac_score, nmi_score, sil_score, fms_score, K_, duration, memory = scores
+
+            nca = normalized_clustering_accuracy(labels2, L)
+            print(nca)
+
+            all_scores.append([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory, duration1, duration2])
+            print('Evaluation duration is ', time() - t)
 
 
-    data = np.asarray(all_scores)
-    np.set_printoptions(3, suppress=True)
-    print(data)
+        data = np.asarray(all_scores)
+        np.set_printoptions(3, suppress=True)
+        print(data)
 
-print(all_scores)
+# print(all_scores)
 t = 1
+
+
+dpath2 = 'C:/Users/Eleftherios/Data/tb_sub/'
+
+tmp = np.load(dpath2 + 'dat_100x100.npy')
+
+import pandas as pd
+
+df = pd.DataFrame(tmp, index=sampling_percents, columns=['nca', 'ac', 'nmi', 'sil', 'fms', 'clusters', 'duration', 'memory', 'duration1', 'duration2'])
+
+print(df)
+
+fig = plt.figure()
+plt.plot(df['ac'].to_numpy(), label='ac')
+# plt.plot(df['nca'].to_numpy())
+# plt.plot(df['nmi'].to_numpy())
+# plt.plot(df['fms'].to_numpy())
+
+runtime = df['duration'].to_numpy()
+runtime = runtime/runtime.max()
+
+plt.plot(runtime, label='runtime')
+plt.xticks(np.arange(len(sampling_percents)), sampling_percents)
+plt.vlines(15, 0, 1.0, colors='k', linestyles='dashed')
+plt.show()
+
+t = 2
 
