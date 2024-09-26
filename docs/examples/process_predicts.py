@@ -330,7 +330,7 @@ if __name__ == '__main__':
     # plot_ridge(countries, colors, data)
 
     # [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
-    sampling_percents = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5, 2, 1]
+    sampling_percents = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
 
     all_scores = []
     show = False
@@ -340,13 +340,14 @@ if __name__ == '__main__':
 
         print('Sampling percentage is ... ', sper)
 
-        X, L, gt_centroids = simulate_data('gaussian', blob_dis=10, cluster_x=10, cluster_y=10)
+        X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=10, cluster_y=10)
         gt_centroids = np.asarray(gt_centroids)
 
+        print('Selecting ...', int(np.round((sper / 100.) * X.shape[0], 0)))
         ind = np.random.choice(np.arange(X.shape[0]), int(np.round((sper / 100.) * X.shape[0], 0)), replace=False)
         points = X[ind].copy()
 
-        theta_value = 5.0
+        theta_value = 3.6
 
         print('\n >> Starting Berserker 2 (clean version)...')
 
@@ -354,11 +355,11 @@ if __name__ == '__main__':
         tracemalloc.start()
         centroids, labels = berserker2_clean(points, theta_value)
         amem, peakmem = tracemalloc.get_traced_memory()
-        peakmem = peakmem // (1024**2)
+        peakmem1 = peakmem // (1024**2)
         tracemalloc.stop()
-        duration = time() - t
-        print('Sub Duration is ', duration)
-        print('Sub Peak memory ', peakmem)
+        duration1 = time() - t
+        print('Sub Duration is ', duration1)
+        print('Sub Peak memory ', peakmem1)
 
         t = time()
         tracemalloc.start()
@@ -372,7 +373,7 @@ if __name__ == '__main__':
         print('Assign Peak memory ', peakmem2)
 
         # plot_centroids_clusters(points, centroids, labels, 'TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
-        # plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
+        plot_centroids_clusters(X, centroids2, labels2, 'sub_TB_' + str(sper).zfill(2), exp_type='_runtime_', initial_centroids=gt_centroids, show=show, dpath=dpath)
 
         # TODO: find a nice way to demonstrate this subsampling result
         # Try different evaluation metrics
@@ -380,7 +381,7 @@ if __name__ == '__main__':
         # ###
 
         t = time()
-        scores = evaluate(ecentroids=centroids2, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels2, true_label=L, duration=duration + duration2, memory=max(peakmem, peakmem2))
+        scores = evaluate(ecentroids=centroids2, centroids=gt_centroids, thr=evaluation_thr, X=X, label=labels2, true_label=L, duration=duration1 + duration2, memory=max(peakmem1, peakmem2))
         print(scores)
 
         ac_score, nmi_score, sil_score, fms_score, K_, duration, memory = scores
@@ -388,7 +389,7 @@ if __name__ == '__main__':
         nca = normalized_clustering_accuracy(labels2, L)
         print(nca)
 
-        all_scores.append([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory])
+        all_scores.append([nca, ac_score, nmi_score, sil_score, fms_score, K_, duration, memory, duration1, duration2])
         print('Evaluation duration is ', time() - t)
 
 
