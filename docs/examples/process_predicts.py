@@ -335,7 +335,7 @@ if __name__ == '__main__':
 
     if run_experiment:
 
-        
+
 
         all_scores = []
         show = False
@@ -406,7 +406,9 @@ if __name__ == '__main__':
 t = 1
 
 
-dpath2 = 'C:/Users/Eleftherios/Data/tb_sub/'
+# dpath2 = 'C:/Users/Eleftherios/Data/tb_sub/'
+dpath2 = '/home/elef/Data/tb_output_subsampling/'
+
 
 tmp = np.load(dpath2 + 'dat_100x100.npy')
 
@@ -417,17 +419,19 @@ df = pd.DataFrame(tmp, index=sampling_percents, columns=['nca', 'ac', 'nmi', 'si
 print(df)
 
 fig = plt.figure()
-plt.plot(df['ac'].to_numpy(), label='ac')
+plt.plot(df['ac'].to_numpy(), label='AC')
 # plt.plot(df['nca'].to_numpy())
-# plt.plot(df['nmi'].to_numpy())
-# plt.plot(df['fms'].to_numpy())
+# plt.plot(df['nmi'].to_numpy(), label='NMI')
+plt.plot(df['fms'].to_numpy(), label='FMS')
 
 runtime = df['duration'].to_numpy()
 runtime = runtime/runtime.max()
 
-plt.plot(runtime, label='runtime')
+plt.plot(runtime, label='Runtime')
 plt.xticks(np.arange(len(sampling_percents)), sampling_percents)
 plt.vlines(15, 0, 1.0, colors='k', linestyles='dashed')
+plt.grid()
+plt.legend()
 plt.show()
 
 t = 2
