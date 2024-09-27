@@ -8,10 +8,37 @@ import numpy as np
 from sklearn import cluster, datasets, mixture
 from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import DBSCAN
 
 from thetan.berserker import berserker2_clean
 
 
+
+def tbscan(X, theta_value, eps=0.5, min_samples=1):
+
+    initial_centroids, initial_labels = berserker2_clean(X, theta_value)
+
+    eps = 2.
+    min_samples = 1
+
+    t = time()
+    model = DBSCAN(eps=eps, min_samples=min_samples)
+    model.fit(initial_centroids)
+
+    unq = np.unique(model.labels_)
+    db_nclusters = np.sum(unq>=0)
+
+    dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
+    dblabels = model.labels_
+    duration = time() - t
+
+
+    final_labels = initial_labels.copy()
+
+    for i, l in enumerate(initial_labels):
+        final_labels[i] = dblabels[l]
+
+    return final_labels
 
 
 # ============
@@ -122,80 +149,11 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     # # normalize dataset for easier parameter selection
     X = StandardScaler().fit_transform(X)
 
-    # # estimate bandwidth for mean shift
-    # bandwidth = cluster.estimate_bandwidth(X, quantile=params["quantile"])
-
-    # # connectivity matrix for structured Ward
-    # connectivity = kneighbors_graph(
-    #     X, n_neighbors=params["n_neighbors"], include_self=False
-    # )
-    # # make connectivity symmetric
-    # connectivity = 0.5 * (connectivity + connectivity.T)
-
-    # # ============
-    # # Create cluster objects
-    # # ============
-    # ms = cluster.MeanShift(bandwidth=bandwidth, bin_seeding=True)
-    # two_means = cluster.MiniBatchKMeans(
-    #     n_clusters=params["n_clusters"],
-    #     random_state=params["random_state"],
-    # )
-    # ward = cluster.AgglomerativeClustering(
-    #     n_clusters=params["n_clusters"], linkage="ward", connectivity=connectivity
-    # )
-    # spectral = cluster.SpectralClustering(
-    #     n_clusters=params["n_clusters"],
-    #     eigen_solver="arpack",
-    #     affinity="nearest_neighbors",
-    #     random_state=params["random_state"],
-    # )
-    # dbscan = cluster.DBSCAN(eps=params["eps"])
-    # hdbscan = cluster.HDBSCAN(
-    #     min_samples=params["hdbscan_min_samples"],
-    #     min_cluster_size=params["hdbscan_min_cluster_size"],
-    #     allow_single_cluster=params["allow_single_cluster"],
-    # )
-    # optics = cluster.OPTICS(
-    #     min_samples=params["min_samples"],
-    #     xi=params["xi"],
-    #     min_cluster_size=params["min_cluster_size"],
-    # )
-    # affinity_propagation = cluster.AffinityPropagation(
-    #     damping=params["damping"],
-    #     preference=params["preference"],
-    #     random_state=params["random_state"],
-    # )
-    # average_linkage = cluster.AgglomerativeClustering(
-    #     linkage="average",
-    #     metric="cityblock",
-    #     n_clusters=params["n_clusters"],
-    #     connectivity=connectivity,
-    # )
-    # birch = cluster.Birch(n_clusters=params["n_clusters"])
-    # gmm = mixture.GaussianMixture(
-    #     n_components=params["n_clusters"],
-    #     covariance_type="full",
-    #     random_state=params["random_state"],
-    # )
-
-    # clustering_algorithms = (
-    #     ("MiniBatch\nKMeans", two_means),
-    #     ("Affinity\nPropagation", affinity_propagation),
-    #     ("MeanShift", ms),
-    #     ("Spectral\nClustering", spectral),
-    #     ("Ward", ward),
-    #     ("Agglomerative\nClustering", average_linkage),
-    #     ("DBSCAN", dbscan),
-    #     ("HDBSCAN", hdbscan),
-    #     ("OPTICS", optics),
-    #     ("BIRCH", birch),
-    #     ("Gaussian\nMixture", gmm),
-    # )
-
     for i in range(1):
 
         t0 = time()
-        centroids, labels = berserker2_clean(X, 0.5)
+        # centroids, labels = berserker2_clean(X, 0.5)
+        labels = tbscan(X, 0.5, eps=0.5, min_samples=1)
         t1 = time()
 
         y_pred = labels
@@ -226,7 +184,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
         colors = np.append(colors, ["#000000"])
         # plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
 
-        plt.scatter(X[:, 0], X[:, 1])
+        plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
 
         plt.xlim(-2.5, 2.5)
         plt.ylim(-2.5, 2.5)
