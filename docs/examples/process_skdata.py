@@ -188,8 +188,8 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 
         plt.xlim(-2.5, 2.5)
         plt.ylim(-2.5, 2.5)
-        plt.xticks(())
-        plt.yticks(())
+        # plt.xticks(())
+        # plt.yticks(())
         # plt.text(
         #     0.99,
         #     0.01,
