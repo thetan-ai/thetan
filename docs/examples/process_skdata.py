@@ -18,9 +18,6 @@ def tbscan(X, theta_value, eps=0.5, min_samples=1):
 
     initial_centroids, initial_labels = berserker2_clean(X, theta_value)
 
-    eps = 2.
-    min_samples = 1
-
     t = time()
     model = DBSCAN(eps=eps, min_samples=min_samples)
     model.fit(initial_centroids)
@@ -152,8 +149,8 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     for i in range(1):
 
         t0 = time()
-        # centroids, labels = berserker2_clean(X, 0.5)
-        labels = tbscan(X, 0.5, eps=0.5, min_samples=1)
+        # centroids, labels = berserker2_clean(X, 0.1)
+        labels = tbscan(X, 0.1, eps=.4, min_samples=1)
         t1 = time()
 
         y_pred = labels
@@ -184,7 +181,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
         colors = np.append(colors, ["#000000"])
         # plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
 
-        plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
+        plt.scatter(X[:, 0], X[:, 1], s=10, c=y_pred, cmap=plt.cm.nipy_spectral)
 
         plt.xlim(-2.5, 2.5)
         plt.ylim(-2.5, 2.5)
