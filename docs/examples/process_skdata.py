@@ -11,8 +11,20 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
 
 from thetan.berserker import berserker2_clean
+from thetan.viz import plot_centroids_clusters
 
 
+def dbscan(X, eps=0.5, min_samples=1):
+    model = DBSCAN(eps=eps, min_samples=min_samples)
+    model.fit(X)
+
+    unq = np.unique(model.labels_)
+    db_nclusters = np.sum(unq>=0)
+
+    dbcentroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(db_nclusters)])
+    dblabels = model.labels_
+
+    return dbcentroids, dblabels
 
 def tbscan(X, theta_value, eps=0.5, min_samples=1):
 
@@ -27,22 +39,22 @@ def tbscan(X, theta_value, eps=0.5, min_samples=1):
 
     dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
     dblabels = model.labels_
-    duration = time() - t
-
 
     final_labels = initial_labels.copy()
 
     for i, l in enumerate(initial_labels):
         final_labels[i] = dblabels[l]
 
-    return final_labels
+    duration = time() - t
+
+    return dbcentroids, final_labels
 
 
 # ============
 # Generate datasets. We choose the size big enough to see the scalability
 # of the algorithms, but not too big to avoid too long running times
 # ============
-n_samples = 500
+n_samples = 1000000 # 150000
 seed = 30
 noisy_circles = datasets.make_circles(
     n_samples=n_samples, factor=0.5, noise=0.05, random_state=seed
@@ -64,13 +76,13 @@ varied = datasets.make_blobs(
     n_samples=n_samples, cluster_std=[1.0, 2.5, 0.5], random_state=random_state
 )
 
-# ============
-# Set up cluster parameters
-# ============
-plt.figure(figsize=(9 * 2 + 3, 13))
-plt.subplots_adjust(
-    left=0.02, right=0.98, bottom=0.001, top=0.95, wspace=0.05, hspace=0.01
-)
+# # ============
+# # Set up cluster parameters
+# # ============
+# plt.figure(figsize=(9 * 2 + 3, 13))
+# plt.subplots_adjust(
+#     left=0.02, right=0.98, bottom=0.001, top=0.95, wspace=0.05, hspace=0.01
+# )
 
 plot_num = 1
 
@@ -136,66 +148,48 @@ datasets = [
     (no_structure, {}),
 ]
 
+dpath = 'C:/Users/Eleftherios/Data/tb_circles/'
+
+
 for i_dataset, (dataset, algo_params) in enumerate(datasets):
     # update parameters with dataset-specific values
-    params = default_base.copy()
-    params.update(algo_params)
+    # params = default_base.copy()
+    # params.update(algo_params)
 
     X, y = dataset
 
     # # normalize dataset for easier parameter selection
     X = StandardScaler().fit_transform(X)
 
-    for i in range(1):
+    print('Dataset size is ')
+    print(X.shape)
+    print(X.min(), X.max())
 
-        t0 = time()
-        # centroids, labels = berserker2_clean(X, 0.1)
-        labels = tbscan(X, 0.1, eps=.4, min_samples=1)
-        t1 = time()
+    t0 = time()
+    centroids, labels = berserker2_clean(X, 0.2)
+    t1 = time()
 
-        y_pred = labels
+    plot_centroids_clusters(X, None, labels, 'TB ', show=False, savefn=dpath+'tb.png')
 
-        colors = np.array(
-            list(
-                islice(
-                    cycle(
-                        [
-                            "#377eb8",
-                            "#ff7f00",
-                            "#4daf4a",
-                            "#f781bf",
-                            "#a65628",
-                            "#984ea3",
-                            "#999999",
-                            "#e41a1c",
-                            "#dede00",
-                        ]
-                    ),
-                    int(max(y_pred) + 1),
-                )
-            )
-        )
+    t2 = time()
+    centroids, labels = tbscan(X, 0.2, eps=0.4, min_samples=1)
+    t3 = time()
+
+    plot_centroids_clusters(X, None, labels, 'TBSCAN ', show=False, savefn=dpath+'tbscan.png')
+
+    t4 = time()
+    centroids, labels = dbscan(X, eps=0.1, min_samples=7)
+    t5 = time()
+
+    plot_centroids_clusters(X, None, labels, 'DBSCAN', show=False, savefn=dpath+'dbscan.png')
+
+    plot_num +=1
+
+    print('TB', t1-t0, 'TBSCAN', t3 - t2, 'DBSCAN', t5 - t4)
 
 
-        # add black color for outliers (if any)
-        colors = np.append(colors, ["#000000"])
-        # plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
+    print('Speedup ', (t5 - t4) / (t3 - t2))
 
-        plt.scatter(X[:, 0], X[:, 1], s=10, c=y_pred, cmap=plt.cm.nipy_spectral)
-
-        plt.xlim(-2.5, 2.5)
-        plt.ylim(-2.5, 2.5)
-        # plt.xticks(())
-        # plt.yticks(())
-        # plt.text(
-        #     0.99,
-        #     0.01,
-        #     ("%.2fs" % (t1 - t0)).lstrip("0"),
-        #     transform=plt.gca().transAxes,
-        #     size=15,
-        #     horizontalalignment="right",
-        # )
-        plot_num += 1
-
-        plt.show()
+    ch = 12
+    break
 
