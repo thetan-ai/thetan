@@ -54,7 +54,7 @@ def tbscan(X, theta_value, eps=0.5, min_samples=1):
 # Generate datasets. We choose the size big enough to see the scalability
 # of the algorithms, but not too big to avoid too long running times
 # ============
-n_samples = 1000000 # 150000
+n_samples = 100000 # 150000
 seed = 30
 noisy_circles = datasets.make_circles(
     n_samples=n_samples, factor=0.5, noise=0.05, random_state=seed
@@ -166,13 +166,15 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     print(X.min(), X.max())
 
     t0 = time()
-    centroids, labels = berserker2_clean(X, 0.2)
+    centroids, labels = berserker2_clean(X, 0.5)
     t1 = time()
 
     plot_centroids_clusters(X, None, labels, 'TB ', show=False, savefn=dpath+'tb.png')
 
+    ch = 1
+
     t2 = time()
-    centroids, labels = tbscan(X, 0.2, eps=0.4, min_samples=1)
+    centroids, labels = tbscan(X, 0.5, eps=.8, min_samples=1)
     t3 = time()
 
     plot_centroids_clusters(X, None, labels, 'TBSCAN ', show=False, savefn=dpath+'tbscan.png')
