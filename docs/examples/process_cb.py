@@ -1,5 +1,7 @@
 """Please, do:
 
+pip install genieclust clustering-benchmarks
+
 git submodule update --remote
 
 dataset url: https://clustering-benchmarks.gagolewski.com/weave/data-v1.html#wut/circles
@@ -8,14 +10,23 @@ dataset url: https://clustering-benchmarks.gagolewski.com/weave/data-v1.html#wut
 from dataclasses import make_dataclass
 import os
 from os.path import join as pjoin
+from pprint import pprint
+import tracemalloc
 import time
+import warnings
 
 
+import clustbench
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import numpy as np
 import scipy as sp
+from scipy.optimize import linear_sum_assignment
+from sklearn import datasets, manifold
+from sklearn.cluster import HDBSCAN, DBSCAN
+from sklearn.metrics import pair_confusion_matrix
+from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
 
 from thetan.berserker import berserker2
 
@@ -23,10 +34,13 @@ from thetan.berserker import berserker2
 DATA_PATH = pjoin(os.path.abspath(os.path.dirname(__file__)), '..', '..', 'data',
                   'clustering-data-v1')
 DATA_PATH = os.path.abspath(DATA_PATH)
+RESULTS_PATH = pjoin(os.path.abspath(os.path.dirname(__file__)), '..', '..', 'data',
+                     'clustering-results-v1', 'original')
+RESULTS_PATH = os.path.abspath(RESULTS_PATH)
 
 col = ["#000000", "#DF536B", "#61D04F", "#2297E6", "#28E2E5", "#CD0BBC", "#F5C710"] + \
-    [matplotlib.colors.to_hex(c) for c in plt.colormaps["tab10"].colors]  + \
-    [matplotlib.colors.to_hex(c) for c in plt.colormaps["tab20"].colors]  + \
+    [matplotlib.colors.to_hex(c) for c in plt.colormaps["tab10"].colors] + \
+    [matplotlib.colors.to_hex(c) for c in plt.colormaps["tab20"].colors] + \
     [matplotlib.colors.to_hex(c) for c in plt.colormaps["tab20b"].colors] + \
     [matplotlib.colors.to_hex(c) for c in plt.colormaps["tab20c"].colors]
 
@@ -43,13 +57,17 @@ def plot_dataset(dataset, axis=None, title=None, xlabel=None, ylabel=None,
     """Draws a scatter plot of the labels."""
     if not isinstance(dataset, (list, tuple)):
         dataset = [dataset, ]
+
     nb_subplot = sum(len(data.labels) for data in dataset)
-    print(nb_subplot)
+    if not isinstance(title, (list, tuple)):
+        title = [f"labels{i}" for i in range(nb_subplot)]
+    if len(title) != nb_subplot:
+        title += [f"labels{i}" for i in range(nb_subplot-len(title))]
     for k, data in enumerate(dataset, 1):
         for i in range(len(data.labels)):
             plt.subplot(1, nb_subplot, k+i)
             plot_scatter(data.data, labels=data.labels[i]-1,
-                         axis="equal", title=f"labels{k+i}", alpha=0.05)
+                         axis="equal", title=title[k+i-1])  # , alpha=0.05)
     plt.show()
 
 
@@ -190,34 +208,458 @@ def load_dataset(battery, dataset, *, preprocess=True, random_state=None):
     )
 
 
-if __name__ == "__main__":
-    print(get_battery_names())
-    print(get_dataset_names(battery_name='mnist'))
-    # dataset = load_dataset('wut', 'x2')
-    # dataset = load_dataset('wut', 'circles')
-    # dataset = load_dataset('wut', 'cross')
-    # dataset = load_dataset('wut', 'z3')
-    dataset = load_dataset('sipu', 'birch1')
-    # dataset = load_dataset('other', 'hdbscan')
-    # plot_dataset(dataset)
+def calculate_nca(labels_true, labels_pred):
+    """
+    Calculate Normalized Clustering Accuracy (NCA) between two segmented images
+    using the provided NCA formula.
 
-    print('Starting Berserker')
-    # theta_value = 1.85  # x2
-    # theta_value = 1.20  # circles -> GOOD
-    # theta_value = 2.7 # cross
-    # theta_value = 1.1 # z3 -> GOOD
-    theta_value = 0.25 # birch1 -> GOOD
-    t_start = time.perf_counter()
-    centroids, labels = berserker2(np.ascontiguousarray(dataset.data),
-                                   theta_value, all_out=False, verbose=False)
-    print('Duration is ', time.perf_counter() - t_start)
-    print(f'cluster size: {len(centroids)} / {dataset.n_clusters} expected')
-    results = DataSet(
-        battery=dataset.battery,
-        dataset=dataset.dataset,
-        description=dataset.description,
-        data=dataset.data,
-        labels=[labels],
-        n_clusters=[len(centroids)]
-    )
-    plot_dataset([results, dataset])
+    Parameters:
+    - labels_true: numpy array of shape (H, W), ground truth labeled image.
+    - labels_pred: numpy array of shape (H, W), predicted segmented image.
+
+    Returns:
+    - NCA: Normalized Clustering Accuracy.
+
+    References
+    ----------
+    Gagolewski, M. (2024). Normalised clustering accuracy: An asymmetric external cluster validity measure. Journal of Classification. in press. URL: https://link.springer.com/content/pdf/10.1007/s00357-024-09482-2.pdf, DOI: 10.1007/s00357-024-09482-2.
+    """
+    if labels_true.shape != labels_pred.shape:
+        raise ValueError("Labels must have the same dimensions for comparison.")
+
+    # Flatten the images (if 2D) to 1D arrays for easier processing
+    labels_true = labels_true.flatten()
+    labels_pred = labels_pred.flatten()
+
+    # Get the unique labels from both ground truth and predicted
+    unique_true = np.unique(labels_true)
+    unique_pred = np.unique(labels_pred)
+
+    # Calculate the number of clusters in both label sets
+    num_clusters_true = len(unique_true)
+    num_clusters_pred = len(unique_pred)
+
+    # If cluster numbers differ, pad the smaller one with empty clusters
+    max_clusters = max(num_clusters_true, num_clusters_pred)
+
+    # Create a contingency matrix (matching table between clusters)
+    contingency_matrix = np.zeros((max_clusters, max_clusters), dtype=int)
+
+    for i, true_label in enumerate(unique_true):
+        for j, pred_label in enumerate(unique_pred):
+            # Count pixels where true_label corresponds to pred_label
+            contingency_matrix[i, j] = np.sum((labels_true == true_label) & (labels_pred == pred_label))
+
+    # If necessary, pad the matrix to match the largest number of clusters
+    if num_clusters_true < max_clusters:
+        padding = np.zeros((max_clusters - num_clusters_true, max_clusters), dtype=int)
+        contingency_matrix = np.vstack((contingency_matrix, padding))
+
+    if num_clusters_pred < max_clusters:
+        padding = np.zeros((max_clusters, max_clusters - num_clusters_pred), dtype=int)
+        contingency_matrix = np.hstack((contingency_matrix, padding))
+
+    # Compute the total number of elements (total number of pixels/labels)
+    total_elements = labels_true.size
+
+    # Solve the linear assignment problem to find the best matching of clusters
+    row_ind, col_ind = linear_sum_assignment(-contingency_matrix)
+
+    # Compute NCA as per the given formula
+    nca_sum = 0
+    for j in range(max_clusters):
+        i = row_ind[j]  # Corresponding true label index
+        matching_size = contingency_matrix[i, col_ind[j]]
+
+        # Ensure we handle the case where cluster sizes might be zero
+        true_cluster_size = np.sum(contingency_matrix[i, :])
+        pred_cluster_size = np.sum(contingency_matrix[:, col_ind[j]])
+
+        # Avoid division by zero
+        if true_cluster_size == 0 or pred_cluster_size == 0:
+            continue
+
+        # Following the NCA formula
+        term1 = matching_size / true_cluster_size
+        term2 = pred_cluster_size / total_elements
+        nca_sum += (term1 - term2) / (1 - term2)
+
+    nca = (1 / max_clusters) * nca_sum
+
+    return nca
+
+
+def rand_score(labels_true, labels_pred):
+    """
+    Compute the Rand Index (RI) between two clusterings.
+
+    Parameters:
+    - labels_true: Ground truth clustering (1D array).
+    - labels_pred: Predicted clustering (1D array).
+
+    Returns:
+    - Rand Index (float).
+    """
+    # Compute the pair confusion matrix (YY, YN, NY, NN)
+    YY, YN, NY, NN = pair_confusion_matrix(labels_true, labels_pred).ravel()
+    n = YY + YN + NY + NN
+
+    # Rand index formula
+    rand_index = (YY + NN) / n
+    return rand_index
+
+
+def fowlkes_mallows_score(labels_true, labels_pred):
+    """
+    Compute the Fowlkes-Mallows Index (FM) between two clusterings.
+
+    Parameters:
+    - labels_true: Ground truth clustering (1D array).
+    - labels_pred: Predicted clustering (1D array).
+
+    Returns:
+    - Fowlkes-Mallows Index (float).
+    """
+    # Compute the pair confusion matrix (YY, YN, NY, NN)
+    YY, YN, NY, _ = pair_confusion_matrix(labels_true, labels_pred).ravel()
+
+    # Fowlkes-Mallows formula
+    fm_index = YY / np.sqrt((YY + YN) * (YY + NY))
+    return fm_index
+
+
+def adjusted_rand_score_custom(labels_true, labels_pred):
+    """
+    Compute the Adjusted Rand Index (ARI) between two clusterings.
+
+    Parameters:
+    - labels_true: Ground truth clustering (1D array).
+    - labels_pred: Predicted clustering (1D array).
+
+    Returns:
+    - Adjusted Rand Index (float).
+    """
+    # Use scikit-learn's implementation of ARI
+    return adjusted_rand_score(labels_true, labels_pred)
+
+
+def normalized_mutual_information(labels_true, labels_pred):
+    """
+    Compute the Normalized Mutual Information (NMI) between two clusterings.
+
+    Parameters:
+    - labels_true: Ground truth clustering (1D array).
+    - labels_pred: Predicted clustering (1D array).
+
+    Returns:
+    - Normalized Mutual Information (float).
+    """
+    # Use scikit-learn's implementation of NMI
+    return normalized_mutual_info_score(labels_true, labels_pred)
+
+
+def test_tb():
+    csv_table = [('battery', 'dataset', 'theta', 'Original n_clusters', 'Final n_clusters', 'speed', 'nca', 'ri', 'fm', 'ari', 'nmi')]
+
+    # test_data = [('wut', 'circles', 1.20), ('wut', 'z3', 1.1), ('sipu', 'birch1', 0.25),
+    #              ('wut', 'mk1', 1.5), ('wut', 'trajectories', 1.3), ('wut', 'x1', 1.),
+    #              ('sipu', 'a1', .3), ('sipu', 'r15', 1.), ('sipu', 'aggregation', .99),
+    #             ('sipu', 'unbalance', .35), ('fcps', 'twodiamonds', 1.5)]
+    # test_data = [('sipu', 'aggregation', .99), ('g2mg', 'g2mg_2_30', 1.4)]
+    test_data = [('fcps', 'lsun', 1.65)]
+    for battery, dataset, theta_value in test_data:
+        csv_data = [battery, dataset, theta_value]
+        dataset = load_dataset(battery=battery, dataset=dataset)
+        # plot_dataset(dataset)
+        print('Starting Berserker')
+        t_start = time.perf_counter()
+        centroids, labels = berserker2(np.ascontiguousarray(dataset.data),
+                                       theta_value, all_out=False, verbose=False)
+        speed = time.perf_counter() - t_start
+        print('Duration is ', speed)
+        print(f'cluster size: {len(centroids)} / {dataset.n_clusters} expected')
+        results = DataSet(
+            battery=dataset.battery,
+            dataset=dataset.dataset,
+            description=dataset.description,
+            data=dataset.data,
+            labels=[labels],
+            n_clusters=[len(centroids)]
+        )
+        csv_data.extend([dataset.n_clusters[-1], len(centroids), speed])
+        # res = clustbench.load_results('*', dataset.battery, dataset.dataset,
+        #                               results.n_clusters, path=RESULTS_PATH
+        #                               )
+        # labels2 = labels + 1
+        # all_scores = {method: clustbench.get_score(labels2, res[method]) for method in res.keys()}
+        # pprint(all_scores)
+
+        nca = calculate_nca(dataset.labels[-1], labels)
+        ri = rand_score(dataset.labels[-1], labels)
+        fm = fowlkes_mallows_score(dataset.labels[-1], labels)
+        ari = adjusted_rand_score_custom(dataset.labels[-1], labels)
+        nmi = normalized_mutual_information(dataset.labels[-1], labels)
+
+        print(f"Normalized Clustering Accuracy: {nca}")
+        print(f"Rand Index (RI): {ri}")
+        print(f"Fowlkes-Mallows Index (FM): {fm}")
+        print(f"Adjusted Rand Index (ARI): {ari}")
+        print(f"Normalized Mutual Information (NMI): {nmi}")
+        csv_data.extend([nca, ri, fm, ari, nmi])
+        plot_dataset([results, dataset])
+        csv_table.append(csv_data)
+    np.savetxt('tb_results.csv', csv_table, delimiter=',', fmt='%s')
+
+
+def test_tb_hdbscan():
+    csv_table = [('Dataset', 'Final N_Clusters', 'Speed', 'NCA', 'RI', 'FM', 'ARI', 'NMI')]
+    test_data = [('wut', 'trajectories', .1, 1., 0.3), ('wut', 'windows', .1, 1., 0.3),
+                 ('other', 'square', .2, 1, 0.4), ('fcps', 'wingnut', .5, 1, 0.71),
+                 ('graves', 'zigzag', .25, 1., 0.5), ('fcps', 'target', .1, 1., 0.5),
+                 ('fcps', 'lsun', .1, 1., 0.35), ('wut', 'mk2', .05, 1, 0.35)
+                 ]
+    # test_data = [('graves', 'dense', .048)]
+    # test_data = [('wut', 'x2', .05, 1, 0.35)]
+    # test_data = [('graves', 'parabolic', .1, 1, 0.25)]
+    # test_data = [('graves', 'dense', .6)]  # 2 / 0.6
+    # test_data = [('graves', 'dense', .6)]  # 2 / 0.6
+    # test_data = [('graves', 'fuzzyx', .25, 1, .36)]  # 2 / 0.6
+    # test_data = [('wut', 'labirynth', .25, 1, .2)]  # 2 / 0.6
+    for battery, dataset, theta_value, min_samples, eps in test_data:
+        dataset = load_dataset(battery=battery, dataset=dataset)
+        # plot_dataset(dataset)
+        print('Starting Berserker')
+        t_start = time.perf_counter()
+        centroids, labels = berserker2(np.ascontiguousarray(dataset.data),
+                                       theta_value, all_out=False, verbose=False)
+        print('Duration is ', time.perf_counter() - t_start)
+        print(f'cluster size: {len(centroids)} / {dataset.n_clusters} expected')
+        results = DataSet(
+            battery=dataset.battery,
+            dataset=dataset.dataset,
+            description=dataset.description,
+            data=dataset.data,
+            labels=[labels],
+            n_clusters=[len(centroids)]
+        )
+        plot_dataset([results, dataset], title=['TB', 'Ground Truth'])
+        print('Starting HDBSCAN')
+        min_samples = int(min_samples)
+        cluster_selection_epsilon = 1.
+        # model = HDBSCAN(min_samples=min_samples,
+        #                 cluster_selection_epsilon=cluster_selection_epsilon)
+        model = DBSCAN(eps=eps, min_samples=min_samples)
+        model.fit(centroids)
+        speed = time.perf_counter() - t_start
+        print('Duration is ', speed)
+        unq = np.unique(model.labels_)
+        hdb_nclusters = np.sum(unq >= 0)
+        csv_data = [dataset.dataset, f"{hdb_nclusters}/{dataset.n_clusters[0]}", f"{speed:.8f}"]
+        print(f'cluster size: {hdb_nclusters} / {dataset.n_clusters} expected')
+        final_labels = labels.copy()
+        for i, l in enumerate(labels):
+            final_labels[i] = model.labels_[l]
+
+        results = DataSet(
+            battery=dataset.battery,
+            dataset=dataset.dataset,
+            description=dataset.description,
+            data=dataset.data,
+            labels=[final_labels],
+            n_clusters=[hdb_nclusters]
+        )
+        # res = clustbench.load_results('*', dataset.battery, dataset.dataset,
+        #                               results.n_clusters, path=RESULTS_PATH
+        #                               )
+        # labels2 = final_labels + 1
+        # all_scores = {method: clustbench.get_score(labels2, res[method]) for method in res.keys()}
+        # pprint(all_scores)
+        nca = calculate_nca(dataset.labels[-1], results.labels[0])
+        ri = rand_score(dataset.labels[-1], results.labels[0])
+        fm = fowlkes_mallows_score(dataset.labels[-1], results.labels[0])
+        ari = adjusted_rand_score_custom(dataset.labels[-1], results.labels[0])
+        nmi = normalized_mutual_information(dataset.labels[-1], results.labels[0])
+
+        print(f"Normalized Clustering Accuracy: {nca}")
+        print(f"Rand Index (RI): {ri}")
+        print(f"Fowlkes-Mallows Index (FM): {fm}")
+        print(f"Adjusted Rand Index (ARI): {ari}")
+        print(f"Normalized Mutual Information (NMI): {nmi}")
+
+        plot_dataset([results, dataset], title=['TB-DBSCAN', 'Ground Truth'])
+        csv_data.extend([f"{nca:.5f}", f"{ri:.5f}", f"{fm:.5f}", f"{ari:.5f}", f"{nmi:.5f}"])
+        csv_table.append(csv_data)
+
+    np.savetxt('tb_hdbscan_results.csv', csv_table, delimiter=',', fmt='%s')
+
+
+def test_tb_tb():
+    # test_data = [('wut', 'trajectories', .1), ('wut', 'windows', .1),
+    #              ('other', 'square', .8), ('fcps', 'wingnut', .5),
+                #    ('graves', 'zigzag', .25), ('fcps', 'target', .1),
+                #    ('fcps', 'lsun', .1)
+    #              ]
+    # test_data = [('graves', 'dense', .048)]
+    # test_data = [('wut', 'mk2', .3)]
+    # test_data = [('wut', 'x2', .1)]
+    # test_data = [('fcps', 'wingnut', .5)]  # 1 / 0.71 -> Good
+    # test_data = [('fcps', 'lsun', .1)]  # 1 / 0.35 -> Good
+    # test_data = [('fcps', 'target', .1)]  # 1 / 0.5 -> Good
+    test_data = [('graves', 'parabolic', .8)]  # 1 / 0.5
+    # test_data = [('graves', 'zigzag', .25)]  # 1 / 0.5 -> Good
+    for battery, dataset, theta_value in test_data:
+        dataset = load_dataset(battery=battery, dataset=dataset)
+        # plot_dataset(dataset)
+        print('Starting Berserker')
+        t_start = time.perf_counter()
+        centroids, labels = berserker2(np.ascontiguousarray(dataset.data),
+                                       theta_value, all_out=False, verbose=False)
+        print('Duration is ', time.perf_counter() - t_start)
+        print(f'cluster size: {len(centroids)} / {dataset.n_clusters} expected')
+        results = DataSet(
+            battery=dataset.battery,
+            dataset=dataset.dataset,
+            description=dataset.description,
+            data=dataset.data,
+            labels=[labels],
+            n_clusters=[len(centroids)]
+        )
+        plot_dataset([results, dataset], title=['TB', 'Ground Truth'])
+        print('Starting TB2')
+        # import ipdb; ipdb.set_trace()
+        centroids2, labels2 = berserker2(np.ascontiguousarray(centroids),
+                                         1., all_out=False, verbose=False)
+        print('Duration is ', time.perf_counter() - t_start)
+        unq = np.unique(centroids2)
+        hdb_nclusters = np.sum(unq >= 0)
+        print(f'cluster size: {hdb_nclusters} / {dataset.n_clusters} expected')
+        final_labels = labels.copy()
+        for i, l in enumerate(labels):
+            final_labels[i] = labels2[l]
+
+        results = DataSet(
+            battery=dataset.battery,
+            dataset=dataset.dataset,
+            description=dataset.description,
+            data=dataset.data,
+            labels=[final_labels],
+            n_clusters=[hdb_nclusters]
+        )
+        # res = clustbench.load_results('*', dataset.battery, dataset.dataset,
+        #                               results.n_clusters, path=RESULTS_PATH
+        #                               )
+        # labels2 = final_labels + 1
+        # all_scores = {method: clustbench.get_score(labels2, res[method]) for method in res.keys()}
+        # pprint(all_scores)
+        nca = calculate_nca(dataset.labels[-1], labels)
+        ri = rand_score(dataset.labels[-1], labels)
+        fm = fowlkes_mallows_score(dataset.labels[-1], labels)
+        ari = adjusted_rand_score_custom(dataset.labels[-1], labels)
+        nmi = normalized_mutual_information(dataset.labels[-1], labels)
+
+        print(f"Normalized Clustering Accuracy: {nca}")
+        print(f"Rand Index (RI): {ri}")
+        print(f"Fowlkes-Mallows Index (FM): {fm}")
+        print(f"Adjusted Rand Index (ARI): {ari}")
+        print(f"Normalized Mutual Information (NMI): {nmi}")
+
+        plot_dataset([results, dataset], title=['TB-DBSCAN', 'Ground Truth'])
+
+
+def test_sklearn_data():
+    csv_table = [('Methods', 'Clusters', 'Runtime', 'Peak Memory', 'NCA', 'RI', 'FM', 'ARI', 'NMI')]
+    digits = datasets.load_digits()
+    X, y = digits.data, digits.target
+    n_samples, n_features = X.shape
+
+    np.random.seed(0)
+
+    # ----------------------------------------------------------------------
+    # Visualize the clustering
+    def plot_clustering(X_red, labels, title=None):
+        x_min, x_max = np.min(X_red, axis=0), np.max(X_red, axis=0)
+        X_red = (X_red - x_min) / (x_max - x_min)
+
+        plt.figure(figsize=(6, 4))
+        for digit in digits.target_names:
+            plt.scatter(
+                *X_red[y == digit].T,
+                marker=f"${digit}$",
+                s=50,
+                c=plt.cm.nipy_spectral(labels[y == digit] / 10),
+                alpha=0.5,
+            )
+
+        plt.xticks([])
+        plt.yticks([])
+        if title is not None:
+            plt.title(title, size=17)
+        plt.axis("off")
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # ----------------------------------------------------------------------
+    # 2D embedding of the digits dataset
+    print("Computing embedding")
+    X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
+    print("Done.")
+
+    plot_clustering(X_red, y, "Ground Truth")
+
+    from sklearn.cluster import AgglomerativeClustering
+
+    for linkage in ("ward", "average", "complete", "single", "tb"):
+        if linkage == "tb":
+            theta_value = 0.00122
+            tracemalloc.start()
+            t_start = time.perf_counter()
+            centroids, labels = berserker2(np.ascontiguousarray(X_red),
+                                           theta_value, all_out=False, verbose=False)
+            speed = time.perf_counter() - t_start
+            amem, peakmem = tracemalloc.get_traced_memory()
+            peakmem = peakmem / (1024**2)
+            tracemalloc.stop()
+            print('Duration is ', speed)
+            print(f'cluster size: {len(centroids)} / {len(np.unique(y))} expected')
+            plot_clustering(X_red, labels, "TB")
+            csv_data = ['TB', f'{len(centroids)}/{len(np.unique(y))}', f"{speed:.9f}", f"{peakmem:.4f}"]
+        else:
+            tracemalloc.start()
+            t0 = time.perf_counter()
+            clustering = AgglomerativeClustering(linkage=linkage, n_clusters=10)
+            clustering.fit(X_red)
+            speed = time.perf_counter() - t0
+            amem, peakmem = tracemalloc.get_traced_memory()
+            peakmem = peakmem / (1024**2)
+            tracemalloc.stop()
+            print("%s :\t%.2fs" % (linkage, speed))
+
+            plot_clustering(X_red, clustering.labels_, "%s linkage" % linkage)
+            labels = clustering.labels_
+            csv_data = [f'AC-{linkage}', f'{len(np.unique(labels))}/{len(np.unique(y))}', f"{speed:.9f}", f"{peakmem:.4f}"]
+
+        nca = calculate_nca(y, labels)
+        ri = rand_score(y, labels)
+        fm = fowlkes_mallows_score(y, labels)
+        ari = adjusted_rand_score_custom(y, labels)
+        nmi = normalized_mutual_information(y, labels)
+
+        print(f"Normalized Clustering Accuracy: {nca}")
+        print(f"Rand Index (RI): {ri}")
+        print(f"Fowlkes-Mallows Index (FM): {fm}")
+        print(f"Adjusted Rand Index (ARI): {ari}")
+        print(f"Normalized Mutual Information (NMI): {nmi}")
+
+        csv_data.extend([f"{nca:.5f}", f"{ri:.5f}", f"{fm:.5f}", f"{ari:.5f}", f"{nmi:.5f}"])
+        csv_table.append(csv_data)
+
+    np.savetxt('hierarchical_results.csv', csv_table, delimiter=',', fmt='%s')
+    # plt.show()
+
+
+if __name__ == "__main__":
+    # print(get_battery_names())
+    # print(get_dataset_names(battery_name='mnist'))
+    # test_tb()
+    # test_tb_hdbscan()
+    # test_tb_tb()
+    test_sklearn_data()

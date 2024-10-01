@@ -1,3 +1,6 @@
 [submodule "data/clustering-data-v1"]
 	path = data/clustering-data-v1
 	url = https://github.com/gagolews/clustering-data-v1.git
+[submodule "data/clustering-results-v1"]
+	path = data/clustering-results-v1
+	url = https://github.com/gagolews/clustering-results-v1.git
