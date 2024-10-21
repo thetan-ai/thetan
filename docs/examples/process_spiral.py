@@ -6,14 +6,13 @@ from thetan.viz import plot_centroids_clusters
 from sklearn.cluster import DBSCAN, HDBSCAN
 from time import time
 
-# fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
-fname = 'C:/Users/Eleftherios/Data/spiral/SpiralData_Clean_Spread.csv'
-dname_save = 'C:/Users/Eleftherios/Data/tb_output_spiral_v2/' #_small_set/'
-
-spiral_data = np.genfromtxt(fname, delimiter=',')
-
+fname = "/home/elef/tmp/SpiralData_Clean_Spread.csv"
+# fname = 'C:/Users/Eleftherios/Data/spiral/SpiralData_Clean_Spread.csv'
+# dname_save = 'C:/Users/Eleftherios/Data/tb_output_spiral_v3/' #_small_set/'
+dname_save = '/home/elef/Data/tb_output_spiral_v4/'
 
 # spiral_data = np.genfromtxt("C:/Users/Eleftherios/tmp/SpiralData_Clean_Spread.csv", delimiter=',')
+spiral_data = np.genfromtxt(fname, delimiter=',')
 
 # first entry is nan
 spiral_data = np.delete(spiral_data, 0, 0)
@@ -36,7 +35,7 @@ initial_centroids, initial_labels = berserker2(X, theta_value, all_out=False, ve
 duration = time() - t
 times['TB'] = duration
 
-plot_centroids_clusters(X, initial_centroids, initial_labels, title='TB', show=show, savefn=dname_save + 'TB.png')
+plot_centroids_clusters(X, None, initial_labels, title='TB', show=show, savefn=dname_save + 'TB.png')
 
 t = time()
 new_labels = chainer(X, initial_centroids, initial_labels, epsilon_value)
