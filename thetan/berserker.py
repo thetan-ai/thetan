@@ -1891,7 +1891,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     c = np.array([[ci, cj, ck]])
     c_w = np.dot(aff[:3, :3], c.T) + aff[:3, 3][:, None]
-    c_w = c_w.T[0]
+    c_w = np.array([c_w.T[0]])
 
     # make mask3 zero in the focus areas to remove errors from large ventricles etc.
     mask3[focus.astype('bool')] = 0
@@ -1935,6 +1935,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     images.append((data_labels_nobk, aff, 'data_labels_nobk'))
 
     poi = centroids_nobk[:, :3]
+    # this is kind of repeated (but not the )
     fc = np.array([[ci, cj, ck]])
     fc_w = np.dot(affine[:3, :3], fc.T) + affine[:3, 3][:, None]
     fc_w = fc_w.T[0]
