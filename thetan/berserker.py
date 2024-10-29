@@ -1998,9 +1998,19 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Trigonometry - Phase C')
     t = time()
     coords_to_mask_mat = distance_matrix(X_coords, centroids_nobk2, 'euclidean')
-    print('World coordinates to center distances', coords_to_mask_mat.shape)
+    print('World coordinates to centroids distances', coords_to_mask_mat.shape)
     print('Duration ', time() - t)
     print()
+
+    coords_to_mask_mat_m = coords_to_mask_mat.mean(axis=1)
+
+    print('Trigonometry - Phase D')
+    t = time()
+    nobk2_to_center_mat = distance_matrix(centroids_nobk2, c_w, 'euclidean')
+    print('Nobk2 to center', nobk2_to_center_mat.shape)
+    print('Duration ', time() - t)
+    print()
+
 
     breaking_puzzle = False
     if breaking_puzzle:
@@ -2135,7 +2145,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     return images # , images2
 
 
-"""
+    """
     print('Opening and detecting largest object ... ')
     # kernel = ball(6)
     # kernel = ball(8)
@@ -2197,5 +2207,5 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
 
     return images
-"""
+    """
 
