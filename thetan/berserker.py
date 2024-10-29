@@ -1997,16 +1997,25 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Trigonometry - Phase C')
     t = time()
-    coords_to_mask_mat = distance_matrix(X_coords, centroids_nobk2, 'euclidean')
+    c_nobk2 = np.ascontiguousarray(centroids_nobk2[:, :3])
+    coords_to_mask_mat = distance_matrix(X_coords, c_nobk2, 'euclidean')
     print('World coordinates to centroids distances', coords_to_mask_mat.shape)
     print('Duration ', time() - t)
     print()
 
-    coords_to_mask_mat_m = coords_to_mask_mat.mean(axis=1)
+    coords_to_mask_mat_m = coords_to_mask_mat.min(axis=1) # update it to get 3 closest values
+    coords_to_mask_mat_a = coords_to_mask_mat.argmin(axis=1) # update it to get 3 closest values
+    corresponding_to_nobk2 = c_nobk2[coords_to_mask_mat_a].copy()
+
+    dists_from_nobk2 = np.linalg.norm(corresponding_to_nobk2, axis=1)
+    coords_to_center_mat = np.squeeze(coords_to_center_mat)
+    res = coords_to_center_mat < dists_from_nobk2
+
+    images.append((res.reshape(data.shape).astype('f8'), aff, 'res'))
 
     print('Trigonometry - Phase D')
     t = time()
-    nobk2_to_center_mat = distance_matrix(centroids_nobk2, c_w, 'euclidean')
+    nobk2_to_center_mat = distance_matrix(c_nobk2, c_w, 'euclidean')
     print('Nobk2 to center', nobk2_to_center_mat.shape)
     print('Duration ', time() - t)
     print()
