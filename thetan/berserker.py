@@ -1957,7 +1957,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     centroids_median_im_rnd  = np.round(centroids_median_im, 0).astype('i8')
     vals, counts = np.unique(centroids_median_im_rnd, return_counts=True)
-    
+
     # images.append((centroids_median_im_rnd, aff, 'centroids_median_im_rnd'))
 
 
@@ -1980,16 +1980,18 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Trigonometry - Phase A')
     t = time()
-    nobk2_mat = distance_matrix(centroids_nobk2, centroids_ggm_focus, 'euclidean')
-    print('Nobk2 to periphery of focus distances', nobk2_mat.shape)
+    c_nobk2 = np.ascontiguousarray(centroids_nobk2[:, :3])
+    nobk2_mat = distance_matrix(c_nobk2, centroids_ggm_focus, 'euclidean')
+    print('Nobk2 to focus contour', nobk2_mat.shape)
     print('Duration ', time() - t)
     print()
 
 
     print('Trigonometry - Phase B')
     t = time()
-    coords_to_center_mat = distance_matrix(X_coords, c_w, 'euclidean')
-    print('World coordinates to center distances', coords_to_center_mat.shape)
+    coords_to_center_dists = distance_matrix(X_coords, c_w, 'euclidean')
+    coords_to_center_dists = np.squeeze(coords_to_center_dists)
+    print('World coordinates to center', coords_to_center_dists.shape)
     print('Duration ', time() - t)
     print()
 
@@ -1997,19 +1999,21 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Trigonometry - Phase C')
     t = time()
-    c_nobk2 = np.ascontiguousarray(centroids_nobk2[:, :3])
-    coords_to_mask_mat = distance_matrix(X_coords, c_nobk2, 'euclidean')
-    print('World coordinates to centroids distances', coords_to_mask_mat.shape)
+
+    coords_to_nobk2 = distance_matrix(X_coords, c_nobk2, 'euclidean')
+    print('World coordinates to nobk2', coords_to_nobk2.shape)
     print('Duration ', time() - t)
     print()
 
-    coords_to_mask_mat_m = coords_to_mask_mat.min(axis=1) # update it to get 3 closest values
-    coords_to_mask_mat_a = coords_to_mask_mat.argmin(axis=1) # update it to get 3 closest values
-    corresponding_to_nobk2 = c_nobk2[coords_to_mask_mat_a].copy()
+    coords_to_nobk2_m = coords_to_nobk2.min(axis=1) # update it to get 3 closest values
+    coords_to_nobk2_a = coords_to_nobk2.argmin(axis=1) # update it to get 3 closest values
+    corresponding_to_nobk2 = c_nobk2[coords_to_nobk2].copy()
 
-    dists_from_nobk2 = np.linalg.norm(corresponding_to_nobk2, axis=1)
-    coords_to_center_mat = np.squeeze(coords_to_center_mat)
-    res = coords_to_center_mat < dists_from_nobk2
+    # dists_from_nobk2 = np.linalg.norm(corresponding_to_nobk2, axis=1)
+
+    # res = coords_to_center_mat < dists_from_nobk2
+
+
 
     images.append((res.reshape(data.shape).astype('f8'), aff, 'res'))
 
