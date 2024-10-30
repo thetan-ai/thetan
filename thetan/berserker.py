@@ -1890,7 +1890,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Nicer center ...', ci, cj, ck)
 
     c = np.array([[ci, cj, ck]])
-    c_w = np.dot(aff[:3, :3], c.T) + aff[:3, 3][:, None]
+    c_w = np.dot(affine[:3, :3], c.T) + affine[:3, 3][:, None]
     c_w = np.array([c_w.T[0]])
 
     # make mask3 zero in the focus areas to remove errors from large ventricles etc.
@@ -1976,18 +1976,32 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
-    images.append((data_labels_ggm_focus, aff, 'dl_ggm_focus'))
+    images.append((data_labels_ggm_focus, aff, 'dl_ggm_focus'))\
+    
 
-    print('Trigonometry - Phase A')
+
+
+
+    print('Trigonometry - Phase A') # p
     t = time()
     c_nobk2 = np.ascontiguousarray(centroids_nobk2[:, :3])
-    nobk2_mat = distance_matrix(c_nobk2, centroids_ggm_focus, 'euclidean')
-    print('Nobk2 to focus contour', nobk2_mat.shape)
+    nobk2_mat = distance_matrix(c_nobk2, c_w, 'euclidean')
+    nobk2_dists_from_center = np.squeeze(nobk2_mat)
+    print('Nobk2 to center', nobk2_mat.shape)
     print('Duration ', time() - t)
     print()
 
+    print('Trigonometry - Phase A0') # 
+    t = time()
+    ggm_focus_to_nobk2 = distance_matrix(centroids_ggm_focus, c_nobk2, 'euclidean') # c_nobk2 should change to nobk2 points
+    print('ggm_focus to nobk2', ggm_focus_to_nobk2.shape)
+    print('Duration ', time() - t)
+    print()
 
-    print('Trigonometry - Phase B')
+    ggm_focus_to_nobk2_a = ggm_focus_to_nobk2.argmin(axis=1)
+
+
+    print('Trigonometry - Phase B') # OA
     t = time()
     coords_to_center_dists = distance_matrix(X_coords, c_w, 'euclidean')
     coords_to_center_dists = np.squeeze(coords_to_center_dists)
@@ -1997,32 +2011,42 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     t = 1
 
-    print('Trigonometry - Phase C')
+    print('Trigonometry - Phase C') # Ap
     t = time()
-
     coords_to_nobk2 = distance_matrix(X_coords, c_nobk2, 'euclidean')
     print('World coordinates to nobk2', coords_to_nobk2.shape)
     print('Duration ', time() - t)
     print()
 
-    coords_to_nobk2_m = coords_to_nobk2.min(axis=1) # update it to get 3 closest values
-    coords_to_nobk2_a = coords_to_nobk2.argmin(axis=1) # update it to get 3 closest values
-    corresponding_to_nobk2 = c_nobk2[coords_to_nobk2].copy()
 
-    # dists_from_nobk2 = np.linalg.norm(corresponding_to_nobk2, axis=1)
 
-    # res = coords_to_center_mat < dists_from_nobk2
+    use_more = True
+    n_close = 30
+    if not use_more:
+        coords_to_nobk2_m = coords_to_nobk2.min(axis=1) # update it to get 3 closest values
+        coords_to_nobk2_a = coords_to_nobk2.argmin(axis=1) # update it to get 3 closest values
 
+    if use_more:
+        coords_to_nobk2_m5 = np.sort(coords_to_nobk2, axis=1)[:, :n_close] # update it to get 5 closest values
+        coords_to_nobk2_a5 = np.argsort(coords_to_nobk2, axis=1)[:, :n_close] # update it to get 5 closest values
+
+    print('Trigonometry - Phase D') # OAp
+
+    if not use_more:
+        corr_center_to_nobk2_dists = nobk2_dists_from_center[coords_to_nobk2_a].copy()
+
+    if use_more:
+
+        corr_center_to_nobk2_dists = nobk2_dists_from_center[coords_to_nobk2_a5[:, 0]].copy()
+        for i in range(1, n_close):
+            corr_center_to_nobk2_dists += nobk2_dists_from_center[coords_to_nobk2_a5[:, i]].copy()
+
+        corr_center_to_nobk2_dists /= n_close
+
+    res = coords_to_center_dists < corr_center_to_nobk2_dists
 
 
     images.append((res.reshape(data.shape).astype('f8'), aff, 'res'))
-
-    print('Trigonometry - Phase D')
-    t = time()
-    nobk2_to_center_mat = distance_matrix(c_nobk2, c_w, 'euclidean')
-    print('Nobk2 to center', nobk2_to_center_mat.shape)
-    print('Duration ', time() - t)
-    print()
 
 
     breaking_puzzle = False
