@@ -1778,7 +1778,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     images.append((W, aff, 'W'))
     images.append((data, aff, 'data'))
-    images.append((mask_orig, aff, 'mask_orig'))
+    images.append((mask_orig.astype('f8'), aff, 'mask_orig'))
     images.append((mask_ext, aff, 'mask_ext'))
     # images.append((mask_diff, aff, 'mask_diff'))
 
@@ -1977,7 +1977,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print()
 
     images.append((data_labels_ggm_focus, aff, 'dl_ggm_focus'))\
-    
+
 
 
 
@@ -1991,7 +1991,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Duration ', time() - t)
     print()
 
-    print('Trigonometry - Phase A0') # 
+    print('Trigonometry - Phase A0') #
     t = time()
     ggm_focus_to_nobk2 = distance_matrix(centroids_ggm_focus, c_nobk2, 'euclidean') # c_nobk2 should change to nobk2 points
     print('ggm_focus to nobk2', ggm_focus_to_nobk2.shape)
@@ -2046,10 +2046,10 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     res = coords_to_center_dists < corr_center_to_nobk2_dists
 
 
-    images.append((res.reshape(data.shape).astype('f8'), aff, 'res'))
+    # images.append((res.reshape(data.shape).astype('f8'), aff, 'res'))
 
 
-    breaking_puzzle = False
+    breaking_puzzle = True
     if breaking_puzzle:
         print('Breaking phase ... with Berserker 2 ...')
         t = time()
@@ -2179,7 +2179,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     t = 2
 
-    return images # , images2
+    return images, images2
 
 
     """
