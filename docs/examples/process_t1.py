@@ -76,7 +76,7 @@ print('Total duration ', time() - t)
 print()
 
 horizon(images=images, bg_color=(1, 0.5, 0.5))
-# horizon(images=images2, bg_color=(0.8, 0.8, 0.9))
+horizon(images=images2, bg_color=(0.8, 0.8, 0.9))
 
 print('Done')
 

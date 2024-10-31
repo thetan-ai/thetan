@@ -2064,6 +2064,15 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
         images2 = []
         images2.append((W, aff, 'W'))
+        images2.append((W ** 2, aff, 'W**2'))
+        images2.append((W ** 4, aff, 'W**4'))
+        images2.append((W ** 6, aff, 'W**6'))
+
+        W4_1D = (W ** 4).ravel()
+        W_tmp = np.interp(W4_1D, (W4_1D.min(), W4_1D.max()), (0, 1))
+        W_tmp = W_tmp.reshape(W.shape)
+        images2.append((W_tmp, aff, 'W_tmp'))
+
         images2.append((mask_reduced_nobk2.astype('f8'), aff, 'mask_reduced_nobk2'))
         images2.append((relabel_breaking.astype('f8'), aff, 'relabel_breaking'))
         images2.append((puzz_mask, aff, 'puzz_mask'))
