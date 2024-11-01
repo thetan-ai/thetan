@@ -1650,6 +1650,55 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
     return relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt
 
 
+def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, bk=50.):
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    aff = np.eye(4)
+    images = []
+
+    images.append((W, aff, 'W'))
+    images.append((data, aff, 'data'))
+    # images.append((mask_orig.astype('f8'), aff, 'mask_orig'))
+    # images.append((mask_ext, aff, 'mask_ext'))
+
+    # images.append((W ** 2, aff, 'W**2'))
+    images.append((W ** alpha, aff, 'W**' + str(alpha)))
+    # images.append((W ** 6, aff, 'W**6'))
+
+    W4_1D = (W ** alpha).ravel()
+    W_tmp = 900 * np.interp(W4_1D, (W4_1D.min(), W4_1D.max()), (0, 1))
+    W_tmp = W_tmp.reshape(W.shape) 
+    images.append((W_tmp, aff, 'W_tmp'))
+
+    X_tmp = X.copy()
+    X_tmp[:, 3] = W_tmp.ravel()
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X_tmp, theta_value, data_dims=data.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    centroids_im = centroid_images(data_labels, centroids)
+    centroids_median_im = median_filter(centroids_im, size=3)
+
+    images.append((data_labels, aff, 'dl'))
+    images.append((centroids_im, aff, 'centroids_im'))
+    images.append((centroids_median_im, aff, 'centroids_median_im'))
+
+    binary_im = centroids_median_im > bk
+
+    images.append((binary_im.astype('f8'), aff, 'binary_im'))
+
+
+    return images
+
+
 def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
 
     data = np.ascontiguousarray(data, dtype='f8')
