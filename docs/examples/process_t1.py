@@ -26,10 +26,10 @@ from sklearn.cluster import KMeans
 
 # leopard
 # fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI002-Guys-0828-T1.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
 
 
 # if platform.node() == 'Serges-MacBook-Pro.local':
@@ -72,8 +72,8 @@ data, affine, vxs = load_nifti(fname, return_voxsize=True)
 print('Starting Thetan Berserker 2 for Brain Segmentation ...')
 t = time()
 # images, images2 = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False)
-
-images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4., fg=100., bk=30.)
+images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4., fg=140., bk=30.)
+# images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4., fg=140., bk=30.)
 print('Total duration ', time() - t)
 print()
 

@@ -1710,19 +1710,25 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, fg=50., b
 
     images = horizon_support(aff, (W, 'W'), (W_alpha2, 'W**2'), (W_alpha4, 'W**4'), (W_alpha6, 'W**6'), (W_alpha8, 'W**8'), (W_exp, 'W_exp'))
 
-
+    print('W_alpha4')
     data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_alpha4, theta_value, fg)
+    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
 
+    bk_im = W_alpha4 < bk
+    images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
+
+    fg_focus = detect_largest_object(fg_im, None)
+    images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
+
+    print('W_exp')
+    data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_exp, theta_value, fg)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
 
     bk_im = W_exp < bk
-
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
-    # focus = detect_largest_object(fg, None)
-
-    # images += horizon_support(aff, (focus.astype('f8'), 'focus'))
-
+    fg_focus = detect_largest_object(fg_im, None)
+    images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
 
     t = 1
 
