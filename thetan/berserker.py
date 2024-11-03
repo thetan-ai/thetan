@@ -1650,7 +1650,44 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
     return relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt
 
 
-def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, bk=50.):
+def exponentiation_normalization(W, alpha, scale=900):
+    W4_1D = (W ** alpha).ravel()
+    W_tmp = scale * np.interp(W4_1D, (W4_1D.min(), W4_1D.max()), (0, 1))
+    W_tmp = W_tmp.reshape(W.shape)
+    return W_tmp
+
+
+def horizon_support(affine, *args):
+    images = []
+    for arg in args:
+        
+        _data = arg[0]
+        _data_name = arg[1]
+
+        images.append((_data, affine, _data_name))
+        print(_data_name)
+    return images
+    
+
+def berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg): 
+    X_tmp = X.copy()
+    X_tmp[:, 3] = W_alpha.ravel()
+
+    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    t = time()
+    data_labels, centroids = berserker2_to_3D_labels(X_tmp, theta_value, data_dims=W_alpha.shape, verbose=False)
+    print('Duration ', time() - t)
+    print()
+
+    centroids_im = centroid_images(data_labels, centroids)
+    centroids_median_im = median_filter(centroids_im, size=3)
+
+    fg_im = centroids_median_im > fg
+
+    return data_labels, centroids, centroids_im, centroids_median_im, fg_im.astype('f8')
+
+
+def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, fg=50., bk=20.):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1659,42 +1696,35 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, bk=50.):
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     aff = np.eye(4)
-    images = []
 
-    images.append((W, aff, 'W'))
-    images.append((data, aff, 'data'))
-    # images.append((mask_orig.astype('f8'), aff, 'mask_orig'))
-    # images.append((mask_ext, aff, 'mask_ext'))
+    W_alpha2 = exponentiation_normalization(W, 2)
+    W_alpha4 = exponentiation_normalization(W, 4)
+    W_alpha6 = exponentiation_normalization(W, 6)
+    W_alpha8 = exponentiation_normalization(W, 8)
 
-    # images.append((W ** 2, aff, 'W**2'))
-    images.append((W ** alpha, aff, 'W**' + str(alpha)))
-    # images.append((W ** 6, aff, 'W**6'))
+    W_exp = W.copy()
+    alphas = [2, 4, 6, 8]
+    for i in alphas:
+        W_exp += exponentiation_normalization(W, i)
+    W_exp /= (len(alphas) + 1)
 
-    W4_1D = (W ** alpha).ravel()
-    W_tmp = 900 * np.interp(W4_1D, (W4_1D.min(), W4_1D.max()), (0, 1))
-    W_tmp = W_tmp.reshape(W.shape) 
-    images.append((W_tmp, aff, 'W_tmp'))
+    images = horizon_support(aff, (W, 'W'), (W_alpha2, 'W**2'), (W_alpha4, 'W**4'), (W_alpha6, 'W**6'), (W_alpha8, 'W**8'), (W_exp, 'W_exp'))
 
-    X_tmp = X.copy()
-    X_tmp[:, 3] = W_tmp.ravel()
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
-    t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X_tmp, theta_value, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
-    print()
+    data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_alpha4, theta_value, fg)
 
-    centroids_im = centroid_images(data_labels, centroids)
-    centroids_median_im = median_filter(centroids_im, size=3)
+    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
 
-    images.append((data_labels, aff, 'dl'))
-    images.append((centroids_im, aff, 'centroids_im'))
-    images.append((centroids_median_im, aff, 'centroids_median_im'))
+    bk_im = W_exp < bk
 
-    binary_im = centroids_median_im > bk
+    images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
-    images.append((binary_im.astype('f8'), aff, 'binary_im'))
+    # focus = detect_largest_object(fg, None)
 
+    # images += horizon_support(aff, (focus.astype('f8'), 'focus'))
+
+
+    t = 1
 
     return images
 

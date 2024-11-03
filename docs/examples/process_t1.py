@@ -73,12 +73,12 @@ print('Starting Thetan Berserker 2 for Brain Segmentation ...')
 t = time()
 # images, images2 = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False)
 
-images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4., bk=100.)
+images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4., fg=100., bk=30.)
 print('Total duration ', time() - t)
 print()
 
 horizon(images=images, bg_color=(1, 0.5, 0.5))
-# horizon(images=images2, bg_color=(0.8, 0.8, 0.9))
+
 
 print('Done')
 
