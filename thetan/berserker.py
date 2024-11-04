@@ -1650,11 +1650,50 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
     return relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt
 
 
-def exponentiation_normalization(W, alpha, scale=900):
-    W4_1D = (W ** alpha).ravel()
-    W_tmp = scale * np.interp(W4_1D, (W4_1D.min(), W4_1D.max()), (0, 1))
-    W_tmp = W_tmp.reshape(W.shape)
-    return W_tmp
+def exponentiation_normalization(W, alpha, scale):
+    W_interp = np.interp(W, xp=[0, W.max()], fp=[0., 1.])
+
+    return 100 * scale * (W_interp ** alpha)
+
+def plot_exp_norm():
+    W = np.arange(0, 900)
+
+    W_alpha_2_scale_5 = exponentiation_normalization(W, alpha=2, scale=5)
+    W_alpha_2_scale_9 = exponentiation_normalization(W, alpha=2, scale=9)
+
+    W_alpha_4_scale_5 = exponentiation_normalization(W, alpha=4, scale=5)
+    W_alpha_4_scale_9 = exponentiation_normalization(W, alpha=4, scale=9)
+
+    W_alpha_6_scale_5 = exponentiation_normalization(W, alpha=6, scale=5)
+    W_alpha_6_scale_9 = exponentiation_normalization(W, alpha=6, scale=9)
+
+    W_alpha_8_scale_5 = exponentiation_normalization(W, alpha=8, scale=5)
+    W_alpha_8_scale_9 = exponentiation_normalization(W, alpha=8, scale=9)
+
+    from pylab import figure, plot, show, legend, grid, xlabel, ylabel
+
+    figure()
+
+    plot(W, W_alpha_2_scale_5, '-', label='W_alpha_2_scale_5')
+    plot(W, W_alpha_2_scale_9, '-', label='W_alpha_2_scale_9')
+
+    plot(W, W_alpha_4_scale_5, '-', label='W_alpha_4_scale_5')
+    plot(W, W_alpha_4_scale_9, '-', label='W_alpha_4_scale_9')
+
+    plot(W, W_alpha_6_scale_5, '-', label='W_alpha_6_scale_5')
+    plot(W, W_alpha_6_scale_9, '-', label='W_alpha_6_scale_9')
+
+    plot(W, W_alpha_8_scale_5, '-', label='W_alpha_8_scale_5')
+    plot(W, W_alpha_8_scale_9, '-', label='W_alpha_8_scale_9')
+
+
+    xlabel('x')
+    ylabel('y')
+
+    legend()
+
+    grid()
+    show()
 
 
 def horizon_support(affine, *args):
@@ -1687,7 +1726,7 @@ def berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg):
     return data_labels, centroids, centroids_im, centroids_median_im, fg_im.astype('f8')
 
 
-def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, fg=50., bk=20.):
+def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, fg=50., bk=20.):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1697,38 +1736,23 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=4, fg=50., b
 
     aff = np.eye(4)
 
-    W_alpha2 = exponentiation_normalization(W, 2)
-    W_alpha4 = exponentiation_normalization(W, 4)
-    W_alpha6 = exponentiation_normalization(W, 6)
-    W_alpha8 = exponentiation_normalization(W, 8)
+    W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
 
-    W_exp = W.copy()
-    alphas = [2, 4, 6, 8]
-    for i in alphas:
-        W_exp += exponentiation_normalization(W, i)
-    W_exp /= (len(alphas) + 1)
+    images = horizon_support(aff, (W, 'W'), (W_alpha, 'W_alpha'))
 
-    images = horizon_support(aff, (W, 'W'), (W_alpha2, 'W**2'), (W_alpha4, 'W**4'), (W_alpha6, 'W**6'), (W_alpha8, 'W**8'), (W_exp, 'W_exp'))
-
-    print('W_alpha4')
-    data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_alpha4, theta_value, fg)
+    data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
 
-    bk_im = W_alpha4 < bk
+    bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
-    fg_focus = detect_largest_object(fg_im, None)
-    images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
+    tbl0 = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=2)
+    tbl0 = tbl0 / tbl0.max()
+    images.append((tbl0, aff, 'tbl0'))
 
-    print('W_exp')
-    data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_exp, theta_value, fg)
-    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
 
-    bk_im = W_exp < bk
-    images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
-
-    fg_focus = detect_largest_object(fg_im, None)
-    images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
+    # fg_focus = detect_largest_object(fg_im, None)
+    # images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
 
     t = 1
 
