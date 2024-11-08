@@ -1743,13 +1743,28 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
 
+    ggm = gaussian_gradient_magnitude(centroids_median_im, sigma=1)
+    glp = gaussian_laplace(centroids_median_im, sigma=1)
+
+    images += horizon_support(aff, (ggm, 'ggm'), (glp, 'glp'))
+    images += horizon_support(aff, (centroids_median_im - ggm, 'cmim - ggm'), (centroids_median_im - glp, 'cmim - glp'))
+
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
-    tbl0 = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=2)
-    tbl0 = tbl0 / tbl0.max()
-    images.append((tbl0, aff, 'tbl0'))
+    tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=2)
+    tps = tps / tps.max()
+    images.append((tps, aff, 'tps'))
 
+    tps_mask = tps > 0.02
+    tps_largest = detect_largest_object(tps_mask, None)
+ 
+    images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
+
+    # zoom will be faster
+    # kernel = ball(15)
+    # tps_largest_dilated = binary_dilation(tps_largest, structure=kernel, iterations=1)
+    # images += horizon_support(aff, (tps_largest_dilated.astype('f8'), 'tps_largest_dilated'))
 
     # fg_focus = detect_largest_object(fg_im, None)
     # images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
