@@ -1746,6 +1746,18 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     ggm = gaussian_gradient_magnitude(centroids_median_im, sigma=1)
     glp = gaussian_laplace(centroids_median_im, sigma=1)
 
+    from skimage.segmentation import find_boundaries
+
+    bounds = find_boundaries(np.round(centroids_median_im, 0).astype(np.intp), mode='inner')
+
+    centroids_median_im2 = centroids_median_im.copy()
+    centroids_median_im2[bounds > 0] = 0
+
+    cmim_mask = centroids_median_im2 > 50.
+    
+
+    images += horizon_support(aff, (bounds.astype('f8'), 'bounds'), (centroids_median_im2.astype('f8'), 'cmim2'), (cmim_mask.astype('f8'), 'cmim_mask'))
+   
     images += horizon_support(aff, (ggm, 'ggm'), (glp, 'glp'))
     images += horizon_support(aff, (centroids_median_im - ggm, 'cmim - ggm'), (centroids_median_im - glp, 'cmim - glp'))
 
