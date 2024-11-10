@@ -1,4 +1,5 @@
 import platform
+
 from os.path import join as pjoin
 from time import time
 import numpy as np
@@ -74,7 +75,7 @@ print('Starting Thetan Berserker 2 for Brain Segmentation ...')
 t = time()
 # images, images2 = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False)
 
-images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, fg=80., bk=20.)
+images = berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, bk=20., bk2=400.)
 
 print('Total duration ', time() - t)
 print()

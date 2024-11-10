@@ -1,7 +1,8 @@
 from time import time
 import numpy as np
+# import cc3d
 from patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes
+from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
@@ -1696,6 +1697,21 @@ def plot_exp_norm():
     show()
 
 
+def bbox_from_fo(fo_out):
+
+    bboxes = []
+    vols = []
+    for slice_ in fo_out:
+        x_min, x_max = slice_[0].start, slice_[0].stop
+        y_min, y_max = slice_[1].start, slice_[1].stop
+        z_min, z_max = slice_[2].start, slice_[2].stop
+        # bbox = (x_min, y_min, z_min, x_max, y_max, z_max)
+        # bboxes.append(bbox)
+        vol = (x_max - x_min) * (y_max - y_min) * (z_max - z_min)
+        vols.append(vol)
+    return vols
+
+
 def horizon_support(affine, *args):
     images = []
     for arg in args:
@@ -1704,11 +1720,11 @@ def horizon_support(affine, *args):
         _data_name = arg[1]
 
         images.append((_data, affine, _data_name))
-        print(_data_name)
+        # print(_data_name)
     return images
     
 
-def berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg): 
+def berserker2_to_3D_plus_extra(X, W_alpha, theta_value): 
     X_tmp = X.copy()
     X_tmp[:, 3] = W_alpha.ravel()
 
@@ -1721,12 +1737,12 @@ def berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg):
     centroids_im = centroid_images(data_labels, centroids)
     centroids_median_im = median_filter(centroids_im, size=3)
 
-    fg_im = centroids_median_im > fg
+    # fg_im = centroids_median_im > fg
 
-    return data_labels, centroids, centroids_im, centroids_median_im, fg_im.astype('f8')
+    return data_labels, centroids, centroids_im, centroids_median_im # , fg_im.astype('f8')
 
 
-def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, fg=50., bk=20.):
+def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, bk=20., bk2=300):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1740,26 +1756,8 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     images = horizon_support(aff, (W, 'W'), (W_alpha, 'W_alpha'))
 
-    data_labels, centroids, centroids_im, centroids_median_im, fg_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value, fg)
-    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'), (fg_im, 'fgim'))
-
-    ggm = gaussian_gradient_magnitude(centroids_median_im, sigma=1)
-    glp = gaussian_laplace(centroids_median_im, sigma=1)
-
-    from skimage.segmentation import find_boundaries
-
-    bounds = find_boundaries(np.round(centroids_median_im, 0).astype(np.intp), mode='inner')
-
-    centroids_median_im2 = centroids_median_im.copy()
-    centroids_median_im2[bounds > 0] = 0
-
-    cmim_mask = centroids_median_im2 > 50.
-    
-
-    images += horizon_support(aff, (bounds.astype('f8'), 'bounds'), (centroids_median_im2.astype('f8'), 'cmim2'), (cmim_mask.astype('f8'), 'cmim_mask'))
-   
-    images += horizon_support(aff, (ggm, 'ggm'), (glp, 'glp'))
-    images += horizon_support(aff, (centroids_median_im - ggm, 'cmim - ggm'), (centroids_median_im - glp, 'cmim - glp'))
+    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value)
+    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
@@ -1770,16 +1768,52 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     tps_mask = tps > 0.02
     tps_largest = detect_largest_object(tps_mask, None)
- 
     images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
 
-    # zoom will be faster
-    # kernel = ball(15)
-    # tps_largest_dilated = binary_dilation(tps_largest, structure=kernel, iterations=1)
-    # images += horizon_support(aff, (tps_largest_dilated.astype('f8'), 'tps_largest_dilated'))
+    bk_cim = centroids_median_im > bk2 # previously it was centroids_im
+    images += horizon_support(aff, (bk_cim.astype('f8'), 'bk_cim'))
 
-    # fg_focus = detect_largest_object(fg_im, None)
-    # images += horizon_support(aff, (fg_focus.astype('f8'), 'fg_focus'))
+    # TODO: 
+    # a) try the same with median version
+    # b) rounding and dtypes to int can generate useful labels
+
+    # strel = generate_binary_structure(3, 1)
+    data_labels_bk_cim, num_bk_cim = label(bk_cim) # , structure=strel)
+    unq, cnts = np.unique(data_labels_bk_cim, return_counts=True)
+
+    images += horizon_support(aff, (data_labels_bk_cim.astype('f8'), 'data_labels_bk_cim'))
+
+    big_five_cnts = np.sort(cnts)[-6:-1]
+    big_five_labels = np.argsort(cnts)[-6:-1]
+
+    print('Large volume sizes ', big_five_cnts)
+    print('And their indices ', big_five_labels)
+
+    bigz = np.zeros(data.shape, dtype='i8')
+    cnt = 1
+    for bfl in big_five_labels:
+        bigz[data_labels_bk_cim == bfl] = cnt
+        cnt += 1
+
+    fo = find_objects(bigz)
+    print(bbox_from_fo(fo))
+
+    images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
+
+    # tmp = find_objects(dl_bk_cim_focus)
+
+    c = np.sort(cnts)[-2]
+    a = np.argsort(cnts)[-2]
+
+    dl_bk_cim_focus = np.zeros(data.shape)
+    dl_bk_cim_focus[data_labels_bk_cim == unq[a]] = 1
+
+
+
+    t = 1
+
+    images += horizon_support(aff, (dl_bk_cim_focus.astype('f8'), 'dl_bk_cim_focus'))
+
 
     t = 1
 
