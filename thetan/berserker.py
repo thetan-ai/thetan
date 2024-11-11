@@ -1773,9 +1773,7 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     bk_cim = centroids_median_im > bk2 # previously it was centroids_im
     images += horizon_support(aff, (bk_cim.astype('f8'), 'bk_cim'))
 
-    # TODO: 
-    # a) try the same with median version
-    # b) rounding and dtypes to int can generate useful labels
+    # TODO: rounding and dtypes to int can generate useful labels
 
     # strel = generate_binary_structure(3, 1)
     data_labels_bk_cim, num_bk_cim = label(bk_cim) # , structure=strel)
@@ -1786,7 +1784,7 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     big_five_cnts = np.sort(cnts)[-6:-1]
     big_five_labels = np.argsort(cnts)[-6:-1]
 
-    print('Large volume sizes ', big_five_cnts)
+    print('Large counts ', big_five_cnts)
     print('And their indices ', big_five_labels)
 
     bigz = np.zeros(data.shape, dtype='i8')
@@ -1796,23 +1794,44 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
         cnt += 1
 
     fo = find_objects(bigz)
-    print(bbox_from_fo(fo))
+    print('Volumes')
+    big_five_vols = bbox_from_fo(fo)
+    print(big_five_vols)
+    print(big_five_labels)
 
     images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
 
-    # tmp = find_objects(dl_bk_cim_focus)
+    cn2 = big_five_cnts[-2]
+    an2 = big_five_labels[-2]
+    vn2 = big_five_vols[-2]
 
-    c = np.sort(cnts)[-2]
-    a = np.argsort(cnts)[-2]
+    cn1 = big_five_cnts[-1]
+    an1 = big_five_labels[-1]
+    vn1 = big_five_vols[-1]
+
+    if vn1 >= vn2:
+        brain_label = an2
+        skull_label = an1
+    else:
+        brain_label = an1
+        skull_label = an2
 
     dl_bk_cim_focus = np.zeros(data.shape)
-    dl_bk_cim_focus[data_labels_bk_cim == unq[a]] = 1
-
+    dl_bk_cim_focus[data_labels_bk_cim == unq[brain_label]] = 1
+    dl_bk_cim_focus[data_labels_bk_cim == unq[skull_label]] = 2
 
 
     t = 1
 
     images += horizon_support(aff, (dl_bk_cim_focus.astype('f8'), 'dl_bk_cim_focus'))
+
+    dl_bk_cim_focus_blurry = gaussian_filter(100 * (dl_bk_cim_focus == 1).astype('f8'), sigma=5)
+
+    images += horizon_support(aff, (dl_bk_cim_focus_blurry.astype('f8'), 'dl_bk_cim_focus_blurry'))
+
+    # TODO: still not sure why we cannot label this
+    # data_labels_bk_cim2, num_bk_cim2 = label(dl_bk_cim_focus > 0)
+    # images += horizon_support(aff, (data_labels_bk_cim2.astype('f8'), 'dl_bk_cim_focus2'))
 
 
     t = 1
