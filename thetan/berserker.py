@@ -882,6 +882,11 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None)
     return data_labels, centroids
 
 
+
+
+
+
+
 def X_to_many_3D(X, data_dims):
     """ Currently assuming only 4 features"""
 
@@ -1355,6 +1360,9 @@ def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., en
 
 
 
+
+
+
 def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
     """ Process each slice of the volume independently """
 
@@ -1715,16 +1723,16 @@ def bbox_from_fo(fo_out):
 def horizon_support(affine, *args):
     images = []
     for arg in args:
-        
+
         _data = arg[0]
         _data_name = arg[1]
 
         images.append((_data, affine, _data_name))
         # print(_data_name)
     return images
-    
 
-def berserker2_to_3D_plus_extra(X, W_alpha, theta_value): 
+
+def berserker2_to_3D_plus_extra(X, W_alpha, theta_value):
     X_tmp = X.copy()
     X_tmp[:, 3] = W_alpha.ravel()
 

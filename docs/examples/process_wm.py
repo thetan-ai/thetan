@@ -2,46 +2,106 @@ import os
 import numpy as np
 from glob import glob
 from time import time
-from thetan.berserker import berserker2_3D_rt, berserker2
+from thetan.berserker import berserker2_3D_rt, berserker2, prepare_data_3d, X_to_many_3D
+from thetan.experimental import clusters_to_3D_labels_custom
 from dipy.io.image import load_nifti, save_nifti
 # from dipy.viz import horizon
 import tracemalloc
 import gc
 import matplotlib.pyplot as plt
+from skimage.segmentation import slic
 
-# X = np.random.rand(10000000, 4)
-# print('Mbytes', X.nbytes // 1024 ** 2)
 
-# cnt = 0
-# theta_value = 0.2
-# while (True):
-#     print('>>>', cnt)
-#     t = time()
-#     centroids, labels = berserker2(X, theta_value, metric='euclidean', all_out=False, verbose=False)
-#     cnt += 1
-#     print('Duration ', time() - t, ' ', centroids.shape[0])
+def aggregate_stats(i, info, seg, data_labels, centroids, rt):
 
+        wm_mask = (seg == 41) | (seg == 2)
+
+        overlap = data_labels[wm_mask == True]
+
+        unq, cnts = np.unique(overlap.ravel(), return_counts=True)
+
+        print('>>>> ', unq, cnts)
+
+        ratio = cnts.max() / wm_mask.sum()
+        print('>##> ', ratio)
+
+        info[i, 0] = rt
+        info[i, 1] = centroids.shape[0]
+        info[i, 2] = ratio
+        info[i, 3] = np.prod(data_labels.shape)
+
+        return info
+
+
+def analyze_results(i, method, data_labels, centroids, centroids_im, rt, info, seg):
+
+    method_dir = method + '/'
+    if not os.path.exists(dname + method_dir):
+        os.makedirs(dname + method_dir)
+
+    print()
+    print('[][][] >> Method used is ', method)
+    print()
+    aggregate_stats(i, info, seg, data_labels, centroids, rt)
+    print('Number of labels ', centroids.shape[0])
+    save_nifti(dname + method_dir + subj_id + '_CIM.nii.gz', centroids_im, t1_aff)
+    save_nifti(dname + method_dir + subj_id + '_TBL.nii.gz', data_labels, t1_aff)
+
+    print('Runtime ', rt)
+
+
+
+
+def aggregate_results(method, info):
+    method_dir = method + '/'
+    save_info_fname = dname + method_dir + 'info_' + str(method) + '_' + str(how_many) + '.npy'
+    print('Saving result at ', save_info_fname)
+    np.save(save_info_fname, info)
+    res_array = np.load(save_info_fname)
+
+    x_labels = ['Runtime', 'Clusters', 'Overlap']
+    for i, measure in enumerate(x_labels):
+        data = [res_array[:, i]]
+        fig = plt.figure()
+        plt.title(x_labels[i])
+        plt.boxplot(data)
+        plt.grid()
+        fig.savefig(dname + method_dir + x_labels[i] + '_info_' + str(how_many) + '.png', dpi=300)
 
 
 dname = '/var/tmp/HCP_labels/'
 search_fname = dname + '*_T1w.nii.gz'
 
-run_experiment = True
+run_experiment = 1
 verbose = False
-theta_value = 150  # 120
-save_results = False
-how_many = 10 # 1000
-analyze_results = False
+theta_value = 150
+K = 5
+eps = 20
+min_samples = 50
 
-save_info_fname = dname + 'info_' + str(theta_value) + '_' + str(how_many) + '.npy'
+n_segments = 100
+compactness = 0.1
+
+how_many = 5
+
+
+# save_info_fname = dname + 'info_' + str(method) + '_' + str(how_many) + '.npy'
+
+# print('Summary results will be saved at :')
+# print(save_info_fname)
 
 if run_experiment:
 
-    t = time()
+    t0 = time()
 
     res = sorted(glob(search_fname))[:how_many]
 
-    info = np.zeros((how_many, 5))
+    info_tb = np.zeros((how_many, 5))
+    info_kmeans = np.zeros((how_many, 5))
+    info_bsas = np.zeros((how_many, 5))
+    info_dbscan = np.zeros((how_many, 5))
+    info_ts = np.zeros((how_many, 5))
+    info_slic = np.zeros((how_many, 5))
 
     for i, fname in enumerate(res):
 
@@ -61,92 +121,86 @@ if run_experiment:
         print('T1 Mbytes ', t1.nbytes // 1024 ** 2)
         print('Seg Kbytes ', seg.nbytes // 1024 )
 
-        # tracemalloc.start()
-        # amem_, peakmem_ = tracemalloc.get_traced_memory()
-        # amem_ = amem_ // (1024 ** 2)
-        data_labels, centroids, centroids_im, W, rt = berserker2_3D_rt(t1, t1_aff, theta_value=theta_value, perc=(0, 98), mult=300., enh=3.)
-        # tmp = berserker2_3D_rt(t1, t1_aff, theta_value=theta_value, perc=(0, 98), mult=300., enh=3.)
-        # amem, peakmem = tracemalloc.get_traced_memory()
-        # peakmem = peakmem // (1024 ** 2)
-        # amem = amem // (1024 ** 2)
-        # tracemalloc.stop()
 
-        # print('>>>> Peakmem before ', peakmem_)
-        # print('>>>> Peakmem after ', peakmem)
-        # print('>>>> Acurrent before ', amem_)
-        # print('>>>> Acurrent after ', amem)
+        data = np.ascontiguousarray(t1, dtype='f8')
 
-        print('Number of labels ', centroids.shape[0])
+        print('Preparing data')
+        perc=(0, 98); mult=300.; enh=3.
+        affine = t1_aff
 
-        # if verbose:
-        #     images = [(t1, t1_aff, 't1'), (seg, seg_aff, 'seg'), (data_labels, t1_aff, 'dl'), (centroids_im, t1_aff, 'cim'), (W, t1_aff, 'W')]
-        #     horizon(images=images)
+        X = prepare_data_3d(data, affine, perc=perc, mult=mult, enh=enh)
+        Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+        save_nifti(dname + subj_id + '_' + '_W.nii.gz', W.astype('f4'), t1_aff)
 
-        wm_mask = (seg == 41) | (seg == 2)
+        data_dims = data.shape
 
-        overlap = data_labels[wm_mask == True]
+        # method = 'berserker2' + '_' + str(theta_value)
+        # print(f'Starting {method}')
+        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=theta_value, data_dims=data_dims, n_clusters=None, eps=None, min_samples=None, verbose=False, mask=None)
+        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_tb)
+        # print(f'Finished {method}')
 
-        unq, cnts = np.unique(overlap.ravel(), return_counts=True)
+        # method = 'kmeans' + '_' + str(K)
+        # print(f'Starting {method}')
+        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=None, data_dims=data_dims, n_clusters=K, eps=None, min_samples=None, verbose=False, mask=None)
+        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_kmeans)
+        # print(f'Finished {method}')
 
-        print('>>>> ', unq, cnts)
+        # Memory leaks with large data
+        # method = 'bsas' + '_' + str(theta_value) + '_' + str(K)
+        # print(f'Starting {method}')
+        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=theta_value, data_dims=data_dims, n_clusters=K, eps=None, min_samples=None, verbose=False, mask=None)
+        # print('Finished clustering one bsas')
+        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_bsas)
+        # print(f'Finished {method}')
 
-        ratio = cnts.max() / wm_mask.sum()
-        print('>##> ', ratio)
+        # Memory leaks with large data
+        # method = 'dbscan' + '_' + str(eps) + '_' + str(min_samples)
+        # print(f'Starting {method}')
+        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=None, data_dims=data_dims, n_clusters=None, eps=eps, min_samples=min_samples, verbose=False, mask=None)
+        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_dbscan)
+        # print(f'Finished {method}')
 
-        info[i, 0] = rt
-        info[i, 1] = centroids.shape[0]
-        info[i, 2] = ratio
-        info[i, 3] = np.prod(t1.shape)
-
-        # if ratio > 0.90:
-
-        #     # from dipy.viz import horizon
-        #     # aff = t1_aff
-        #     # images = [(t1, aff, 't1'), (W, aff, 't1'), (centroids_im, aff, 'centroids_im'), (seg, aff, 'seg')]
-        #     # horizon(images=images)
-
-        t = 1
-        t = 2
-
-        print('Saving images ...')
-        print(dname + subj_id + '_W.nii.gz')
-        print(W.nbytes, W.dtype, W.shape)
-        print(centroids_im.nbytes, centroids_im.dtype, centroids_im.shape)
-        print(data_labels.nbytes, data_labels.dtype, data_labels.shape)
-
-        save_nifti(dname + subj_id + '_W.nii.gz', W, t1_aff)
-        save_nifti(dname + subj_id + '_CIM.nii.gz', centroids_im, t1_aff)
-        save_nifti(dname + subj_id + '_TBL.nii.gz', data_labels, t1_aff)
-
-    if save_results:
-        print('Saving result at ', save_info_fname)
-        np.save(save_info_fname, info)
-
-    print('Total duration ', time() - t)
+        # method = 'ts' + '_' + str(theta_value)
+        # print(f'Starting {method}')
+        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=theta_value, data_dims=data_dims, n_clusters=None, eps=None, min_samples=None, verbose=False, mask=None)
+        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_ts)
+        # print(f'Finished {method}')
 
 
-if analyze_results:
-
-    res_array = np.load(save_info_fname)
-
-    x_labels = ['Runtime', 'Clusters', 'Overlap']
-    # x = np.arange(len(x_labels))
-
-    for i, measure in enumerate(x_labels):
-        data = [res_array[:, i]]
-        fig = plt.figure()
-        plt.title(x_labels[i])
-        plt.boxplot(data)
-        # plt.xticks(x, x_labels)
-        plt.grid()
-
-        # plt.show()
-        fig.savefig(dname + x_labels[i] +  '.png', dpi=300)
+        method = 'slic' + '_' + str(n_segments) + '_' + str(compactness)
+        print(f'Starting {method}')
+        ts_0 = time()
+        segments_slic = slic(W, n_segments=n_segments, compactness=compactness, channel_axis=None)
+        ts_1 = time()
+        u = np.unique(segments_slic)
+        centroids_im = np.zeros(W.shape)
+        for e in u:
+            centroids_im[segments_slic==e] = np.mean(W[segments_slic==e])
+        centroids = np.random.rand(n_segments, 3)
+        data_labels = segments_slic.astype('f4')
+        rt_slic = ts_1 - ts_0
+        analyze_results(i, method, data_labels, centroids, centroids_im, rt_slic, info_slic, seg)
+        print(f'Finished {method}')
 
 
+    print('Total duration ', time() - t0)
 
+    # method = 'berserker2' + '_' + str(theta_value)
+    # aggregate_results(method, info_tb)
 
+    # method = 'kmeans' + '_' + str(K)
+    # aggregate_results(method, info_kmeans)
 
+    # method = 'bsas' + '_' + str(theta_value) + '_' + str(K)
+    # aggregate_results(method, info_bsas)
 
-t = 1
-t = 2
+    # method = 'dbscan' + '_' + str(eps) + '_' + str(min_samples)
+    # aggregate_results(method, info_dbscan)
+
+    # method = 'ts' + '_' + str(theta_value)
+    # aggregate_results(method, info_ts)
+
+    method = 'slic' + '_' + str(n_segments) + '_' + str(compactness)
+    aggregate_results(method, info_slic)
+
