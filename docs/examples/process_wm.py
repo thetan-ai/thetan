@@ -79,7 +79,7 @@ K = 5
 eps = 20
 min_samples = 50
 
-n_segments = 100
+n_segments = 10000
 compactness = 0.1
 
 how_many = 5
