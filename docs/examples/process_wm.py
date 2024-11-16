@@ -69,7 +69,8 @@ def aggregate_results(method, info):
         fig.savefig(dname + method_dir + x_labels[i] + '_info_' + str(how_many) + '.png', dpi=300)
 
 
-dname = '/var/tmp/HCP_labels/'
+# dname = '/var/tmp/HCP_labels/'
+dname = '/N/slate/elef/HCP_labels/'
 search_fname = dname + '*_T1w.nii.gz'
 
 run_experiment = 1
@@ -134,17 +135,17 @@ if run_experiment:
 
         data_dims = data.shape
 
-        # method = 'berserker2' + '_' + str(theta_value)
-        # print(f'Starting {method}')
-        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=theta_value, data_dims=data_dims, n_clusters=None, eps=None, min_samples=None, verbose=False, mask=None)
-        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_tb)
-        # print(f'Finished {method}')
+        method = 'berserker2' + '_' + str(theta_value)
+        print(f'Starting {method}')
+        data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=theta_value, data_dims=data_dims, n_clusters=None, eps=None, min_samples=None, verbose=False, mask=None)
+        analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_tb,seg)
+        print(f'Finished {method}')
 
-        # method = 'kmeans' + '_' + str(K)
-        # print(f'Starting {method}')
-        # data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=None, data_dims=data_dims, n_clusters=K, eps=None, min_samples=None, verbose=False, mask=None)
-        # analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_kmeans)
-        # print(f'Finished {method}')
+        method = 'kmeans' + '_' + str(K)
+        print(f'Starting {method}')
+        data_labels, centroids, centroids_im, rt = clusters_to_3D_labels_custom(X, method=method.split('_')[0], theta_value=None, data_dims=data_dims, n_clusters=K, eps=None, min_samples=None, verbose=False, mask=None)
+        analyze_results(i, method, data_labels, centroids, centroids_im, rt, info_kmeans, seg)
+        print(f'Finished {method}')
 
         # Memory leaks with large data
         # method = 'bsas' + '_' + str(theta_value) + '_' + str(K)
@@ -186,11 +187,11 @@ if run_experiment:
 
     print('Total duration ', time() - t0)
 
-    # method = 'berserker2' + '_' + str(theta_value)
-    # aggregate_results(method, info_tb)
+    method = 'berserker2' + '_' + str(theta_value)
+    aggregate_results(method, info_tb)
 
-    # method = 'kmeans' + '_' + str(K)
-    # aggregate_results(method, info_kmeans)
+    method = 'kmeans' + '_' + str(K)
+    aggregate_results(method, info_kmeans)
 
     # method = 'bsas' + '_' + str(theta_value) + '_' + str(K)
     # aggregate_results(method, info_bsas)
