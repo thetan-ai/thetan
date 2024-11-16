@@ -382,11 +382,11 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     return points, labels, gt_centroids
 
 
-# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-# rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
-# rows += ['OPTICS', 'CLARANS', 'meanshift++']
+rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
+rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
+rows += ['OPTICS', 'CLARANS', 'meanshift++']
 
-rows = ['TB', 'kmeans++']
+# rows = ['TB', 'kmeans++']
 # rows = ['TB', 'TBSCAN']
 # rows = ['TBSCAN2'] # Needs thinking on how to connect those
 
@@ -404,12 +404,14 @@ dpath = '/N/slate/elef/tb_output_advanced/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 2
+
+run = 1
 exp_data_name = 'gaussian'
 # exp_data_name = 'gaussian_varying'
 # exp_data_name = 'uniform'
 # exp_data_name = 'uniform_varying'
 
-dpath += exp_data_name + '/'
+dpath += exp_data_name + '/' + str(run) + '/'
 if not os.path.exists(dpath):
     os.makedirs(dpath)
 
