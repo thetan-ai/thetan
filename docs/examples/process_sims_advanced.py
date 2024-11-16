@@ -393,7 +393,8 @@ rows = ['TB', 'kmeans++']
 
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'ARS', 'Clusters', 'Duration', 'Memory']
 
-dpath = '/home/elef/Data/tb_output_advanced/'
+# dpath = '/home/elef/Data/tb_output_advanced/'
+dpath = '/N/slate/elef/tb_output_advanced/'
 
 # dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying/'
 # dpath = '/home/elef/Data/tb_output_advanced/uniform_varying/'
@@ -414,7 +415,7 @@ if not os.path.exists(dpath):
 
 verbose = True
 theta_value = 3.6
-theta_value = 5.6
+# theta_value = 5.6
 run_experiments = True
 save_results = run_experiments
 summarize_results = True
@@ -432,9 +433,9 @@ if run_experiments:
         evaluation_thr = 0.1
 
         # good for gaussians
-        # X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=30, cluster_y=10)
+        X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=30, cluster_y=10)
         # uniform varying
-        X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=10, cluster_x=30, cluster_y=10, n_local_samples=100, scale=7)
+        # X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=10, cluster_x=30, cluster_y=10, n_local_samples=100, scale=7)
 
         print('Number of features ', X.shape[0])
         print('Number of GT centroids ', gt_centroids.shape[0])
@@ -1368,7 +1369,7 @@ if generate_plots:
     # parallel_bar(species, penguin_means)
 
     # species = ['TB', 'TBK', 'CURE', 'kmeans++', 'meanshift', 'hdbscan']
-    species = ['TB']
+    species = ['TB', ]
     # species_id = [10, 11, 5, 19, 21, 17]
     species_id = [10]
     fname_save_ac = dpath + 'top_ac.png'
