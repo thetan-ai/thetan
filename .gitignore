@@ -106,3 +106,5 @@ tmp/
 *.vtk
 *.jpeg
 *.jpg
+*.csv
+*.xlsx

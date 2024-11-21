@@ -24,7 +24,7 @@ import numpy as np
 import scipy as sp
 from scipy.optimize import linear_sum_assignment
 from sklearn import datasets, manifold
-from sklearn.cluster import HDBSCAN, DBSCAN
+from sklearn.cluster import HDBSCAN, DBSCAN, AgglomerativeClustering, SpectralClustering
 from sklearn.metrics import pair_confusion_matrix
 from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
 
@@ -414,7 +414,7 @@ def test_tb():
 def test_tb_hdbscan():
     csv_table = [('Dataset', 'Final N_Clusters', 'Speed', 'NCA', 'RI', 'FM', 'ARI', 'NMI')]
     test_data = [('wut', 'trajectories', .1, 1., 0.3), ('wut', 'windows', .1, 1., 0.3),
-                 ('other', 'square', .2, 1, 0.4), ('fcps', 'wingnut', .5, 1, 0.71),
+                 ('other', 'square', .2, 1, 0.4), ('fcps', 'wingnut', .25, 1, 0.42),
                  ('graves', 'zigzag', .25, 1., 0.5), ('fcps', 'target', .1, 1., 0.5),
                  ('fcps', 'lsun', .1, 1., 0.35), ('wut', 'mk2', .05, 1, 0.35)
                  ]
@@ -425,6 +425,7 @@ def test_tb_hdbscan():
     # test_data = [('graves', 'dense', .6)]  # 2 / 0.6
     # test_data = [('graves', 'fuzzyx', .25, 1, .36)]  # 2 / 0.6
     # test_data = [('wut', 'labirynth', .25, 1, .2)]  # 2 / 0.6
+    test_data = [('fcps', 'wingnut', .25, 1, 0.42)]  # 2 / 0.6
     for battery, dataset, theta_value, min_samples, eps in test_data:
         dataset = load_dataset(battery=battery, dataset=dataset)
         # plot_dataset(dataset)
@@ -442,7 +443,7 @@ def test_tb_hdbscan():
             labels=[labels],
             n_clusters=[len(centroids)]
         )
-        plot_dataset([results, dataset], title=['TB', 'Ground Truth'])
+        # plot_dataset([results, dataset], title=['TB', 'Ground Truth'])
         print('Starting HDBSCAN')
         min_samples = int(min_samples)
         cluster_selection_epsilon = 1.
@@ -607,7 +608,7 @@ def test_sklearn_data():
 
     from sklearn.cluster import AgglomerativeClustering
 
-    for linkage in ("ward", "average", "complete", "single", "tb"):
+    for linkage in ("tbscan", ):  # ("ward", "average", "complete", "single", "tb", "tbscan"):
         if linkage == "tb":
             theta_value = 0.00122
             tracemalloc.start()
@@ -622,6 +623,32 @@ def test_sklearn_data():
             print(f'cluster size: {len(centroids)} / {len(np.unique(y))} expected')
             plot_clustering(X_red, labels, "TB")
             csv_data = ['TB', f'{len(centroids)}/{len(np.unique(y))}', f"{speed:.9f}", f"{peakmem:.4f}"]
+        if linkage == "tbscan":
+            theta_value = 0.00030
+            eps = 0.00048
+            min_samples = 1
+            tracemalloc.start()
+            t_start = time.perf_counter()
+            centroids, labels = berserker2(np.ascontiguousarray(X_red),
+                                           theta_value, all_out=False, verbose=False)
+            print(f'cluster size: {len(centroids)} / {len(np.unique(y))} expected')
+            model = DBSCAN(eps=eps, min_samples=min_samples)
+            model.fit(centroids)
+            speed = time.perf_counter() - t_start
+            unq = np.unique(model.labels_)
+            hdb_nclusters = np.sum(unq >= 0)
+            final_labels = labels.copy()
+            for i, l in enumerate(labels):
+                final_labels[i] = model.labels_[l]
+            amem, peakmem = tracemalloc.get_traced_memory()
+            peakmem = peakmem / (1024**2)
+            tracemalloc.stop()
+            print('Duration is ', speed)
+            print(f'cluster size: {hdb_nclusters} / {len(np.unique(y))} expected')
+            plot_clustering(X_red, labels, "TB")
+            plot_clustering(X_red, final_labels, "TBSCAN")
+            csv_data = ['TBSCAN', f'{len(centroids)}/{len(np.unique(y))}', f"{speed:.9f}", f"{peakmem:.4f}"]
+            labels = final_labels
         else:
             tracemalloc.start()
             t0 = time.perf_counter()
@@ -653,7 +680,111 @@ def test_sklearn_data():
         csv_table.append(csv_data)
 
     np.savetxt('hierarchical_results.csv', csv_table, delimiter=',', fmt='%s')
-    # plt.show()
+    plt.show()
+
+
+def test_comparison_algo():
+    linear_methods = ['sklearn_kmeans', 'sklearn_birch_T0.005_BF10', 'sklearn_gm',]
+    non_linear_methods = ['spectral' ]  #  'HDBSCAN', 'hierarchical', 'FCPS_HDBSCAN_2', 'sklearn_spectral_Arbf_G0.25', 'sklearn_spectral_Arbf_G0.5', 'sklearn_spectral_Arbf_G1', 'sklearn_spectral_Arbf_G2.5', 'sklearn_spectral_Arbf_G5', 'sklearn_spectral_Alaplacian_G0.25', 'sklearn_spectral_Alaplacian_G0.5', 'sklearn_spectral_Alaplacian_G1', 'sklearn_spectral_Alaplacian_G2.5', 'sklearn_spectral_Alaplacian_G5', 'sklearn_spectral_Apoly_G0.25', 'sklearn_spectral_Apoly_G0.5', 'sklearn_spectral_Apoly_G1', 'sklearn_spectral_Apoly_G2.5', 'sklearn_spectral_Apoly_G5', 'sklearn_spectral_Asigmoid_G0.25', 'sklearn_spectral_Asigmoid_G0.5', 'sklearn_spectral_Asigmoid_G1', 'sklearn_spectral_Asigmoid_G2.5', 'sklearn_spectral_Asigmoid_G5'
+    linear_data = [('wut', 'circles', 4), ('wut', 'z3', 4), ('sipu', 'birch1', 100),
+                   ('wut', 'mk1', 3), ('wut', 'trajectories', 4), ('wut', 'x1', 3),
+                   ('sipu', 'a1', 20), ('sipu', 'r15', 8)]
+    non_linear_data = [('wut', 'windows', 5), ('other', 'square', 2),
+                       ('fcps', 'wingnut', 2), ('graves', 'zigzag', 3),
+                       ('fcps', 'target', 6), ('fcps', 'lsun', 3),
+                       ('wut', 'mk2', 2)
+                       ]
+
+    datas = non_linear_data  # linear_data
+    methods = non_linear_methods  # linear_methods
+
+    for method in methods:
+        csv_table = [('Dataset', 'Final N_Clusters', 'Speed', 'NCA', 'RI', 'FM', 'ARI', 'NMI')]
+        print(f"Method: {method}")
+        # print(f"Score: {clustbench.get_score(c_dataset.labels[-1], res[method])}")
+        for battery, dataset, nb_cluster in datas:
+            csv_data = [dataset, f"{nb_cluster}/{nb_cluster}"]
+
+            c_dataset = clustbench.load_dataset(battery, dataset, path=DATA_PATH)
+            if method == 'hierarchical':
+                linkage = 'single'  # "ward", "average", "complete", "single"
+                tracemalloc.start()
+                t0 = time.perf_counter()
+                clustering = AgglomerativeClustering(linkage=linkage, n_clusters=nb_cluster)
+                clustering.fit(c_dataset.data)
+                speed = time.perf_counter() - t0
+                amem, peakmem = tracemalloc.get_traced_memory()
+                peakmem = peakmem / (1024**2)
+                tracemalloc.stop()
+                print("%s :\t%.2fs" % (linkage, speed))
+
+                labels = clustering.labels_
+                csv_data.append(f"{speed:.9f}")
+            if method == 'spectral':
+                tracemalloc.start()
+                t0 = time.perf_counter()
+                clustering = SpectralClustering(n_clusters=nb_cluster,)
+                clustering.fit(c_dataset.data)
+                speed = time.perf_counter() - t0
+                amem, peakmem = tracemalloc.get_traced_memory()
+                peakmem = peakmem / (1024**2)
+                tracemalloc.stop()
+
+                labels = clustering.labels_
+                csv_data.append(f"{speed:.9f}")
+            elif method == 'HDBSCAN':
+                t_start = time.perf_counter()
+                model = HDBSCAN(min_samples=1,
+                                min_cluster_size=nb_cluster,
+                                cluster_selection_epsilon=3.0)
+                model.fit(c_dataset.data)
+                speed = time.perf_counter() - t_start
+
+                labels = model.labels_
+                csv_data.append(f"{speed:.9f}")
+
+            else:
+                csv_data.append('')
+                # o_dataset = load_dataset(battery=battery, dataset=dataset)
+                res = clustbench.load_results('*', battery, dataset, nb_cluster,
+                                            path=RESULTS_PATH)
+                # print(res.keys())
+                print(f"Results for {battery}/{dataset} with {nb_cluster} clusters:")
+
+                labels = res.get(method, {}).get(nb_cluster, None)
+                if labels is None:
+                    print(f"Method {method} not found or labels not found")
+                    print(res.keys())
+                    csv_data.extend(['', '', '', '', ''])
+                    csv_table.append(csv_data)
+                    continue
+            nb_clusters = len(np.unique(labels))
+            results = DataSet(
+                battery=c_dataset.battery,
+                dataset=c_dataset.dataset,
+                description=c_dataset.description,
+                data=c_dataset.data,
+                labels=[labels],
+                n_clusters=[nb_clusters]
+            )
+            plot_dataset([results, c_dataset], title=[f'{method}', 'Ground Truth'])
+
+            nca = calculate_nca(c_dataset.labels[0], labels)
+            ri = rand_score(c_dataset.labels[0], labels)
+            fm = fowlkes_mallows_score(c_dataset.labels[0], labels)
+            ari = adjusted_rand_score_custom(c_dataset.labels[0], labels)
+            nmi = normalized_mutual_information(c_dataset.labels[0], labels)
+
+            print(f"Normalized Clustering Accuracy: {nca}")
+            print(f"Rand Index (RI): {ri}")
+            print(f"Fowlkes-Mallows Index (FM): {fm}")
+            print(f"Adjusted Rand Index (ARI): {ari}")
+            print(f"Normalized Mutual Information (NMI): {nmi}")
+
+            csv_data.extend([f"{nca:.5f}", f"{ri:.5f}", f"{fm:.5f}", f"{ari:.5f}", f"{nmi:.5f}"])
+            csv_table.append(csv_data)
+
+        np.savetxt(f'{method}_results.csv', csv_table, delimiter=',', fmt='%s')
 
 
 if __name__ == "__main__":
@@ -662,4 +793,5 @@ if __name__ == "__main__":
     # test_tb()
     # test_tb_hdbscan()
     # test_tb_tb()
-    test_sklearn_data()
+    # test_sklearn_data()
+    test_comparison_algo()
