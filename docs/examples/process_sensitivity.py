@@ -177,8 +177,8 @@ for theta_t in theta_range:
     ext = str(np.round(theta_t, 2))
     if not show_thr:
         ext = ''
-    # if theta_t == 25:
-    #     plot_centroids_clusters(points, centroids, labels, 'TB ' + ext, initial_centroids=gt_centroids)
+    if theta_t == 25:
+        plot_centroids_clusters(points, centroids, labels, 'TB ' + ext, initial_centroids=gt_centroids)
     timings['tg ' + ext] = tg_time
 
 
