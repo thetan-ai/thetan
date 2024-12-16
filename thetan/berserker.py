@@ -543,11 +543,9 @@ def berserker2_clean(points, theta_value, metric='euclidean'):
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-    initial_centroids, initial_labels = theta_g1(points2, theta=theta_value, metric=metric,
-                                                 all_out=False)
+    initial_centroids, initial_labels = theta_g1(points2, theta=theta_value, metric=metric, all_out=False)
 
-    c_centroids, c_labels = theta_g1(initial_centroids, theta=theta_value, metric=metric,
-                                     all_out=False)
+    c_centroids, c_labels = theta_g1(initial_centroids, theta=theta_value, metric=metric, all_out=False)
 
     nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
 
@@ -555,9 +553,7 @@ def berserker2_clean(points, theta_value, metric='euclidean'):
 
     del initial_centroids, initial_labels, candidates, _clusters, c_centroids, c_labels
 
-    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
-                                                       updated_labels, nice,
-                                                       metric=metric)
+    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids, updated_labels, nice, metric=metric)
 
     del nice, even_centroids, updated_labels
 
@@ -571,12 +567,9 @@ def berserker2_clean(points, theta_value, metric='euclidean'):
     points3 = points[ind2].copy()
     ind2_inv = np.argsort(ind2)
 
-    p_centroids, p_labels = theta_means(points3, even_centroids_ex, theta=theta_value,
-                                        metric=metric,
-                                        all_out=False)
+    p_centroids, p_labels = theta_means(points3, even_centroids_ex, theta=theta_value, metric=metric, all_out=False)
 
-    c_centroids2, c_labels2 = theta_g1(p_centroids, theta=theta_value,
-                                       metric=metric, all_out=False)
+    c_centroids2, c_labels2 = theta_g1(p_centroids, theta=theta_value, metric=metric, all_out=False)
 
     nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
 

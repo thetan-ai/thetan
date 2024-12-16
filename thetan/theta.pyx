@@ -955,6 +955,8 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
             else:
                 indices[i] = labels[i]
 
+
+    # TODO: in case none of the labels are negative this will return an empty list
     reassigned_indices = np.asarray(indices)
 
     return reassigned_indices
