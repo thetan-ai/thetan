@@ -10,6 +10,8 @@ from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outli
 from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
+from sklearn.cluster import DBSCAN
+
 
 
 def check_arr(a):
@@ -590,6 +592,10 @@ def berserker2_clean(points, theta_value, metric='euclidean'):
     even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
 
     return even_centroids_ex2, updated_labels_ex2
+
+
+thetan_berserker = berserker2_clean
+tb = berserker2_clean
 
 
 def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, verbose=True):
@@ -1352,8 +1358,33 @@ def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., en
     return data_labels, centroids, centroids_im, W, duration
 
 
+def tbscan(X, theta_value, eps=2., min_samples=1):
 
+    # theta_value = 3.6
 
+    # eps = 2.
+    # min_samples = 1
+
+    initial_centroids, initial_labels = berserker2_clean(X, theta_value)
+
+    model = DBSCAN(eps=eps, min_samples=min_samples)
+    model.fit(initial_centroids)
+
+    unq = np.unique(model.labels_)
+    db_nclusters = np.sum(unq>=0)
+
+    dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
+    dblabels = model.labels_
+
+    final_labels = initial_labels.copy()
+
+    for i, l in enumerate(initial_labels):
+        final_labels[i] = dblabels[l]
+
+    centroids = dbcentroids
+    labels = final_labels
+
+    return centroids, labels
 
 
 def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
