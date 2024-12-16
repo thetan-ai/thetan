@@ -196,6 +196,7 @@ def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y 
 
 
 def gaussian_clusters_varying(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
+    """ Varying size """
 
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
     yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
@@ -219,6 +220,43 @@ def gaussian_clusters_varying(n_local_samples, blob_dis = 10, cluster_x = 10, cl
 
     return X, y, gt_centroids
 
+
+def gaussian_clusters_varying_density(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
+    """ Varying density """
+
+    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
+    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+
+    xx, yy = np.meshgrid(xx, yy)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
+                          np.ravel(yy)[:, np.newaxis]))
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+
+    current = 0
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+        # scale = np.random.uniform(0.2, 1.0)
+        local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
+        rindex = np.random.choice(np.arange(n_local_samples), np.random.randint(n_local_samples // 5, n_local_samples), replace=False)
+        local_X_tmp = local_X[rindex].copy()
+
+        size_tmp = local_X_tmp.shape[0]
+        X[current: current + size_tmp] = local_X_tmp
+        y[current: current + size_tmp] = i
+
+        # X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        # y[i * n_local_samples: (i + 1) * n_local_samples] = i
+
+        gt_centroids.append(local_X_tmp.mean(axis=0))
+        current = current + size_tmp
+
+    X = X[:current].copy()
+    y = y[:current].copy()
+
+    return X, y, gt_centroids
 
 
 def uniform_clusters(scale, n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
@@ -265,7 +303,6 @@ def uniform_clusters_varying(scale, n_local_samples, blob_dis = 10, cluster_x = 
         gt_centroids.append(local_X.mean(axis=0))
 
     return X, y, gt_centroids
-
 
 
 def disk_clusters(sz = (20, 6), scale=5, samples=100):
@@ -348,6 +385,10 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     if dist_type == 'gaussian_varying':
         X, y, gt_centroids = gaussian_clusters_varying(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
 
+    if dist_type == 'gaussian_varying_density':
+
+        X, y, gt_centroids = gaussian_clusters_varying_density(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
+
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale=scale, n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
 
@@ -382,9 +423,10 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
-rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
-rows += ['OPTICS', 'CLARANS', 'meanshift++']
+rows = ['TB']
+# rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
+# rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
+# rows += ['OPTICS', 'CLARANS', 'meanshift++', 'TBSCAN']
 
 # rows = ['TB', 'kmeans++']
 # rows = ['TB', 'TBSCAN']
@@ -394,9 +436,10 @@ rows += ['OPTICS', 'CLARANS', 'meanshift++']
 cols = ['AC', 'NMI', 'SIL', 'FMS', 'ARS', 'Clusters', 'Duration', 'Memory']
 
 # dpath = '/home/elef/Data/tb_output_advanced/'
-dpath = '/N/slate/elef/tb_output_advanced/'
+# dpath = '/N/slate/elef/tb_output_advanced/'
 
 # dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying/'
+dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying_density/'
 # dpath = '/home/elef/Data/tb_output_advanced/uniform_varying/'
 # dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
 # dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
@@ -406,8 +449,10 @@ dpath = '/N/slate/elef/tb_output_advanced/'
 reps = 2
 
 run = 1
-exp_data_name = 'gaussian'
+# exp_data_name = 'gaussian'
 # exp_data_name = 'gaussian_varying'
+exp_data_name = 'gaussian_varying_density'
+
 # exp_data_name = 'uniform'
 # exp_data_name = 'uniform_varying'
 
@@ -420,7 +465,7 @@ theta_value = 3.6
 # theta_value = 5.6
 run_experiments = True
 save_results = run_experiments
-summarize_results = True
+summarize_results = False
 generate_plots = False
 
 
