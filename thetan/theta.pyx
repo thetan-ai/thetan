@@ -137,9 +137,9 @@ cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) noexcept nogil:
 
 
 cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
-    cdef cnp.npy_intp temp = *a
-    *a = *b
-    *b = temp
+    cdef cnp.npy_intp temp = a[0]
+    a[0] = b[0]
+    b[0] = temp
     return NULL
 
 
@@ -154,35 +154,14 @@ cdef void random_permutation(cnp.npy_intp * arr, cnp.npy_intp n) noexcept nogil:
 
     return NULL
 
-# int main() {
-#     int n = 8; // desired length of permutation
-#     int* arr = malloc(n * sizeof(int));
-
-#     // initialize array with numbers from 1 to n
-#     for (int i = 0; i < n; i++) {
-#         arr[i] = i + 1;
-#     }
-
-#     random_permutation(arr, n);
-
-#     // print the permutation
-#     for (int i = 0; i < n; i++) {
-#         printf("%d ", arr[i]);
-#     }
-#     printf("\n");
-
-#     free(arr);
-#     return 0;
-# }
 
 def permutation(cnp.npy_intp n):
-    cdef cnp.npy_intp a = np.arange(n)
+    cdef cnp.npy_intp [:] a = np.arange(n)
     cdef cnp.npy_intp * p = &a[0]
 
     print(a)
-    random_permutation(a, n)
+    random_permutation(p, n)
     print(a)
-
 
 
 def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
