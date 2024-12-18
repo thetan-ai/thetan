@@ -594,8 +594,65 @@ def berserker2_clean(points, theta_value, metric='euclidean'):
     return even_centroids_ex2, updated_labels_ex2
 
 
-thetan_berserker = berserker2_clean
-tb = berserker2_clean
+def berserker3_clean(points, theta_value, metric='euclidean'):
+    # required in order to computer properly memory consumption
+
+    ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+    points2 = points[ind].copy()
+    ind_inv = np.argsort(ind)
+
+    initial_centroids, initial_labels = theta_g1(points2, theta=theta_value, metric=metric, all_out=False)
+
+    c_centroids, c_labels = theta_g1(initial_centroids, theta=theta_value, metric=metric, all_out=False)
+
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+
+    even_centroids = np.delete(initial_centroids, candidates, axis=0)
+
+    del initial_centroids, initial_labels, candidates, _clusters, c_centroids, c_labels
+
+    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids, updated_labels, nice, metric=metric)
+
+    del nice, even_centroids, updated_labels
+
+    even_centroids_ex = centroids_from_labels(points2, updated_labels2)
+
+    del points2, updated_labels2
+
+    # This second shuffle resolves many problems with centroids appearing between clusters
+    # np.random.shuffle(points)
+    ind2 = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+    points3 = points[ind2].copy()
+    ind2_inv = np.argsort(ind2)
+
+    p_centroids, p_labels = theta_means(points3, even_centroids_ex, theta=theta_value, metric=metric, all_out=False)
+
+    c_centroids2, c_labels2 = theta_g1(p_centroids, theta=theta_value, metric=metric, all_out=False)
+
+    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+
+    del c_centroids2, c_labels2, p_labels, _clusters2
+
+    even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
+
+    del p_centroids, candidates2
+
+    updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
+                                                          updated_labels2x, nice2,
+                                                          metric=metric)
+
+    del points3, even_centroids2, updated_labels2x, nice2
+
+    # bring labels back from original points (not points3)
+    updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
+    even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
+
+    return even_centroids_ex2, updated_labels_ex2
+
+
+
+# thetan_berserker = berserker2_clean
+# tb = berserker2_clean
 
 
 def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, verbose=True):

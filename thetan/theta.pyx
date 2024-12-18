@@ -4,7 +4,7 @@ cimport cython
 import numpy as np
 cimport numpy as cnp
 # from scipy.linalg.cython_blas cimport ddot
-from time import time
+
 
 from libc.math cimport fabs
 cdef extern from "math.h" nogil:
@@ -28,21 +28,22 @@ cdef extern from "float.h":
     cdef double DBL_MAX
     cdef double DBL_MIN
 
+from libc.time cimport time
+from libc.stdlib cimport srand, rand
+
+
 ctypedef double (*metricp)(double *, double *, cnp.npy_intp) noexcept nogil
 
 ctypedef struct Linkedlist:
 
     cnp.npy_intp value
-
     double dist
-
     Linkedlist * next
 
 
 ctypedef struct Node:
     cnp.npy_intp sz
     cnp.npy_intp * elements
-
 
 
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
@@ -133,6 +134,55 @@ cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) noexcept nogil:
         result += (a[i] - b[i]) * (a[i] - b[i])
 
     return result / D
+
+
+cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
+    cdef cnp.npy_intp temp = *a
+    *a = *b
+    *b = temp
+    return NULL
+
+
+cdef void random_permutation(cnp.npy_intp * arr, cnp.npy_intp n) noexcept nogil:
+    cdef cnp.npy_intp i, j
+
+    srand(time(NULL)); # seed random number generator
+
+    for i in range(n-1, 0, -1):
+        j = rand() % (i + 1)
+        swap(&arr[i], &arr[j])
+
+    return NULL
+
+# int main() {
+#     int n = 8; // desired length of permutation
+#     int* arr = malloc(n * sizeof(int));
+
+#     // initialize array with numbers from 1 to n
+#     for (int i = 0; i < n; i++) {
+#         arr[i] = i + 1;
+#     }
+
+#     random_permutation(arr, n);
+
+#     // print the permutation
+#     for (int i = 0; i < n; i++) {
+#         printf("%d ", arr[i]);
+#     }
+#     printf("\n");
+
+#     free(arr);
+#     return 0;
+# }
+
+def permutation(cnp.npy_intp n):
+    cdef cnp.npy_intp a = np.arange(n)
+    cdef cnp.npy_intp * p = &a[0]
+
+    print(a)
+    random_permutation(a, n)
+    print(a)
+
 
 
 def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
@@ -539,6 +589,51 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         free(summs)
         free(clusters_sizes)
         return final_centroids, final_indices
+
+
+def generate_random_array(int n):
+    """
+    Generate an array of `n` random integers using C's srand and rand.
+    """
+    # Set the random seed using the current time
+    srand(time(NULL))
+
+    # Allocate a NumPy array to hold the random integers
+    cdef cnp.ndarray[int, ndim=1] arr = np.zeros(n, dtype=np.int32)
+    cdef int i
+
+    # Fill the array with random numbers
+    for i in range(n):
+        arr[i] = rand()
+
+    return arr
+
+
+def shuffle_fast(double[:, ::1] X):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = 0
+
+        double [:, ::1] X2 = X.copy()
+
+    with nogil:
+
+        srand(time(NULL))
+        # first point becomes first cluster
+        indices[0] = 0
+        for d in range(D):
+            summs[d] = X[0, d]
+            centroids[d] = X[0, d]
+
+        for i in range(0, N):
+
+
+
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    final_indices = np.asarray(indices)
 
 
 def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
