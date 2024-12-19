@@ -140,7 +140,6 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
     cdef cnp.npy_intp temp = a[0]
     a[0] = b[0]
     b[0] = temp
-    return NULL
 
 
 cdef void random_permutation(cnp.npy_intp * arr, cnp.npy_intp n) noexcept nogil:
@@ -152,16 +151,34 @@ cdef void random_permutation(cnp.npy_intp * arr, cnp.npy_intp n) noexcept nogil:
         j = rand() % (i + 1)
         swap(&arr[i], &arr[j])
 
-    return NULL
 
 
 def permutation(cnp.npy_intp n):
     cdef cnp.npy_intp [:] a = np.arange(n)
     cdef cnp.npy_intp * p = &a[0]
 
-    print(a)
+    # print(np.asarray(a))
     random_permutation(p, n)
-    print(a)
+    # print(np.asarray(a))
+
+def permutation_of_X(double [:, ::1] X):
+    cdef:
+        cnp.npy_intp i, j, n = X.shape[0], d = X.shape[1]
+        cnp.npy_intp [:] a = np.arange(n)
+        cnp.npy_intp * p = &a[0]
+        double [:, ::1] X2 = np.empty((n, d), dtype='f8')
+
+    # print(np.asarray(a))
+    random_permutation(p, n)
+    # print(np.asarray(a))
+
+    with nogil:
+
+        for i in range(n):
+            for j in range(d):
+                X2[a[i], j] = X[i, j]
+
+    return np.asarray(X2)
 
 
 def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
@@ -570,49 +587,22 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         return final_centroids, final_indices
 
 
-def generate_random_array(int n):
-    """
-    Generate an array of `n` random integers using C's srand and rand.
-    """
-    # Set the random seed using the current time
-    srand(time(NULL))
+# def generate_random_array(int n):
+#     """
+#     Generate an array of `n` random integers using C's srand and rand.
+#     """
+#     # Set the random seed using the current time
+#     srand(time(NULL))
 
-    # Allocate a NumPy array to hold the random integers
-    cdef cnp.ndarray[int, ndim=1] arr = np.zeros(n, dtype=np.int32)
-    cdef int i
+#     # Allocate a NumPy array to hold the random integers
+#     cdef cnp.ndarray[int, ndim=1] arr = np.zeros(n, dtype=np.int32)
+#     cdef int i
 
-    # Fill the array with random numbers
-    for i in range(n):
-        arr[i] = rand()
+#     # Fill the array with random numbers
+#     for i in range(n):
+#         arr[i] = rand()
 
-    return arr
-
-
-def shuffle_fast(double[:, ::1] X):
-
-    cdef:
-        cnp.npy_intp N = X.shape[0]
-        cnp.npy_intp D = X.shape[1]
-        cnp.npy_intp i = 0, d = 0
-        cnp.npy_intp k = 0, K = 0
-
-        double [:, ::1] X2 = X.copy()
-
-    with nogil:
-
-        srand(time(NULL))
-        # first point becomes first cluster
-        indices[0] = 0
-        for d in range(D):
-            summs[d] = X[0, d]
-            centroids[d] = X[0, d]
-
-        for i in range(0, N):
-
-
-
-    final_centroids = np.asarray(<double[:K, :D]> centroids)
-    final_indices = np.asarray(indices)
+#     return arr
 
 
 def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False):
