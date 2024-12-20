@@ -1271,6 +1271,41 @@ def centroids_from_labels(double[:, ::1] X, cnp.npy_intp[:] indices):
     return np.ascontiguousarray(final_centroids)
 
 
+def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, metric='euclidean'):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp K = np.max(indices) + 1
+        cnp.npy_intp i = 0, d = 0, k = 0
+        double summ = 0, dist = 0
+        metricp metric_func = &euclidean
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
+
+
+    with nogil:
+
+        for i in range(N):
+            dist = metric_func(&X[i, 0], &centroids[indices[i], 0], D)
+            summ += meric_func()
+
+    return summ
+
+
 def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, all_out=False):
 
     cdef:
@@ -1514,6 +1549,8 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
     final_indices = np.asarray(indices)
 
     return final_indices
+
+
 
 
 def gravity(double[:, ::1] X, double[:, ::1] centroids,

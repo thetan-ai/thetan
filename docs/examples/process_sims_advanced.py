@@ -195,7 +195,7 @@ def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y 
     return X, y, gt_centroids
 
 
-def gaussian_clusters_varying(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
+def gaussian_clusters_varying_size(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
     """ Varying size """
 
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
@@ -213,6 +213,32 @@ def gaussian_clusters_varying(n_local_samples, blob_dis = 10, cluster_x = 10, cl
     for i in range(n_centres.shape[0]):
         cpos = n_centres[i]
         scale = np.random.uniform(0.2, 1.0)
+        local_X = cpos + scale * np.random.normal(0, 1, (n_local_samples, 2))
+        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
+        y[i * n_local_samples: (i + 1) * n_local_samples] = i
+        gt_centroids.append(local_X.mean(axis=0))
+
+    return X, y, gt_centroids
+
+
+def gaussian_clusters_varying_size2(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
+    """ Varying size """
+
+    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
+    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+
+    xx, yy = np.meshgrid(xx, yy)
+    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
+                        np.ravel(yy)[:, np.newaxis]))
+
+    gt_centroids = []
+    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
+    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
+
+
+    for i in range(n_centres.shape[0]):
+        cpos = n_centres[i]
+        scale = np.random.uniform(0.2, 2.)
         local_X = cpos + scale * np.random.normal(0, 1, (n_local_samples, 2))
         X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
         y[i * n_local_samples: (i + 1) * n_local_samples] = i
@@ -382,8 +408,11 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     if dist_type == 'gaussian':
         X, y, gt_centroids = gaussian_clusters(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y) # cluster_x should be 30
 
-    if dist_type == 'gaussian_varying':
-        X, y, gt_centroids = gaussian_clusters_varying(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
+    if dist_type == 'gaussian_varying_size':
+        X, y, gt_centroids = gaussian_clusters_varying_size(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
+
+    if dist_type == 'gaussian_varying_size2':
+        X, y, gt_centroids = gaussian_clusters_varying_size2(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
 
     if dist_type == 'gaussian_varying_density':
 
@@ -423,7 +452,7 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'meanshift']
+rows = ['TB', 'meanshift', 'kmeans++']
 # rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 # rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
 # rows += ['OPTICS', 'CLARANS', 'meanshift++', 'TBSCAN']
@@ -438,8 +467,8 @@ cols = ['AC', 'NMI', 'SIL', 'FMS', 'ARS', 'Clusters', 'Duration', 'Memory']
 # dpath = '/home/elef/Data/tb_output_advanced/'
 # dpath = '/N/slate/elef/tb_output_advanced/'
 
-# dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying/'
-dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying_density/'
+dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying_size/'
+# dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying_density/'
 # dpath = '/home/elef/Data/tb_output_advanced/uniform_varying/'
 # dpath = '/home/elef/Data/tb_output_v4/gaussian_100x100/'
 # dpath = '/home/elef/Data/tb_output_v5/gaussian_100x100/'
@@ -450,8 +479,8 @@ reps = 2
 
 run = 1
 # exp_data_name = 'gaussian'
-# exp_data_name = 'gaussian_varying'
-exp_data_name = 'gaussian_varying_density'
+exp_data_name = 'gaussian_varying_size2'
+# exp_data_name = 'gaussian_varying_density'
 
 # exp_data_name = 'uniform'
 # exp_data_name = 'uniform_varying'
@@ -480,7 +509,9 @@ if run_experiments:
         evaluation_thr = 0.1
 
         # good for gaussians
-        X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=30, cluster_y=10)
+        # X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=30, cluster_y=10)
+        # good for gaussians
+        X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=10, cluster_y=10)
         # uniform varying
         # X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=10, cluster_x=30, cluster_y=10, n_local_samples=100, scale=7)
 
