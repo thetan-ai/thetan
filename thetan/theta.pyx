@@ -1276,8 +1276,7 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
     cdef:
         cnp.npy_intp N = X.shape[0]
         cnp.npy_intp D = X.shape[1]
-        cnp.npy_intp K = np.max(indices) + 1
-        cnp.npy_intp i = 0, d = 0, k = 0
+        cnp.npy_intp i = 0
         double summ = 0, dist = 0
         metricp metric_func = &euclidean
 
@@ -1301,7 +1300,7 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
 
         for i in range(N):
             dist = metric_func(&X[i, 0], &centroids[indices[i], 0], D)
-            summ += meric_func()
+            summ += dist
 
     return summ
 
