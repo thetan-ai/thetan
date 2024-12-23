@@ -13,6 +13,7 @@ from sklearn.cluster import BisectingKMeans, MeanShift
 from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
+from thetan.theta import wcss
 from pyclustering.cluster.birch import birch
 from pyclustering.cluster.bsas import bsas
 from pyclustering.cluster.mbsas import mbsas
@@ -160,6 +161,13 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
     count = np.sum(closest < thr)
     ac_score = count / len(ecentroids)
 
+    gt_wcss = wcss(X, true_label.astype('i8'), centroids)
+
+    current_wcss = wcss(X, np.asarray(label, dtype='i8'), ecentroids)
+
+    print('gt_wcss', gt_wcss)
+    print('current_wcss', current_wcss)
+
     nmi_score = normalized_mutual_info_score(true_label, label)
 
     sil_score = silhouette_score(X, label)
@@ -238,7 +246,7 @@ def gaussian_clusters_varying_size2(n_local_samples, blob_dis = 10, cluster_x = 
 
     for i in range(n_centres.shape[0]):
         cpos = n_centres[i]
-        scale = np.random.uniform(0.2, 2.)
+        scale = np.random.uniform(0.2, 1.)
         local_X = cpos + scale * np.random.normal(0, 1, (n_local_samples, 2))
         X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
         y[i * n_local_samples: (i + 1) * n_local_samples] = i

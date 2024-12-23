@@ -2,19 +2,26 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-fname = 'C:/Users/Eleftherios/Downloads/dorin.png'
+# fname = 'C:/Users/Eleftherios/Downloads/dorin.png'
+fname = '/home/elef/Data/Dorin/dorin.png'
 img = cv2.imread(fname)
 
 luv_image = cv2.cvtColor(img, cv2.COLOR_BGR2Luv)
+
+print(luv_image.shape)
+
+luv_image = cv2.resize(luv_image, (0,0), fx=0.5, fy=0.5)
+
+print(luv_image.shape)
 
 # # Display the LUV image
 # cv2.imshow('LUV Image', luv_image)
 # cv2.waitKey(0)
 # cv2.destroyAllWindows()
 
-L = luv_image[..., 0]
-U = luv_image[..., 1]
-V = luv_image[..., 2]
+L = luv_image[..., 0].ravel()
+U = luv_image[..., 1].ravel()
+V = luv_image[..., 2].ravel()
 
 # Create a 3D scatter plot
 fig = plt.figure(figsize=(8, 8))
@@ -29,7 +36,6 @@ ax.set_zlabel('V')
 ax.set_title('3D Scatter Plot of LUV')
 
 plt.show()
-
 
 
 tmp = 1
