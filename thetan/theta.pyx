@@ -1300,11 +1300,10 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
 
         for i in range(N):
             dist = metric_func(&X[i, 0], &centroids[indices[i], 0], D)
-            summ += dist
+            summ += dist ** 2
 
     return summ
-
-
+    
 def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, all_out=False):
 
     cdef:
