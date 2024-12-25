@@ -42,7 +42,7 @@ def underseg_error(gt_label, sp_label, overlap_graph=None):
         for i in range(shape[0]):
             for j in range(shape[1]):
                 overlap_graph[gt_label[i, j], sp_label[i, j]] += 1
-    
+
     return np.sum([(np.sum([sp_c[j] for j in np.argwhere(overlap_graph[i] != 0)]) - gt_c[i]) / gt_c[i] for i in range(len(gt_u))]) / (shape[0] * shape[1]), overlap_graph
 
 def underseg_bergh_error(gt_label, sp_label, overlap_graph=None):
@@ -54,7 +54,7 @@ def underseg_bergh_error(gt_label, sp_label, overlap_graph=None):
         for i in range(shape[0]):
             for j in range(shape[1]):
                 overlap_graph[gt_label[i, j], sp_label[i, j]] += 1
-    
+
     return np.sum([sp_c[j] - np.max(overlap_graph[:, j]) for j in range(len(sp_u))]) / (shape[0] * shape[1]), overlap_graph
 
 def underseg_np_error(gt_label, sp_label, overlap_graph=None):
@@ -66,7 +66,7 @@ def underseg_np_error(gt_label, sp_label, overlap_graph=None):
         for i in range(shape[0]):
             for j in range(shape[1]):
                 overlap_graph[gt_label[i, j], sp_label[i, j]] += 1
-    
+
     return np.sum([np.sum([np.min([overlap_graph[i, j], sp_c[j] - overlap_graph[i, j]]) for j in np.argwhere(overlap_graph[i] != 0)]) for i in range(len(gt_u))]) / (shape[0] * shape[1]), overlap_graph
 
 # This is higher the better
@@ -128,7 +128,7 @@ if args.color:
 
 if args.gt_path:
     print("Ground truth path:", args.gt_path)
- 
+
 dir_path = args.dir_path
 output_path = args.output_path
 gt_path = args.gt_path
@@ -245,14 +245,13 @@ with open(os.path.join(output_path, 'output.txt'), 'w+') as file:
                 segment_dict[method] = segments
 
             np.savez(os.path.join(output_path, img_path[:-4]), img=ori_img, label=gt, **segment_dict)
-            
-            
+
+
             with open(os.path.join(output_path, img_path[:-4]+'_metrics_eval.json'), "w") as fp:
                 json.dump(metrics, fp)
-    
+
     for m in methods:
         print(m + ': average and std', file=file)
         for key in metrics[m][0].keys():
             print(key, np.mean([metrics[m][i][key] for i in range(len(metrics[m]))]), file=file)
             print(key, np.std([metrics[m][i][key] for i in range(len(metrics[m]))]), file=file)
-    
