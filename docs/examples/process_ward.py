@@ -662,7 +662,7 @@ if __name__ == "__main__":
     #     analysis_with_hc('ward', n_clusters=i)
 
     for i in range(100):
-        for factor in np.linspace(0.35, 0.55, 100):
+        for factor in np.linspace(0.38, 0.48, 100):
         # for factor in [0.8, 0.75, 0.7, 0.65, 0.6]:
         # for factor in [0.6, 0.5, 0.45, 0.4]:
             print(">> Factor ", factor)
