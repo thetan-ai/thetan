@@ -312,7 +312,7 @@ def test_sklearn_data():
 
     plot_clustering(X_red, y, "Ground Truth")
 
-    
+
 
     for linkage in ("ward", "average", "complete", "single", "tb", "tbscan"):
         if linkage == "tb":
@@ -393,7 +393,7 @@ def test_sklearn_data():
     print()
     print(csv_table)
     print()
-    
+
     np.savetxt('hierarchical_results_new.csv', csv_table, delimiter=',', fmt='%s')
     plt.show()
 
@@ -403,7 +403,7 @@ def analysis_with_tb_max_nca():
     print('Load data')
     digits = datasets.load_digits()
     X, y = digits.data, digits.target
-    
+
     print("Computing embedding")
     X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
     X_red = np.ascontiguousarray(X_red)
@@ -416,7 +416,7 @@ def analysis_with_tb_max_nca():
 
         tb_centroids, tb_labels = berserker2(X_red,
                                              theta_value, all_out=False, verbose=False)
-       
+
         labels = tb_labels
 
         nca = calculate_nca(y, labels)
@@ -451,7 +451,7 @@ def analysis_with_tbscan():
     print('Load data')
     digits = datasets.load_digits()
     X, y = digits.data, digits.target
-    
+
     print("Computing embedding")
     X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
     X_red = np.ascontiguousarray(X_red)
@@ -468,7 +468,7 @@ def analysis_with_tbscan():
     #     for min_samples in [1, 2, 3, 4, 5, 6]:
 
     tbscan_centroids, tbscan_labels, tb_centroids, tb_labels = tbscan(X_red, theta_value, eps, min_samples, return_interm=True)
-    
+
     if tbscan_centroids.shape[0] > 5:
 
         print()
@@ -518,14 +518,17 @@ def analysis_with_hc(linkage, n_clusters):
     X, y = digits.data, digits.target
 
     # print(X.shape)
-    
+
     # print("Computing embedding")
     X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
     X_red = np.ascontiguousarray(X_red)
     centroids = centroids_from_labels(X_red, np.ascontiguousarray(y, dtype='i8'))
 
+    start = time.perf_counter()
     clustering = AgglomerativeClustering(linkage=linkage, n_clusters=n_clusters)
     clustering.fit(X_red)
+    duration = time.perf_counter() - start
+    print('Duration ', duration)
 
     tb_labels = clustering.labels_
 
@@ -561,6 +564,8 @@ def analysis_with_hc(linkage, n_clusters):
 
     # plt.show()
 
+    return duration, -1, nca, ri, fm, ari, nmi
+
 
 def analysis_with_tb(theta_value = 0.00112):
 
@@ -571,17 +576,19 @@ def analysis_with_tb(theta_value = 0.00112):
     X, y = digits.data, digits.target
 
     # print(X.shape)
-    
+
     # print("Computing embedding")
     X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
     X_red = np.ascontiguousarray(X_red)
     centroids = centroids_from_labels(X_red, np.ascontiguousarray(y, dtype='i8'))
 
     # theta_value = 0.00112
+    t_start = time.perf_counter()
+    tb_centroids, tb_labels = berserker2_clean(X_red,
+                                               theta_value)
+    duration = time.perf_counter() - t_start
+    print('Duration ', duration)
 
-    tb_centroids, tb_labels = berserker2(X_red,
-                                         theta_value, all_out=False, verbose=False)
-    
     labels = tb_labels
 
     nca = calculate_nca(y, labels)
@@ -621,24 +628,24 @@ def analysis_with_tb(theta_value = 0.00112):
     ari = adjusted_rand_score_custom(y, labels2)
     nmi = normalized_mutual_information(y, labels2)
 
-    if ((nca > 0.70) & (nmi > 0.63)):
-        print()
-        print('Assign ', theta_value)
-        print(tb_centroids.shape, ' to ', tb_centroids2.shape)
-        print(f"Normalized Clustering Accuracy: {nca}")
-        print(f"Rand Index (RI): {ri}")
-        print(f"Fowlkes-Mallows Index (FM): {fm}")
-        print(f"Adjusted Rand Index (ARI): {ari}")
-        print(f"Normalized Mutual Information (NMI): {nmi}")
-        print()
+    # if ((nca > 0.70) & (nmi > 0.63)):
+    print()
+    print('Assign ', theta_value)
+    print(tb_centroids.shape, ' to ', tb_centroids2.shape)
+    print(f"Normalized Clustering Accuracy: {nca}")
+    print(f"Rand Index (RI): {ri}")
+    print(f"Fowlkes-Mallows Index (FM): {fm}")
+    print(f"Adjusted Rand Index (ARI): {ari}")
+    print(f"Normalized Mutual Information (NMI): {nmi}")
+    print()
 
-        # plot_centroids_clusters(X_red, centroids, y, 'Ground Truth', show=False, digits=y)
+    # plot_centroids_clusters(X_red, centroids, y, 'Ground Truth', show=False, digits=y)
 
-        # plot_centroids_clusters(X_red, tb_centroids2, tb_labels2, 'TB Output at value '  + str(theta_value), show=False, digits=y)
+    # plot_centroids_clusters(X_red, tb_centroids2, tb_labels2, 'TB Output at value '  + str(theta_value), show=False, digits=y)
 
-        # plt.show()
+    # plt.show()
 
-
+    return duration, -1, nca, ri, fm, ari, nmi
 
 
 
@@ -656,14 +663,47 @@ if __name__ == "__main__":
     # test_sklearn_data()
     # analysis_with_tbscan()
 
+    res_ward = analysis_with_hc('ward', n_clusters=10)
+    res_average = analysis_with_hc('average', n_clusters=10)
+    res_complete = analysis_with_hc('complete', n_clusters=10)
+    res_single = analysis_with_hc('single', n_clusters=10)
+
 
     # analysis_with_ward('ward', n_clusters=45)
     # for i in range(20, 60, 2):
     #     analysis_with_hc('ward', n_clusters=i)
 
-    for i in range(100):
-        for factor in np.linspace(0.38, 0.48, 100):
-        # for factor in [0.8, 0.75, 0.7, 0.65, 0.6]:
-        # for factor in [0.6, 0.5, 0.45, 0.4]:
-            print(">> Factor ", factor)
-            analysis_with_tb(theta_value = factor * 0.00112)
+    # for i in range(100):
+    #     for factor in np.linspace(0.38, 0.48, 100):
+    #     # for factor in [0.8, 0.75, 0.7, 0.65, 0.6]:
+    #     # for factor in [0.6, 0.5, 0.45, 0.4]:
+    #         print(">> Factor ", factor)
+    #         analysis_with_tb(theta_value = factor * 0.00112)
+
+    res_tb = analysis_with_tb(theta_value = 0.00048)
+
+    A = np.zeros((5, 7))
+    A[0] = res_ward
+    A[1] = res_average
+    A[2] = res_complete
+    A[3] = res_single
+    A[4] = res_tb
+
+    import pandas as pd
+
+    # Define the row and column names
+    rows = ["Ward", "Average", "Complete", "Single", "TB"]
+    columns = ["Runtime", "Peak Memory", "NCA", "RI", "FM", "ARI", "NMI"]
+
+    # Create a DataFrame with empty values
+    df = pd.DataFrame(index=rows, columns=columns)
+
+    df[:] = A
+
+    # Display the DataFrame
+    print(df)
+
+    print()
+    print()
+
+    print(df.to_latex())
