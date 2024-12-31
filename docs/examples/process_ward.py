@@ -567,7 +567,7 @@ def analysis_with_hc(linkage, n_clusters):
     return duration, -1, nca, ri, fm, ari, nmi
 
 
-def analysis_with_tb(theta_value = 0.00112):
+def analysis_with_tb(theta_value = 0.00112, ndims=2):
 
 
 
@@ -578,7 +578,7 @@ def analysis_with_tb(theta_value = 0.00112):
     # print(X.shape)
 
     # print("Computing embedding")
-    X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
+    X_red = manifold.SpectralEmbedding(n_components=ndims).fit_transform(X)
     X_red = np.ascontiguousarray(X_red)
     centroids = centroids_from_labels(X_red, np.ascontiguousarray(y, dtype='i8'))
 
@@ -649,19 +649,7 @@ def analysis_with_tb(theta_value = 0.00112):
 
 
 
-
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-
-    # test_sklearn_data()
-    # analysis_with_tbscan()
+def collect_statistics_ndims2():
 
     res_ward = analysis_with_hc('ward', n_clusters=10)
     res_average = analysis_with_hc('average', n_clusters=10)
@@ -707,3 +695,31 @@ if __name__ == "__main__":
     print()
 
     print(df.to_latex())
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+
+    # print('>>>>>>>>>>>>>>>>>>>>>')
+    # analysis_with_tb(np.sqrt(4) * 0.00112, ndims=4)
+
+    # print('>>>>>>>>>>>>>>>>>>>>>')
+    # analysis_with_tb(np.sqrt(4) * 0.00048, ndims=4)
+
+    print('>>>>>>>>>>>>>>>>>>>>>')
+
+    
+    
+    for i, v in enumerate(np.linspace(0.0036, 0.0056, 60)):
+        print(i, v)
+        analysis_with_tb(v, ndims=10)
+
+    # ranges = 1.6 * np.linspace(0.0036, 0.0056, 60)
+    # for i, v in enumerate(ranges):
+    #     print(i, v)
+    #     analysis_with_tb(v, ndims=20)
