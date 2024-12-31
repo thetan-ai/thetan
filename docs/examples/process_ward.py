@@ -511,17 +511,23 @@ def analysis_with_tbscan():
 
 
 
-def analysis_with_hc(linkage, n_clusters):
+def analysis_with_hc(linkage, n_clusters, ndims=2, reassign=False):
 
     # print('Load data')
     digits = datasets.load_digits()
     X, y = digits.data, digits.target
 
-    # print(X.shape)
+    print(X.shape)
 
-    # print("Computing embedding")
-    X_red = manifold.SpectralEmbedding(n_components=2).fit_transform(X)
+    if ndims == 64:
+        X_red = X
+    else:
+        # print("Computing embedding")
+        X_red = manifold.SpectralEmbedding(n_components=ndims).fit_transform(X)
+
     X_red = np.ascontiguousarray(X_red)
+    print(X_red.shape)
+
     centroids = centroids_from_labels(X_red, np.ascontiguousarray(y, dtype='i8'))
 
     start = time.perf_counter()
@@ -534,12 +540,18 @@ def analysis_with_hc(linkage, n_clusters):
 
     tb_centroids = centroids_from_labels(X_red, tb_labels)
 
-    tb_uniq, tb_sizes = np.unique(tb_labels, return_counts=True)
-    tb_centroids2 = tb_centroids[np.argsort(tb_sizes)[::-1][:10]]
+    if reassign:
 
-    tb_labels2 = assign(X_red, tb_centroids2)
+        tb_uniq, tb_sizes = np.unique(tb_labels, return_counts=True)
+        tb_centroids2 = tb_centroids[np.argsort(tb_sizes)[::-1][:10]]
 
-    labels2 = tb_labels2
+        tb_labels2 = assign(X_red, tb_centroids2)
+
+        labels2 = tb_labels2
+
+    else:
+
+        labels2 = tb_labels
 
     nca = calculate_nca(y, labels2)
     ri = rand_score(y, labels2)
@@ -550,7 +562,7 @@ def analysis_with_hc(linkage, n_clusters):
     # if ((nca > 0.67) & (nmi > 0.63)):
     print()
     print(linkage)
-    print(tb_centroids.shape, ' to ', tb_centroids2.shape)
+    # print(tb_centroids.shape, ' to ', tb_centroids2.shape)
     print(f"Normalized Clustering Accuracy: {nca}")
     print(f"Rand Index (RI): {ri}")
     print(f"Fowlkes-Mallows Index (FM): {fm}")
@@ -569,17 +581,22 @@ def analysis_with_hc(linkage, n_clusters):
 
 def analysis_with_tb(theta_value = 0.00112, ndims=2):
 
-
-
     # print('Load data')
     digits = datasets.load_digits()
     X, y = digits.data, digits.target
+    print(X.shape)
 
-    # print(X.shape)
 
     # print("Computing embedding")
-    X_red = manifold.SpectralEmbedding(n_components=ndims).fit_transform(X)
+
+    if ndims == 64:
+        X_red = X
+    else:
+        X_red = manifold.SpectralEmbedding(n_components=ndims).fit_transform(X)
+
     X_red = np.ascontiguousarray(X_red)
+    print(X_red.shape)
+
     centroids = centroids_from_labels(X_red, np.ascontiguousarray(y, dtype='i8'))
 
     # theta_value = 0.00112
@@ -697,12 +714,6 @@ def collect_statistics_ndims2():
     print(df.to_latex())
 
 
-
-
-
-
-
-
 if __name__ == "__main__":
 
     # print('>>>>>>>>>>>>>>>>>>>>>')
@@ -713,11 +724,28 @@ if __name__ == "__main__":
 
     print('>>>>>>>>>>>>>>>>>>>>>')
 
-    
-    
-    for i, v in enumerate(np.linspace(0.0036, 0.0056, 60)):
+    # for i, v in enumerate(np.linspace(0.0036, 0.0056, 60)):
+    #     print(i, v)
+    #     analysis_with_tb(v, ndims=10)
+
+    # analysis_with_tb(0.005566101, ndims=10)
+    # analysis_with_hc('ward', 10, ndims=10)
+
+    for i, v in enumerate(np.linspace(25, 35, 100)):
+        print()
         print(i, v)
-        analysis_with_tb(v, ndims=10)
+        res = analysis_with_tb(v, ndims=64)
+
+        duration, _, nca, ri, fm, ari, nmi = res
+
+        if nca > 0.82:
+            print('........................>>>>>>>>>>>>>>>>>>>')
+
+    # analysis_with_hc('ward', 10, ndims=64)
+    # analysis_with_hc('average', 10, ndims=64)
+    # analysis_with_hc('complete', 10, ndims=64)
+
+
 
     # ranges = 1.6 * np.linspace(0.0036, 0.0056, 60)
     # for i, v in enumerate(ranges):
