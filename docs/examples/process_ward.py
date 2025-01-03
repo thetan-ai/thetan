@@ -716,38 +716,24 @@ def collect_statistics_ndims2():
 
 if __name__ == "__main__":
 
-    # print('>>>>>>>>>>>>>>>>>>>>>')
-    # analysis_with_tb(np.sqrt(4) * 0.00112, ndims=4)
+    # analysis_with_tb(0.00048, ndims=2)
 
-    # print('>>>>>>>>>>>>>>>>>>>>>')
-    # analysis_with_tb(np.sqrt(4) * 0.00048, ndims=4)
+    # for v in np.linspace(21, 23, 20):
+    #     print(v)
+    #     analysis_with_tb(v, ndims=64)
 
-    print('>>>>>>>>>>>>>>>>>>>>>')
-
-    # for i, v in enumerate(np.linspace(0.0036, 0.0056, 60)):
-    #     print(i, v)
-    #     analysis_with_tb(v, ndims=10)
-
-    # analysis_with_tb(0.005566101, ndims=10)
-    # analysis_with_hc('ward', 10, ndims=10)
-
-    for i, v in enumerate(np.linspace(25, 35, 100)):
-        print()
-        print(i, v)
-        res = analysis_with_tb(v, ndims=64)
-
-        duration, _, nca, ri, fm, ari, nmi = res
-
-        if nca > 0.82:
-            print('........................>>>>>>>>>>>>>>>>>>>')
-
-    # analysis_with_hc('ward', 10, ndims=64)
-    # analysis_with_hc('average', 10, ndims=64)
-    # analysis_with_hc('complete', 10, ndims=64)
+    for i in range(40):
+        analysis_with_tb(22.36842105263158, ndims=64)
 
 
 
-    # ranges = 1.6 * np.linspace(0.0036, 0.0056, 60)
-    # for i, v in enumerate(ranges):
-    #     print(i, v)
-    #     analysis_with_tb(v, ndims=20)
+    # for v in np.linspace(1, 4, 40):
+    #     analysis_with_tb(v * 0.00048, ndims=3)
+
+
+    # for v in np.linspace(1, 4, 40):
+    #     analysis_with_tb(v * 0.00048, ndims=4)
+
+    # for v in np.linspace(2, 4, 20):
+    #     print(v)
+    #     analysis_with_tb(v * 0.00048, ndims=6)
