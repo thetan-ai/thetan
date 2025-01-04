@@ -487,7 +487,7 @@ dpath = '/home/elef/Data/tb_output_order_sensitivity/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 2
-multiplier = 10 # [10-32, step 2]
+multiplier = 20 # [10-32, step 2]
 dpath += str(multiplier ** 2) + '/'
 run = 1
 exp_data_name = 'gaussian'
