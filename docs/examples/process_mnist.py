@@ -4,6 +4,7 @@ from keras.datasets import mnist
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 
+from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
 from thetan.berserker import berserker2, tb_randomized, berserker2_clean
 from thetan.theta import theta_g1, assign, centroids_from_labels
 
@@ -137,8 +138,53 @@ if __name__ == '__main__':
     from time import time
 
     t0 = time()
-    centroids, labels = berserker2_clean(x_train_cp, theta_value=theta_value, metric=metric)
+    tb_centroids, tb_labels = berserker2_clean(x_train_cp, theta_value=theta_value, metric=metric)
     print('Duration ', time() - t0)
+
+    print(tb_centroids.shape)
+
+    tb_uniq, tb_sizes = np.unique(tb_labels, return_counts=True)
+    tb_centroids2 = tb_centroids[np.argsort(tb_sizes)[::-1][:10]]
+
+    tb_labels2 = assign(x_train_cp, tb_centroids2, metric=metric)
+
+    ari = adjusted_rand_score(y_train, tb_labels)
+    nmi = normalized_mutual_info_score(y_train, tb_labels)
+
+    print(ari, nmi)
+
+    ari2 = adjusted_rand_score(y_train, tb_labels2)
+    nmi2 = normalized_mutual_info_score(y_train, tb_labels2)
+
+    print(ari2, nmi2)
+
+
+    tb_centroids3 = tb_centroids[np.argsort(tb_sizes)[::-1][:500]]
+
+    from thetan.theta import distance_matrix
+
+    D = distance_matrix(x_train_cp, tb_centroids3, metric=metric)
+
+    for theta_value in np.arange(50000, 100000, 5000):
+    # for theta_value in np.arange(10000, 20000, 500):
+        print()
+        print(theta_value)
+        tb_centroids4, tb_labels4 = berserker2_clean(D, theta_value=theta_value, metric=metric)
+
+        ari4 = adjusted_rand_score(y_train, tb_labels4)
+        nmi4 = normalized_mutual_info_score(y_train, tb_labels4)
+
+        print(tb_centroids4.shape, ari4, nmi4)
+
+        tb_uniq4, tb_sizes4 = np.unique(tb_labels4, return_counts=True)
+        tb_centroids5 = tb_centroids4[np.argsort(tb_sizes4)[::-1][:10]]
+
+        tb_labels5 = assign(D, tb_centroids5, metric=metric)
+
+        ari5 = adjusted_rand_score(y_train, tb_labels5)
+        nmi5 = normalized_mutual_info_score(y_train, tb_labels5)
+
+        print(tb_centroids5.shape, ari5, nmi5)
 
 
     t = 3
