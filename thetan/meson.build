@@ -337,6 +337,7 @@ python_sources = [
   'chaining.py',
   'viz.py',
   'experimental.py',
+  'accuracy.py',
 ]
 
 py3.install_sources(

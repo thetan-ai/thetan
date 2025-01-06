@@ -14,6 +14,7 @@ from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
 from thetan.theta import wcss
+from thetan.accuracy import accuracy
 from pyclustering.cluster.birch import birch
 from pyclustering.cluster.bsas import bsas
 from pyclustering.cluster.mbsas import mbsas
@@ -27,8 +28,8 @@ from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer,
 from pyclustering.utils.metric import distance_metric, type_metric;
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
 import skfuzzy as fuzz
-from sklearn_extra.cluster import KMedoids
-import MeanShiftPP
+# from sklearn_extra.cluster import KMedoids
+# import MeanShiftPP
 import matplotlib.pyplot as plt
 
 
@@ -178,7 +179,9 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
 
     ars_score = adjusted_rand_score(true_label, label)
 
-    return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, current_wcss, ecentroids.shape[0], duration, memory
+    acc_score = accuracy(true_label, label)
+
+    return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, acc_score, current_wcss, ecentroids.shape[0], duration, memory
 
 
 
@@ -472,7 +475,7 @@ rows = ['TB', 'meanshift', 'kmeans++', 'dbscan', 'BSAS']
 # rows = ['TBSCAN2'] # Needs thinking on how to connect those
 
 
-cols = ['Count', 'AC', 'NMI', 'SIL', 'CHI', 'FMS', 'ARS', 'WCSS', 'Clusters', 'Duration', 'Memory']
+cols = ['Count', 'AC', 'NMI', 'SIL', 'CHI', 'FMS', 'ARS', 'ACC', 'WCSS', 'Clusters', 'Duration', 'Memory']
 
 # dpath = '/home/elef/Data/tb_output_advanced/'
 # dpath = '/N/slate/elef/tb_output_advanced/'
