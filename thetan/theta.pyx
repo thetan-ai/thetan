@@ -11,6 +11,7 @@ cdef extern from "math.h" nogil:
     double fabs(double x)
     double sqrt(double x)
     double floor(double x)
+    double acos(double x)
 
 cdef extern from "stdlib.h" nogil:
     ctypedef unsigned long size_t
@@ -104,6 +105,85 @@ cdef double dot_prod(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogi
     return summ
 
 
+# // Function to calculate the magnitude of a vector
+# double magnitude(double *vec, int n) {
+#     double mag = 0.0;
+#     for (int i = 0; i < n; i++) {
+#         mag += vec[i] * vec[i];
+#     }
+#     return sqrt(mag);
+# }
+
+cdef double magnitude(double * vec, cnp.npy_intp D) noexcept nogil:
+    # magnitude of vector of size D
+    cdef:
+        double mag = 0.0
+        cnp.npy_intp d
+
+    for d in range(D):
+        mag += vec[d] * vec[d]
+
+    return sqrt(mag)
+
+
+# // Function to calculate the cosine distance
+# double cosine_distance(double *vec1, double *vec2, int n) {
+#     double dot = dot_product(vec1, vec2, n);
+#     double mag1 = magnitude(vec1, n);
+#     double mag2 = magnitude(vec2, n);
+
+#     if (mag1 == 0 || mag2 == 0) {
+#         fprintf(stderr, "Error: One or both vectors have zero magnitude.\n");
+#         return -1; // Return error value
+#     }
+
+#     double cosine_similarity = dot / (mag1 * mag2);
+#     return 1.0 - cosine_similarity; // Convert similarity to distance
+# }
+
+cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
+
+    cdef:
+        double dot, mag1, mag2
+
+    dot = dot_prod(vec1, vec2, D)
+    mag1 = magnitude(vec1)
+    mag2 = magnitude(vec2)
+    return 1.0 - (dot / (mag1 * mag2))
+
+
+# // Function to calculate the arccosine distance
+# double arccosine_distance(double *vec1, double *vec2, int n) {
+#     double dot = dot_product(vec1, vec2, n);
+#     double mag1 = magnitude(vec1, n);
+#     double mag2 = magnitude(vec2, n);
+
+#     if (mag1 == 0 || mag2 == 0) {
+#         fprintf(stderr, "Error: One or both vectors have zero magnitude.\n");
+#         return -1; // Return error value
+#     }
+
+#     double cosine_similarity = dot / (mag1 * mag2);
+
+#     // Clamp the cosine similarity to the range [-1, 1] to handle numerical inaccuracies
+#     if (cosine_similarity < -1.0) cosine_similarity = -1.0;
+#     if (cosine_similarity > 1.0) cosine_similarity = 1.0;
+
+#     return acos(cosine_similarity); // Return arccosine distance
+# }
+
+
+cdef double arccosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
+
+    cdef:
+        double dot, mag1, mag2
+
+    dot = dot_prod(vec1, vec2, D)
+    mag1 = magnitude(vec1)
+    mag2 = magnitude(vec2)
+    return acos(dot / (mag1 * mag2))
+
+
 cdef double l1_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
@@ -194,17 +274,22 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
     distance_matrix = np.zeros((I, J), dtype=np.float64)
 
-
     if metric == 'euclidean':
         metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
     if metric == 'ssd':
         metric_func = &ssd
     if metric == 'norm_ssd':
         metric_func = &norm_ssd
     if metric == 'norm_ssd_un':
         metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     for i in range(I):
         for j in range(J):
@@ -521,6 +606,10 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -641,6 +730,10 @@ def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
 
     with nogil:
@@ -762,6 +855,11 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
+
 
     with nogil:
 
@@ -997,6 +1095,10 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1058,6 +1160,10 @@ def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metri
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1194,6 +1300,10 @@ def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1294,6 +1404,10 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
 
     with nogil:
@@ -1303,7 +1417,7 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
             summ += dist ** 2
 
     return summ
-    
+
 def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, all_out=False):
 
     cdef:
@@ -1333,6 +1447,10 @@ def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, 
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1426,6 +1544,10 @@ def theta_delta(double[:, ::1] X, double theta, metric='euclidean', double w=1.0
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1526,6 +1648,10 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1582,6 +1708,10 @@ def gravity(double[:, ::1] X, double[:, ::1] centroids,
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1630,6 +1760,10 @@ def calibrate(double[:, ::1] X, double[:, ::1] centroids, cnp.npy_intp[:] indice
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
@@ -1688,6 +1822,10 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         metric_func = &dot_prod
     if metric == 'l1_norm':
         metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
 
     with nogil:
 
