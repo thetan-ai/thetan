@@ -14,7 +14,7 @@ from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
 from thetan.theta import theta_g1 as tgs
 from thetan.theta import wcss
-from thetan.accuracy import accuracy
+from thetan.accuracy import accuracy_munkres
 from pyclustering.cluster.birch import birch
 from pyclustering.cluster.bsas import bsas
 from pyclustering.cluster.mbsas import mbsas
@@ -179,7 +179,7 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
 
     ars_score = adjusted_rand_score(true_label, label)
 
-    acc_score = accuracy(true_label, label)
+    acc_score = accuracy_munkres(true_label, label)
 
     return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, acc_score, current_wcss, ecentroids.shape[0], duration, memory
 
@@ -260,7 +260,7 @@ def gaussian_clusters_varying_size2(n_local_samples, blob_dis = 10, cluster_x = 
     return X, y, gt_centroids
 
 
-def gaussian_clusters_varying_density(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
+def gaussian_clusters_varying_density(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10, vd_div=5):
     """ Varying density """
 
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
@@ -279,7 +279,7 @@ def gaussian_clusters_varying_density(n_local_samples, blob_dis = 10, cluster_x 
         cpos = n_centres[i]
         # scale = np.random.uniform(0.2, 1.0)
         local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
-        rindex = np.random.choice(np.arange(n_local_samples), np.random.randint(n_local_samples // 5, n_local_samples), replace=False)
+        rindex = np.random.choice(np.arange(n_local_samples), np.random.randint(n_local_samples // vd_div, n_local_samples), replace=False)
         local_X_tmp = local_X[rindex].copy()
 
         size_tmp = local_X_tmp.shape[0]
@@ -414,7 +414,7 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.close(fig)
 
 
-def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10, n_local_samples=500, scale=1):
+def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10, n_local_samples=500, scale=1, vd_div=5):
 
     print('Simulating data')
 
@@ -422,7 +422,7 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
         X, y, gt_centroids = gaussian_clusters(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y) # cluster_x should be 30
 
     if dist_type == 'gaussian_varying_size':
-        X, y, gt_centroids = gaussian_clusters_varying_size(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
+        X, y, gt_centroids = gaussian_clusters_varying_size(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y, vd_div=vd_div)
 
     if dist_type == 'gaussian_varying_size2':
         X, y, gt_centroids = gaussian_clusters_varying_size2(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
@@ -498,7 +498,8 @@ run = 1
 # exp_data_name = 'gaussian'
 # exp_data_name = 'gaussian_varying_size2'
 exp_data_name = 'gaussian_varying_density'
-
+vd_div = 5 # 10, 5, 2.5, 1
+print('# >>> Sampling each cluster from ', 500 // vd_div, ' to ', 500)
 # exp_data_name = 'uniform'
 # exp_data_name = 'uniform_varying'
 
@@ -526,7 +527,7 @@ if run_experiments:
         evaluation_thr = 0.1
 
         # good for gaussians
-        X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=multiplier, cluster_y=multiplier)
+        X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=multiplier, cluster_y=multiplier, vd_div=vd_div)
         # good for gaussians
         # X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=10, cluster_y=10)
         # uniform varying
@@ -1417,6 +1418,8 @@ if summarize_results:
 
 
 def gen_plot(summary, species, species_id, fname_save_ac, fname_save_time):
+
+    # TODO: Needs update due to many more metrics
 
     Counts = []
     ACs = []
