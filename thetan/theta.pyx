@@ -147,8 +147,8 @@ cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcep
         double dot, mag1, mag2
 
     dot = dot_prod(vec1, vec2, D)
-    mag1 = magnitude(vec1)
-    mag2 = magnitude(vec2)
+    mag1 = magnitude(vec1, D)
+    mag2 = magnitude(vec2, D)
     return 1.0 - (dot / (mag1 * mag2))
 
 
@@ -179,8 +179,8 @@ cdef double arccosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noex
         double dot, mag1, mag2
 
     dot = dot_prod(vec1, vec2, D)
-    mag1 = magnitude(vec1)
-    mag2 = magnitude(vec2)
+    mag1 = magnitude(vec1, D)
+    mag2 = magnitude(vec2, D)
     return acos(dot / (mag1 * mag2))
 
 

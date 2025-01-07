@@ -137,8 +137,19 @@ if __name__ == '__main__':
 
     from time import time
 
+    print('L1 Norm ')
     t0 = time()
     tb_centroids, tb_labels = berserker2_clean(x_train_cp, theta_value=theta_value, metric=metric)
+    print('Duration ', time() - t0)
+
+    print('Cosine Distance ')
+    t0 = time()
+    tb_centroids_cosd, tb_labels_cosd = berserker2_clean(x_train_cp, theta_value=0.5, metric='cosine')
+    print('Duration ', time() - t0)
+
+    print('Arccos Distance ')
+    t0 = time()
+    tb_centroids_cosd, tb_labels_cosd = berserker2_clean(x_train_cp, theta_value=np.pi/4, metric='arccos')
     print('Duration ', time() - t0)
 
     print(tb_centroids.shape)
