@@ -1,12 +1,12 @@
 import numpy as np
 from keras.datasets import mnist
-
+from time import time
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 
 from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
 from thetan.berserker import berserker2, tb_randomized, berserker2_clean
-from thetan.theta import theta_g1, assign, centroids_from_labels
+from thetan.theta import theta_g1, assign, centroids_from_labels, distance_matrix
 
 
 def report_accuracy(y_true, y_pred):
@@ -125,7 +125,45 @@ def classification_task():
     print('AC Train ', ac_train, ' AC Test ', ac_test)
 
 
+def test_cosine_distance():
+
+    A = np.random.rand(20, 3) - 0.5
+    X = np.concatenate((A, A))
+
+    D = distance_matrix(A, A, metric='cosine')
+
+    t=1
+    # centroids, labels = berserker2_clean(X, 4, metric='euclidean')
+    # assert centroids.shape == (2, 3)
+
+    # assert np.sum(labels==0) == 20
+    # assert np.sum(labels==1) == 20
+
+    for theta_value in np.linspace(0, 2, 40):
+        print('Cosine Distance ', theta_value)
+        t0 = time()
+        tb_centroids_cosd, tb_labels_cosd = berserker2_clean(X, theta_value=0.5, metric='cosine')
+        print('Duration ', time() - t0)
+        print(tb_centroids_cosd.shape)
+        print()
+
+    for theta_value in np.linspace(0, np.pi, 40):
+        print('Arccos Distance ', theta_value)
+        t0 = time()
+        tb_centroids_acosd, tb_labels_acosd = berserker2_clean(X, theta_value=np.pi/4, metric='arccos')
+        print('Duration ', time() - t0)
+        print(tb_centroids_acosd.shape)
+        print()
+
+
+    t = 1
+
+
+
+
 if __name__ == '__main__':
+
+    test_cosine_distance()
 
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -135,7 +173,7 @@ if __name__ == '__main__':
     theta_value = 17000.
     metric = 'l1_norm'
 
-    from time import time
+
 
     print('L1 Norm ')
     t0 = time()
