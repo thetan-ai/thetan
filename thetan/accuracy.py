@@ -16,18 +16,18 @@ from munkres import Munkres
 #     # Get unique labels
 #     labels_true = np.unique(y_true)
 #     labels_pred = np.unique(y_pred)
-    
+
 #     # Build contingency matrix
 #     cost_matrix = np.zeros((len(labels_true), len(labels_pred)), dtype=int)
 #     for i, true_label in enumerate(labels_true):
 #         for j, pred_label in enumerate(labels_pred):
 #             cost_matrix[i, j] = np.sum((y_true == true_label) & (y_pred == pred_label))
-    
+
 #     # Convert the cost matrix for minimization (Munkres minimizes by default)
 #     munkres = Munkres()
 #     cost_matrix_neg = -cost_matrix.tolist()  # Negate for maximization
 #     indexes = munkres.compute(cost_matrix_neg)  # Optimal assignments
-    
+
 #     # Calculate accuracy
 #     total_correct = sum(cost_matrix[row][col] for row, col in indexes)
 #     accuracy = total_correct / len(y_true)

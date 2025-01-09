@@ -465,7 +465,7 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     return points, labels, gt_centroids
 
 
-rows = ['TB', 'meanshift', 'kmeans++', 'dbscan', 'BSAS']
+# rows = ['TB', 'meanshift', 'kmeans++', 'dbscan', 'BSAS']
 # rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 # rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
 # rows += ['OPTICS', 'CLARANS', 'meanshift++', 'TBSCAN']
@@ -473,6 +473,7 @@ rows = ['TB', 'meanshift', 'kmeans++', 'dbscan', 'BSAS']
 # rows = ['TB', 'kmeans++']
 # rows = ['TB', 'TBSCAN']
 # rows = ['TBSCAN2'] # Needs thinking on how to connect those
+rows = ['TB', 'TS']
 
 
 cols = ['Count', 'AC', 'NMI', 'SIL', 'CHI', 'FMS', 'ARS', 'ACC', 'WCSS', 'Clusters', 'Duration', 'Memory']
@@ -491,14 +492,14 @@ dpath = '/home/elef/Data/tb_output_varying_density/'
 # dpath = '/home/elef/Data/tb_output_v5/gaussian_300x100/tbscan/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 2
+reps = 10
 multiplier = 10 # [10-32, step 2]
 dpath += str(multiplier ** 2) + '/'
 run = 1
 # exp_data_name = 'gaussian'
 # exp_data_name = 'gaussian_varying_size2'
 exp_data_name = 'gaussian_varying_density'
-vd_div = 5 # 10, 5, 2.5, 1
+vd_div = 10 # 10, 5, 2.5, 1
 print('# >>> Sampling each cluster from ', 500 // vd_div, ' to ', 500)
 # exp_data_name = 'uniform'
 # exp_data_name = 'uniform_varying'

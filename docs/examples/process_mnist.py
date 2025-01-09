@@ -127,12 +127,32 @@ def classification_task():
 
 def test_cosine_distance():
 
-    A = np.random.rand(20, 3) - 0.5
-    X = np.concatenate((A, A))
+    # A = np.random.rand(20, 3) - 0.5
+    # X = np.concatenate((A, A))
+    A = np.array([[1.414213/2, 1.414213/2, 0]])
+    B = np.array([[1., 0, 0]])
 
-    D = distance_matrix(A, A, metric='cosine')
+    D = distance_matrix(A, B, metric='cosine')
+    print(D)
 
-    t=1
+    A = np.array([[1.414213/2, 1.414213/2, 0]])
+    B = np.array([[0., 1, 0]])
+
+    D = distance_matrix(A, B, metric='cosine')
+    print(D)
+
+    A = np.array([[1.414213/2, 1.414213/2, 0]])
+    B = np.array([[1., 0, 0]])
+
+    D = distance_matrix(A, B, metric='arccos')
+    print(D, np.rad2deg(D))
+
+    A = np.array([[1.414213/2, 1.414213/2, 0]])
+    B = np.array([[0., 1, 0]])
+
+    D = distance_matrix(A, B, metric='arccos')
+    print(D, np.rad2deg(D))
+    t = 1
     # centroids, labels = berserker2_clean(X, 4, metric='euclidean')
     # assert centroids.shape == (2, 3)
 
@@ -172,8 +192,6 @@ if __name__ == '__main__':
 
     theta_value = 17000.
     metric = 'l1_norm'
-
-
 
     print('L1 Norm ')
     t0 = time()
