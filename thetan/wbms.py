@@ -110,48 +110,6 @@ def U2clus(U, epsa=1e-5):
 
     return labels
 
-# # Example usage
-# if __name__ == "__main__":
-#     # Generate a toy dataset
-#     X1 = np.random.normal(size=(100, 2))
-#     X2 = np.random.normal(loc=5, size=(100, 2))
-#     X = np.vstack((X1, X2))
-#     for _ in range(30):
-#         X = np.hstack((X, np.random.normal(size=(200, 1))))
-
-#     # Normalize the dataset
-#     X = (X - X.mean(axis=0)) / X.std(axis=0)
-
-#     # Plot the original data
-#     import matplotlib.pyplot as plt
-#     plt.scatter(X[:, 0], X[:, 1])
-#     plt.title("Original Data")
-#     plt.show()
-
-#     # Run WBMS
-#     h = 0.1
-#     lam = 10
-#     X2, w = WBMS(X, h, lam, tmax=30)
-
-#     # Plot the centroids
-#     plt.scatter(X2[:, 0], X2[:, 1], color='red', marker='o')
-#     plt.title("Centroids")
-#     plt.show()
-
-#     # Print feature weights
-#     print("Feature Weights:", w)
-
-#     # Find clusters
-#     labels = U2clus(X2)
-
-#     # Plot clustered data
-#     plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis')
-#     plt.title("Clustered Data")
-#     plt.colorbar(label="Cluster")
-#     plt.show()
-
-
-
 
 # Functions (Assumes WBMS and U2clus are already defined from previous implementation)
 def generate_toy_data():

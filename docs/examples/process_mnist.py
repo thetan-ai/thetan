@@ -141,6 +141,15 @@ def test_cosine_distance():
     D = distance_matrix(A, B, metric='cosine')
     print(D)
 
+    A = np.array([[0., -1, 0]])
+    B = np.array([[0., 1, 0]])
+
+    D = distance_matrix(A, B, metric='cosine')
+    print(D)
+
+
+def test_arccos_distance():
+
     A = np.array([[1.414213/2, 1.414213/2, 0]])
     B = np.array([[1., 0, 0]])
 
@@ -152,6 +161,13 @@ def test_cosine_distance():
 
     D = distance_matrix(A, B, metric='arccos')
     print(D, np.rad2deg(D))
+
+    A = np.array([[0., -1, 0]])
+    B = np.array([[0., 1, 0]])
+
+    D = distance_matrix(A, B, metric='arccos')
+    print(D, np.rad2deg(D))
+
     t = 1
     # centroids, labels = berserker2_clean(X, 4, metric='euclidean')
     # assert centroids.shape == (2, 3)
@@ -159,21 +175,21 @@ def test_cosine_distance():
     # assert np.sum(labels==0) == 20
     # assert np.sum(labels==1) == 20
 
-    for theta_value in np.linspace(0, 2, 40):
-        print('Cosine Distance ', theta_value)
-        t0 = time()
-        tb_centroids_cosd, tb_labels_cosd = berserker2_clean(X, theta_value=0.5, metric='cosine')
-        print('Duration ', time() - t0)
-        print(tb_centroids_cosd.shape)
-        print()
+    # for theta_value in np.linspace(0, 2, 40):
+    #     print('Cosine Distance ', theta_value)
+    #     t0 = time()
+    #     tb_centroids_cosd, tb_labels_cosd = berserker2_clean(X, theta_value=0.5, metric='cosine')
+    #     print('Duration ', time() - t0)
+    #     print(tb_centroids_cosd.shape)
+    #     print()
 
-    for theta_value in np.linspace(0, np.pi, 40):
-        print('Arccos Distance ', theta_value)
-        t0 = time()
-        tb_centroids_acosd, tb_labels_acosd = berserker2_clean(X, theta_value=np.pi/4, metric='arccos')
-        print('Duration ', time() - t0)
-        print(tb_centroids_acosd.shape)
-        print()
+    # for theta_value in np.linspace(0, np.pi, 40):
+    #     print('Arccos Distance ', theta_value)
+    #     t0 = time()
+    #     tb_centroids_acosd, tb_labels_acosd = berserker2_clean(X, theta_value=np.pi/4, metric='arccos')
+    #     print('Duration ', time() - t0)
+    #     print(tb_centroids_acosd.shape)
+    #     print()
 
 
     t = 1
@@ -183,7 +199,12 @@ def test_cosine_distance():
 
 if __name__ == '__main__':
 
+    print('Cosine')
     test_cosine_distance()
+    print()
+    print('Arccos')
+    test_arccos_distance()
+    print()
 
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
