@@ -429,7 +429,7 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
 
     if dist_type == 'gaussian_varying_density':
 
-        X, y, gt_centroids = gaussian_clusters_varying_density(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
+        X, y, gt_centroids = gaussian_clusters_varying_density(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y, vd_div=vd_div)
 
     if dist_type == 'uniform':
         X, y, gt_centroids = uniform_clusters(scale=scale, n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
@@ -465,7 +465,7 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
     return points, labels, gt_centroids
 
 
-# rows = ['TB', 'meanshift', 'kmeans++', 'dbscan', 'BSAS']
+rows = ['TB', 'meanshift', 'kmeans++', 'dbscan', 'BSAS', 'TS']
 # rows = ['TB', 'kmeans++', 'meanshift', 'EM_GMM', 'TS', 'bisecting', 'dbscan', 'hdbscan', 'BSAS', 'MBSAS', 'TTSAS', 'BIRCH', 'CURE', 'kmeans', 'FCM', 'TBK']
 # rows += ['kmedians', 'xmeans', 'TSR'] # kmedoids, affinity propagation and hierarchical clustering removed due to large memory needs
 # rows += ['OPTICS', 'CLARANS', 'meanshift++', 'TBSCAN']
@@ -473,7 +473,7 @@ def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10,
 # rows = ['TB', 'kmeans++']
 # rows = ['TB', 'TBSCAN']
 # rows = ['TBSCAN2'] # Needs thinking on how to connect those
-rows = ['TB', 'TS']
+# rows = ['TB', 'TS']
 
 
 cols = ['Count', 'AC', 'NMI', 'SIL', 'CHI', 'FMS', 'ARS', 'ACC', 'WCSS', 'Clusters', 'Duration', 'Memory']
@@ -492,14 +492,14 @@ dpath = '/home/elef/Data/tb_output_varying_density/'
 # dpath = '/home/elef/Data/tb_output_v5/gaussian_300x100/tbscan/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
-reps = 10
+reps = 2
 multiplier = 10 # [10-32, step 2]
 dpath += str(multiplier ** 2) + '/'
 run = 1
 # exp_data_name = 'gaussian'
 # exp_data_name = 'gaussian_varying_size2'
 exp_data_name = 'gaussian_varying_density'
-vd_div = 10 # 10, 5, 2.5, 1
+vd_div = 20 # 10, 5, 2.5, 1
 print('# >>> Sampling each cluster from ', 500 // vd_div, ' to ', 500)
 # exp_data_name = 'uniform'
 # exp_data_name = 'uniform_varying'
@@ -508,7 +508,7 @@ dpath += exp_data_name + '/' + str(run) + '/'
 if not os.path.exists(dpath):
     os.makedirs(dpath)
 
-verbose = False
+verbose = True
 theta_value = 3.6
 # theta_value = 5.6
 run_experiments = True
@@ -859,7 +859,7 @@ if run_experiments:
             evaluations['TS'] = scores
 
             if verbose:
-                plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TGS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
+                plot_centroids_clusters(X, tgs_centroids, tgs_labels, 'TS', exp_type=str(expno), initial_centroids=gt_centroids, show=False, dpath=dpath)
 
         if 'TSR' in rows:
 
