@@ -195,41 +195,7 @@ def test_arccos_distance():
     t = 1
 
 
-
-
-if __name__ == '__main__':
-
-    print('Cosine')
-    test_cosine_distance()
-    print()
-    print('Arccos')
-    test_arccos_distance()
-    print()
-
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-    x_train_cp = np.ascontiguousarray(x_train.reshape(60000, 28*28), dtype='f8')
-    x_test_cp = np.ascontiguousarray(x_test.reshape(10000, 28*28), dtype='f8')
-
-    theta_value = 17000.
-    metric = 'l1_norm'
-
-    print('L1 Norm ')
-    t0 = time()
-    tb_centroids, tb_labels = berserker2_clean(x_train_cp, theta_value=theta_value, metric=metric)
-    print('Duration ', time() - t0)
-
-    print('Cosine Distance ')
-    t0 = time()
-    tb_centroids_cosd, tb_labels_cosd = berserker2_clean(x_train_cp, theta_value=0.5, metric='cosine')
-    print('Duration ', time() - t0)
-
-    print('Arccos Distance ')
-    t0 = time()
-    tb_centroids_cosd, tb_labels_cosd = berserker2_clean(x_train_cp, theta_value=np.pi/4, metric='arccos')
-    print('Duration ', time() - t0)
-
-    print(tb_centroids.shape)
+def extensive_evaluation(x_train_cp, y_train, tb_centroids, tb_labels):
 
     tb_uniq, tb_sizes = np.unique(tb_labels, return_counts=True)
     tb_centroids2 = tb_centroids[np.argsort(tb_sizes)[::-1][:10]]
@@ -239,40 +205,109 @@ if __name__ == '__main__':
     ari = adjusted_rand_score(y_train, tb_labels)
     nmi = normalized_mutual_info_score(y_train, tb_labels)
 
-    print(ari, nmi)
+    print('All: ARI ', ari, ' NMI ', nmi)
 
     ari2 = adjusted_rand_score(y_train, tb_labels2)
     nmi2 = normalized_mutual_info_score(y_train, tb_labels2)
 
-    print(ari2, nmi2)
+    print('B10: ARI ', ari2, ' NMI ', nmi2)
+
+    return ari, nmi, ari2, nmi2
 
 
-    tb_centroids3 = tb_centroids[np.argsort(tb_sizes)[::-1][:500]]
+if __name__ == '__main__':
 
-    from thetan.theta import distance_matrix
+    # print('Cosine')
+    # test_cosine_distance()
+    # print()
+    # print('Arccos')
+    # test_arccos_distance()
+    # print()
 
-    D = distance_matrix(x_train_cp, tb_centroids3, metric=metric)
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-    for theta_value in np.arange(50000, 100000, 5000):
-    # for theta_value in np.arange(10000, 20000, 500):
+    x_train_cp = np.ascontiguousarray(x_train.reshape(60000, 28*28), dtype='f8')
+    x_test_cp = np.ascontiguousarray(x_test.reshape(10000, 28*28), dtype='f8')
+
+    # TODO remove asap
+    x_train_cp = x_test_cp.copy()
+    y_train = y_test.copy()
+
+    print('Data shape ', x_train_cp.shape)
+
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    x_train_cp = scaler.fit_transform(x_train_cp)
+    # print(scaler.fit(data))
+    # StandardScaler()
+    # print(scaler.mean_)
+
+    theta_value = 17000.
+    metric = 'l1_norm'
+
+    print('>>> L1 Norm ')
+    t0 = time()
+    tb_centroids, tb_labels = berserker2_clean(x_train_cp, theta_value=theta_value, metric=metric)
+    print('Duration ', time() - t0)
+
+    print(tb_centroids.shape)
+
+    extensive_evaluation(x_train_cp, y_train, tb_centroids, tb_labels)
+
+
+    # print('Cosine Distance ')
+    # t0 = time()
+    # tb_centroids_cosd, tb_labels_cosd = berserker2_clean(x_train_cp, theta_value=0.5, metric='cosine')
+    # print('Duration ', time() - t0)
+
+    print()
+    theta_value = np.pi / 4.
+    print('>>> Arccos Distance ')
+    for theta_value in np.linspace(0.63, 1.2, 30):
+    # for theta_value in np.linspace(0.98, 1.2, 20):
+
         print()
-        print(theta_value)
-        tb_centroids4, tb_labels4 = berserker2_clean(D, theta_value=theta_value, metric=metric)
+        print('theta ', theta_value)
+        metric = 'arccos'
 
-        ari4 = adjusted_rand_score(y_train, tb_labels4)
-        nmi4 = normalized_mutual_info_score(y_train, tb_labels4)
+        print('Starting Berserker2 ... ')
+        t0 = time()
+        tb_centroids_acosd, tb_labels_acosd = berserker2_clean(x_train_cp, theta_value=theta_value, metric=metric)
+        print('Duration ', time() - t0)
 
-        print(tb_centroids4.shape, ari4, nmi4)
+        print(tb_centroids_acosd.shape)
 
-        tb_uniq4, tb_sizes4 = np.unique(tb_labels4, return_counts=True)
-        tb_centroids5 = tb_centroids4[np.argsort(tb_sizes4)[::-1][:10]]
+        print('Evaluation')
+        extensive_evaluation(x_train_cp, y_train, tb_centroids_acosd, tb_labels_acosd)
+        print()
 
-        tb_labels5 = assign(D, tb_centroids5, metric=metric)
+    # tb_centroids3 = tb_centroids[np.argsort(tb_sizes)[::-1][:500]]
 
-        ari5 = adjusted_rand_score(y_train, tb_labels5)
-        nmi5 = normalized_mutual_info_score(y_train, tb_labels5)
+    # from thetan.theta import distance_matrix
 
-        print(tb_centroids5.shape, ari5, nmi5)
+    # D = distance_matrix(x_train_cp, tb_centroids3, metric=metric)
+
+    # for theta_value in np.arange(50000, 100000, 5000):
+    # # for theta_value in np.arange(10000, 20000, 500):
+    #     print()
+    #     print(theta_value)
+    #     tb_centroids4, tb_labels4 = berserker2_clean(D, theta_value=theta_value, metric=metric)
+
+    #     ari4 = adjusted_rand_score(y_train, tb_labels4)
+    #     nmi4 = normalized_mutual_info_score(y_train, tb_labels4)
+
+    #     print(tb_centroids4.shape, ari4, nmi4)
+
+    #     tb_uniq4, tb_sizes4 = np.unique(tb_labels4, return_counts=True)
+    #     tb_centroids5 = tb_centroids4[np.argsort(tb_sizes4)[::-1][:10]]
+
+    #     tb_labels5 = assign(D, tb_centroids5, metric=metric)
+
+    #     ari5 = adjusted_rand_score(y_train, tb_labels5)
+    #     nmi5 = normalized_mutual_info_score(y_train, tb_labels5)
+
+    #     print(tb_centroids5.shape, ari5, nmi5)
 
 
     t = 3

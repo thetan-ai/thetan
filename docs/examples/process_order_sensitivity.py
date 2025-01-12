@@ -181,6 +181,33 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
     return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, current_wcss, ecentroids.shape[0], duration, memory
 
 
+def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
+
+    D = np.sqrt(tdm(ecentroids, centroids))
+    closest = np.min(D, axis=1)
+    count = np.sum(closest < thr)
+    ac_score = count / len(ecentroids)
+
+    gt_wcss = wcss(X, true_label.astype('i8'), centroids)
+
+    current_wcss = wcss(X, np.asarray(label, dtype='i8'), ecentroids)
+
+    print('gt_wcss', gt_wcss)
+    print('current_wcss', current_wcss)
+
+    nmi_score = normalized_mutual_info_score(true_label, label)
+
+    sil_score = silhouette_score(X, label)
+
+    chi_score = calinski_harabasz_score(X, label)
+
+    fms_score = fowlkes_mallows_score(true_label, label)
+
+    ars_score = adjusted_rand_score(true_label, label)
+
+    return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, current_wcss, ecentroids.shape[0], duration, memory
+
+
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
 

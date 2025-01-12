@@ -184,6 +184,49 @@ def evaluate(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_
     return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, acc_score, current_wcss, ecentroids.shape[0], duration, memory
 
 
+def evaluate_strict(ecentroids=None, centroids=None, thr=0.5, X=None, label=None, true_label=None, duration=-1, memory=None):
+
+    D = np.sqrt(tdm(ecentroids, centroids))
+    closest = np.min(D, axis=1)
+
+    strict_mask = closest > thr
+
+    label_ids = np.arange(ecentroids.shape[0])
+    label_mask = label_ids[strict_mask]
+
+    label2 = label.copy()
+    for i, l in enumerate(label):
+        if l in label_mask:
+            label2[i] = -1
+        else:
+            label2[i] = l
+
+    label = label2.copy()
+
+    count = np.sum(closest <= thr)
+    ac_score = count / len(ecentroids)
+
+    gt_wcss = wcss(X, true_label.astype('i8'), centroids)
+
+    current_wcss = wcss(X, np.asarray(label, dtype='i8'), ecentroids)
+
+    print('gt_wcss', gt_wcss)
+    print('current_wcss', current_wcss)
+
+    nmi_score = normalized_mutual_info_score(true_label, label)
+
+    sil_score = silhouette_score(X, label)
+
+    chi_score = calinski_harabasz_score(X, label)
+
+    fms_score = fowlkes_mallows_score(true_label, label)
+
+    ars_score = adjusted_rand_score(true_label, label)
+
+    acc_score = accuracy_munkres(true_label, label)
+
+    return count, ac_score, nmi_score, sil_score, chi_score, fms_score, ars_score, acc_score, current_wcss, ecentroids.shape[0], duration, memory
+
 
 def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
 
@@ -481,7 +524,8 @@ cols = ['Count', 'AC', 'NMI', 'SIL', 'CHI', 'FMS', 'ARS', 'ACC', 'WCSS', 'Cluste
 # dpath = '/home/elef/Data/tb_output_advanced/'
 # dpath = '/N/slate/elef/tb_output_advanced/'
 
-dpath = '/home/elef/Data/tb_output_varying_density/'
+# dpath = '/home/elef/Data/tb_output_varying_density/'
+dpath = '/home/elef/Data/tb_output_varying_density_strict/'
 
 # dpath = '/home/elef/Data/tb_output_order_sensitivity/'
 # dpath = '/home/elef/Data/tb_output_advanced/gaussian_varying_size/'
@@ -493,7 +537,7 @@ dpath = '/home/elef/Data/tb_output_varying_density/'
 # dpath = 'C:/Users/elef/Data/tb_output/'
 
 reps = 2
-multiplier = 10 # [10-32, step 2]
+multiplier = 20 # 10 # [10-32, step 2]
 dpath += str(multiplier ** 2) + '/'
 run = 1
 # exp_data_name = 'gaussian'
@@ -515,7 +559,9 @@ run_experiments = True
 save_results = run_experiments
 summarize_results = False
 generate_plots = False
+evaluation_thr = 0.1
 
+evaluate = evaluate_strict
 
 if run_experiments:
     t_start = time()
@@ -525,7 +571,6 @@ if run_experiments:
         print('######################################### > Experiment ', str(expno), ' Go Go Team Thetan!')
 
         evaluations = {}
-        evaluation_thr = 0.1
 
         # good for gaussians
         X, L, gt_centroids = simulate_data(exp_data_name, blob_dis=5, cluster_x=multiplier, cluster_y=multiplier, vd_div=vd_div)
