@@ -14,7 +14,7 @@ img = cv2.imread(fname)
 
 rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-# Change here to LUV or LAB to make segmentation more realistic
+# Change here to LUV or LAB to make segmentation more realistic update thresholds accordingly
 
 print(rgb_image.shape)
 
@@ -34,6 +34,7 @@ X[:, 2:] *= enh
 from thetan.berserker import berserker2_clean, centroid_images
 
 centroids, labels = berserker2_clean(X, theta_value=theta)
+print(centroids.shape)
 
 unq = np.unique(labels)
 centroids_image = np.zeros((data.shape[0] *  data.shape[1], data.shape[2]), dtype='f8')
