@@ -354,26 +354,48 @@ x = np.array([1, 2, 3, 4])
 y = result['AC']['mean'].values
 e = result['AC']['std'].values
 
-plt.figure()
-plt.title('Ablation study - AC - Error plot')
-plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
-plt.xticks(x, result.index.tolist())
-plt.grid()
+# plt.figure()
+# plt.title('Ablation study - AC - Error plot')
+# plt.errorbar(x, y, e, linestyle='None', marker='o', capsize=3)
+# plt.xticks(x, result.index.tolist(), fontsize=12)
+# plt.xticks(y, fontsize=12)
+# plt.grid()
 
 ac = df['AC'].to_numpy()
 data = ac.reshape(20, 4)
-plt.figure()
-plt.title('Ablation study - AC - Violin plot')
-plt.violinplot(data, showmeans=True)
-plt.xticks(x, result.index.tolist())
+
+# plt.figure(figsize=(20, 8))
+# plt.title('Ablation study - #MC - Violin plot')
+# vp = plt.violinplot(300 - np.round(300*data, 0), showmeans=True)
+
+# colors = ['lightblue', 'lightgreen', 'blue', 'red']
+# for i, body in enumerate(vp['bodies']):
+#     body.set_facecolor(colors[i])
+
+# plt.xticks(x, result.index.tolist(), fontsize=20)
+# plt.yticks(300 - np.round(300 * y), fontsize=20)
+# plt.ylabel('Number of missed centroids (#MC)', fontsize=20)
+# plt.grid()
+
+plt.figure(figsize=(14, 6))
+plt.title('Ablation study - #MC - Box plot', fontsize=24)
+bp = plt.boxplot(300 - np.round(300*data, 0), patch_artist=True)
+colors = ['lightblue', 'lightgreen', 'pink', 'red']
+
+for patch, color in zip(bp['boxes'], colors):
+    patch.set_facecolor(color)
+    patch.set_linewidth(3)
+
+for element in ['whiskers', 'caps', 'medians']:
+    for line in bp[element]:
+        line.set_linewidth(3)
+
+
+plt.xticks(x, result.index.tolist(), fontsize=22)
+plt.yticks(300 - np.round(300 * y), fontsize=22)
+plt.ylabel('Number of missed centroids (#MC)', fontsize=22)
 plt.grid()
 
-plt.figure()
-plt.title('Ablation study - AC - Box plot')
-plt.boxplot(data)
-plt.xticks(x, result.index.tolist())
-plt.grid()
-
-plt.show()
+plt.savefig('ablation_study.png')
 
 
