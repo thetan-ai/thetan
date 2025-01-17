@@ -39,8 +39,6 @@ V = V[ind]
 print(np.product(L.shape))
 
 
-
-
 from sklearn.cluster import MeanShift
 
 from thetan.berserker import berserker2_clean, tbscan, tb_randomized
@@ -53,7 +51,7 @@ X[:, 2] = V
 
 X = np.ascontiguousarray(X)
 theta = 12.0
-niceK = 10
+niceK = 50
 
 tb_centroids, tb_labels = berserker2_clean(X, theta)
 
@@ -73,7 +71,7 @@ tmp = 1
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(111, projection='3d')
 
-ax.scatter(L, U, V, c='b', marker='.', alpha=0.05)
+ax.scatter(L, U, V, c='b', marker='.', alpha=0.1)
 # ax.scatter(tb_centroids[:, 0], tb_centroids[:, 1], tb_centroids[:, 2], c='r', marker='o', alpha=1)
 ax.scatter(hd_centroids[:, 0], hd_centroids[:, 1], hd_centroids[:, 2], c='r', marker='o', alpha=1)
 
