@@ -5,6 +5,7 @@ from thetan.theta import assign, distance_matrix
 
 from sklearn import metrics
 from sklearn.random_projection import GaussianRandomProjection
+from sklearn.preprocessing import StandardScaler
 from munkres import Munkres
 from pylab import figure, plot, show, legend
 
@@ -210,7 +211,10 @@ def jl_approach(theta=0.44, metric='arccos', edim=2000, verbose=False, normalize
     print('X min', X.min(), 'X max', X.max())
 
     if normalize:
-        X = X / np.linalg.norm(X, axis=1, keepdims=True)
+        # X = X / np.linalg.norm(X, axis=1, keepdims=True)
+
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
 
     X2 = johnson_lindenstrauss_expansion(X, edim)
 
