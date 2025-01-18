@@ -144,12 +144,24 @@ cdef double magnitude(double * vec, cnp.npy_intp D) noexcept nogil:
 cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
 
     cdef:
-        double dot, mag1, mag2
+        double dot, mag1, mag2, cosine_similarity
 
     dot = dot_prod(vec1, vec2, D)
     mag1 = magnitude(vec1, D)
     mag2 = magnitude(vec2, D)
-    return 1.0 - (dot / (mag1 * mag2))
+
+    if mag1 == 0 or mag2 == 0:
+        return 1
+
+    cosine_similarity = dot / (mag1 * mag2)
+
+    if cosine_similarity < -1.0:
+        cosine_similarity = -1.0
+
+    if cosine_similarity > 1.0:
+        cosine_similarity = 1.0
+
+    return 1.0 - cosine_similarity
 
 
 # // Function to calculate the arccosine distance
@@ -181,7 +193,19 @@ cdef double arccosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noex
     dot = dot_prod(vec1, vec2, D)
     mag1 = magnitude(vec1, D)
     mag2 = magnitude(vec2, D)
-    return acos(dot / (mag1 * mag2))
+
+    if mag1 == 0 or mag2 == 0:
+        return 0
+
+    cosine_similarity = dot / (mag1 * mag2)
+
+    if cosine_similarity < -1.0:
+        cosine_similarity = -1.0
+
+    if cosine_similarity > 1.0:
+        cosine_similarity = 1.0
+
+    return acos(cosine_similarity)
 
 
 cdef double l1_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:

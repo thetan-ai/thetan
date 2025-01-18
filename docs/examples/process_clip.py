@@ -51,7 +51,7 @@ def distillation(X, n_clusters=10):
 def normalization():
     pass
 
-def johnson_lindenstrauss_reduction(X):
+def johnson_lindenstrauss_reduction(X, low_dim):
 
     # Generate high-dimensional data
     # np.random.seed(42)
@@ -61,13 +61,16 @@ def johnson_lindenstrauss_reduction(X):
 
     # Target dimension (lower-dimensional space)
     epsilon = 0.1  # Distortion factor
-    target_dim = int(np.ceil(4 * np.log(n_points) / (epsilon**2)))
+    # target_dim = int(np.ceil(4 * np.log(n_points) / (epsilon**2)))
+    target_dim = low_dim  # Lower dimension
 
     # Random projection matrix
     R = np.random.randn(target_dim, original_dim) / np.sqrt(target_dim)
 
     # Perform the random projection
     X_reduced = np.dot(X, R.T)
+
+    t = 1
 
     return X_reduced
 
@@ -200,32 +203,34 @@ def standard_approach():
     evaluate(gt_labels, labels2)
 
 
-def jl_approach(theta=0.44, metric='arccos', edim=2000, verbose=False, normalize=False):
+def jl_approach(theta_value=0.44, metric='arccos', edim=2000, verbose=False, normalize=False, expand=True):
 
     print()
     print('Starting Johnson Lindenstrauss Approach .. ')
-    print('Theta ', theta, ' Metric ', metric, ' Expanded Dimension ', edim)
+    print('Theta ', theta_value, ' Metric ', metric, ' Target Dimension ', edim)
 
     X = np.load(fitest).astype('f8')
 
-    print('X min', X.min(), 'X max', X.max())
-
     if normalize:
         # X = X / np.linalg.norm(X, axis=1, keepdims=True)
-
-        scaler = StandardScaler()
+        scaler = StandardScaler(with_mean=True, with_std=False)
         X = scaler.fit_transform(X)
+        X = 1000 * X # let's escape from potential numerical issues
 
-    X2 = johnson_lindenstrauss_expansion(X, edim)
+    if expand:
+        X2 = johnson_lindenstrauss_expansion(X, edim)
+    else:
+        X2 = johnson_lindenstrauss_reduction(X, edim)
 
     print('X', X.shape, 'X2', X2.shape)
+    print('X min', X.min(), 'X max', X.max(), 'X2 min', X2.min(), 'X2 max', X2.max())
 
     gt_labels = np.loadtxt(fgt_test)
 
-    centroids, labels = tb(X2, theta, metric=metric)
+    centroids, labels = tb(X2, theta_value, metric=metric)
 
     evaluate(gt_labels, labels)
-    print('#Clusters', centroids.shape)
+    print('#Clusters ', centroids.shape)
 
     labels2, sizes = keep_largest(X2, centroids, labels, 10)
     evaluate(gt_labels, labels2)
@@ -241,7 +246,6 @@ def jl_approach(theta=0.44, metric='arccos', edim=2000, verbose=False, normalize
 
     if verbose:
 
-
         figure()
         plot(sorted(sizes)[::-1], label='sizes')
         plot(sorted(sizes2)[::-1], label='sizes2')
@@ -250,22 +254,31 @@ def jl_approach(theta=0.44, metric='arccos', edim=2000, verbose=False, normalize
         show()
 
 
+def jl_experiments(main_theta=0.44):
+
+    for a in np.linspace(0.5, 1.5, 10):
+
+        print()
+
+        print('>>>> Factor' , a)
+
+        theta_value = main_theta * a
+
+        jl_approach(theta_value, 'arccos', 256, normalize=True, expand=False) # X/2
+
+        jl_approach(theta_value, 'arccos', 128, normalize=True, expand=False) # X/4
+
+        jl_approach(theta_value, 'arccos', 64, normalize=True, expand=False) # X/8
+
+        jl_approach(theta_value, 'arccos', 1024, normalize=True, expand=True) # 2X
+
+        jl_approach(theta_value, 'arccos', 2048, normalize=True, expand=True) # 4X
+
+        jl_approach(theta_value, 'arccos', 3072, normalize=True, expand=True) # 6X
+
 
 if __name__ == '__main__':
 
-    # standard_approach()
-
-    # jl_approach(0.44, 'arccos', 2000, False)
-
-    # jl_approach(0.44, 'arccos', 4000, False)
-
-    # jl_approach(0.44, 'arccos', 6000, False)
-
-
-    jl_approach(10.0, 'l1_norm', 1024, False, True)
-
-    jl_approach(8.0, 'l1_norm', 1024, False, True)
-
-    jl_approach(12.0, 'l1_norm', 1024, False, True)
+    jl_experiments()
 
     t = 1
