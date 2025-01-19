@@ -4,9 +4,9 @@ description = "Fast and robust algorithms for advanced A.I."
 license = {file = "LICENSE"}
 readme = "README.rst"
 requires-python = ">=3.9"
-authors = [{ name = "Eleftherios Garyfallidis", email = "elef@indiana.edu" }]
+authors = [{ name = "Eleftherios Garyfallidis", email = "elef@iu.edu" }]
 maintainers = [
-    {name = "Eleftherios Garyfallidis", email="elef@indiana.edu"},
+    {name = "Eleftherios Garyfallidis", email="elef@iu.edu"},
     {name = "Serge Koudoro", email="skoudoro@iu.edu"},
 ]
 keywords = ["AI", "thetan"]

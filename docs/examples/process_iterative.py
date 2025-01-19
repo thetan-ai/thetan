@@ -189,7 +189,7 @@ dpath = '/home/elef/Data/tb_output_iteration_v2/'
 # dpath = 'C:/Users/elef/Data/tb_output_iteration/'
 # dpath = 'C:/Users/Eleftherios/Data/tb_output_iteration/'
 
-run_experiments = True
+run_experiments = False
 plot_results = True
 
 reps = 20
@@ -293,13 +293,46 @@ ac_data = ac.reshape(20, 14)
 nmi = df['NMI'].to_numpy()
 nmi_data = nmi.reshape(20, 14)
 
-plt.figure()
-plt.title('Iteration study - NMI - Violin plot')
-# plt.violinplot(ac_data, showmeans=True)
-plt.violinplot(nmi_data, showmeans=True)
-# plt.legend()
-plt.xticks(x, result.index.tolist())
+# plt.figure()
+# plt.title('Iteration study - NMI - Violin plot')
+# # plt.violinplot(ac_data, showmeans=True)
+# plt.violinplot(nmi_data, showmeans=True)
+# # plt.legend()
+# plt.xticks(x, result.index.tolist())
+# plt.grid()
+
+
+
+plt.figure(figsize=(14, 6))
+plt.title('Iteration study - NMI - Violin plot', fontsize=24)
+vp = plt.violinplot(nmi_data, showmeans=True)
+
+colors = ["#d0e1f2", "#c3daee", "#afd1e7", "#9ac8e0",
+    "#81badb", "#69add5", "#549fcd", "#4090c5",
+    "#3080bd", "#2070b4", "#1460a8", "#08509b",
+    "#084082", "#08306b"]
+
+for i, body in enumerate(vp['bodies']):
+    body.set_facecolor(colors[i])
+
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    if partname in vp:
+        vp[partname].set_linewidth(3)  # Set linewidth
+
+# Set the linewidth for the violin body edges
+for body in vp['bodies']:
+    body.set_edgecolor('black')  # Optional: Set edge color
+    body.set_linewidth(3)
+
+xt = [int(l.split('TB')[1]) for l in result.index.tolist()]
+
+plt.xticks(x, xt, fontsize=22)
+plt.yticks(fontsize=22)
+plt.ylabel('NMI', fontsize=22)
 plt.grid()
+# plt.show()
+plt.savefig('iteration_study.png')
+
 
 t = 1
 # plt.figure()
@@ -307,5 +340,3 @@ t = 1
 # plt.boxplot(data)
 # plt.xticks(x, result.index.tolist())
 # plt.grid()
-
-# plt.show()
