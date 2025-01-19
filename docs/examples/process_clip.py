@@ -94,10 +94,10 @@ def johnson_lindenstrauss_expansion(X, high_dim):
     return X_expanded
 
 
-def evaluate(label, pred):
+def evaluate(label, pred, num_clusters):
     nmi = metrics.normalized_mutual_info_score(label, pred)
     ari = metrics.adjusted_rand_score(label, pred)
-    print("[Clustering Result]: NMI = {:.2f}, ARI = {:.2f}".format(nmi * 100, ari * 100))
+    print("[Clustering Result]: NMI = {:.2f}, ARI = {:.2f} NUM = {:d}".format(nmi * 100, ari * 100, num_clusters))
     return nmi, ari
 
 
@@ -150,57 +150,7 @@ def distance_matrix_approach(theta=0.44, metric='arccos', skip=10, verbose=False
         show()
 
 
-def standard_approach():
 
-    X = np.load(fitest).astype('f8')
-
-    gt_labels = np.loadtxt(fgt_test)
-
-    X = X / np.linalg.norm(X, axis=1, keepdims=True)
-
-    skip = 10
-
-    # labels = distillation(X, 10)
-    # evaluate(gt_labels, labels)
-
-    res0 = feature_triuk(X[0][:, None])[::skip]
-    print(res0.shape)
-
-    res1 = feature_triuk(X[1][:, None])[::skip]
-    print(res1.shape)
-
-    t = time()
-    X2 = np.zeros((X.shape[0], res0.shape[0]))
-    for i, x in enumerate(X):
-        X2[i] = feature_triuk(x[:, None])[::skip]
-    print('Feature Expansion Duration ', time() - t)
-
-    X2 = np.ascontiguousarray(X2)
-
-    theta = 9.8
-
-    # for theta in range(9, 10, 12):
-    metric = 'euclidean'
-
-    theta = 200
-    metric = 'l1_norm'
-
-    theta = 0.4
-    metric = 'arccos'
-
-
-    print('Theta ', theta, ' Metric ', metric)
-
-    t = time()
-    centroids, labels = tb(X2, theta, metric=metric)
-    print('TB Duration ', time() - t)
-
-    evaluate(gt_labels, labels)
-
-    print('#Clusters', centroids.shape)
-
-    labels2, sizes = keep_largest(X, centroids, labels, 10)
-    evaluate(gt_labels, labels2)
 
 
 def jl_approach(theta_value=0.44, metric='arccos', edim=2000, verbose=False, normalize=False, expand=True):
@@ -256,7 +206,7 @@ def jl_approach(theta_value=0.44, metric='arccos', edim=2000, verbose=False, nor
 
 def jl_experiments(main_theta=0.44):
 
-    for a in np.linspace(0.5, 1.5, 10):
+    for a in np.linspace(1.0, 1.5, 10):
 
         print()
 
@@ -277,8 +227,88 @@ def jl_experiments(main_theta=0.44):
         jl_approach(theta_value, 'arccos', 3072, normalize=True, expand=True) # 6X
 
 
+def standard_approach(theta_value, metric, thresh=20, normalize=True, sparsify=True, triuk=False, jl=True):
+
+    X = np.load(fitest).astype('f8')
+
+    gt_labels = np.loadtxt(fgt_test)
+
+    if normalize:
+        # X = X / np.linalg.norm(X, axis=1, keepdims=True)
+        scaler = StandardScaler(with_mean=True, with_std=False)
+        X = scaler.fit_transform(X)
+        X = 1000 * X # let's escape from small numbers
+
+
+    if sparsify:
+        X[X < thresh] = 0
+
+    if jl:
+        R = np.random.randn(X.shape)
+        X = X * R
+
+
+    X = np.ascontiguousarray(X)
+
+    print('X shape ', X.shape, ' X min ', X.min(), ' X max ', X.max(), ' X mean ', X.mean(), ' X std ', X.std())
+
+    # labels = distillation(X, 10)
+    # evaluate(gt_labels, labels)
+    if triuk:
+
+        skip = 10
+
+        res0 = feature_triuk(X[0][:, None])[::skip]
+        print(res0.shape)
+
+        res1 = feature_triuk(X[1][:, None])[::skip]
+        print(res1.shape)
+
+        t = time()
+        X2 = np.zeros((X.shape[0], res0.shape[0]))
+        for i, x in enumerate(X):
+            X2[i] = feature_triuk(x[:, None])[::skip]
+        print('Feature Expansion Duration ', time() - t)
+
+        X2 = np.ascontiguousarray(X2)
+        X = X2
+
+    print('Theta ', theta_value, ' Metric ', metric)
+
+    t = time()
+    centroids, labels = tb(X, theta_value, metric=metric)
+    print('TB Duration ', time() - t)
+
+    num_clusters = centroids.shape[0]
+    evaluate(gt_labels, labels, num_clusters)
+
+    # print('# Clusters ', centroids.shape)
+
+    labels2, sizes = keep_largest(X, centroids, labels, 10)
+    evaluate(gt_labels, labels2, 10)
+
+
 if __name__ == '__main__':
 
-    jl_experiments()
+
+    theta_value = 0.8
+    metric = 'arccos'
+    thresh = 20
+
+    for factor in np.linspace(0.7, 1.5, 10):
+
+        print('>>>>>>>>>>>>>>> Theta ', factor*theta_value)
+        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=False)
+
+
+    theta_value = 2000
+    metric = 'L1'
+    thresh = 20
+
+    for factor in np.linspace(1.5, 2.5, 10):
+
+        print('>>>>>>>>>>>>>>> Theta ', factor*theta_value)
+
+        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=False)
 
     t = 1
