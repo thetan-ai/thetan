@@ -8,7 +8,7 @@ from sklearn.random_projection import GaussianRandomProjection
 from sklearn.preprocessing import StandardScaler
 from munkres import Munkres
 from pylab import figure, plot, show, legend
-
+from sklearn.decomposition import PCA
 
 
 dpath = '/home/elef/Data/CLIP/'
@@ -288,27 +288,112 @@ def standard_approach(theta_value, metric, thresh=20, normalize=True, sparsify=T
     evaluate(gt_labels, labels2, 10)
 
 
+def analysis_approach(theta_value, metric, normalize=True, verbose=False, ndim=None):
+
+    X = np.load(fitest).astype('f8')
+
+    gt_labels = np.loadtxt(fgt_test)
+
+    if ndim is not None:
+
+        pca = PCA(n_components=ndim)
+        X = pca.fit_transform(X)
+
+    X = np.ascontiguousarray(X)
+
+    # X = X / np.linalg.norm(X, axis=1, keepdims=True)
+    # outer_sums = np.zeros(X.shape[0])
+    # for i, x in enumerate(X):
+    #     outer_sums[i] = np.sum(np.outer(x, x)**2)
+
+    # if normalize:
+    #     # X = X / np.linalg.norm(X, axis=1, keepdims=True)
+    #     scaler = StandardScaler(with_mean=True, with_std=False)
+    #     X = scaler.fit_transform(X)
+    #     X = 1000 * X # let's escape from small numbers
+
+    # m = X.mean(axis=0)
+    # X2 = np.ascontiguousarray(100000 * (X - m))
+
+    Xnorms = np.linalg.norm(X, axis=1)
+
+    print('X shape ', X.shape, ' X min ', X.min(), ' X max ', X.max(), ' X mean ', X.mean(), ' X std ', X.std())
+    print('Theta ', theta_value, ' Metric ', metric)
+
+    # if verbose:
+    #     figure()
+    #     plot(sorted(Xnorms)[::-1])
+
+    t = time()
+    centroids, labels = tb(X, theta_value, metric=metric)
+    print('TB Duration ', time() - t)
+
+    print('Centroid Neighbors')
+    no_cneighbors = np.zeros(centroids.shape[0])
+    for i, c in enumerate(centroids):
+        c2c = distance_matrix(c[None, :], centroids, metric=metric).ravel()
+        # print(np.sum(c2c < theta_value))
+        no_cneighbors[i] = np.sum(c2c < theta_value)
+
+    print('Medians')
+    medians_min = np.zeros(centroids.shape[0])
+    medians_max = np.zeros(centroids.shape[0])
+
+    for i, c in enumerate(centroids):
+        X_tmp = np.ascontiguousarray(X[labels == i])
+        c2X = distance_matrix(c[None, :], X_tmp, metric=metric).ravel()
+        medians_min[i] = np.argmin(c2X)
+        medians_max[i] = np.argmax(c2X)
+
+    num_clusters = centroids.shape[0]
+    evaluate(gt_labels, labels, num_clusters)
+
+    labels2, sizes = keep_largest(X, centroids, labels, 10)
+    evaluate(gt_labels, labels2, 10)
+
+    return centroids, labels, labels2, no_cneighbors, medians_min, medians_max
+
+
+    # if verbose:
+    #     show()
+
+    t = 1
+
 if __name__ == '__main__':
 
+    if False:
+        theta_value = 4.
+        metric = 'euclidean'
+        dim = 20
 
-    theta_value = 0.8
-    metric = 'arccos'
-    thresh = 20
+        # for theta_value in np.linspace(3.6, 3.8, 20):
 
-    for factor in np.linspace(0.7, 1.5, 10):
+        for theta_value in 10 * [3.75,]:
 
-        print('>>>>>>>>>>>>>>> Theta ', factor*theta_value)
-        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=True)
+            print()
+            print('>>>> Theta Value', theta_value)
+            print()
+            res = analysis_approach(theta_value, metric, normalize=True, verbose=True, ndim=dim)
+            centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
+
+            print()
 
 
-    theta_value = 2000
-    metric = 'L1'
-    thresh = 20
+    theta_value = 2.
+    metric = 'euclidean'
+    dim = 15
 
-    for factor in np.linspace(1.5, 2.2, 10):
+    for theta_value in np.linspace(2.4, 4., 100):
 
-        print('>>>>>>>>>>>>>>> Theta ', factor*theta_value)
+        # for theta_value in 10 * [3.75,]:
 
-        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=True)
+        print()
+        print('>>>> Theta Value', theta_value)
+        print()
+        res = analysis_approach(theta_value, metric, normalize=True, verbose=True, ndim=dim)
+        centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
+
+        print()
+
 
     t = 1
