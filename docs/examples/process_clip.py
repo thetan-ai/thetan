@@ -244,7 +244,7 @@ def standard_approach(theta_value, metric, thresh=20, normalize=True, sparsify=T
         X[X < thresh] = 0
 
     if jl:
-        R = np.random.randn(X.shape)
+        R = np.random.randn(*X.shape)
         X = X * R
 
 
@@ -298,17 +298,17 @@ if __name__ == '__main__':
     for factor in np.linspace(0.7, 1.5, 10):
 
         print('>>>>>>>>>>>>>>> Theta ', factor*theta_value)
-        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=False)
+        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=True)
 
 
     theta_value = 2000
     metric = 'L1'
     thresh = 20
 
-    for factor in np.linspace(1.5, 2.5, 10):
+    for factor in np.linspace(1.5, 2.2, 10):
 
         print('>>>>>>>>>>>>>>> Theta ', factor*theta_value)
 
-        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=False)
+        standard_approach(factor * theta_value, metric=metric, thresh=thresh, normalize=True, sparsify=True, triuk=False, jl=True)
 
     t = 1
