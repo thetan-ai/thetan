@@ -227,6 +227,9 @@ def ridgeline(data, bins, overlap=0, fill=True, labels=None, n_points=150):
                      np.max(np.concatenate(data)), n_points)
     curves = []
     ys = []
+
+    plt.figure(figsize=(20, 12))
+
     for i, d in enumerate(data):
         d2 = gaussian_filter1d(d, sigma=2.)
         # x = np.linspace(d2.min(), d2.max(), n_points)
@@ -239,12 +242,17 @@ def ridgeline(data, bins, overlap=0, fill=True, labels=None, n_points=150):
         #                      curve+y, zorder=len(data)-i+1)
         # plt.plot(xx, curve+y, c='k', zorder=len(data)-i+1)
         # plt.plot(xx, d2, label=str(i)) # + i * 200000)
-        plt.plot(bins[i][:-1], d2, label=labels[i])
+        plt.plot(bins[i][:-1], d2, label=labels[i], linewidth=3)
         plt.fill_between(bins[i][:-1], np.zeros(n_points), d2, alpha=0.5)
     # if labels:
     #     plt.yticks(ys, labels)
 
-    plt.legend()
+    legend = plt.legend(fontsize=22)
+    legend.set_title(title='Inter-class distance', prop={'size': 22})
+    plt.xticks(fontsize=22)
+    plt.yticks(fontsize=22)
+    plt.xlabel('Distance ranges', fontsize=24, labelpad=22)
+    plt.ylabel('Density', fontsize=24, labelpad=22)
     plt.show()
 
 
@@ -316,6 +324,10 @@ def random_walks():
 
 
 if __name__ == '__main__':
+
+    random_walks()
+
+    1/0
 
     verbose = True
     dpath = '/home/elef/Data/tb_output_subsampling/'
