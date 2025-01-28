@@ -1,6 +1,7 @@
 import numpy as np
 from time import time
 from thetan.berserker import berserker2_clean as tb
+from thetan.berserker import tbscan_half, tb_of_tb
 from thetan.theta import assign, distance_matrix
 
 from sklearn import metrics
@@ -328,9 +329,65 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
     #     figure()
     #     plot(sorted(Xnorms)[::-1])
 
+    print('>>> TB ')
+
     t = time()
     centroids, labels = tb(X, theta_value, metric=metric)
     print('TB Duration ', time() - t)
+
+    # print('#Clusters ', centroids.shape[0])
+
+    # t = time()
+    # centroids3, labels3 = tb_of_tb(centroids, labels, 1.2 * theta_value, metric=metric)
+    # print('TB of TB Duration ', time() - t)
+
+    # print('#Clusters ', centroids3.shape[0])
+
+    print('>>> TBSCAN ')
+    best_eps = -1
+    best_min_samples = -1
+    maxc = -1
+    maxc_ari = -2
+
+    max_a = -2
+    best_eps_a = -1
+    best_min_samples_a = -1
+    best_clusters_a = -1
+
+
+    for eps in np.linspace(3.25, 3.28, 400):
+
+        for min_samples in np.arange(2, 10, 1):
+
+            t = time()
+            centroids2, labels2 = tbscan_half(X, eps=eps, min_samples=min_samples, initial_centroids=centroids, initial_labels=labels)
+            print('Eps', eps, ' min_samples', min_samples, ' #clusters ', centroids2.shape[0], ' Duration ', time() - t)
+
+            t = time()
+            nmi, ari = evaluate(gt_labels, labels2, centroids2.shape[0])
+            print('Evaluation Duration ', time() - t)
+
+
+            if centroids2.shape[0] > maxc:
+                maxc = centroids2.shape[0]
+                best_eps = eps
+                best_min_samples = min_samples
+                maxc_ari = ari
+
+            if ari > max_a:
+                max_a = ari
+                best_eps_a = eps
+                best_min_samples_a = min_samples
+                best_clusters_a = centroids2.shape[0]
+
+
+    print('>>> Summary \n\n')
+
+    print('Best Eps', best_eps, ' Best min_samples', best_min_samples, ' Max Clusters ', maxc, ' Max ARI', maxc_ari)
+
+    print('Best Eps A', best_eps_a, ' Best min_samples A ', best_min_samples_a, ' Max Clusters A ', best_clusters_a, ' Max ARI', max_a)
+
+    return
 
     print('Centroid Neighbors')
     no_cneighbors = np.zeros(centroids.shape[0])
@@ -356,6 +413,8 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
 
     # TODO: TB of TB, TBSCAN
 
+
+
     labels2, sizes = keep_largest(X, centroids, labels, keep)
     evaluate(gt_labels, labels2, keep)
 
@@ -373,12 +432,12 @@ if __name__ == '__main__':
     fX = fitest2
     fgt = fgt_test2
 
-    res = analysis_approach(fX, fgt, 3.77, 'euclidean', normalize=True, verbose=True, ndim=50, keep=1000)
-    centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
+    analysis_approach(fX, fgt, 3.77, 'euclidean', normalize=True, verbose=True, ndim=50, keep=1000)
+    # centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
 
 
-    from pylab import plot, show, title, figure, hist, subplot, imshow, cm, colorbar, legend, xlim, ylim, scatter
-    figure(); title('cneib'); plot(no_cneighbors); figure(); title('medians min'); plot(medians_min); figure(); title('medians max'); plot(medians_max); show();
+    # from pylab import plot, show, title, figure, hist, subplot, imshow, cm, colorbar, legend, xlim, ylim, scatter
+    # figure(); title('cneib'); plot(no_cneighbors); figure(); title('medians min'); plot(medians_min); figure(); title('medians max'); plot(medians_max); show();
 
     t = 1
 

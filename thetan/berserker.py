@@ -1443,6 +1443,41 @@ def tbscan(X, theta_value, eps=2., min_samples=1):
 
     return centroids, labels
 
+def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels=None):
+    # Currently supporting only L2
+
+    model = DBSCAN(eps=eps, min_samples=min_samples)
+    model.fit(initial_centroids)
+
+    unq = np.unique(model.labels_)
+    db_nclusters = np.sum(unq>=0)
+
+    dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
+    dblabels = model.labels_
+
+    final_labels = initial_labels.copy()
+
+    for i, l in enumerate(initial_labels):
+        final_labels[i] = dblabels[l]
+
+    centroids = centroids_from_labels(X, final_labels)
+    labels = final_labels
+
+    return centroids, labels
+
+
+def tb_of_tb(X, initial_centroids, initial_labels, theta_value, metric='euclidean'):
+
+    centroids, labels = berserker2_clean(initial_centroids, theta_value, metric=metric)
+
+    final_labels = initial_labels.copy()
+    for i, l in enumerate(initial_labels):
+        final_labels[i] = labels[l]
+
+    final_centroids = centroids_from_labels(X, centroids, labels)
+
+    return final_centroids, final_labels
+
 
 def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
     """ Process each slice of the volume independently """
