@@ -343,6 +343,8 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
     medians_min = np.zeros(centroids.shape[0])
     medians_max = np.zeros(centroids.shape[0])
 
+
+    # Save distance values
     for i, c in enumerate(centroids):
         X_tmp = np.ascontiguousarray(X[labels == i])
         c2X = distance_matrix(c[None, :], X_tmp, metric=metric).ravel()
@@ -351,6 +353,8 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
 
     num_clusters = centroids.shape[0]
     evaluate(gt_labels, labels, num_clusters)
+
+    # TODO: TB of TB, TBSCAN
 
     labels2, sizes = keep_largest(X, centroids, labels, keep)
     evaluate(gt_labels, labels2, keep)
