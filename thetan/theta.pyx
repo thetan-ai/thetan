@@ -1403,8 +1403,11 @@ def centroids_from_labels(double[:, ::1] X, cnp.npy_intp[:] indices):
             for d in range(D):
                 centroids[k * D + d] /= cluster_sizes[k]
 
-    free(cluster_sizes)
-    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    # free(cluster_sizes)
+    # cluster_sizes = NULL
+    final_cluster_sizes = np.asarray(<double[:K]> cluster_sizes, dtype=np.float64)
+    final_centroids = np.asarray(<double[:K, :D]> centroids, dtype=np.float64)
+    del final_cluster_sizes
     return np.ascontiguousarray(final_centroids)
 
 

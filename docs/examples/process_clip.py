@@ -7,7 +7,7 @@ from thetan.theta import assign, distance_matrix
 from sklearn import metrics
 from sklearn.random_projection import GaussianRandomProjection
 from sklearn.preprocessing import StandardScaler
-from munkres import Munkres
+# from munkres import Munkres
 from pylab import figure, plot, show, legend
 from sklearn.decomposition import PCA
 

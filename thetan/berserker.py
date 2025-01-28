@@ -1460,6 +1460,7 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
     for i, l in enumerate(initial_labels):
         final_labels[i] = dblabels[l]
 
+    final_labels = np.ascontiguousarray(final_labels, dtype=np.int64)
     centroids = centroids_from_labels(X, final_labels)
     labels = final_labels
 
@@ -1474,7 +1475,7 @@ def tb_of_tb(X, initial_centroids, initial_labels, theta_value, metric='euclidea
     for i, l in enumerate(initial_labels):
         final_labels[i] = labels[l]
 
-    final_centroids = centroids_from_labels(X, centroids, labels)
+    final_centroids = centroids_from_labels(X, labels)
 
     return final_centroids, final_labels
 
