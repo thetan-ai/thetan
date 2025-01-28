@@ -12,15 +12,17 @@ from sklearn.decomposition import PCA
 
 
 dpath = '/home/elef/Data/CLIP/'
-
 fitrain = dpath + 'CIFAR-10_image_embedding_train.npy'
-
 fitest = dpath + 'CIFAR-10_image_embedding_test.npy'
-
 fconcat = dpath + 'concat_embedding.npy'
 
 fgt_train = dpath + 'CIFAR-10_labels_train.txt'
 fgt_test = dpath + 'CIFAR-10_labels_test.txt'
+
+dpath2 = '/home/elef/Data/ImageNet1K/'
+fitest2 = dpath2 + 'ImageNet_image_embedding_test.npy'
+fgt_test2 = dpath2 + 'ILSVRC2012_validation_ground_truth.txt'
+
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -288,11 +290,11 @@ def standard_approach(theta_value, metric, thresh=20, normalize=True, sparsify=T
     evaluate(gt_labels, labels2, 10)
 
 
-def analysis_approach(theta_value, metric, normalize=True, verbose=False, ndim=None):
+def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=False, ndim=None, keep=10, epsilon=0.001):
 
-    X = np.load(fitest).astype('f8')
+    X = np.load(fX).astype('f8')
 
-    gt_labels = np.loadtxt(fgt_test)
+    gt_labels = np.loadtxt(fgt)
 
     if ndim is not None:
 
@@ -300,6 +302,8 @@ def analysis_approach(theta_value, metric, normalize=True, verbose=False, ndim=N
         X = pca.fit_transform(X)
 
     X = np.ascontiguousarray(X)
+
+
 
     # X = X / np.linalg.norm(X, axis=1, keepdims=True)
     # outer_sums = np.zeros(X.shape[0])
@@ -332,8 +336,8 @@ def analysis_approach(theta_value, metric, normalize=True, verbose=False, ndim=N
     no_cneighbors = np.zeros(centroids.shape[0])
     for i, c in enumerate(centroids):
         c2c = distance_matrix(c[None, :], centroids, metric=metric).ravel()
-        # print(np.sum(c2c < theta_value))
-        no_cneighbors[i] = np.sum(c2c < theta_value)
+        # no_cneighbors[i] = np.sum((c2c < 0.5 * theta_value) & (c2c > epsilon))
+        no_cneighbors[i] = np.sum((c2c <  theta_value) & (c2c > 0.95 * theta_value))
 
     print('Medians')
     medians_min = np.zeros(centroids.shape[0])
@@ -348,8 +352,8 @@ def analysis_approach(theta_value, metric, normalize=True, verbose=False, ndim=N
     num_clusters = centroids.shape[0]
     evaluate(gt_labels, labels, num_clusters)
 
-    labels2, sizes = keep_largest(X, centroids, labels, 10)
-    evaluate(gt_labels, labels2, 10)
+    labels2, sizes = keep_largest(X, centroids, labels, keep)
+    evaluate(gt_labels, labels2, keep)
 
     return centroids, labels, labels2, no_cneighbors, medians_min, medians_max
 
@@ -360,6 +364,19 @@ def analysis_approach(theta_value, metric, normalize=True, verbose=False, ndim=N
     t = 1
 
 if __name__ == '__main__':
+
+
+    fX = fitest2
+    fgt = fgt_test2
+
+    res = analysis_approach(fX, fgt, 3.77, 'euclidean', normalize=True, verbose=True, ndim=50, keep=1000)
+    centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
+
+
+    from pylab import plot, show, title, figure, hist, subplot, imshow, cm, colorbar, legend, xlim, ylim, scatter
+    figure(); title('cneib'); plot(no_cneighbors); figure(); title('medians min'); plot(medians_min); figure(); title('medians max'); plot(medians_max); show();
+
+    t = 1
 
     if False:
         theta_value = 4.
@@ -379,21 +396,21 @@ if __name__ == '__main__':
             print()
 
 
-    theta_value = 2.
-    metric = 'euclidean'
-    dim = 15
+        theta_value = 2.
+        metric = 'euclidean'
+        dim = 15
 
-    for theta_value in np.linspace(2.4, 4., 100):
+        for theta_value in np.linspace(2.4, 4., 100):
 
-        # for theta_value in 10 * [3.75,]:
+            # for theta_value in 10 * [3.75,]:
 
-        print()
-        print('>>>> Theta Value', theta_value)
-        print()
-        res = analysis_approach(theta_value, metric, normalize=True, verbose=True, ndim=dim)
-        centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
+            print()
+            print('>>>> Theta Value', theta_value)
+            print()
+            res = analysis_approach(theta_value, metric, normalize=True, verbose=True, ndim=dim)
+            centroids, labels, labels2, no_cneighbors, medians_min, medians_max = res
 
-        print()
+            print()
 
 
     t = 1
