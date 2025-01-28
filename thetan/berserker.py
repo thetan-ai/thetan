@@ -1470,13 +1470,13 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
 
 def tb_of_tb(X, initial_centroids, initial_labels, theta_value, metric='euclidean'):
 
-    centroids, labels = berserker2_clean(initial_centroids, theta_value, metric=metric)
+    _, labels = berserker2_clean(initial_centroids, theta_value, metric=metric)
 
     final_labels = initial_labels.copy()
     for i, l in enumerate(initial_labels):
         final_labels[i] = labels[l]
 
-    final_centroids = centroids_from_labels(X, labels)
+    final_centroids = centroids_from_labels(X, final_labels)
 
     return final_centroids, final_labels
 

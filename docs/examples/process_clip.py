@@ -335,13 +335,44 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
     centroids, labels = tb(X, theta_value, metric=metric)
     print('TB Duration ', time() - t)
 
-    # print('#Clusters ', centroids.shape[0])
+    unqi, sizes = np.unique(labels, return_counts=True)
+    print('Number of clusters greater than 500 ', np.sum(sizes > 500))
 
-    # t = time()
-    # centroids3, labels3 = tb_of_tb(centroids, labels, 1.2 * theta_value, metric=metric)
-    # print('TB of TB Duration ', time() - t)
+    t = time()
+    nmi, ari = evaluate(gt_labels, labels, centroids.shape[0])
+    print('Evaluation Duration ', time() - t)
 
-    # print('#Clusters ', centroids3.shape[0])
+    print('>>> TB of TB ')
+
+    for theta_tmp in np.linspace(0.7 * theta_value, 1.5 * theta_value, 20):
+
+        print('Theta ', theta_tmp)
+
+        t = time()
+        centroids3, labels3 = tb_of_tb(X, centroids, labels, theta_tmp, metric=metric)
+        print('TB of TB Duration ', time() - t)
+
+        # print('#Clusters ', centroids3.shape[0])
+
+        t = time()
+        nmi, ari = evaluate(gt_labels, labels3, centroids3.shape[0])
+        print('Evaluation Duration ', time() - t)
+
+        unqi3, sizes3 = np.unique(labels3, return_counts=True)
+
+        print('Number of clusters greater than 500 ', np.sum(sizes3 > 500))
+
+        labels4, sizes4 = keep_largest(X, centroids3, labels3, keep)
+
+        unqi4, sizes4 = np.unique(labels4, return_counts=True)
+
+        t = time()
+        nmi, ari = evaluate(gt_labels, labels4, keep)
+        print('Evaluation Duration ', time() - t)
+
+        print('Number of clusters greater than 500 ', np.sum(sizes4 > 500))
+
+        print()
 
     print('>>> TBSCAN ')
     best_eps = -1
