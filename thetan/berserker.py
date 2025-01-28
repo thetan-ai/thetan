@@ -1450,10 +1450,11 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
     model.fit(initial_centroids)
 
     unq = np.unique(model.labels_)
-    db_nclusters = np.sum(unq>=0)
 
-    dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
     dblabels = model.labels_
+    dbl_max = dblabels.max()
+    dblabels[dblabels < 0] = dbl_max + 1 # this is important because -1 is the outlier label and we want to keep it
+    dblabels = np.ascontiguousarray(dblabels, dtype=np.int64)
 
     final_labels = initial_labels.copy()
 
