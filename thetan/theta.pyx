@@ -246,43 +246,43 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
     b[0] = temp
 
 
-cdef void random_permutation(cnp.npy_intp * arr, cnp.npy_intp n) noexcept nogil:
-    cdef cnp.npy_intp i, j
+# cdef void random_permutation(cnp.npy_intp * arr, cnp.npy_intp n) noexcept nogil:
+#     cdef cnp.npy_intp i, j
 
-    srand(time(NULL)); # seed random number generator
+#     srand(time(NULL)); # seed random number generator
 
-    for i in range(n-1, 0, -1):
-        j = rand() % (i + 1)
-        swap(&arr[i], &arr[j])
+#     for i in range(n-1, 0, -1):
+#         j = rand() % (i + 1)
+#         swap(&arr[i], &arr[j])
 
 
 
-def permutation(cnp.npy_intp n):
-    cdef cnp.npy_intp [:] a = np.arange(n)
-    cdef cnp.npy_intp * p = &a[0]
+# def permutation(cnp.npy_intp n):
+#     cdef cnp.npy_intp [:] a = np.arange(n)
+#     cdef cnp.npy_intp * p = &a[0]
 
-    # print(np.asarray(a))
-    random_permutation(p, n)
-    # print(np.asarray(a))
+#     # print(np.asarray(a))
+#     random_permutation(p, n)
+#     # print(np.asarray(a))
 
-def permutation_of_X(double [:, ::1] X):
-    cdef:
-        cnp.npy_intp i, j, n = X.shape[0], d = X.shape[1]
-        cnp.npy_intp [:] a = np.arange(n)
-        cnp.npy_intp * p = &a[0]
-        double [:, ::1] X2 = np.empty((n, d), dtype='f8')
+# def permutation_of_X(double [:, ::1] X):
+#     cdef:
+#         cnp.npy_intp i, j, n = X.shape[0], d = X.shape[1]
+#         cnp.npy_intp [:] a = np.arange(n)
+#         cnp.npy_intp * p = &a[0]
+#         double [:, ::1] X2 = np.empty((n, d), dtype='f8')
 
-    # print(np.asarray(a))
-    random_permutation(p, n)
-    # print(np.asarray(a))
+#     # print(np.asarray(a))
+#     random_permutation(p, n)
+#     # print(np.asarray(a))
 
-    with nogil:
+#     with nogil:
 
-        for i in range(n):
-            for j in range(d):
-                X2[a[i], j] = X[i, j]
+#         for i in range(n):
+#             for j in range(d):
+#                 X2[a[i], j] = X[i, j]
 
-    return np.asarray(X2)
+#     return np.asarray(X2)
 
 
 def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
