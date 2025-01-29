@@ -727,7 +727,7 @@ if run_experiments:
 
         # if agglo:
 
-        #     memory_dir = r"C:\\Users\\Eleftherios\\Devel\\data\\my_cached_memory_folder"
+        #     memory_dir = r"C:\\Users\\Anonymous\\Devel\\data\\my_cached_memory_folder"
         #     model = AgglomerativeClustering(n_clusters=n_clusters, linkage="average", memory="cachedir")
         #     ac = model.fit(X)
         #     agg_centroids = np.array([np.mean(X[model.labels_==l], axis=0) for l in range(model.n_clusters)])
