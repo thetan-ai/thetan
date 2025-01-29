@@ -2,12 +2,12 @@
 numpy>=1.7.1
 scipy>=0.9
 cython>=0.25.1
-patchify>=0.2.3
-dipy
-fury
-opencv-python
+# patchify>=0.2.3
+# dipy
+# fury
+# opencv-python
 scikit-learn
-scikit-image
-pandas
-wfdb
+# scikit-image
+# pandas
+# wfdb
 matplotlib
