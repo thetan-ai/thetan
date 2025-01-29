@@ -17,7 +17,7 @@ To Install the packages and create module, compile using the following command.
     pip install -r requirements/build.txt
     pip install --no-build-isolation  .
 
-To run the examples with ThetA (TSG, TDG) go to thetan/docs/examples
+To run the example please go to thetan/docs/examples
 
 .. code-block::
 
