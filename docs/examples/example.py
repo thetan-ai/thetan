@@ -112,7 +112,7 @@ if __name__ == '__main__':
     y = 10
 
 
-    X, L, gt_centroids = simulate_data('gaussian', blob_dis=5, cluster_x=x, cluster_y=y)
+    X, L, gt_centroids = simulate_data('gaussian', blob_dis=4.8, cluster_x=x, cluster_y=y)
 
     print('Number of features ', X.shape[0])
     print('Number of GT centroids ', gt_centroids.shape[0])
