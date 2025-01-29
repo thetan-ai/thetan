@@ -1,7 +1,7 @@
 import numpy as np
 from time import time
 from thetan.berserker import berserker2_clean as tb
-from thetan.berserker import tbscan_half, tb_of_tb
+from thetan.berserker import tbscan_half, tb_of_tb, tbward_half, ward
 from thetan.theta import assign, distance_matrix
 
 from sklearn import metrics
@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 # from munkres import Munkres
 from pylab import figure, plot, show, legend
 from sklearn.decomposition import PCA
+
 
 
 dpath = '/home/elef/Data/CLIP/'
@@ -33,7 +34,7 @@ from sklearn.metrics import pairwise_distances
 
 def distillation(X, n_clusters=10):
     # Simulated Data
-    # X = np.random.rand(500, 10)  # 500 samples, 10 features
+    # X = np.random.rand(100, 10)  # 100 samples, 10 features
 
     # Teacher Model (K-Means)
     teacher = KMeans(n_clusters=n_clusters, random_state=42)
@@ -297,10 +298,10 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
 
     gt_labels = np.loadtxt(fgt)
 
-    if ndim is not None:
+    # if ndim is not None:
 
-        pca = PCA(n_components=ndim)
-        X = pca.fit_transform(X)
+    #     pca = PCA(n_components=ndim)
+    #     X = pca.fit_transform(X)
 
     X = np.ascontiguousarray(X)
 
@@ -329,6 +330,19 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
     #     figure()
     #     plot(sorted(Xnorms)[::-1])
 
+    print('>>> Ward ')
+
+    t = time()
+    wcentroids, wlabels = ward(X, 1000)
+    print('Ward Duration ', time() - t)
+
+    wunqi, wsizes = np.unique(wlabels, return_counts=True)
+    print('Number of clusters greater than 100 ', np.sum(wsizes > 100))
+
+    t = time()
+    nmi, ari = evaluate(gt_labels, wlabels, wcentroids.shape[0])
+    print('Evaluation Duration ', time() - t)
+
     print('>>> TB ')
 
     t = time()
@@ -336,11 +350,30 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
     print('TB Duration ', time() - t)
 
     unqi, sizes = np.unique(labels, return_counts=True)
-    print('Number of clusters greater than 500 ', np.sum(sizes > 100))
+    print('Number of clusters greater than 100 ', np.sum(sizes > 100))
 
     t = time()
     nmi, ari = evaluate(gt_labels, labels, centroids.shape[0])
     print('Evaluation Duration ', time() - t)
+
+    labelsk, sizesk = keep_largest(X, centroids, labels, keep)
+
+    t = time()
+    nmi, ari = evaluate(gt_labels, labelsk, keep)
+    print('Evaluation Duration ', time() - t)
+
+    unqik, sizesk = np.unique(labelsk, return_counts=True)
+
+    print('Number of clusters greater than 100 ', np.sum(sizesk > 100))
+
+
+    print('>>> TBWARD')
+
+    t = time()
+    tbward_centroids, tbward_labels = tbward_half(X, centroids, labels, K=1000)
+    print('TBWARD Duration ', time() - t)
+
+    nmi, ari = evaluate(gt_labels, tbward_labels, tbward_centroids.shape[0])
 
     print('>>> TB of TB ')
 
@@ -360,7 +393,7 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
 
         unqi3, sizes3 = np.unique(labels3, return_counts=True)
 
-        print('Number of clusters greater than 500 ', np.sum(sizes3 > 100))
+        print('Number of clusters greater than 100 ', np.sum(sizes3 > 100))
 
         labels4, sizes4 = keep_largest(X, centroids3, labels3, keep)
 
@@ -370,7 +403,7 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
         nmi, ari = evaluate(gt_labels, labels4, keep)
         print('Evaluation Duration ', time() - t)
 
-        print('Number of clusters greater than 500 ', np.sum(sizes4 > 100))
+        print('Number of clusters greater than 100 ', np.sum(sizes4 > 100))
 
         print()
 

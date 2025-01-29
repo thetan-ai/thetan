@@ -11,7 +11,7 @@ from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, 
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 from sklearn.cluster import DBSCAN
-
+from sklearn.cluster import AgglomerativeClustering
 
 
 def check_arr(a):
@@ -1477,6 +1477,51 @@ def tb_of_tb(X, initial_centroids, initial_labels, theta_value, metric='euclidea
         final_labels[i] = labels[l]
 
     final_centroids = centroids_from_labels(X, final_labels)
+
+    return final_centroids, final_labels
+
+
+def tbward_half(X, initial_centroids, initial_labels, K, metric='euclidean'):
+
+    linkage = 'ward'
+    clustering = AgglomerativeClustering(linkage=linkage, n_clusters=1000)
+    clustering.fit(initial_centroids)
+
+    tbward_labels = clustering.labels_
+
+    wardlabels = tbward_labels
+    dbl_max = wardlabels.max()
+    wardlabels[wardlabels < 0] = dbl_max + 1 # this is important because -1 is the outlier label and we want to keep it
+    wardlabels = np.ascontiguousarray(wardlabels, dtype=np.int64)
+
+    final_labels = initial_labels.copy()
+
+    for i, l in enumerate(initial_labels):
+        final_labels[i] = wardlabels[l]
+
+    final_labels = np.ascontiguousarray(final_labels, dtype=np.int64)
+    final_centroids = centroids_from_labels(X, final_labels)
+
+    return final_centroids, final_labels
+
+
+def ward(X, K, metric='euclidean'):
+
+    # X5 = np.ascontiguousarray(X[::2])
+    X5 = X
+
+    linkage = 'ward'
+    clustering = AgglomerativeClustering(linkage=linkage, n_clusters=K)
+    clustering.fit(X5)
+
+    tbward_labels = clustering.labels_
+    ward_centroids = centroids_from_labels(X5, tbward_labels)
+
+    # final_labels = assign(X, ward_centroids)
+    # final_centroids = centroids_from_labels(X, final_labels)
+
+    final_centroids = ward_centroids
+    final_labels = tbward_labels
 
     return final_centroids, final_labels
 
