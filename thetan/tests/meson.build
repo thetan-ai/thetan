@@ -1,6 +1,5 @@
 python_sources = [
   '__init__.py',
-  'distance_exps.ipynb',
   'test_thetan.py',
   ]
 
