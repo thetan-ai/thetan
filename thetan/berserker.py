@@ -12,6 +12,7 @@ from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import AgglomerativeClustering
+from thetan.theta import theta_g1 as ts
 
 
 def check_arr(a):
@@ -651,8 +652,9 @@ def berserker3_clean(points, theta_value, metric='euclidean'):
 
 
 
-# thetan_berserker = berserker2_clean
-# tb = berserker2_clean
+thetan_berserker = berserker2_clean
+tb = berserker2_clean
+
 
 
 def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, verbose=True):
