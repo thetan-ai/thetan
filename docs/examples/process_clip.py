@@ -336,7 +336,7 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
     print('TB Duration ', time() - t)
 
     unqi, sizes = np.unique(labels, return_counts=True)
-    print('Number of clusters greater than 500 ', np.sum(sizes > 500))
+    print('Number of clusters greater than 500 ', np.sum(sizes > 100))
 
     t = time()
     nmi, ari = evaluate(gt_labels, labels, centroids.shape[0])
@@ -360,7 +360,7 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
 
         unqi3, sizes3 = np.unique(labels3, return_counts=True)
 
-        print('Number of clusters greater than 500 ', np.sum(sizes3 > 500))
+        print('Number of clusters greater than 500 ', np.sum(sizes3 > 100))
 
         labels4, sizes4 = keep_largest(X, centroids3, labels3, keep)
 
@@ -370,7 +370,7 @@ def analysis_approach(fX, fgt, theta_value, metric, normalize=True, verbose=Fals
         nmi, ari = evaluate(gt_labels, labels4, keep)
         print('Evaluation Duration ', time() - t)
 
-        print('Number of clusters greater than 500 ', np.sum(sizes4 > 500))
+        print('Number of clusters greater than 500 ', np.sum(sizes4 > 100))
 
         print()
 
