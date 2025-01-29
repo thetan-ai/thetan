@@ -1,2 +1,2 @@
 # List required packages in this file, one per line.
--r requirements/default.txt
+-r requirements/build.txt
