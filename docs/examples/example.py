@@ -1,21 +1,16 @@
-import os
-from time import time
-import tracemalloc
 import numpy as np
 import pylab as pl
-import pandas as pd
 from thetan.berserker import ts, tb
-import matplotlib.pyplot as plt
 
 
-def gaussian_clusters(n_local_samples, blob_dis = 10, cluster_x = 10, cluster_y = 10):
+def gaussian_clusters(n_local_samples, blob_dis=10, cluster_x=10, cluster_y=10):
 
     xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
     yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
 
     xx, yy = np.meshgrid(xx, yy)
     n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
-                        np.ravel(yy)[:, np.newaxis]))
+                           np.ravel(yy)[:, np.newaxis]))
 
     gt_centroids = []
     X = np.zeros((n_local_samples * n_centres.shape[0], 2))
@@ -70,7 +65,6 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
 
     if show:
         pl.show()
-
 
     pl.close(fig)
 

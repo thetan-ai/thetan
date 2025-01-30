@@ -36,7 +36,6 @@ dependencies = [
     "scipy>=1.8",
     "dipy",
     "fury",
-    "opencv-python",
     "scikit-learn",
     "scikit-image",
     "pandas",
