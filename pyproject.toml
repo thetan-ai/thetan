@@ -78,11 +78,10 @@ doc = [
 
 
 [project.urls]
-homepage = "https://github.com/garyfallidis/thetan"
-documentation = "https://github.com/garyfallidis/thetan"
-source = "https://github.com/garyfallidis/thetan"
-download = "https://pypi.org/project/thetan/#files"
-tracker = "https://github.com/garyfallidis/thetan/issues"
+homepage = "https://github.com/anonymous/thetan"
+documentation = "https://github.com/anonymous/thetan"
+source = "https://github.com/anonymous/thetan"
+tracker = "https://github.com/anonymous/thetan/issues"
 
 [build-system]
 build-backend = "mesonpy"
