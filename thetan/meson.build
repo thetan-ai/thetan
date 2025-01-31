@@ -336,8 +336,6 @@ python_sources = [
   'berserker.py',
   'chaining.py',
   'viz.py',
-  'experimental.py',
-  'accuracy.py',
 ]
 
 py3.install_sources(
