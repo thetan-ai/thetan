@@ -338,6 +338,7 @@ python_sources = [
   'viz.py',
   'experimental.py',
   'accuracy.py',
+  'patchify.py',
 ]
 
 py3.install_sources(
