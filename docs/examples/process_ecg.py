@@ -6,7 +6,7 @@ from thetan.berserker import berserker2
 import pandas as pd
 import wfdb
 import ast
-from patchify import patchify, unpatchify
+from thetan.patchify import patchify, unpatchify
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap

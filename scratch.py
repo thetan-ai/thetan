@@ -3,7 +3,7 @@
 import numpy as np
 from thetan.theta import distance_matrix
 from thetan.chaining import chainer, chainer2
-from patchify import patchify
+from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, convolve, zoom, gaussian_filter
 from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, binary_dilation, binary_erosion, morphological_gradient
 from skimage.segmentation import flood, flood_fill

@@ -1,7 +1,7 @@
 from time import time
 import numpy as np
 # import cc3d
-from patchify import patchify
+from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace

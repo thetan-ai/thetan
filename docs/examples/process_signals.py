@@ -2,7 +2,7 @@ from time import time
 import numpy as np
 from thetan.berserker import berserker2
 import pandas as pd
-from patchify import patchify
+from thetan.patchify import patchify
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.cm import get_cmap  

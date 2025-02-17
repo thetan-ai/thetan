@@ -35,7 +35,6 @@ dynamic = ['version']
 dependencies = [
     "numpy>=1.22.4",
     "scipy>=1.8",
-    "patchify>=0.2.3",
     "dipy",
     "fury",
     "opencv-python",

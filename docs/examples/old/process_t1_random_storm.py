@@ -7,7 +7,7 @@ from dipy.align.reslice import reslice
 from dipy.align.scalespace import ScaleSpace
 from thetan.berserker import berserker2, theta_g1
 from thetan.chaining import chainer, chainer2
-from patchify import patchify
+from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude
 from scipy.ndimage import binary_opening, label, binary_closing, white_tophat, laplace, sobel, gaussian_gradient_magnitude
 

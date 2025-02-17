@@ -4,7 +4,7 @@ from thetan.berserker import berserker2
 import pandas as pd
 import wfdb
 import ast
-from patchify import patchify
+from thetan.patchify import patchify
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from scipy.ndimage import gaussian_filter1d

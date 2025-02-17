@@ -1,5 +1,5 @@
 import numpy as np
-from patchify import patchify
+from thetan.patchify import patchify
 from time import time
 from thetan.berserker import berserker2, X_to_many_2D, berserker2_to_2D_labels, centroid_images, prepare_data_2d, berserker2_seg_2d
 from scipy.ndimage import gaussian_gradient_magnitude, gaussian_filter, median_filter
