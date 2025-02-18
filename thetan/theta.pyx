@@ -249,7 +249,7 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
     b[0] = temp
 
 
-cdef metric_choice(const char * metric) nogil:
+cdef metric_choice(const char * metric) noexcept nogil:
     cdef:
         metricp metric_func = NULL
 
