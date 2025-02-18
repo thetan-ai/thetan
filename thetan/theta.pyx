@@ -61,6 +61,17 @@ cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nog
     return sqrt(summ)
 
 
+cdef double l2_norm_di(double * ptr1, double * ptr2, cnp.npy_intp D, double minV, double maxV, double exp_center, double vard) noexcept nogil:
+    cdef:
+        cnp.npy_intp d
+        double summ = 0.0
+
+    for d in range(D):
+        summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
+
+    return (maxV - minV) * ((sqrt(summ) - exp_center) / vard)
+
+
 cdef double inf_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
@@ -129,20 +140,7 @@ cdef double magnitude(double * vec, cnp.npy_intp D) noexcept nogil:
     return sqrt(mag)
 
 
-# // Function to calculate the cosine distance
-# double cosine_distance(double *vec1, double *vec2, int n) {
-#     double dot = dot_product(vec1, vec2, n);
-#     double mag1 = magnitude(vec1, n);
-#     double mag2 = magnitude(vec2, n);
 
-#     if (mag1 == 0 || mag2 == 0) {
-#         fprintf(stderr, "Error: One or both vectors have zero magnitude.\n");
-#         return -1; // Return error value
-#     }
-
-#     double cosine_similarity = dot / (mag1 * mag2);
-#     return 1.0 - cosine_similarity; // Convert similarity to distance
-# }
 
 cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
 
@@ -165,27 +163,6 @@ cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcep
         cosine_similarity = 1.0
 
     return 1.0 - cosine_similarity
-
-
-# // Function to calculate the arccosine distance
-# double arccosine_distance(double *vec1, double *vec2, int n) {
-#     double dot = dot_product(vec1, vec2, n);
-#     double mag1 = magnitude(vec1, n);
-#     double mag2 = magnitude(vec2, n);
-
-#     if (mag1 == 0 || mag2 == 0) {
-#         fprintf(stderr, "Error: One or both vectors have zero magnitude.\n");
-#         return -1; // Return error value
-#     }
-
-#     double cosine_similarity = dot / (mag1 * mag2);
-
-#     // Clamp the cosine similarity to the range [-1, 1] to handle numerical inaccuracies
-#     if (cosine_similarity < -1.0) cosine_similarity = -1.0;
-#     if (cosine_similarity > 1.0) cosine_similarity = 1.0;
-
-#     return acos(cosine_similarity); // Return arccosine distance
-# }
 
 
 cdef double arccosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
@@ -252,13 +229,14 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
 cdef metricp metric_choice(const char * metric) nogil:
     cdef:
         metricp metric_func = NULL
+        metricp2 metric_func2 = NULL
 
     if strcmp(metric, b'euclidean') == 0:
         metric_func = &euclidean
     if strcmp(metric, b'l2_norm') == 0:
         metric_func = &euclidean
-    # if strcmp(metric, 'inf_norm') == 0:
-    #     metric_func = &inf_norm
+    if strcmp(metric, 'inf_norm') == 0:
+        metric_func = &inf_norm
     if strcmp(metric, b'ssd') == 0:
         metric_func = &ssd
     if strcmp(metric, b'norm_ssd') == 0:
@@ -273,6 +251,9 @@ cdef metricp metric_choice(const char * metric) nogil:
         metric_func = &cosine_distance
     if strcmp(metric, b'arccos') == 0:
         metric_func = &arccosine_distance
+    if strcmp(metric, b'l2_norm_di') == 0:
+        metric_func2 = &l2_norm_di
+        metric_func = <metricp>metric_func2
 
     return metric_func
 
@@ -290,22 +271,24 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='euclidean'):
 
     distance_matrix = np.zeros((I, J), dtype=np.float64)
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    # if metric == 'euclidean':
+    #     metric_func = &euclidean
+    # if metric == 'ssd':
+    #     metric_func = &ssd
+    # if metric == 'norm_ssd':
+    #     metric_func = &norm_ssd
+    # if metric == 'norm_ssd_un':
+    #     metric_func = &norm_ssd_un
+    # if metric == 'dot_prod':
+    #     metric_func = &dot_prod
+    # if metric == 'l1_norm':
+    #     metric_func = &l1_norm
+    # if metric == 'cosine':
+    #     metric_func = &cosine_distance
+    # if metric == 'arccos':
+    #     metric_func = &arccosine_distance
+
+    metric_func = metric_choice(metric)
 
     for i in range(I):
         for j in range(J):
