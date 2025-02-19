@@ -1509,8 +1509,50 @@ def test_centroids_from_labels():
     npt.assert_array_almost_equal(centroids2, _centroids)
 
 
+def diem_stat2(N, maxV, minV, num_samples=int(1e5)):
+    # Generate uniform distributions
+    a = np.random.uniform(minV, maxV, (num_samples, N, 1))
+    b = np.random.uniform(minV, maxV, (num_samples, N, 1))
+
+    # Compute Euclidean distances
+    d = np.linalg.norm(a - b, axis=1)
+
+    # Compute DIEM statistics
+    exp_center = np.median(d)
+    vard = np.var(d)  # Variance of Euclidean distance distribution
+    # adjusted_dist = (maxV - minV) * (d - exp_center) / vard  # Centering and scaling DIEM
+    # std_one = np.std(adjusted_dist)  # One standard deviation of DIEM
+
+    # min_DIEM = -(maxV - minV) * (exp_center / vard)  # Minimum DIEM
+    # max_DIEM = (maxV - minV) * (np.sqrt(N) * (maxV - minV) - exp_center) / vard  # Maximum DIEM
+
+    # return exp_center, vard, std_one, min_DIEM, max_DIEM
+    return exp_center, vard
+
+
+def test_metric_choice():
+
+    A1 = np.random.rand(100, 3)
+
+    A2 = np.random.rand(100, 3)
+
+    D1 = tdm(A1, A2, metric='euclidean')
+
+    from scipy.spatial.distance import cdist
+    D2 = cdist(A1, A2, metric='euclidean')
+    assert np.sum(D2 - D1) == 0.0
+
+    exp_center, vard = diem_stat2(3, 1, 0, num_samples=int(1e5))
+
+    extra = min(A1.min(), A2.min()), max(A1.max(), A2.max()), exp_center, vard
+
+    D_l2di = tdm(A1, A2, metric='l2_norm_di', extra_info=extra)
+
+    t = 1
 
 if __name__ == '__main__':
+
+    test_metric_choice()
 
     # ecs = []
     # for i in range(100):
@@ -1536,7 +1578,7 @@ if __name__ == '__main__':
     #test_4d_data(verbose=False)
     # test_2d_data(verbose=False)
     # test_simple_hashing()
-    test_neighb_compactness()
+    # test_neighb_compactness()
     # test_centroids_from_labels()
 
 

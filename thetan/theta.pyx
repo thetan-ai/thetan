@@ -229,36 +229,54 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
 cdef metricp metric_choice(const char * metric) nogil:
     cdef:
         metricp metric_func = NULL
-        metricp2 metric_func2 = NULL
+        const char * l2n = "l2_norm"
+        const char * euclid = "euclidean"
+        const char * infn = "inf_norm"
+        const char * ssdn = "ssd"
+        const char * normssdn = "norm_ssd"
+        const char * normssdun = "norm_ssd_un"
+        const char * dotp = "dot_prod"
+        const char * l1n = "l1_norm"
+        const char * cosine = "cosine"
+        const char * arccosn = "arccos"
 
-    if strcmp(metric, b'euclidean') == 0:
+    if strcmp(metric, euclid) == 0:
         metric_func = &euclidean
-    if strcmp(metric, b'l2_norm') == 0:
+    if strcmp(metric, l2n) == 0:
         metric_func = &euclidean
-    if strcmp(metric, 'inf_norm') == 0:
+    if strcmp(metric, infn) == 0:
         metric_func = &inf_norm
-    if strcmp(metric, b'ssd') == 0:
+    if strcmp(metric, ssdn) == 0:
         metric_func = &ssd
-    if strcmp(metric, b'norm_ssd') == 0:
+    if strcmp(metric, normssdn) == 0:
         metric_func = &norm_ssd
-    if strcmp(metric, b'norm_ssd_un') == 0:
+    if strcmp(metric, normssdun) == 0:
         metric_func = &norm_ssd_un
-    if strcmp(metric, b'dot_prod') == 0:
+    if strcmp(metric, dotp) == 0:
         metric_func = &dot_prod
-    if strcmp(metric, b'l1_norm') == 0:
+    if strcmp(metric, l1n) == 0:
         metric_func = &l1_norm
-    if strcmp(metric, b'cosine') == 0:
+    if strcmp(metric, cosine) == 0:
         metric_func = &cosine_distance
-    if strcmp(metric, b'arccos') == 0:
+    if strcmp(metric, arccosn) == 0:
         metric_func = &arccosine_distance
-    if strcmp(metric, b'l2_norm_di') == 0:
-        metric_func2 = &l2_norm_di
-        metric_func = <metricp>metric_func2
 
     return metric_func
 
 
-def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='euclidean'):
+cdef metricp metric_choice_adv(const char * metric) nogil:
+    cdef:
+
+        metricp2 metric_func2 = NULL
+        const char * l2ndi = "l2_norm_di"
+
+    if strcmp(metric, l2ndi) == 0:
+        metric_func2 = &l2_norm_di
+
+    return metric_func2
+
+
+def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='euclidean', extra=None):
 
     cdef:
         cnp.npy_intp i = 0
@@ -267,7 +285,11 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='euclidean'):
         cnp.npy_intp J = X2.shape[0]
         cnp.npy_intp D = X1.shape[1]
         metricp metric_func = &euclidean
+        metricp2 metric_func2 = &l2_norm_di
         double[:, ::1] distance_matrix
+        bytes metric_enc = metric.lower().encode('utf-8')  # Store the bytes object
+        const char * c_metric_enc = metric_enc  # Safe assignment
+        double exp_center, vard, minV, maxV
 
     distance_matrix = np.zeros((I, J), dtype=np.float64)
 
@@ -288,11 +310,24 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='euclidean'):
     # if metric == 'arccos':
     #     metric_func = &arccosine_distance
 
-    metric_func = metric_choice(metric)
 
-    for i in range(I):
-        for j in range(J):
-            distance_matrix[i, j] = metric_func(&X1[i, 0], &X2[j, 0], D)
+
+    if extra is not None:
+        metric_func2 = metric_choice_adv(c_metric_enc)
+
+        minV = extra[0]
+        maxV = extra[1]
+        exp_center = extra[2]
+        vard = extra[3]
+
+        for i in range(I):
+            for j in range(J):
+                distance_matrix[i, j] = metric_func2(&X1[i, 0], &X2[j, 0], D, minV, maxV, exp_center, vard)
+    else:
+        metric_func = metric_choice(c_metric_enc)
+        for i in range(I):
+            for j in range(J):
+                distance_matrix[i, j] = metric_func(&X1[i, 0], &X2[j, 0], D)
 
     return np.asarray(distance_matrix)
 
