@@ -1509,7 +1509,7 @@ def test_centroids_from_labels():
     npt.assert_array_almost_equal(centroids2, _centroids)
 
 
-def diem_stat2(N, maxV, minV, num_samples=int(1e5)):
+def diem_stat2(N, minV, maxV, num_samples=int(1e5)):
     # Generate uniform distributions
     a = np.random.uniform(minV, maxV, (num_samples, N, 1))
     b = np.random.uniform(minV, maxV, (num_samples, N, 1))
@@ -1530,11 +1530,41 @@ def diem_stat2(N, maxV, minV, num_samples=int(1e5)):
     return exp_center, vard
 
 
+def plot_subplot_im2(image1, image2):
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # Generate two random images (10x10)
+    # image1 = np.random.rand(10, 10)
+    # image2 = np.random.rand(10, 10)
+
+    # Create a figure and two subplots
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+    # Display the first image
+    axes[0].imshow(image1, cmap='plasma')
+    axes[0].set_title("Image 1")
+    axes[0].axis("off")  # Hide axes
+
+    # Display the second image
+    axes[1].imshow(image2, cmap='plasma')
+    axes[1].set_title("Image 2")
+    axes[1].axis("off")  # Hide axes
+
+    # Show the figure
+    plt.tight_layout()
+    plt.show()
+
+
+
 def test_metric_choice():
 
-    A1 = np.random.rand(100, 3)
+    D = 30
 
-    A2 = np.random.rand(100, 3)
+    A1 = np.random.rand(100, D)
+
+    A2 = np.random.rand(100, D)
 
     D1 = tdm(A1, A2, metric='euclidean')
 
@@ -1542,12 +1572,13 @@ def test_metric_choice():
     D2 = cdist(A1, A2, metric='euclidean')
     assert np.sum(D2 - D1) == 0.0
 
-    exp_center, vard = diem_stat2(3, 1, 0, num_samples=int(1e5))
+    exp_center, vard = diem_stat2(D, min(A1.min(), A2.min()), max(A1.max(), A2.max()), num_samples=int(1e5))
 
     extra = min(A1.min(), A2.min()), max(A1.max(), A2.max()), exp_center, vard
 
-    D_l2di = tdm(A1, A2, metric='l2_norm_di', extra_info=extra)
+    D_l2di = tdm(A1, A2, metric='l2_norm_di', extra=extra)
 
+    plot_subplot_im2(D2, D_l2di)
     t = 1
 
 if __name__ == '__main__':

@@ -264,7 +264,7 @@ cdef metricp metric_choice(const char * metric) nogil:
     return metric_func
 
 
-cdef metricp metric_choice_adv(const char * metric) nogil:
+cdef metricp2 metric_choice_adv(const char * metric) nogil:
     cdef:
 
         metricp2 metric_func2 = NULL
