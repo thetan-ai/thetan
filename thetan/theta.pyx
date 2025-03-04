@@ -46,6 +46,10 @@ ctypedef struct Node:
     cnp.npy_intp * elements
 
 
+
+
+
+
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
     cdef:
         cnp.npy_intp d
@@ -2147,20 +2151,6 @@ def correct_connectivity(Py_ssize_t[:, :, ::1] segments,
     return np.asarray(connected_segments)
 
 
-# cython: boundscheck=False, wraparound=False, cdivision=True
-import numpy as np
-cimport numpy as np
-from libc.stdlib cimport malloc, free
-from libc.string cimport memset
-
-# Define the 26-connected neighborhood in 3D
-cdef int[26][3] neighbors = [
-    (-1, -1, -1), (-1, -1, 0), (-1, -1, 1), (-1, 0, -1), (-1, 0, 0), (-1, 0, 1),
-    (-1, 1, -1), (-1, 1, 0), (-1, 1, 1), (0, -1, -1), (0, -1, 0), (0, -1, 1),
-    (0, 0, -1),              (0, 0, 1), (0, 1, -1), (0, 1, 0), (0, 1, 1),
-    (1, -1, -1), (1, -1, 0), (1, -1, 1), (1, 0, -1), (1, 0, 0), (1, 0, 1),
-    (1, 1, -1), (1, 1, 0), (1, 1, 1)
-]
 
 # Union-Find data structure for label merging
 cdef inline int find_root(int *labels, int x):
@@ -2178,7 +2168,7 @@ cdef inline void union_labels(int *labels, int a, int b):
         labels[rootB] = rootA  # Merge components
 
 
-def connected_components(np.ndarray[np.float32_t, ndim=3] image, float delta=0.0):
+def connected_components(float [:, :, ::1] image, float delta=0.0):
     """
     Perform 3D connected component labeling using 26-connectivity.
     
@@ -2195,7 +2185,16 @@ def connected_components(np.ndarray[np.float32_t, ndim=3] image, float delta=0.0
     cdef int width = image.shape[2]
 
     # Output labels array
-    cdef np.ndarray[np.int32_t, ndim=3] labels = np.zeros((depth, height, width), dtype=np.int32)
+    cdef int [:, :, ::1] labels = np.zeros((depth, height, width), dtype=np.int32)
+
+    # Define the 26-connected neighborhood in 3D
+    cdef int[26][3] neighbors = [
+        (-1, -1, -1), (-1, -1, 0), (-1, -1, 1), (-1, 0, -1), (-1, 0, 0), (-1, 0, 1),
+        (-1, 1, -1), (-1, 1, 0), (-1, 1, 1), (0, -1, -1), (0, -1, 0), (0, -1, 1),
+        (0, 0, -1),  (0, 0, 1), (0, 1, -1), (0, 1, 0), (0, 1, 1), (1, -1, -1), 
+        (1, -1, 0), (1, -1, 1), (1, 0, -1), (1, 0, 0), (1, 0, 1), (1, 1, -1),
+        (1, 1, 0), (1, 1, 1)]
+
 
     # Allocate Union-Find structure
     cdef int max_labels = depth * height * width
