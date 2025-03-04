@@ -1,13 +1,13 @@
 from time import time
 import numpy as np
-# import cc3d
+import cc3d
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix
+from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix, correct_connectivity
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 from sklearn.cluster import DBSCAN
@@ -1913,6 +1913,21 @@ def berserker2_to_3D_plus_extra(X, W_alpha, theta_value):
     return data_labels, centroids, centroids_im, centroids_median_im # , fg_im.astype('f8')
 
 
+def biggestx(labels, x=10):
+
+    unq, cnts = np.unique(labels, return_counts=True)
+
+    large_idx = np.argsort(cnts)[::-1][:x]
+
+    bigx = np.zeros(labels.shape, dtype='f8') + x + 1
+    cnt = 0
+    for li in large_idx:
+        bigx[labels == unq[li]] = cnt
+        cnt += 1
+
+    return bigx
+
+
 def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, bk=20., bk2=300):
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1924,11 +1939,91 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     aff = np.eye(4)
 
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
-
     images = horizon_support(aff, (W, 'W'), (W_alpha, 'W_alpha'))
+
+    # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W, theta_value)
+    # images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
     data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+
+    # cim_cc3d_10 = cc3d.connected_components(centroids_im, connectivity=26, delta=10)
+    # images += horizon_support(aff, (cim_cc3d_10, 'cim_cc3d_10'))
+
+    # big10o = biggestx(cim_cc3d_10, x=10)
+    # images += horizon_support(aff, (big10o, 'big10o'))
+
+
+    # cim_cc3d_20 = cc3d.connected_components(centroids_im, connectivity=26, delta=20)
+    # images += horizon_support(aff, (cim_cc3d_20, 'cim_cc3d_20'))
+
+    # cmim_cc3d_10 = cc3d.connected_components(centroids_median_im, connectivity=26, delta=10)
+    # images += horizon_support(aff, (cmim_cc3d_10, 'cmim_cc3d_10'))
+
+    # big10 = biggestx(cmim_cc3d_10, x=10)
+    # images += horizon_support(aff, (big10, 'big10'))
+
+    # cmim_cc3d_20 = cc3d.connected_components(centroids_median_im, connectivity=26, delta=20)
+    # images += horizon_support(aff, (cmim_cc3d_20, 'cmim_cc3d_20'))
+
+    # W_cc3d_10 = cc3d.connected_components(W, connectivity=26, delta=10)
+    # images += horizon_support(aff, (W_cc3d_10, 'W_cc3d_10'))
+
+    # W_big10 = biggestx(W_cc3d_10, x=10)
+    # images += horizon_support(aff, (W_big10, 'W_big10'))
+
+    # W_cc3d_20 = cc3d.connected_components(W, connectivity=26, delta=20)
+    # images += horizon_support(aff, (W_cc3d_20, 'W_cc3d_20'))
+
+    # Walpha_cc3d_10 = cc3d.connected_components(W_alpha, connectivity=26, delta=10)
+    # images += horizon_support(aff, (Walpha_cc3d_10, 'Walpha_cc3d_10'))
+
+    # Walpha_cc3d_20 = cc3d.connected_components(W_alpha, connectivity=26, delta=20)
+    # images += horizon_support(aff, (Walpha_cc3d_20, 'Walpha_cc3d_20'))
+
+
+    # cmimr = np.round(centroids_median_im, 0).astype('i8')
+
+    # cmimr_cc = correct_connectivity(cmimr, min_size=1000000, max_size=2000000, start_label=1)
+    # images += horizon_support(aff, (cmimr_cc, 'cmimr_cc'))
+
+    # centroids_median_im3 = median_filter(centroids_median_im, size=3)
+    # images += horizon_support(aff, (centroids_median_im3, 'cmim3'))
+
+    # centroids_median_im5 = median_filter(centroids_median_im, size=5)
+    # images += horizon_support(aff, (centroids_median_im5, 'cmim5'))
+
+    # def spherical_footprint(radius):
+    #     """Creates a spherical footprint for median filtering."""
+    #     L = 2 * radius + 1
+    #     x, y, z = np.ogrid[-radius:radius+1, -radius:radius+1, -radius:radius+1]
+    #     mask = x**2 + y**2 + z**2 <= radius**2
+    #     return mask
+
+    # # Apply median filter with spherical footprint
+    # radius = 1
+    # footprint = spherical_footprint(radius)
+
+    # centroids_median_im7 = median_filter(centroids_im, footprint=footprint)
+    # images += horizon_support(aff, (centroids_median_im7, 'cmimr1'))
+
+    # radius = 2
+    # footprint = spherical_footprint(radius)
+
+    # centroids_median_im9 = median_filter(centroids_im, footprint=footprint)
+    # images += horizon_support(aff, (centroids_median_im9, 'cmimr2'))
+
+    # radius = 3
+    # footprint = spherical_footprint(radius)
+
+    # centroids_median_im9 = median_filter(centroids_im, footprint=footprint)
+    # images += horizon_support(aff, (centroids_median_im9, 'cmimr3'))
+
+
+    # Py_ssize_t[:, :, ::1] segments,
+    # Py_ssize_t min_size,
+    # Py_ssize_t max_size,
+    # Py_ssize_t start_label=1
 
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
@@ -1943,6 +2038,9 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     bk_cim = centroids_median_im > bk2 # previously it was centroids_im
     images += horizon_support(aff, (bk_cim.astype('f8'), 'bk_cim'))
+
+    # bk_cim_cc = cc3d.connected_components(bk_cim, connectivity=6)
+    # images += horizon_support(aff, (bk_cim_cc.astype('f8'), 'bk_cim_cc'))
 
     # TODO: rounding and dtypes to int can generate useful labels
 
@@ -1996,9 +2094,16 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     images += horizon_support(aff, (dl_bk_cim_focus.astype('f8'), 'dl_bk_cim_focus'))
 
-    dl_bk_cim_focus_blurry = gaussian_filter(100 * (dl_bk_cim_focus == 1).astype('f8'), sigma=5)
+    brain_estimate = gaussian_filter(100 * (dl_bk_cim_focus == 1).astype('f8'), sigma=1)
+    images += horizon_support(aff, (brain_estimate.astype('f8'), 'brain_estimate'))
 
-    images += horizon_support(aff, (dl_bk_cim_focus_blurry.astype('f8'), 'dl_bk_cim_focus_blurry'))
+    skull_estimate = gaussian_filter(100 * (dl_bk_cim_focus == 2).astype('f8'), sigma=1)
+    images += horizon_support(aff, (skull_estimate.astype('f8'), 'skull_estimate'))
+
+    W_alpha_masked = W_alpha.copy()
+    W_alpha_masked[skull_estimate > 20] = 0
+
+    images += horizon_support(aff, (W_alpha_masked.astype('f8'), 'W_alpha_masked'))
 
     # TODO: still not sure why we cannot label this
     # data_labels_bk_cim2, num_bk_cim2 = label(dl_bk_cim_focus > 0)

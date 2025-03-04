@@ -10,7 +10,7 @@ x /= np.linalg.norm(x)
 y /= np.linalg.norm(y)
 
 # Generate random hyperplanes
-num_hashes = 10
+num_hashes = 20
 random_planes = np.random.randn(num_hashes, dim)
 
 # Compute binary hashes
@@ -20,4 +20,8 @@ hash_y = (y @ random_planes.T) > 0
 # Compute Hamming similarity
 hamming_similarity = np.mean(hash_x == hash_y)
 
+hamming_distance = np.sum(hash_x == hash_y)
+
 print(f"Hamming similarity: {hamming_similarity:.2f}")
+
+print(f"Hamming distance: {hamming_distance:.2f}")
