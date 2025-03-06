@@ -1,6 +1,5 @@
 from time import time
 import numpy as np
-import cc3d
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
@@ -1946,6 +1945,23 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+
+    min_size_factor = 0.1
+    max_size_factor = 40
+
+    n_centroids = centroids.shape[0]
+    segment_size = np.prod(data.shape[:3]) / n_centroids
+    min_size = int(min_size_factor * segment_size)
+    max_size = int(max_size_factor * segment_size)
+
+    data_labels_cc = correct_connectivity(data_labels.astype('i8'), min_size, max_size, start_label=0)
+    images += horizon_support(aff, (data_labels_cc, 'dl_cc'))
+
+    centroids_im_cc = correct_connectivity(np.round(centroids_im, 0).astype('i8'), min_size, max_size, start_label=0)
+    images += horizon_support(aff, (centroids_im_cc, 'centroids_im_cc'))
+
+    centroids_median_im_cc = correct_connectivity(np.round(centroids_median_im, 0).astype('i8'), min_size, max_size, start_label=0)
+    images += horizon_support(aff, (centroids_median_im_cc, 'centroids_median_im_cc'))
 
     # cim_cc3d_10 = cc3d.connected_components(centroids_im, connectivity=26, delta=10)
     # images += horizon_support(aff, (cim_cc3d_10, 'cim_cc3d_10'))
