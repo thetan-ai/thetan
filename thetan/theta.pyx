@@ -2153,14 +2153,14 @@ def correct_connectivity(Py_ssize_t[:, :, ::1] segments,
 
 
 # Union-Find data structure for label merging
-cdef inline int find_root(int *labels, int x):
+cdef inline long find_root(long *labels, long x):
     """Find root of label x using path compression."""
     while labels[x] != x:
         labels[x] = labels[labels[x]]  # Path compression
         x = labels[x]
     return x
 
-cdef inline void union_labels(int *labels, int a, int b):
+cdef inline void union_labels(long *labels, long a, long b):
     """Union two labels into the same component."""
     rootA = find_root(labels, a)
     rootB = find_root(labels, b)
@@ -2248,4 +2248,4 @@ def connected_components(double [:, :, ::1] image, double delta=0.0):
     unique_labels = np.unique(labels)
     num_components = unique_labels.shape[0] - (1 if unique_labels[0] == 0 else 0)
 
-    return labels, num_components
+    return np.asarray(labels), num_components

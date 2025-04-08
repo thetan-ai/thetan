@@ -1954,21 +1954,22 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     min_size = int(min_size_factor * segment_size)
     max_size = int(max_size_factor * segment_size)
 
-    data_labels_cc = correct_connectivity(data_labels.astype('i8'), min_size, max_size, start_label=0)
-    images += horizon_support(aff, (data_labels_cc, 'dl_cc'))
+    # data_labels_cc = correct_connectivity(data_labels.astype('i8'), min_size, max_size, start_label=0)
+    # images += horizon_support(aff, (data_labels_cc, 'dl_cc'))
 
-    centroids_im_cc = correct_connectivity(np.round(centroids_im, 0).astype('i8'), min_size, max_size, start_label=0)
-    images += horizon_support(aff, (centroids_im_cc, 'centroids_im_cc'))
+    # centroids_im_cc = correct_connectivity(np.round(centroids_im, 0).astype('i8'), min_size, max_size, start_label=0)
+    # images += horizon_support(aff, (centroids_im_cc, 'centroids_im_cc'))
 
-    centroids_median_im_cc = correct_connectivity(np.round(centroids_median_im, 0).astype('i8'), min_size, max_size, start_label=0)
-    images += horizon_support(aff, (centroids_median_im_cc, 'centroids_median_im_cc'))
+    # centroids_median_im_cc = correct_connectivity(np.round(centroids_median_im, 0).astype('i8'), min_size, max_size, start_label=0)
+    # images += horizon_support(aff, (centroids_median_im_cc, 'centroids_median_im_cc'))
 
 
-    t = 2
+
     cim_cc3d_10, num_ = connected_components(centroids_im, delta=10)
-
-    t = 1
     images += horizon_support(aff, (cim_cc3d_10, 'cim_cc3d_10'))
+
+    cim_cc3d_5, num_ = connected_components(centroids_im, delta=5)
+    images += horizon_support(aff, (cim_cc3d_5, 'cim_cc3d_5'))
 
     # big10o = biggestx(cim_cc3d_10, x=10)
     # images += horizon_support(aff, (big10o, 'big10o'))
