@@ -1937,8 +1937,20 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     aff = np.eye(4)
 
+    W = np.ascontiguousarray(W, dtype='f8')
+
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
     images = horizon_support(aff, (W, 'W'), (W_alpha, 'W_alpha'))
+
+    W_cc_5, num_ = connected_components(W, delta=5)
+    images += horizon_support(aff, (W_cc_5, 'W_cc_5'))
+
+    W_cc_10, num_ = connected_components(W, delta=10)
+    images += horizon_support(aff, (W_cc_10, 'W_cc_10'))
+
+    W_cc_12, num_ = connected_components(W, delta=12)
+    images += horizon_support(aff, (W_cc_12, 'W_cc_12'))
+
 
     # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W, theta_value)
     # images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
@@ -2048,6 +2060,10 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
 
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
+
+    bk = 20 * bk_im.astype('f8')
+    bk_im_cc, num_ = connected_components(bk, delta=100)
+    images += horizon_support(aff, (bk_im_cc, 'bk_im_cc'))
 
     tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=2)
     tps = tps / tps.max()
