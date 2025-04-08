@@ -6,7 +6,7 @@ from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binar
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.theta import theta_g1, reassign_uncertain_update_labels, centroids_from_labels
 from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix, correct_connectivity
+from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix, correct_connectivity, connected_components
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 from sklearn.cluster import DBSCAN
@@ -1963,8 +1963,12 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     centroids_median_im_cc = correct_connectivity(np.round(centroids_median_im, 0).astype('i8'), min_size, max_size, start_label=0)
     images += horizon_support(aff, (centroids_median_im_cc, 'centroids_median_im_cc'))
 
-    # cim_cc3d_10 = cc3d.connected_components(centroids_im, connectivity=26, delta=10)
-    # images += horizon_support(aff, (cim_cc3d_10, 'cim_cc3d_10'))
+
+    t = 2
+    cim_cc3d_10, num_ = connected_components(centroids_im, delta=10)
+
+    t = 1
+    images += horizon_support(aff, (cim_cc3d_10, 'cim_cc3d_10'))
 
     # big10o = biggestx(cim_cc3d_10, x=10)
     # images += horizon_support(aff, (big10o, 'big10o'))

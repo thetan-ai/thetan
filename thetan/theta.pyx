@@ -2044,7 +2044,7 @@ def correct_connectivity(Py_ssize_t[:, :, ::1] segments,
                          Py_ssize_t min_size,
                          Py_ssize_t max_size,
                          Py_ssize_t start_label=1):
-    """ Helper function to remove small disconnected regions from the labels 
+    """ Helper function to remove small disconnected regions from the labels
 
     Parameters
     ----------
@@ -2168,10 +2168,10 @@ cdef inline void union_labels(int *labels, int a, int b):
         labels[rootB] = rootA  # Merge components
 
 
-def connected_components(float [:, :, ::1] image, float delta=0.0):
+def connected_components(double [:, :, ::1] image, double delta=0.0):
     """
     Perform 3D connected component labeling using 26-connectivity.
-    
+
     Parameters:
         image (3D np.ndarray): Input image (binary or grayscale).
         delta (float): Intensity difference threshold for merging components.
@@ -2180,25 +2180,25 @@ def connected_components(float [:, :, ::1] image, float delta=0.0):
         labels (3D np.ndarray[int32]): Labeled image with unique components.
         num_components (int): Total number of connected components.
     """
-    cdef int depth = image.shape[0]
-    cdef int height = image.shape[1]
-    cdef int width = image.shape[2]
+    cdef long depth = image.shape[0]
+    cdef long height = image.shape[1]
+    cdef long width = image.shape[2]
 
     # Output labels array
-    cdef int [:, :, ::1] labels = np.zeros((depth, height, width), dtype=np.int32)
+    cdef long [:, :, ::1] labels = np.zeros((depth, height, width), dtype=np.int64)
 
     # Define the 26-connected neighborhood in 3D
-    cdef int[26][3] neighbors = [
+    cdef long[26][3] neighbors = [
         (-1, -1, -1), (-1, -1, 0), (-1, -1, 1), (-1, 0, -1), (-1, 0, 0), (-1, 0, 1),
         (-1, 1, -1), (-1, 1, 0), (-1, 1, 1), (0, -1, -1), (0, -1, 0), (0, -1, 1),
-        (0, 0, -1),  (0, 0, 1), (0, 1, -1), (0, 1, 0), (0, 1, 1), (1, -1, -1), 
+        (0, 0, -1),  (0, 0, 1), (0, 1, -1), (0, 1, 0), (0, 1, 1), (1, -1, -1),
         (1, -1, 0), (1, -1, 1), (1, 0, -1), (1, 0, 0), (1, 0, 1), (1, 1, -1),
         (1, 1, 0), (1, 1, 1)]
 
 
     # Allocate Union-Find structure
-    cdef int max_labels = depth * height * width
-    cdef int *uf_labels = <int*>malloc(max_labels * sizeof(int))
+    cdef long max_labels = depth * height * width
+    cdef long *uf_labels = <long*>malloc(max_labels * sizeof(long))
     if not uf_labels:
         raise MemoryError("Failed to allocate memory for Union-Find labels")
 
@@ -2206,8 +2206,8 @@ def connected_components(float [:, :, ::1] image, float delta=0.0):
     for i in range(max_labels):
         uf_labels[i] = i
 
-    cdef int label_count = 1  # Start labeling from 1
-    cdef int z, y, x, nz, ny, nx, current_label, neighbor_label
+    cdef long label_count = 1  # Start labeling from 1
+    cdef long z, y, x, nz, ny, nx, current_label, neighbor_label
 
     # First Pass: Assign provisional labels and track equivalences
     for z in range(depth):
