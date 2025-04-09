@@ -375,6 +375,16 @@ foreach ext: cython_sources
   )
 endforeach
 
+# Build hashing extension that links with the xxhash library
+py3.extension_module('hashing',
+  cython_gen.process('hashing.pyx'),
+  c_args: cython_c_args,
+  include_directories: [incdir_numpy, inc_local],
+  dependencies: [xxhash_dep],  # Use the dependency declared in vendors/xxhash/meson.build
+  install: true,
+  subdir: 'thetan'
+)
+
 # ------------------------------------------------------------------------
 # Add subfolders
 # ------------------------------------------------------------------------
