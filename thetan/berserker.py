@@ -1942,14 +1942,25 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
     images = horizon_support(aff, (W, 'W'), (W_alpha, 'W_alpha'))
 
+    from skimage.segmentation import slic
+
+    W_alpha_slic = slic(W_alpha, n_segments=1000, compactness=0.05, sigma=1, start_label=1, channel_axis=None)
+    images += horizon_support(aff, (W_alpha_slic, 'W_alpha_slic'))
+
     W_cc_5, num_ = connected_components(W, delta=5)
     images += horizon_support(aff, (W_cc_5, 'W_cc_5'))
 
     W_cc_10, num_ = connected_components(W, delta=10)
     images += horizon_support(aff, (W_cc_10, 'W_cc_10'))
 
-    W_cc_12, num_ = connected_components(W, delta=12)
-    images += horizon_support(aff, (W_cc_12, 'W_cc_12'))
+    W_alpha_cc_7, num_ = connected_components(W_alpha, delta=7)
+    images += horizon_support(aff, (W_alpha_cc_7, 'W_alpha_cc_7'))
+
+    W_alpha_cc_8, num_ = connected_components(W_alpha, delta=8)
+    images += horizon_support(aff, (W_alpha_cc_8, 'W_alpha_cc_8'))
+
+    W_alpha_cc_9, num_ = connected_components(W_alpha, delta=9)
+    images += horizon_support(aff, (W_alpha_cc_9, 'W_alpha_cc_9'))
 
 
     # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W, theta_value)
