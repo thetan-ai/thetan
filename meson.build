@@ -51,4 +51,7 @@ if m_dep.found()
   add_project_link_arguments('-lm', language : 'c')
 endif
 
+# Include xxhash library
+subdir('vendors/xxhash')
+
 subdir('thetan')
