@@ -5,16 +5,34 @@ from fury import window, actor, colormap, material
 def gaussian(x, y, x0, y0, sigma, height):
     return height * np.exp(-((x - x0)**2 + (y - y0)**2) / (2 * sigma**2))
 
+def sample_gaussian(x0, y0, sigma, height):
+
+    return np.random.normal
+    return height * np.exp(-((x - x0)**2 + (y - y0)**2) / (2 * sigma**2))
+
 x = np.linspace(-10, 10, 200)
 y = np.linspace(-10, 10, 200)
 X, Y = np.meshgrid(x, y)
 Z = (gaussian(X, Y, -3, -3, 2, 3) +
      gaussian(X, Y, 4, 4, 3, 2.5) +
-     gaussian(X, Y, 0, 0, 1.5, 4) -
+     gaussian(X, Y, 0, 0, 1.5, 6) -
      gaussian(X, Y, -5, 5, 3, 1.5))
+
+x = np.linspace(-15, 15, 300)
+y = np.linspace(-15, 15, 300)
+X, Y = np.meshgrid(x, y)
+Z = (gaussian(X, Y, -6, -6, 2, 3) +
+     gaussian(X, Y, 10, 10, 3, 8) +
+     gaussian(X, Y, 0, 0, 1.5, 6) -
+     gaussian(X, Y, -5, 5, 3, 9))
+
+
 
 # Construct vertices and triangle faces
 vertices = np.column_stack((X.ravel(), Y.ravel(), Z.ravel()))
+
+
+
 faces = []
 n = X.shape[0]
 for i in range(n - 1):
@@ -32,16 +50,17 @@ optima = np.array([
     [-5, 5, -1.5],
 ])
 
-theta = 1
+theta = 3
 
 points = vertices.copy()
 
-points[:, 2] = 1.05 * points[:, 2]
+
+points[:, 2] = 5.05 * points[:, 2]
 
 from thetan.berserker import berserker2_clean
 from thetan.theta import theta_g1
 
-ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+ind = np.random.choice(np.arange(points.shape[0]), points.shape[0]//100, replace=False)
 points = points[ind].copy()
 
 centroids, labels = berserker2_clean(points, theta_value=theta)
