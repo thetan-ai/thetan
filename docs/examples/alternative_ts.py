@@ -4,6 +4,8 @@ from matplotlib.patches import Circle
 from thetan.berserker import theta_g1 as ts_orig
 from thetan.berserker import berserker2_clean as tb
 from thetan.berserker import theta_means as tm
+from thetan.berserker import distance_matrix as dm
+
 
 def theta_g1_python(X: np.ndarray, theta: float):
     N, D = X.shape
@@ -127,11 +129,39 @@ def generate_disks(n_disks, spacing, radius, n_points):
     samples = [sample_disk(center, radius, n_points) for center in centers]
     return np.vstack(samples), np.array(centers)
 
+def plot_overlapping_disks(X, centroids_ph1, radius, mode=['init', 'phase2'], centroids_ph2=None, true_centers=None):
+
+    # --- Plot result ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    if 'init' in mode:  
+        ax.scatter(X[:, 0], X[:, 1], s=2, alpha=0.3, label="Data Points")
+
+    ax.scatter(centroids_ph1[:, 0], centroids_ph1[:, 1], color='purple', s=10, label="Centroids")
+    
+    if 'phase2' in mode:
+        ax.scatter(centroids_ph2[:, 0], centroids_ph2[:, 1], color='green', s=40, label="Centroids2")   
+    
+    for c in true_centers:
+        ax.add_patch(Circle(c, radius, fill=False, edgecolor='green', lw=1, linestyle='dashed'))
+
+    ax.scatter(true_centers[:, 0], true_centers[:, 1], color='black', s=20, label="True Centers")
+
+    ax.set_title("TB on Multiple Merging Disks\nRed = Detected Centroids, Green = True Disk Centers")
+    ax.set_aspect("equal")
+    ax.grid(True)
+    # ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+
+
 # --- Parameters ---
 theta = 1.0
 radius = theta / 2
 n_points_per_disk = 10000
-n_disks = 5
+n_disks = 15
 spacing = 0.8 * theta
 sigma = radius / 2           # Controls decay of similarity
 
@@ -149,30 +179,65 @@ def randomize(X, ret_ind=False):
     return X2
 
 X = randomize(X)
+print(f"Dataset shape: {X.shape}")
 
-# --- Run Gaussian TS ---
-centroids, labels = ts_orig(X, theta)
-print('Centroids')
-print(centroids.shape)
+def tb_phase2(X, theta_little, theta_big):
 
-centroids2 = ts(X, 0.7 * theta)
-print('Centroids2')
-print(centroids2.shape)
+    # centroids, labels = ts_orig(X, theta)
+    # print('Centroids')
+    # print(centroids.shape)
 
-centroids3, labels3 = tb(X, theta_value=0.7 * theta)
-print('Centroids3')
-print(centroids3.shape)
+    # centroids2 = ts(X, 0.7 * theta)
+    # print('Centroids2')
+    # print(centroids2.shape)
+
+    # centroids3, labels3 = tb(X, theta_value=0.7 * theta)
+    # print('Centroids3')
+    # print(centroids3.shape)
+
+    centroids4 = ts(X, theta_little)
+    # print('Centroids Little')
+    # print(centroids4.shape)
+
+    centroids4 = randomize(centroids4)
+
+    centroids5, labels5 = tb(centroids4, theta_big)
+    # print('Centroids Big')
+    # print(centroids5.shape)
+
+    return centroids4, centroids5
 
 
-centroids4 = ts(X, 0.05 * theta)
-print('Centroids4')
-print(centroids4.shape)
+check_hyperparams = False
 
-centroids4 = randomize(centroids4)
+if check_hyperparams:
 
-centroids5, labels5 = tb(centroids4, 0.7 * theta)
-print('Centroids5')
-print(centroids5.shape)
+    for shrink in np.arange(0.65, 0.75, 0.01):
+        for i in range(20):
+
+            centroids4, centroids5 = tb_phase2(X, theta * 0.05, theta * shrink)
+            
+            distance_matrix = dm(centroids5, true_centers)
+            min_distances_sum = np.min(distance_matrix, axis=1).sum()
+            print(f"Shrink: {shrink:.2f}, Iteration: {i+1}, Min Distances Sum: {min_distances_sum:.2f}, Shape: {centroids5.shape[0]}" )
+        print()
+
+# shrink = 0.71
+shrink = 0.64
+centroids4, centroids5 = tb_phase2(X, theta * 0.05, theta * shrink)
+dm_5t = dm(centroids5, true_centers)
+min_distances_sum0 = np.min(dm_5t, axis=0).sum()
+min_distances_sum1 = np.min(dm_5t, axis=1).sum()
+
+print(f"Shrink: {shrink:.2f}, Min Sum0: {min_distances_sum0:.2f}, Min Sum1: {min_distances_sum1:.2f}, Shape: {centroids5.shape[0]}")
+
+# shrink = 0.72
+# centroids6, labels6 = tm(X, centroids5, theta=theta*shrink)
+# dm_6t = dm(centroids6, true_centers)
+# min_distances_sum0 = np.min(dm_6t, axis=0).sum()
+# min_distances_sum1 = np.min(dm_6t, axis=1).sum()
+
+# print(f"Shrink: {shrink:.2f}, Min Sum0: {min_distances_sum0:.2f}, Min Sum1: {min_distances_sum1:.2f}, Shape: {centroids6.shape[0]}" )
 
 # we could now remove the overlapping parts.
 
@@ -180,25 +245,11 @@ print(centroids5.shape)
 # print('Centroids6')
 # print(centroids6.shape)
 
-# --- Plot result ---
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.scatter(X[:, 0], X[:, 1], s=2, alpha=0.3, label="Data Points")
-# ax.scatter(X[:, 0], X[:, 1], s=2, alpha=0.3, c=labels3, cmap='viridis', label="X")
 
 
-# ax.scatter(centroids[:, 0], centroids[:, 1], color='red', s=40, label="Centroids")
-# ax.scatter(centroids2[:, 0], centroids2[:, 1], color='blue', s=40, label="Centroids2")
-# ax.scatter(centroids3[:, 0], centroids3[:, 1], color='orange', s=20, label="Centroids3")
-# ax.scatter(centroids4[:, 0], centroids4[:, 1], color='purple', s=10, label="Centroids4")
-# ax.scatter(centroids5[:, 0], centroids5[:, 1], color='green', s=40, label="Centroids5")   
-# ax.scatter(centroids6[:, 0], centroids6[:, 1], color='orange', s=40, label="Centroids6")   
 
+plot_overlapping_disks(X, centroids4, radius, mode=['phase2'],
+                       centroids_ph2=centroids5, true_centers=true_centers)
 
-for c in true_centers:
-    ax.add_patch(Circle(c, radius, fill=False, edgecolor='green', lw=1, linestyle='dashed'))
-ax.set_title("TB on Multiple Merging Disks\nRed = Detected Centroids, Green = True Disk Centers")
-ax.set_aspect("equal")
-ax.grid(True)
-# ax.legend()
-plt.tight_layout()
-plt.show()
+# plot_overlapping_disks(X, centroids4, radius, mode=['phase2'],
+#                        centroids_ph2=centroids6, true_centers=true_centers)
