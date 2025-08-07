@@ -134,14 +134,15 @@ def plot_overlapping_disks(X, centroids_ph1, radius, mode=['init', 'phase2'], ce
     # --- Plot result ---
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    if 'init' in mode:  
+    if 'init' in mode:
         ax.scatter(X[:, 0], X[:, 1], s=2, alpha=0.3, label="Data Points")
 
-    ax.scatter(centroids_ph1[:, 0], centroids_ph1[:, 1], color='purple', s=10, label="Centroids")
-    
+    #
+
     if 'phase2' in mode:
-        ax.scatter(centroids_ph2[:, 0], centroids_ph2[:, 1], color='green', s=40, label="Centroids2")   
-    
+        ax.scatter(centroids_ph1[:, 0], centroids_ph1[:, 1], color='purple', s=10, label="Centroids")
+        ax.scatter(centroids_ph2[:, 0], centroids_ph2[:, 1], color='green', s=40, label="Centroids2")
+
     for c in true_centers:
         ax.add_patch(Circle(c, radius, fill=False, edgecolor='green', lw=1, linestyle='dashed'))
 
@@ -216,7 +217,7 @@ if check_hyperparams:
         for i in range(20):
 
             centroids4, centroids5 = tb_phase2(X, theta * 0.05, theta * shrink)
-            
+
             distance_matrix = dm(centroids5, true_centers)
             min_distances_sum = np.min(distance_matrix, axis=1).sum()
             print(f"Shrink: {shrink:.2f}, Iteration: {i+1}, Min Distances Sum: {min_distances_sum:.2f}, Shape: {centroids5.shape[0]}" )
@@ -248,8 +249,8 @@ print(f"Shrink: {shrink:.2f}, Min Sum0: {min_distances_sum0:.2f}, Min Sum1: {min
 
 
 
-plot_overlapping_disks(X, centroids4, radius, mode=['phase2'],
+plot_overlapping_disks(X, centroids4, radius, mode=['init'],
                        centroids_ph2=centroids5, true_centers=true_centers)
 
-# plot_overlapping_disks(X, centroids4, radius, mode=['phase2'],
-#                        centroids_ph2=centroids6, true_centers=true_centers)
+plot_overlapping_disks(X, centroids4, radius, mode=['phase2'],
+                       centroids_ph2=centroids5, true_centers=true_centers)

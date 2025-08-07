@@ -14,7 +14,7 @@ K = 15
 n_per_ball = 10000
 dimensions = [100, 200]
 # dimensions = [2, 3, 4, 5, 10, 20, 50, 100, 200]
-num_trials = 2 # 100
+num_trials = 6 # 100
 uplift = True
 # np.random.seed(42)
 
@@ -90,14 +90,16 @@ for d in dimensions:
         X = np.vstack([generate_uniform_ball(center, r, n_per_ball, d) for center in centers])
         X = randomize(X)
         if uplift:
-            centroids, labels = ts(X, 0.05)
+            # centroids, labels = ts(X, 0.05)
+            centroids, labels = ts(X, theta * 0.2)
+            print(centroids.shape)
             centroids, labels = ts(centroids, theta)
-        else:    
+        else:
             centroids, labels = ts(X, theta)
         num_clusters = len(set(labels))
         results[d].append(num_clusters)
         print(f"Trial {trial + 1}/{num_trials} for dimension {d}, found {num_clusters} clusters.")
-        
+
 
 # Plot results
 plt.figure(figsize=(10, 6))
