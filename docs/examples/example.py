@@ -41,13 +41,13 @@ def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_ce
     pl.title(title)
     pl.axis('equal')
     pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
-    pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
+    pl.plot(centroids[:, 0], centroids[:, 1], 'ro')
 
     # for c in range(centroids.shape[0]):
     #    pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
 
     if initial_centroids is not None:
-        pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bx')
+        pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'k.')
 
     if uncertain_data is not None:
         pl.plot(uncertain_data[:, 0], uncertain_data[:, 1], 'g.')
@@ -102,8 +102,8 @@ if __name__ == '__main__':
 
     verbose = True
     theta_value = 3.6
-    x = 20
-    y = 10
+    x = 25
+    y = 25
 
 
     X, L, gt_centroids = simulate_data('gaussian', blob_dis=4.8, cluster_x=x, cluster_y=y)
