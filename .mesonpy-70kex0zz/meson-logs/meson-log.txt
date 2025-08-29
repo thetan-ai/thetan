@@ -1,0 +1,53 @@
+Build started at 2025-08-29T09:38:09.406690
+Main binary: /Users/prajwal/miniconda3/envs/thetan_package/bin/python3.11
+Build Options: -Dbuildtype=release -Db_ndebug=if-release -Db_vscrt=md '--native-file=/Users/prajwal/Desktop/Thetan Research - July 12 25/thetan_for_pr/thetan/.mesonpy-70kex0zz/meson-python-native-file.ini'
+Python system: Darwin
+The Meson build system
+Version: 1.9.0
+Source dir: /Users/prajwal/Desktop/Thetan Research - July 12 25/thetan_for_pr/thetan
+Build dir: /Users/prajwal/Desktop/Thetan Research - July 12 25/thetan_for_pr/thetan/.mesonpy-70kex0zz
+Build type: native build
+Project name: thetan
+Project version: 0.1.0dev
+-----------
+Detecting compiler via: `cc --version` -> 0
+stdout:
+Apple clang version 17.0.0 (clang-1700.0.13.5)
+Target: arm64-apple-darwin24.5.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+-----------
+Running command: -x c -E -dM -
+-----
+-----------
+Detecting linker via: `cc -Wl,--version` -> 1
+stderr:
+ld: unknown options: --version 
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+-----------
+-----------
+Detecting Apple linker via: `cc -Wl,-v` -> 0
+stderr:
+@(#)PROGRAM:ld PROJECT:ld-1167.5
+BUILD 01:45:05 Apr 30 2025
+configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em
+will use ld-classic for: armv6 armv7 armv7s i386 armv6m armv7k armv7m armv7em
+LTO support using: LLVM version 17.0.0 (static support for 29, runtime is 29)
+TAPI support using: Apple TAPI version 17.0.0 (tapi-1700.0.3.5)
+-----------
+Sanity testing C compiler: cc
+Is cross compiler: False.
+Sanity check compiler command line: cc sanitycheckc.c -o sanitycheckc.exe
+Sanity check compile stdout:
+
+-----
+Sanity check compile stderr:
+
+-----
+Running test binary command:  '/Users/prajwal/Desktop/Thetan Research - July 12 25/thetan_for_pr/thetan/.mesonpy-70kex0zz/meson-private/sanitycheckc.exe'
+-----------
+Sanity check: `'/Users/prajwal/Desktop/Thetan Research - July 12 25/thetan_for_pr/thetan/.mesonpy-70kex0zz/meson-private/sanitycheckc.exe'` -> 0
+C compiler for the host machine: cc (clang 17.0.0 "Apple clang version 17.0.0 (clang-1700.0.13.5)")
+C linker for the host machine: cc ld64 1167.5
+-----------
+Detecting archiver via: `llvm-ar-17 --version` -> [Errno 2] No such file or directory: 'llvm-ar-17'
