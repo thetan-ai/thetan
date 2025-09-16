@@ -1954,7 +1954,7 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
                          start_label=1, channel_axis=None)
     images += horizon_support(aff, (W_alpha_slic2, 'W_alpha_slic2'))
 
-    return images
+
 
 
 
