@@ -354,6 +354,7 @@ py3.install_sources(
 cython_sources = [
   'cythonutils',
   'theta',
+  'dbscan',
   ]
 
 cython_headers = [
