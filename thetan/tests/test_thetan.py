@@ -1529,14 +1529,14 @@ if __name__ == '__main__':
     #test_two_triangles(verbose=True)
     #test_2_circles()
     # test_2_trapeze()
-    #test_grid_of_disks()
+    test_grid_of_disks()
     # test_ring_of_disks()
     # test_two_triangles(True)
     #test_3d_data(verbose=False)
     #test_4d_data(verbose=False)
     # test_2d_data(verbose=False)
     # test_simple_hashing()
-    test_neighb_compactness()
+    # test_neighb_compactness()
     # test_centroids_from_labels()
 
 

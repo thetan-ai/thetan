@@ -148,255 +148,7 @@ def tsg_randomized(X, theta, metric='euclidean', num_shuffles=10):
     return final_centroids, final_indices, sum_of_time
 
 
-def berserker(points, theta_value, metric='euclidean', all_out=True, verbose=True,
-              manage_outliers={'mode':'min_size', 'size_limit':60}, quality_over_speed=False):
-
-
-    info_dict = {}
-    t0 = time()
-
-    np.random.shuffle(points)
-
-    t1 = time()
-    info_dict['Shuffle 1 X'] = t1 - t0
-
-    initial_centroids, initial_labels, _, _ = theta_g1(points, theta=theta_value, metric=metric,
-                                                       all_out=True)
-
-    t2 = time()
-
-    info_dict['Shuffle 1 TG1 X'] = t2 - t1
-
-    print('ic', initial_centroids.shape)
-
-    t3 = time()
-    c_centroids, c_labels, _, _ = theta_g1(initial_centroids, theta=theta_value, metric=metric,
-                                           all_out=True)
-
-    t4 = time()
-
-    info_dict['Shuffle 1 TG1 C'] = t4 - t3
-
-    t5 = time()
-
-    # nice, candidates, _clusters, updated_labels = candidate_labels(c_centroids, c_labels, initial_labels)
-    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
-
-    t6 = time()
-
-    info_dict['Shuffle 1 CL'] = t6 - t5
-
-    even_centroids = np.delete(initial_centroids, candidates, axis=0)
-    print('ec', even_centroids.shape)
-
-    t7 = time()
-
-    info_dict['Shuffle 1 DEL'] = t7 - t6
-
-
-    updated_labels2 = reassign_uncertain_update_labels(points, even_centroids,
-                                                       updated_labels, nice,
-                                                       metric=metric)
-
-    t8 = time()
-
-    info_dict['Shuffle 1 REA X'] = t8 - t7
-
-    even_centroids_ex = centroids_from_labels(points, updated_labels2)
-
-    t9 = time()
-
-    info_dict['Shuffle 1 CEN_LA X'] = t9 - t8
-
-
-    # This second shuffle resolves many problems with centroids appearing between clusters
-    np.random.shuffle(points)
-
-    t10 = time()
-
-    info_dict['Shuffle 2 X'] = t10 - t9
-
-    p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex, theta=theta_value,
-                                              metric=metric,
-                                              all_out=True)
-
-    t11 = time()
-    print('p_centroids', p_centroids.shape)
-
-    info_dict['Shuffle 2 TM X'] = t11 - t10
-
-
-    t12 = time()
-    c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
-                                             metric=metric, all_out=True)
-
-    t13 = time()
-
-
-    info_dict['Shuffle 2 TG1 PC'] = t13 - t12
-
-    # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
-    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
-
-    t14 = time()
-
-    info_dict['Shuffle 2 CL'] = t14 - t13
-
-
-    even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
-
-    t15 = time()
-    print('ec2 ', even_centroids2.shape)
-
-    info_dict['Shuffle 2 DEL'] = t15 - t14
-
-    updated_labels_ex2 = reassign_uncertain_update_labels(points, even_centroids2,
-                                                          updated_labels2x, nice2,
-                                                          metric=metric)
-    t16 = time()
-
-    info_dict['Shuffle 2 REA X'] = t16 - t15
-
-    even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
-    t17 = time()
-    print('ec2x ', even_centroids_ex2.shape)
-
-    info_dict['Shuffle 2 CEN_LA'] = t17 - t16
-
-
-    if quality_over_speed:
-
-        print('Quality over speed enabled')
-
-        print('------------------')
-
-        for i in range(3):
-
-            np.random.shuffle(points)
-
-            t10 = time()
-
-            info_dict['Shuffle ' + str(3 + i)  + ' X'] = t10 - t9
-
-            p_centroids, p_labels, _, _ = theta_means(points, even_centroids_ex2, theta=theta_value,
-                                                    metric=metric,
-                                                    all_out=True)
-
-            t11 = time()
-            print('p_centroids', p_centroids.shape)
-
-            info_dict['Shuffle ' + str(3 + i)  + ' TM X'] = t11 - t10
-
-
-            t12 = time()
-            c_centroids2, c_labels2, _, _ = theta_g1(p_centroids, theta=theta_value,
-                                                    metric=metric, all_out=True)
-
-            t13 = time()
-
-
-            info_dict['Shuffle ' + str(3 + i)  + ' TG1 PC'] = t13 - t12
-
-            # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
-            nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
-
-            t14 = time()
-
-            info_dict['Shuffle ' + str(3 + i)  + ' CL'] = t14 - t13
-
-
-            even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
-
-            t15 = time()
-            print('ec2 ', even_centroids2.shape)
-
-            info_dict['Shuffle ' + str(3 + i)  + ' DEL'] = t15 - t14
-
-            updated_labels_ex2 = reassign_uncertain_update_labels(points, even_centroids2,
-                                                                updated_labels2x, nice2,
-                                                                metric=metric)
-            t16 = time()
-
-            info_dict['Shuffle ' + str(3 + i)  + ' REA X'] = t16 - t15
-
-            even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
-            t17 = time()
-            print('ec2x ', even_centroids_ex2.shape)
-
-            info_dict['Shuffle ' + str(3 + i)  + ' CEN_LA'] = t17 - t16
-
-
-            if manage_outliers['mode'] == 'min_size':
-
-                unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
-                                                                return_counts=True)
-
-                candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
-
-                # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
-                nice3, updated_labels3 = candidate_labels_outliers_c(even_centroids_ex2, candidates3, updated_labels_ex2)
-
-                even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
-
-                updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3,
-                                                                    metric=metric)
-
-                even_centroids_ex4 = centroids_from_labels(points, updated_labels_ex4)
-
-                even_centroids_ex2 = even_centroids_ex4
-
-                updated_labels_ex2 = updated_labels_ex4
-
-                t18 = time()
-
-                info_dict['Manage Outliers ' + str(i)] = t18 - t17
-
-                print('Final Shape:', even_centroids_ex2.shape)
-
-
-    else:
-
-        if manage_outliers['mode'] == 'min_size':
-
-            unique_labels_ex2, unique_counts_ex2 = np.unique(updated_labels_ex2,
-                                                            return_counts=True)
-
-            candidates3 = unique_labels_ex2[unique_counts_ex2 <= manage_outliers['size_limit']]
-
-            # nice3, updated_labels3 = candidate_labels_outliers(even_centroids_ex2, candidates3, updated_labels_ex2)
-            nice3, updated_labels3 = candidate_labels_outliers_c(even_centroids_ex2, candidates3, updated_labels_ex2)
-
-            even_centroids_ex3 = np.delete(even_centroids_ex2, candidates3, axis=0)
-
-            updated_labels_ex4 = reassign_uncertain_update_labels(points, even_centroids_ex3, updated_labels3, nice3,
-                                                                metric=metric)
-
-            even_centroids_ex4 = centroids_from_labels(points, updated_labels_ex4)
-
-            even_centroids_ex2 = even_centroids_ex4
-
-            updated_labels_ex2 = updated_labels_ex4
-
-            t18 = time()
-
-            info_dict['Manage Outliers '] = t18 - t17
-
-            print('Final Shape:', even_centroids_ex2.shape)
-
-
-
-    print('Times')
-    print(info_dict)
-    t = 1
-
-    if all_out:
-        return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
-
-    else:
-        return even_centroids_ex2, updated_labels_ex2
-
-
-def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=True):
+def berserker2_dbg(points, theta_value, metric='euclidean', all_out=True, verbose=True):
 
     info_dict = {}
     t0 = time()
@@ -537,63 +289,7 @@ def berserker2(points, theta_value, metric='euclidean', all_out=True, verbose=Tr
         return even_centroids_ex2, updated_labels_ex2
 
 # @profile
-def berserker2_clean(points, theta_value, metric='euclidean'):
-    # required in order to computer properly memory consumption
-
-    ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
-    points2 = points[ind].copy()
-    ind_inv = np.argsort(ind)
-
-    initial_centroids, initial_labels = theta_g1(points2, theta=theta_value, metric=metric, all_out=False)
-
-    c_centroids, c_labels = theta_g1(initial_centroids, theta=theta_value, metric=metric, all_out=False)
-
-    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
-
-    even_centroids = np.delete(initial_centroids, candidates, axis=0)
-
-    del initial_centroids, initial_labels, candidates, _clusters, c_centroids, c_labels
-
-    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids, updated_labels, nice, metric=metric)
-
-    del nice, even_centroids, updated_labels
-
-    even_centroids_ex = centroids_from_labels(points2, updated_labels2)
-
-    del points2, updated_labels2
-
-    # This second shuffle resolves many problems with centroids appearing between clusters
-    # np.random.shuffle(points)
-    ind2 = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
-    points3 = points[ind2].copy()
-    ind2_inv = np.argsort(ind2)
-
-    p_centroids, p_labels = theta_means(points3, even_centroids_ex, theta=theta_value, metric=metric, all_out=False)
-
-    c_centroids2, c_labels2 = theta_g1(p_centroids, theta=theta_value, metric=metric, all_out=False)
-
-    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
-
-    del c_centroids2, c_labels2, p_labels, _clusters2
-
-    even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
-
-    del p_centroids, candidates2
-
-    updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
-                                                          updated_labels2x, nice2,
-                                                          metric=metric)
-
-    del points3, even_centroids2, updated_labels2x, nice2
-
-    # bring labels back from original points (not points3)
-    updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
-    even_centroids_ex2 = centroids_from_labels(points, updated_labels_ex2)
-
-    return even_centroids_ex2, updated_labels_ex2
-
-
-def berserker3_clean(points, theta_value, metric='euclidean'):
+def berserker(points, theta_value, metric='euclidean'):
     # required in order to computer properly memory consumption
 
     ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
@@ -650,8 +346,10 @@ def berserker3_clean(points, theta_value, metric='euclidean'):
 
 
 
-# thetan_berserker = berserker2_clean
-# tb = berserker2_clean
+
+
+# thetan_berserker = berserker
+# tb = berserker
 
 
 def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, verbose=True):
@@ -1421,7 +1119,7 @@ def tbscan(X, theta_value, eps=2., min_samples=1):
     # eps = 2.
     # min_samples = 1
 
-    initial_centroids, initial_labels = berserker2_clean(X, theta_value)
+    initial_centroids, initial_labels = berserker(X, theta_value)
 
     model = DBSCAN(eps=eps, min_samples=min_samples)
     model.fit(initial_centroids)
@@ -1469,7 +1167,7 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
 
 def tb_of_tb(X, initial_centroids, initial_labels, theta_value, metric='euclidean'):
 
-    _, labels = berserker2_clean(initial_centroids, theta_value, metric=metric)
+    _, labels = berserker(initial_centroids, theta_value, metric=metric)
 
     final_labels = initial_labels.copy()
     for i, l in enumerate(initial_labels):
