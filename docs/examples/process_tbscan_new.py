@@ -172,7 +172,7 @@ def plot_clusters(ax, X: np.ndarray, labels: np.ndarray, title: str, noise_label
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_aspect('equal', adjustable='box')
-    ax.legend(loc='best', frameon=False)
+    # ax.legend(loc='best', frameon=False)
 
 def make_spiral_benchmark(
     n_total=300_000,
@@ -236,17 +236,17 @@ def make_spiral_benchmark(
     return X[idx], y[idx]
 
 def main():
-    # X = make_big_dataset()
-    X, y = make_spiral_benchmark(
-    n_total=300_000,
-    arms=3,
-    rotations=3.2,
-    radius=(0.4, 6.0),
-    noise=0.02,
-    noise_frac=0.10,
-    density='radial_decay',
-    seed=2025
-    )
+    X = make_big_dataset()
+    # X, y = make_spiral_benchmark(
+    # n_total=30_000,
+    # arms=3,
+    # rotations=3.2,
+    # radius=(0.4, 6.0),
+    # noise=0.0,
+    # noise_frac=0.0,
+    # density='radial_decay',
+    # seed=2025
+    # )
     eps = 0.50
     min_pts = 1
 
@@ -265,7 +265,7 @@ def main():
     k2, n2 = summarize(labels_sklearn, noise_val=-1)
 
     # 3) TBSCAN: TB (theta) -> DBSCAN on TB centroids -> propagate
-    theta = 1.0
+    theta = 0.2
     # TB step
     ttb0 = time.perf_counter()
     initial_centroids, initial_labels = berserker2_clean(X, theta)
@@ -275,10 +275,10 @@ def main():
     ttb1 = time.perf_counter()
     _, labels_tbscan, info = tbscan_density_aware(
         X, initial_centroids, initial_labels, theta,
-        eps=None,               # let the function choose eps ≈ 1.6·theta
-        min_samples=None,       # let it infer from density proxy
-        prune_quantile=0.05,
-        use_weight_replication=False
+        eps=0.5,               # let the function choose eps ≈ 1.6·theta
+        min_samples=1,       # let it infer from density proxy
+        prune_quantile=0.0,
+        use_weight_replication=True
     )
     dt_tbscan = time.perf_counter() - ttb1
     dt_tb_total = dt_tb + dt_tbscan
@@ -304,7 +304,7 @@ def main():
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5), constrained_layout=True)
     plot_clusters(ax1, X, labels_thetan,  f"thetan.dbscan (k={k1}, noise={n1})", noise_label=DBSCAN_NOISE)
     plot_clusters(ax2, X, labels_sklearn, f"sklearn.DBSCAN (k={k2}, noise={n2})", noise_label=-1)
-    plot_clusters(ax3, X, labels_tbscan,  f"TBSCAN (k={k3}, noise={n3})", noise_label=DBSCAN_NOISE)
+    plot_clusters(ax3, X, labels_tbscan,  f"TBSCAN (k={k3}, noise={n3})")
     plt.show()
 
 
