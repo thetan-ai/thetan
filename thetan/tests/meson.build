@@ -4,6 +4,8 @@ python_sources = [
   'test_thetan.py',
   'test_patchify.py',
   'test_xxhash.py',
+  'test_core.py',
+  'test_dbscan.py',
   ]
 
 
