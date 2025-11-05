@@ -1,12 +1,10 @@
 from time import time
 import numpy as np
 import numpy.testing as npt
-from thetan import sequential
-from thetan.theta import reorder_labels, theta_g1, theta_means, reassign_uncertain_update_labels, theta_g1h, theta_g1d
-from thetan.theta import centroids_from_labels
+from thetan import reorder_labels, sequential
+from thetan import centroids_from_labels
 import pylab as pl
-from thetan.theta import distance_matrix as tdm
-from thetan.berserker import candidate_labels, berserker2_dbg
+from thetan.berserker import candidate_labels, berserker_dbg
 import matplotlib.pyplot as plt
 from PIL import Image
 from thetan.viz import plot_centroids_clusters
@@ -16,22 +14,16 @@ import os
 os.environ.setdefault("MPLBACKEND", "Agg")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+
 def test_simple_hashing():
 
     X = 1000 * (np.random.rand(100000, 3) - 0.5)
-
     spacing = 40
-
     Xf = np.floor(X/spacing)
-
     big_ints = np.random.randint(100000, 200000, X.shape[1])
-
     hash_prep = Xf * big_ints
-
     hashes = np.sum(hash_prep, axis=1)
-
     unique_hashes = np.unique(hashes)
-
     print(unique_hashes.shape[0] / hashes.shape[0])
 
 
@@ -290,7 +282,7 @@ def test_grid_of_disks():
 
     theta_value = 2.0
 
-    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker2_dbg(points, theta_value, all_out=True, verbose=True)
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker_dbg(points, theta_value, all_out=True, verbose=True)
 
     print(even_centroids_ex2.shape[0])
 
@@ -316,7 +308,7 @@ def test_ring_of_disks():
 
         print('theta value', theta_value)
 
-        even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker2_dbg(points, theta_value, all_out=True, verbose=True)
+        even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker_dbg(points, theta_value, all_out=True, verbose=True)
 
         print(even_centroids_ex2.shape[0])
 
@@ -354,7 +346,7 @@ def test_two_triangles(verbose=False):
 
     theta_value = .6
 
-    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker2_dbg(points, theta_value, all_out=True, verbose=True)
+    even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2 = berserker_dbg(points, theta_value, all_out=True, verbose=True)
 
     if verbose:
         plot_centroids_clusters(points, initial_centroids, None, title='ic' + str(initial_centroids.shape), show=False)
@@ -512,5 +504,4 @@ def test_centroids_from_labels():
 
 if __name__ == '__main__':
 
-    test_centroids_from_labels()
     pass
