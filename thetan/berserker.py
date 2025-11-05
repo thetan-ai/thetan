@@ -4,10 +4,15 @@ from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
-from thetan import sequential
-from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
-from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
-from thetan.theta import img3d_to_ijkv_features, img2d_to_ijv_features, assign, distance_matrix, correct_connectivity, connected_components
+from thetan import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, distance_matrix, candidate_labels_c, assign
+
+
+# from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
+# from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
+# from thetan.theta import assign, distance_matrix, correct_connectivity, connected_components
+
+
+from thetan.image import img3d_to_ijkv_features, img2d_to_ijv_features, connected_components
 from skimage.segmentation import flood_fill
 from skimage.morphology import reconstruction
 from sklearn.cluster import DBSCAN
@@ -149,7 +154,7 @@ def tsg_randomized(X, theta, metric='euclidean', num_shuffles=10):
     return final_centroids, final_indices, sum_of_time
 
 
-def berserker2_dbg(points, theta_value, metric='euclidean', all_out=True, verbose=True):
+def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose=True):
 
     info_dict = {}
     t0 = time()
@@ -223,7 +228,7 @@ def berserker2_dbg(points, theta_value, metric='euclidean', all_out=True, verbos
 
     info_dict['Shuffle 2 X'] = t10 - t9
 
-    p_centroids, p_labels, _, _ = theta_means(points3, even_centroids_ex, theta=theta_value,
+    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta_value,
                                               metric=metric,
                                               all_out=True)
 
@@ -321,7 +326,7 @@ def berserker(points, theta_value, metric='euclidean'):
     points3 = points[ind2].copy()
     ind2_inv = np.argsort(ind2)
 
-    p_centroids, p_labels = theta_means(points3, even_centroids_ex, theta=theta_value, metric=metric, all_out=False)
+    p_centroids, p_labels = sequential_prelim(points3, even_centroids_ex, theta=theta_value, metric=metric, all_out=False)
 
     c_centroids2, c_labels2 = sequential(p_centroids, theta=theta_value, metric=metric, all_out=False)
 
@@ -426,7 +431,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
 
     info_dict['Shuffle 2 X'] = t10 - t9
 
-    p_centroids, p_labels, _, _ = theta_means(points3, even_centroids_ex, theta=theta_value,
+    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta_value,
                                               metric=metric,
                                               all_out=True)
 
@@ -524,7 +529,7 @@ def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, 
         points3 = points[ind2].copy()
         ind2_inv = np.argsort(ind2)
 
-        p_centroids, p_labels, _, _ = theta_means(points3, even_centroids_ex, theta=theta_value,
+        p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta_value,
                                                   metric=metric,
                                                   all_out=True)
 
@@ -568,7 +573,7 @@ def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
         np.random.shuffle(X_work)
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
-        centroids, _ = berserker2(X_work_cp, theta_value=theta, metric=metric, all_out=False, verbose=False)
+        centroids, _ = berserker_dbg(X_work_cp, theta_value=theta, metric=metric, all_out=False, verbose=False)
         t2 = time()
         timings.append(t2-t1)
 
@@ -588,7 +593,7 @@ def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
         offset += all_centroids[s].shape[0]
 
     t1 = time()
-    new_centroids, _ = berserker2(X_centroids, theta_value=theta, metric=metric, all_out=False, verbose=False)
+    new_centroids, _ = berserker_dbg(X_centroids, theta_value=theta, metric=metric, all_out=False, verbose=False)
     t2 = time()
     sum_of_time += t2 - t1
     print('Time for tg1 on centroids', t2 - t1)
@@ -618,7 +623,7 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None)
     else:
         Xp = X
 
-    centroids, labels = berserker2(Xp, theta_value, all_out=False, verbose=verbose)
+    centroids, labels = berserker_dbg(Xp, theta_value, all_out=False, verbose=verbose)
 
     if mask is not None:
         # We can calculate the centroids for label -1 on our own
@@ -654,7 +659,7 @@ def X_to_many_3D(X, data_dims):
 
 def berserker2_to_2D_labels(X, theta_value, data_dims):
 
-    centroids, labels = berserker2(X, theta_value, all_out=False)
+    centroids, labels = berserker_dbg(X, theta_value, all_out=False)
 
     data_labels = labels.copy()
     data_labels = data_labels.reshape(data_dims)
