@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.testing as npt
 from thetan import sequential, berserker
-from thetan.theta import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
-from thetan.berserker import berserker2_dbg, candidate_labels
+from thetan import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
+from thetan import berserker_dbg, candidate_labels
 
 rng = np.random.default_rng(42)
 
@@ -30,7 +30,7 @@ def test_sequential_basic_roundtrip():
 def test_tb_recovers_right_K_on_simple_grid():
     X, Ctrue, _ = make_grid_gaussians(A=3, B=2, l=6.0, sigma=1.0, n_per=60)
     theta = 3.6
-    cents, labels, *_ = berserker2_dbg(X, theta, metric='euclidean', all_out=True, verbose=False)
+    cents, labels, *_ = berserker_dbg(X, theta, metric='euclidean', all_out=True, verbose=False)
     f = match_fraction(cents, Ctrue, metric='euclidean',eps=0.8)
     assert f >= 0.95, f"TB should recover most true centroids (got {f:.3f})"
 
@@ -64,7 +64,7 @@ def test_tb_less_order_sensitive_than_ts():
         perm = rng.permutation(len(X))
         Xp = X[perm]
         c_ts, _ = sequential(Xp, theta, metric='euclidean', all_out=False)
-        c_tb, _labels, *_ = berserker2_dbg(Xp, theta, metric='euclidean', all_out=True, verbose=False)
+        c_tb, _labels, *_ = berserker_dbg(Xp, theta, metric='euclidean', all_out=True, verbose=False)
         k_ts.append(len(c_ts))
         k_tb.append(len(c_tb))
     mad = lambda a: np.median(np.abs(a - np.median(a)))
