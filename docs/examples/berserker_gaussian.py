@@ -1,7 +1,7 @@
 import numpy as np
 import pylab as pl
-from thetan.theta import theta_g1 as ts
-from thetan.berserker import berserker2_clean as tb
+from thetan import TS as ts
+from thetan import TB as tb
 
 
 def gaussian_clusters(n_local_samples, blob_dis=10, cluster_x=10, cluster_y=10):

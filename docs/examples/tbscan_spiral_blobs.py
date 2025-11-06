@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import gamma
 from thetan.dbscan import dbscan, DBSCAN_NOISE
-from thetan.berserker import berserker2_clean
+from thetan import berserker
 import time
 import matplotlib.pyplot as plt
 
@@ -268,7 +268,7 @@ def main():
     theta = 0.2
     # TB step
     ttb0 = time.perf_counter()
-    initial_centroids, initial_labels = berserker2_clean(X, theta)
+    initial_centroids, initial_labels = berserker(X, theta)
     dt_tb = time.perf_counter() - ttb0
 
     # TBSCAN step (density-aware)
