@@ -4,7 +4,7 @@ cimport cython
 import numpy as np
 cimport numpy as cnp
 # from scipy.linalg.cython_blas cimport ddot
-
+from cython.parallel cimport prange
 
 from libc.math cimport fabs
 cdef extern from "math.h" nogil:
@@ -382,6 +382,114 @@ def sequential(double[:, ::1] X, double theta, metric='euclidean', all_out=False
         free(summs)
         free(clusters_sizes)
         return final_centroids, final_indices
+
+
+def sequential_pexact(double[:, ::1] X, double theta, metric='euclidean', all_out=False, verbose=False):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0, d = 0
+        cnp.npy_intp k = 0, K = 0
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double * summs = <double *> malloc(<size_t> D * sizeof(double))
+        double * centroids = <double *> malloc(<size_t> D * sizeof(double))
+        double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
+        double * distances = <double *> malloc(<size_t> N * sizeof(double))  # workspace for distances
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+        double cnt_orig = 0
+
+    # choose metric function under the GIL
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
+
+    with nogil:
+
+        # first point becomes first cluster
+        indices[0] = 0
+        for d in range(D):
+            summs[d] = X[0, d]
+            centroids[d] = X[0, d]
+        K = 1
+        clusters_sizes[0] = 1.0
+
+        for i in range(1, N):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            # --- PARALLELIZED PART: compute all distances in parallel over k ---
+            for k in prange(K, schedule='static', nogil=True):
+                distances[k] = metric_func(&X[i, 0], &centroids[k * D], D)
+
+            # same number of metric calls as before
+            cnt_orig += K
+
+            # --- SERIAL argmin, to keep tie-breaking identical ---
+            for k in range(K):
+                dist = distances[k]
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
+
+            # add in existing
+            if minimum < theta:
+
+                for d in range(D):
+                    summs[argmin * D + d] += X[i, d]
+                clusters_sizes[argmin] += 1.0
+                for d in range(D):
+                    centroids[argmin * D + d] = summs[argmin * D + d] / clusters_sizes[argmin]
+                indices[i] = argmin
+
+            # create new cluster
+            else:
+
+                summs = <double *> realloc(summs, <size_t> D * (K + 1) * sizeof(double))
+                clusters_sizes = <double *> realloc(clusters_sizes, <size_t> (K + 1) * sizeof(double))
+                centroids = <double *> realloc(centroids, <size_t> D * (K + 1) * sizeof(double))
+                indices[i] = K
+                for d in range(D):
+                    summs[K * D + d] = X[i, d]
+                clusters_sizes[K] = 1.0
+                for d in range(D):
+                    centroids[K * D + d] = summs[K * D + d]
+                K += 1
+
+    if verbose:
+        print('Original calls ', cnt_orig)
+
+    final_centroids = np.asarray(<double[:K, :D]> centroids)
+    final_indices = np.asarray(indices)
+
+    # distances is only a temporary buffer, always free it
+    free(distances)
+
+    if all_out:
+        final_summs = np.asarray(<double[:K, :D]> summs)
+        final_clusters_sizes = np.asarray(<double[:K]> clusters_sizes).astype('i8')
+        return final_centroids, final_indices, final_summs, final_clusters_sizes
+    else:
+        free(summs)
+        free(clusters_sizes)
+        return final_centroids, final_indices
+
 
 
 def candidate_labels_c(double[:, ::1] centroids, cnp.npy_intp[:] labels, cnp.npy_intp[:] initial_labels):
