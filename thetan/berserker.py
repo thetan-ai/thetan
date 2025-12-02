@@ -351,13 +351,6 @@ def berserker(points, theta_value, metric='euclidean'):
     return even_centroids_ex2, updated_labels_ex2
 
 
-
-
-
-# thetan_berserker = berserker
-# tb = berserker
-
-
 def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, verbose=True):
 
     info_dict = {}

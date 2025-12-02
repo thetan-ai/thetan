@@ -435,7 +435,7 @@ def sequential_pexact(double[:, ::1] X, double theta, metric='euclidean', all_ou
             argmin = -1
 
             # --- PARALLELIZED PART: compute all distances in parallel over k ---
-            for k in prange(K, schedule='static', nogil=True):
+            for k in prange(K, schedule='static'):
                 distances[k] = metric_func(&X[i, 0], &centroids[k * D], D)
 
             # same number of metric calls as before
@@ -1014,3 +1014,55 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
 
     return final_indices
 
+
+def assign_pexact(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0
+        cnp.npy_intp k = 0, K = centroids.shape[0]
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
+
+    with nogil:
+
+        for i in prange(N, schedule='static'):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            for k in range(K):
+
+                dist = metric_func(&X[i, 0], &centroids[k, 0], D)
+
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
+
+            indices[i] = argmin
+
+    final_indices = np.asarray(indices)
+
+    return final_indices
