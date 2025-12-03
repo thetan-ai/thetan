@@ -895,7 +895,7 @@ def reorder_labels(centroids, labels, nice, candidates):
     return labels
 
 
-def centroids_from_labels(double[:, ::1] X, cnp.npy_intp[:] indices):
+def centroids_from_labels(const double[:, ::1] X, cnp.npy_intp[:] indices):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
