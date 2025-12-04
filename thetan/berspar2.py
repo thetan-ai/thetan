@@ -2,8 +2,10 @@ import os
 import math
 import numpy as np
 import ray
-from thetan import berserker
+from thetan import berserker, assign_pexact, centroids_from_labels
 from time import time
+from thetan.viz import plot_centroids_clusters
+# from memory_profiler import memory_usage
 
 # (A) Prevent oversubscription (helps a lot if berserker/NumPy uses threads)
 THREAD_ENVS = {
@@ -21,8 +23,7 @@ ray.init(
 
 @ray.remote(num_cpus=1)
 def process_chunk(X, start, end, theta_value, metric, return_labels):
-    # Make a writable float64 chunk (what your cython code expects)
-    X_chunk = np.array(X[start:end], dtype=np.float64, order="C", copy=True)
+    X_chunk = np.require(X[start:end],dtype=np.float64,requirements=["C","W"])
 
     cents, labels = berserker(X_chunk, theta_value=theta_value, metric=metric)
 
@@ -103,12 +104,26 @@ if __name__ == "__main__":
     t0 = time()
     centroids, labels = berserker(X, theta_value=theta, metric="euclidean")
     t1 = time()
+    # mem_usage = memory_usage(
+    # (berserker, (X, theta), {'metric': 'euclidean'}),
+    # interval=0.1,
+    # max_usage=True  
+    # )
+    # print(f"Peak memory of original berserker: {mem_usage:.2f} MB")
+
+    
 
     cents, labels = berserker_papprox(X, theta_value=theta, metric='euclidean')
     t2 = time()
+    # mem_usage = memory_usage(
+    # (berserker_papprox, (X, theta), {'metric': 'euclidean'}),
+    # interval=0.1,
+    # max_usage=True  
+    # )
+    # print(f"Peak memory of berserker papprox: {mem_usage:.2f} MB")
     print("Berserker time: %.4f s" % (t1 - t0))
     print("Berserker papprox time: %.4f s" % (t2 - t1))
-
+    
 
     print("Number of chunks:", len(cents))
     print("Done.")
@@ -117,3 +132,29 @@ if __name__ == "__main__":
     print("Cents:", len(cents[0]))
 
     t = 1
+
+    ray.shutdown()
+
+    t3 = time()
+
+    # Second phase
+
+    all_cents = np.vstack(cents)
+    t4 = time()
+
+    final_cents, final_labels = berserker(all_cents, theta_value=theta, metric='euclidean')
+    t5 = time()
+    print("After merging, number of centroids:", len(final_cents))
+
+    labels = assign_pexact(X, final_cents, metric='euclidean')
+    t6 = time()
+    centroids = centroids_from_labels(X, labels)
+    t7 = time()
+    print("Recomputed centroids shape:", centroids.shape)
+
+    print(f"Second phase times: shutdown ray {t3 - t2:.4f}, s gather {t4 - t3:.4f} s, merge {t5 - t4:.4f} s, assign {t6 - t5:.4f} s, recompute cents {t7 - t6:.4f} s")
+
+    sum = t3 - t2 + t4 - t3 + t5 - t4 + t6 - t5 + t7 - t6
+    print(f"Total second phase time: {sum:.4f} s")
+
+    # plot_centroids_clusters(X, centroids, labels, title="berserker papprox final clusters")
