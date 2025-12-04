@@ -70,7 +70,7 @@ def berserker_papprox(
     all_labels = [] if return_labels else None
 
     while futures:
-        done, futures = ray.wait(futures, num_returns=min(8, len(futures)))
+        done, futures = ray.wait(futures) #, num_returns=min(8, len(futures)))
         for ref in done:
             out = ray.get(ref)
             if return_labels:
@@ -101,34 +101,34 @@ if __name__ == "__main__":
 
     theta = 6
 
-    t0 = time()
-    centroids, labels = berserker(X, theta_value=theta, metric="euclidean")
+    # t0 = time()
+    # centroids, labels = berserker(X, theta_value=theta, metric="euclidean")
     t1 = time()
     # mem_usage = memory_usage(
     # (berserker, (X, theta), {'metric': 'euclidean'}),
     # interval=0.1,
-    # max_usage=True  
+    # max_usage=True
     # )
     # print(f"Peak memory of original berserker: {mem_usage:.2f} MB")
 
-    
+
 
     cents, labels = berserker_papprox(X, theta_value=theta, metric='euclidean')
     t2 = time()
     # mem_usage = memory_usage(
     # (berserker_papprox, (X, theta), {'metric': 'euclidean'}),
     # interval=0.1,
-    # max_usage=True  
+    # max_usage=True
     # )
     # print(f"Peak memory of berserker papprox: {mem_usage:.2f} MB")
-    print("Berserker time: %.4f s" % (t1 - t0))
+    # print("Berserker time: %.4f s" % (t1 - t0))
     print("Berserker papprox time: %.4f s" % (t2 - t1))
-    
+
 
     print("Number of chunks:", len(cents))
     print("Done.")
 
-    print("Final number of centroids:", len(centroids))
+    # print("Final number of centroids:", len(centroids))
     print("Cents:", len(cents[0]))
 
     t = 1
@@ -145,6 +145,9 @@ if __name__ == "__main__":
     final_cents, final_labels = berserker(all_cents, theta_value=theta, metric='euclidean')
     t5 = time()
     print("After merging, number of centroids:", len(final_cents))
+
+    os.environ["OMP_NUM_THREADS"] = "12"
+
 
     labels = assign_pexact(X, final_cents, metric='euclidean')
     t6 = time()
