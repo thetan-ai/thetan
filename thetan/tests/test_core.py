@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.testing as npt
 from time import time
-from thetan import sequential, berserker, sequential_pexact, assign, assign_pexact
+from thetan import sequential, berserker, sequential_pexact, assign, assign_pexact, assign_hashx
 from thetan import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
 from thetan import berserker_dbg, candidate_labels
 from itertools import product
@@ -203,9 +203,25 @@ def test_assign_vs_assign_pexact():
     print(f"assign time: {t1 - t0:.4f} assign_pexact time: {t2 - t1:.4f} s")
     npt.assert_array_equal(labels2, labels3)
 
+def test_assign_hashx():
 
+    X, _, _ = make_grid_gaussians(A=20, B=20, l=10.0, sigma=1.0, n_per=500)
+    print(X.shape)
+
+    theta = 8.0  # Large theta to force single cluster
+    cents1, labels1 = sequential(X, theta, metric='euclidean', all_out=False)
+    print(f"Number of centroids: {len(cents1)}")
+
+    t0 = time()
+    labels2 = assign(X, cents1, metric='euclidean')
+    t1 = time()
+    labels3 = assign_hashx(X, cents1, theta, metric='euclidean')
+    t2 = time()
+    print(f"assign time: {t1 - t0:.4f} assign_hashx time: {t2 - t1:.4f} s")
+    # npt.assert_array_equal(labels2, labels3)
 
 
 if __name__ == "__main__":
     # test_sequential_pexact_matches_sequential()
-    test_assign_vs_assign_pexact()
+    # test_assign_vs_assign_pexact()
+    test_assign_hashx()

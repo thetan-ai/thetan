@@ -57,7 +57,7 @@ def hash64(bytes data, uint64_t seed=0):
     return XXH64(<const void*>data, len(data), seed)
 
 
-def hash_rows(cnp.ndarray[uint32_t, ndim=2, cast=True, mode="c"] X, uint32_t seed=0):
+def hash_rows_32(cnp.ndarray[uint32_t, ndim=2, cast=True, mode="c"] X, uint32_t seed=0):
     """Compute XXH32 hash of each row in a 2D array with an optional seed.
 
     Parameters
@@ -80,6 +80,8 @@ def hash_rows(cnp.ndarray[uint32_t, ndim=2, cast=True, mode="c"] X, uint32_t see
     cdef const void* row_ptr
     cdef size_t row_size
 
+    # with nogil
+
     for i in range(N):
         # Get direct pointer to the row data
         row_ptr = <const void*>&X[i, 0]
@@ -91,4 +93,37 @@ def hash_rows(cnp.ndarray[uint32_t, ndim=2, cast=True, mode="c"] X, uint32_t see
     return np.asarray(hashes)
 
 
+def hash_rows_64(cnp.ndarray[uint64_t, ndim=2, cast=True, mode="c"] X, uint64_t seed=0):
+    """Compute XXH64 hash of each row in a 2D array with an optional seed.
 
+    Parameters
+    ----------
+    X : cnp.ndarray
+        Input 2D array to hash
+    seed : uint64_t, optional
+        A seed to alter the hash result predictably, by default 0
+
+    Returns
+    -------
+    np.uint64_t[:]
+        An array of 64-bit hash values for each row
+
+    """
+    cdef int N = X.shape[0]
+    cdef int D = X.shape[1]
+    cdef cnp.uint64_t[:] hashes = np.empty(N, dtype=np.uint64)
+    cdef int i
+    cdef const void* row_ptr
+    cdef size_t row_size
+
+    # with nogil:
+
+    for i in range(N):
+        # Get direct pointer to the row data
+        row_ptr = <const void*>&X[i, 0]
+        # Size in bytes is number of elements * size of element
+        row_size = D * sizeof(uint64_t)
+        # Hash the row data directly
+        hashes[i] = XXH64(row_ptr, row_size, seed)
+
+    return np.asarray(hashes)

@@ -5,6 +5,7 @@ import numpy as np
 cimport numpy as cnp
 # from scipy.linalg.cython_blas cimport ddot
 from cython.parallel cimport prange
+from thetan.hashing import hash32, hash64, hash_rows_32, hash_rows_64
 
 from libc.math cimport fabs
 cdef extern from "math.h" nogil:
@@ -1054,6 +1055,71 @@ def assign_pexact(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'
             argmin = -1
 
             for k in range(K):
+
+                dist = metric_func(&X[i, 0], &centroids[k, 0], D)
+
+                if dist < minimum:
+                    minimum = dist
+                    argmin = k
+
+            indices[i] = argmin
+
+    final_indices = np.asarray(indices)
+
+    return final_indices
+
+
+def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metric='euclidean'):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0
+        cnp.npy_intp k = 0, K = centroids.shape[0]
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+        cnp.uint64_t [:] row_Xhashes
+        cnp.uint64_t [:] row_chashes
+
+
+    if metric == 'euclidean':
+        metric_func = &euclidean
+    if metric == 'inf_norm':
+        metric_func = &inf_norm
+    if metric == 'ssd':
+        metric_func = &ssd
+    if metric == 'norm_ssd':
+        metric_func = &norm_ssd
+    if metric == 'norm_ssd_un':
+        metric_func = &norm_ssd_un
+    if metric == 'dot_prod':
+        metric_func = &dot_prod
+    if metric == 'l1_norm':
+        metric_func = &l1_norm
+    if metric == 'cosine':
+        metric_func = &cosine_distance
+    if metric == 'arccos':
+        metric_func = &arccosine_distance
+
+    Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (1.5 * theta), 0), dtype=np.uint64)
+    row_Xhashes = hash_rows_64(Xarr)
+
+    Carr = np.ascontiguousarray(np.round(np.asarray(centroids) / (1.5 * theta), 0), dtype=np.uint64)
+    row_chashes = hash_rows_64(Carr)
+
+    with nogil:
+
+        for i in range(N):
+
+            minimum = DBL_MAX
+            argmin = -1
+
+            for k in range(K):
+
+                if row_Xhashes[i] != row_chashes[k]:
+                    continue
 
                 dist = metric_func(&X[i, 0], &centroids[k, 0], D)
 

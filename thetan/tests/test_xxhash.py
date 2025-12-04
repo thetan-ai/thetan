@@ -2,7 +2,7 @@
 
 import numpy as np
 from numpy.testing import assert_equal, assert_raises, assert_array_equal
-from thetan.hashing import hash32, hash64, hash_rows
+from thetan.hashing import hash32, hash64, hash_rows_32, hash_rows_64
 
 
 def test_hash32_basic():
@@ -113,7 +113,7 @@ def test_hash_rows_identical():
     arr = np.array([[1, 2, 3], [1, 2, 3]], dtype=np.int32)
 
     # Get hashes
-    row_hashes = hash_rows(arr)
+    row_hashes = hash_rows_32(arr)
 
     # Identical rows should have identical hashes
     assert_equal(row_hashes[0], row_hashes[1])
