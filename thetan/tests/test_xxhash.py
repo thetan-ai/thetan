@@ -87,27 +87,27 @@ def test_hash_rows():
         # Verify that the hash of each row is not equal to the hash of the entire array
         hashes.append(hash32(arr[i].tobytes()))
     # Get hashes using hash_rows
-    row_hashes = hash_rows(arr)
+    row_hashes = hash_rows_32(arr)
 
     # Verify output shape
     assert_equal(row_hashes.shape, (3,))
 
     # Verify deterministic results
-    assert_array_equal(row_hashes, hash_rows(arr))
+    assert_array_equal(row_hashes, hash_rows_32(arr))
 
     # Verify using different seed gives different results
-    assert not np.array_equal(row_hashes, hash_rows(arr, seed=42))
+    assert not np.array_equal(row_hashes, hash_rows_32(arr, seed=42))
 
     # Verify each row gets a different hash
     assert_equal(len(np.unique(row_hashes)), 3)
 
-    # Test hash_rows with empty array.
+    # Test hash_rows_32 with empty array.
     arr = np.zeros((0, 3), dtype=np.int32)
-    row_hashes = hash_rows(arr)
+    row_hashes = hash_rows_32(arr)
     assert_equal(row_hashes.shape, (0,))
 
 
-def test_hash_rows_identical():
+def test_hash_rows_32_identical():
     """Test hash_rows with identical rows."""
     # Create an array with identical rows
     arr = np.array([[1, 2, 3], [1, 2, 3]], dtype=np.int32)

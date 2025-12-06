@@ -208,18 +208,42 @@ def test_assign_hashx():
     X, _, _ = make_grid_gaussians(A=20, B=20, l=10.0, sigma=1.0, n_per=500)
     print(X.shape)
 
-    theta = 8.0  # Large theta to force single cluster
+    theta = 8.0  # Large theta to force correct clustering
     cents1, labels1 = sequential(X, theta, metric='euclidean', all_out=False)
     print(f"Number of centroids: {len(cents1)}")
 
     t0 = time()
     labels2 = assign(X, cents1, metric='euclidean')
     t1 = time()
-    labels3 = assign_hashx(X, cents1, theta, metric='euclidean')
+    labels3, Xh, cents1h = assign_hashx(X, cents1, 5 * theta, metric='euclidean')
     t2 = time()
     print(f"assign time: {t1 - t0:.4f} assign_hashx time: {t2 - t1:.4f} s")
     # npt.assert_array_equal(labels2, labels3)
 
+    from thetan.viz import plot_centroids_clusters
+    # plot_centroids_clusters(X, cents1, labels1, title="sequential")
+    # plot_centroids_clusters(X, cents1, labels2, title="assign")
+    plot_centroids_clusters(X, cents1, labels3, title="assign_hashx")
+
+    print(labels3.min())
+
+    Xhunq, Xinv, Xhcounts = np.unique(Xh, return_inverse=True, return_counts=True)
+    print(f"Number of unique X hashes: {len(Xhunq)}")
+    print(Xhcounts.min(), Xhcounts.max(), Xhcounts.mean())
+
+    cents1hunq, cents1hinv, cents1hcounts = np.unique(cents1h, return_inverse=True, return_counts=True)
+    print(f"Number of unique centroid hashes: {len(cents1hunq)}")
+    print(cents1hcounts.min(), cents1hcounts.max(), cents1hcounts.mean())
+
+
+    order = np.argsort(-Xhcounts)  # descending by count
+    # map old uniq indices -> new ordered indices
+    new_index = np.empty_like(order)
+    new_index[order] = np.arange(len(order))
+    labels_ordered = new_index[Xinv]
+    
+    plot_centroids_clusters(X, None, labels_ordered, title="assign_hashx with X hashes")
+    t = 1
 
 if __name__ == "__main__":
     # test_sequential_pexact_matches_sequential()

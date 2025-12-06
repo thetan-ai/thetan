@@ -1103,10 +1103,10 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
     if metric == 'arccos':
         metric_func = &arccosine_distance
 
-    Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (1.5 * theta), 0), dtype=np.uint64)
+    Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (theta), 0), dtype=np.uint64)
     row_Xhashes = hash_rows_64(Xarr)
 
-    Carr = np.ascontiguousarray(np.round(np.asarray(centroids) / (1.5 * theta), 0), dtype=np.uint64)
+    Carr = np.ascontiguousarray(np.round(np.asarray(centroids) / (theta), 0), dtype=np.uint64)
     row_chashes = hash_rows_64(Carr)
 
     with nogil:
@@ -1131,4 +1131,4 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
 
     final_indices = np.asarray(indices)
 
-    return final_indices
+    return final_indices, np.asarray(row_Xhashes), np.asarray(row_chashes)
