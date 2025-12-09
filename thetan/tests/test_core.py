@@ -217,7 +217,7 @@ def test_assign_hashx(verbose=True):
     t0 = time()
     labels2 = assign(X, cents1, metric='euclidean')
     t1 = time()
-    labels3, Xh, cents1h = assign_hashx(X, cents1, theta, metric='euclidean')
+    labels3 = assign_hashx(X, cents1, theta, metric='euclidean')
     t2 = time()
     print(f"assign time: {t1 - t0:.4f} assign_hashx time: {t2 - t1:.4f} s")
     # npt.assert_array_equal(labels2, labels3)
@@ -226,8 +226,12 @@ def test_assign_hashx(verbose=True):
         # plot_centroids_clusters(X, cents1, labels1, title="sequential")
         # plot_centroids_clusters(X, cents1, labels2, title="assign")
         plot_centroids_clusters(X, cents1, labels3, title="assign_hashx")
-
     print(labels3.min())
+
+
+
+def test_direct(verbose=True):
+
 
     Xhunq, Xinv, Xhcounts = np.unique(Xh, return_inverse=True, return_counts=True)
     print(f"Number of unique X hashes: {len(Xhunq)}")
@@ -243,7 +247,7 @@ def test_assign_hashx(verbose=True):
     new_index = np.empty_like(order)
     new_index[order] = np.arange(len(order))
     labels_ordered = new_index[Xinv]
-    
+
     if verbose:
         plot_centroids_clusters(X, None, labels_ordered, title="assign_hashx with X hashes")
     t = 1
@@ -256,9 +260,10 @@ def test_assign_hashx(verbose=True):
     if verbose:
         plot_centroids_clusters(X, dcents, title="direct centroid calc")
 
-    plot_centroids_colormap_by_counts(X, dcents, Xhcounts, title="X centroids colored by counts", cmap='hot')
+    if verbose:
+        plot_centroids_colormap_by_counts(X, dcents, Xhcounts, title="X centroids colored by counts", cmap='hot')
     # plot_centroids_colormap_by_counts(data, centroids, centroid_counts, title='test', cmap='hot')
 if __name__ == "__main__":
     # test_sequential_pexact_matches_sequential()
     # test_assign_vs_assign_pexact()
-    test_assign_hashx(False)
+    test_assign_hashx(True)

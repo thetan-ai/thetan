@@ -1024,7 +1024,7 @@ def assign_pexact(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'
     return final_indices
 
 
-def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metric='euclidean'):
+def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metric='euclidean', return_hashes=False):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
@@ -1086,4 +1086,8 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
 
     final_indices = np.asarray(indices)
 
-    return final_indices, np.asarray(row_Xhashes), np.asarray(row_chashes)
+    if return_hashes:
+
+        return final_indices, np.asarray(row_Xhashes), np.asarray(row_chashes)
+
+    return final_indices
