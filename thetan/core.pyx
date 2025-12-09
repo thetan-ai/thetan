@@ -786,12 +786,10 @@ def direct(double[:, ::1] X, double theta, metric='euclidean', labels_from_hashe
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
         # cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
         # cnp.uint64_t [:] row_Xhashes
         # cnp.uint64_t [:] row_chashes
 
-
-    metric_func = get_metric_func(metric)
     from time import time
 
     t1 = time()
