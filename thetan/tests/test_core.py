@@ -205,8 +205,6 @@ def test_assign_vs_assign_pexact():
 
 def test_assign_hashx(verbose=True):
 
-    from thetan.viz import plot_centroids_clusters, plot_centroids_colormap_by_counts
-
     X, _, _ = make_grid_gaussians(A=20, B=20, l=10.0, sigma=1.0, n_per=500)
     print(X.shape)
 
@@ -223,6 +221,7 @@ def test_assign_hashx(verbose=True):
     # npt.assert_array_equal(labels2, labels3)
 
     if verbose:
+        from thetan.viz import plot_centroids_clusters, plot_centroids_colormap_by_counts
         # plot_centroids_clusters(X, cents1, labels1, title="sequential")
         # plot_centroids_clusters(X, cents1, labels2, title="assign")
         plot_centroids_clusters(X, cents1, labels3, title="assign_hashx")
@@ -232,6 +231,12 @@ def test_assign_hashx(verbose=True):
 
 def test_direct(verbose=True):
 
+    X, _, _ = make_grid_gaussians(A=20, B=20, l=10.0, sigma=1.0, n_per=500)
+    print(X.shape)
+
+    from thetan.hashing import hash_rows_64
+
+    Xh =
 
     Xhunq, Xinv, Xhcounts = np.unique(Xh, return_inverse=True, return_counts=True)
     print(f"Number of unique X hashes: {len(Xhunq)}")

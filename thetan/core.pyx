@@ -1039,24 +1039,7 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
         cnp.uint64_t [:] row_chashes
 
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
     Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (theta), 0), dtype=np.uint64)
     row_Xhashes = hash_rows_64(Xarr)
@@ -1091,3 +1074,48 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
         return final_indices, np.asarray(row_Xhashes), np.asarray(row_chashes)
 
     return final_indices
+
+
+def direct(double[:, ::1] X, double[:, ::1] centroids, double theta, metric='euclidean', labels_from_hashes=False):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp i = 0
+        cnp.npy_intp k = 0, K = centroids.shape[0]
+        cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
+        double dist = 0, minimum = DBL_MAX
+        cnp.npy_intp argmin = -1
+        metricp metric_func = &euclidean
+        cnp.uint64_t [:] row_Xhashes
+        cnp.uint64_t [:] row_chashes
+
+
+    metric_func = get_metric_func(metric)
+
+    Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (theta), 0), dtype=np.uint64)
+    row_Xhashes = hash_rows_64(Xarr)
+
+    Carr = np.ascontiguousarray(np.round(np.asarray(centroids) / (theta), 0), dtype=np.uint64)
+    row_chashes = hash_rows_64(Carr)
+
+    Xhunq, Xinv, Xhcounts = np.unique(Xh, return_inverse=True, return_counts=True)
+    print(f"Number of unique X hashes: {len(Xhunq)}")
+    print(Xhcounts.min(), Xhcounts.max(), Xhcounts.mean())
+
+    dcents = []
+    for i, unc in enumerate(Xhunq):
+        dcents.append(np.sum(X[Xh == unc], axis=0)/Xhcounts[i])
+    dcents = np.vstack(dcents)
+
+    if labels_from_hashes:
+
+        # create labels directly from hashes
+        order = np.argsort(-Xhcounts)  # descending by count
+        # map old uniq indices -> new ordered indices
+        new_index = np.empty_like(order)
+        new_index[order] = np.arange(len(order))
+        labels_ordered = new_index[Xinv]
+        return dcents, labels_ordered
+
+    return dcents
