@@ -6,7 +6,6 @@ from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binar
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, distance_matrix, candidate_labels_c, assign
 
-
 # from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
 # from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 # from thetan.theta import assign, distance_matrix, correct_connectivity, connected_components
@@ -154,7 +153,7 @@ def tsg_randomized(X, theta, metric='euclidean', num_shuffles=10):
     return final_centroids, final_indices, sum_of_time
 
 
-def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose=True):
+def berserker_dbg(points, theta, metric='euclidean', all_out=True, verbose=True):
 
     info_dict = {}
     t0 = time()
@@ -169,7 +168,7 @@ def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose
     t1 = time()
     info_dict['Shuffle 1 X'] = t1 - t0
 
-    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta_value, metric=metric,
+    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta, metric=metric,
                                                        all_out=True)
 
     t2 = time()
@@ -180,7 +179,7 @@ def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose
         print('ic', initial_centroids.shape)
 
     t3 = time()
-    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta_value, metric=metric,
+    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta, metric=metric,
                                            all_out=True)
 
     t4 = time()
@@ -228,7 +227,7 @@ def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose
 
     info_dict['Shuffle 2 X'] = t10 - t9
 
-    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta_value,
+    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta,
                                               metric=metric,
                                               all_out=True)
 
@@ -240,7 +239,7 @@ def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose
 
 
     t12 = time()
-    c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta_value,
+    c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta,
                                              metric=metric, all_out=True)
 
     t13 = time()
@@ -295,16 +294,16 @@ def berserker_dbg(points, theta_value, metric='euclidean', all_out=True, verbose
         return even_centroids_ex2, updated_labels_ex2
 
 # @profile
-def berserker(points, theta_value, metric='euclidean'):
+def berserker(points, theta, metric='euclidean'):
     # required in order to computer properly memory consumption
 
     ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-    initial_centroids, initial_labels = sequential(points2, theta=theta_value, metric=metric, all_out=False)
+    initial_centroids, initial_labels = sequential(points2, theta=theta, metric=metric, all_out=False)
 
-    c_centroids, c_labels = sequential(initial_centroids, theta=theta_value, metric=metric, all_out=False)
+    c_centroids, c_labels = sequential(initial_centroids, theta=theta, metric=metric, all_out=False)
 
     nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
 
@@ -326,9 +325,9 @@ def berserker(points, theta_value, metric='euclidean'):
     points3 = points[ind2].copy()
     ind2_inv = np.argsort(ind2)
 
-    p_centroids, p_labels = sequential_prelim(points3, even_centroids_ex, theta=theta_value, metric=metric, all_out=False)
+    p_centroids, p_labels = sequential_prelim(points3, even_centroids_ex, theta=theta, metric=metric, all_out=False)
 
-    c_centroids2, c_labels2 = sequential(p_centroids, theta=theta_value, metric=metric, all_out=False)
+    c_centroids2, c_labels2 = sequential(p_centroids, theta=theta, metric=metric, all_out=False)
 
     nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
 
@@ -351,7 +350,7 @@ def berserker(points, theta_value, metric='euclidean'):
     return even_centroids_ex2, updated_labels_ex2
 
 
-def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, verbose=True):
+def berserker2_ablation(points, theta, metric='euclidean', all_out=True, verbose=True):
 
     info_dict = {}
     t0 = time()
@@ -365,7 +364,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
     t1 = time()
     info_dict['Shuffle 1 X'] = t1 - t0
 
-    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta_value, metric=metric,
+    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta, metric=metric,
                                                        all_out=True)
 
     t2 = time()
@@ -376,7 +375,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
         print('ic', initial_centroids.shape)
 
     t3 = time()
-    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta_value, metric=metric,
+    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta, metric=metric,
                                            all_out=True)
 
     t4 = time()
@@ -424,7 +423,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
 
     info_dict['Shuffle 2 X'] = t10 - t9
 
-    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta_value,
+    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta,
                                               metric=metric,
                                               all_out=True)
 
@@ -436,7 +435,7 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
 
 
     t12 = time()
-    c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta_value,
+    c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta,
                                              metric=metric, all_out=True)
 
     t13 = time()
@@ -492,16 +491,16 @@ def berserker2_ablation(points, theta_value, metric='euclidean', all_out=True, v
         return even_centroids_ex2, updated_labels_ex2
 
 
-def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, verbose=True, iter_max=1):
+def berserker2_iterative(points, theta, metric='euclidean', all_out=True, verbose=True, iter_max=1):
 
     ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta_value, metric=metric,
+    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta, metric=metric,
                                                        all_out=True)
 
-    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta_value, metric=metric,
+    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta, metric=metric,
                                            all_out=True)
 
     nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
@@ -522,11 +521,11 @@ def berserker2_iterative(points, theta_value, metric='euclidean', all_out=True, 
         points3 = points[ind2].copy()
         ind2_inv = np.argsort(ind2)
 
-        p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta_value,
+        p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta,
                                                   metric=metric,
                                                   all_out=True)
 
-        c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta_value,
+        c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta,
                                                 metric=metric, all_out=True)
 
         # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
@@ -566,7 +565,7 @@ def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
         np.random.shuffle(X_work)
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
-        centroids, _ = berserker_dbg(X_work_cp, theta_value=theta, metric=metric, all_out=False, verbose=False)
+        centroids, _ = berserker_dbg(X_work_cp, theta=theta, metric=metric, all_out=False, verbose=False)
         t2 = time()
         timings.append(t2-t1)
 
@@ -586,7 +585,7 @@ def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
         offset += all_centroids[s].shape[0]
 
     t1 = time()
-    new_centroids, _ = berserker_dbg(X_centroids, theta_value=theta, metric=metric, all_out=False, verbose=False)
+    new_centroids, _ = berserker_dbg(X_centroids, theta=theta, metric=metric, all_out=False, verbose=False)
     t2 = time()
     sum_of_time += t2 - t1
     print('Time for tg1 on centroids', t2 - t1)
@@ -603,7 +602,7 @@ def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
 
 
 
-def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None):
+def berserker2_to_3D_labels(X, theta, data_dims, verbose=False, mask=None):
     """
     Deploying berserker v2 in imaging data and
     returning labels as 3D volumes.
@@ -616,7 +615,7 @@ def berserker2_to_3D_labels(X, theta_value, data_dims, verbose=False, mask=None)
     else:
         Xp = X
 
-    centroids, labels = berserker_dbg(Xp, theta_value, all_out=False, verbose=verbose)
+    centroids, labels = berserker_dbg(Xp, theta, all_out=False, verbose=verbose)
 
     if mask is not None:
         # We can calculate the centroids for label -1 on our own
@@ -650,9 +649,9 @@ def X_to_many_3D(X, data_dims):
     return X0, X1, X2, X3
 
 
-def berserker2_to_2D_labels(X, theta_value, data_dims):
+def berserker2_to_2D_labels(X, theta, data_dims):
 
-    centroids, labels = berserker_dbg(X, theta_value, all_out=False)
+    centroids, labels = berserker_dbg(X, theta, all_out=False)
 
     data_labels = labels.copy()
     data_labels = data_labels.reshape(data_dims)
@@ -1054,7 +1053,7 @@ def weighted_image2(dt, W, idt, masko):
     return focus * W
 
 
-def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3., medroids=False):
+def berserker2_3D(data, affine, theta=120., perc=(0, 98), mult=300., enh=3., medroids=False):
     "Thetan Berserker2 applied on 3D images"
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1065,7 +1064,7 @@ def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
@@ -1083,7 +1082,7 @@ def berserker2_3D(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3
     return data_labels, centroids, centroids_im, W
 
 
-def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3., medroids=False):
+def berserker2_3D_rt(data, affine, theta=120., perc=(0, 98), mult=300., enh=3., medroids=False):
     "Thetan Berserker2 applied on 3D images"
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1094,7 +1093,7 @@ def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., en
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
     duration = time() - t
     print('Duration ', duration)
     print()
@@ -1111,14 +1110,14 @@ def berserker2_3D_rt(data, affine, theta_value=120., perc=(0, 98), mult=300., en
     return data_labels, centroids, centroids_im, W, duration
 
 
-def tbscan(X, theta_value, eps=2., min_samples=1):
+def tbscan(X, theta, eps=2., min_samples=1):
 
-    # theta_value = 3.6
+    # theta = 3.6
 
     # eps = 2.
     # min_samples = 1
 
-    initial_centroids, initial_labels = berserker(X, theta_value)
+    initial_centroids, initial_labels = berserker(X, theta)
 
     model = DBSCAN(eps=eps, min_samples=min_samples)
     model.fit(initial_centroids)
@@ -1164,9 +1163,9 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
     return centroids, labels
 
 
-def tb_of_tb(X, initial_centroids, initial_labels, theta_value, metric='euclidean'):
+def tb_of_tb(X, initial_centroids, initial_labels, theta, metric='euclidean'):
 
-    _, labels = berserker(initial_centroids, theta_value, metric=metric)
+    _, labels = berserker(initial_centroids, theta, metric=metric)
 
     final_labels = initial_labels.copy()
     for i, l in enumerate(initial_labels):
@@ -1222,7 +1221,7 @@ def ward(X, K, metric='euclidean'):
     return final_centroids, final_labels
 
 
-def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta=120., percb=1., pg=False, ng=False):
     """ Process each slice of the volume independently """
 
     data = np.ascontiguousarray(data, dtype='f8')
@@ -1233,7 +1232,7 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
@@ -1257,7 +1256,7 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
 
         print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
         t = time()
-        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta, data_dims=data.shape, verbose=False)
         print('Duration ', time() - t)
         print()
 
@@ -1272,7 +1271,7 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
         # Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
         print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
         t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta, data_dims=data.shape, verbose=False)
         print('Duration ', time() - t)
         print()
 
@@ -1295,7 +1294,7 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
     print('Applying Berserker 2 on X masked (i, j, k, 3w)')
     t = time()
     maskr = mask.ravel().astype('bool')
-    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
+    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
@@ -1342,7 +1341,7 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
     return images
 
 
-def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
+def berserker2_seg_2d(data, theta, enh=2, pg=False, ng=False):
     """Assuming data are gray scale and 2D"""
 
     X = prepare_data_2d(data, enh)
@@ -1356,13 +1355,13 @@ def berserker2_seg_2d(data, theta_value, enh=2, pg=False, ng=False):
         gradW = gaussian_gradient_magnitude(W, sigma=1)
         X[:, 2] -= 3 * gradW.ravel()
 
-    data_labels, centroids = berserker2_to_2D_labels(X, theta_value, data.shape)
+    data_labels, centroids = berserker2_to_2D_labels(X, theta, data.shape)
     centroids_im = centroid_images(data_labels, centroids)
 
     return data_labels, centroids, centroids_im
 
 
-def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300., enh=3, reps=100, medroids=False):
+def berserker2_recovery(data, affine, theta=120., perc=(0, 98), mult=300., enh=3, reps=100, medroids=False):
     """Signal recovery"""
 
     t_start = time()
@@ -1373,7 +1372,7 @@ def berserker2_recovery(data, affine, theta_value=120., perc=(0, 98), mult=300.,
         print('>>> ', i)
         print('Starting Thetan Berserker 2 applied to 3D images...')
         t = time()
-        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta_value=theta_value, perc=perc, mult=mult, enh=enh)
+        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta=theta, perc=perc, mult=mult, enh=enh)
 
         print('TB Duration ', time() - t)
         print()
@@ -1591,13 +1590,13 @@ def horizon_support(affine, *args):
     return images
 
 
-def berserker2_to_3D_plus_extra(X, W_alpha, theta_value):
+def berserker2_to_3D_plus_extra(X, W_alpha, theta):
     X_tmp = X.copy()
     X_tmp[:, 3] = W_alpha.ravel()
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X_tmp, theta_value, data_dims=W_alpha.shape, verbose=False)
+    data_labels, centroids = berserker2_to_3D_labels(X_tmp, theta, data_dims=W_alpha.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
@@ -1624,7 +1623,7 @@ def biggestx(labels, x=10):
     return bigx
 
 
-def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, bk=20., bk2=300):
+def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1671,10 +1670,10 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     # images += horizon_support(aff, (W_alpha_cc_9, 'W_alpha_cc_9'))
 
 
-    # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W, theta_value)
+    # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W, theta)
     # images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
-    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta_value)
+    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
     min_size_factor = 0.1
@@ -1871,7 +1870,7 @@ def berserker2_brain_seg_mini(data, affine, theta_value=120., alpha=2, scale=9, 
     return images
 
 
-def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta_value=120., percb=1., pg=False, ng=False):
+def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta=120., percb=1., pg=False, ng=False):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1881,7 +1880,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     print('Applying Berserker 2 on X (i, j, k, 3w)')
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
     print('Duration ', time() - t)
     print()
 
@@ -1910,7 +1909,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
         print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
         t = time()
-        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta_value, data_dims=data.shape, verbose=False)
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta, data_dims=data.shape, verbose=False)
         print('Duration ', time() - t)
         print()
 
@@ -1925,7 +1924,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
         print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
         t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta_value, data_dims=data.shape, verbose=False)
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta, data_dims=data.shape, verbose=False)
         print('Duration ', time() - t)
         print()
 
@@ -1940,7 +1939,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         weights = weighted_image(dt_pg, W)
         print('Applying Berserker 2 on X (i, j, k, 3w)')
         t = time()
-        data_labels, centroids = berserker2_to_3D_labels(X, theta_value, data_dims=data.shape, verbose=False)
+        data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
         print('Duration ', time() - t)
         print()
 
@@ -1954,7 +1953,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         Xw[:, 3] = weights.ravel()
         print('Applying Berserker 2 on Xw (re-weighted)')
         t = time()
-        data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta_value * 5, data_dims=data.shape, verbose=False)
+        data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta * 5, data_dims=data.shape, verbose=False)
         print('Duration ', time() - t)
         print()
 
@@ -1984,7 +1983,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Applying Berserker 2 on X masked (i, j, k, 3w)')
         t = time()
         maskr = mask_orig.ravel().astype('bool')
-        data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta_value / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
+        data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
         print('Duration ', time() - t)
         print()
 
@@ -2148,7 +2147,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     print('Applying Berserker 2 on X with nobk mask')
     t = time()
     maskr = mask_nobk.ravel().astype('bool')
-    data_labels_nobk, centroids_nobk = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
+    data_labels_nobk, centroids_nobk = berserker2_to_3D_labels(X, theta / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
     print('Duration ', time() - t)
     print()
 
@@ -2193,7 +2192,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     ggm_focus_hard = ggm_focus > 0.1
     maskr_ggm_focus = ggm_focus_hard.ravel()
     X_coords = np.ascontiguousarray(X[:, :3].copy())
-    data_labels_ggm_focus, centroids_ggm_focus = berserker2_to_3D_labels(X_coords, theta_value / 8.0, data_dims=data.shape, verbose=False, mask=maskr_ggm_focus)
+    data_labels_ggm_focus, centroids_ggm_focus = berserker2_to_3D_labels(X_coords, theta / 8.0, data_dims=data.shape, verbose=False, mask=maskr_ggm_focus)
     print('Duration ', time() - t)
     print()
 
@@ -2275,7 +2274,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Breaking phase ... with Berserker 2 ...')
         t = time()
 
-        theta_value_small = theta_value / 8.
+        theta_value_small = theta / 8.
         relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt = breaking_phase(data, affine, (ci, cj, ck),
                                                                                         vals, orig_est, poi, centroids_median_im_rnd,
                                                                                         X_median, theta_value_small)
@@ -2323,7 +2322,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
         print('Applying Berserker 2 on X with internal bk mask')
         t = time()
-        data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta_value / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
+        data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
         print('Duration ', time() - t)
         print()
 
@@ -2333,7 +2332,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         print('Applying Berserker 2 on X external boundary')
         t = time()
         maskr3 = boundary.ravel().astype('bool')
-        data_labels_boundary, centroids_boundary = berserker2_to_3D_labels(X, theta_value / 4.0, data_dims=data.shape, verbose=False, mask=maskr3)
+        data_labels_boundary, centroids_boundary = berserker2_to_3D_labels(X, theta / 4.0, data_dims=data.shape, verbose=False, mask=maskr3)
         print('Duration ', time() - t)
         print()
 
@@ -2443,7 +2442,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     # t = time()
     # # TODO: only on the sphere (d < 120)
     # mask_X2 = (1 - centroids_im_nobk2)
-    # data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta_value / 4., data_dims=data.shape, verbose=False, mask=mask_X2.ravel().astype('bool'))
+    # data_labels2, centroids2 = berserker2_to_3D_labels(X2, theta / 4., data_dims=data.shape, verbose=False, mask=mask_X2.ravel().astype('bool'))
     # print('Duration ', time() - t)
     # print()
 

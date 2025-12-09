@@ -8,6 +8,8 @@ from cython.parallel cimport prange
 from thetan.hashing import hash32, hash64, hash_rows_32, hash_rows_64
 
 from libc.math cimport fabs
+from thetan.theta cimport metricp,get_metric_func
+
 cdef extern from "math.h" nogil:
     double fabs(double x)
     double sqrt(double x)
@@ -32,8 +34,6 @@ cdef extern from "float.h":
 
 from libc.time cimport time
 from libc.stdlib cimport srand, rand
-
-ctypedef double (*metricp)(double *, double *, cnp.npy_intp) noexcept nogil
 
 ctypedef struct Linkedlist:
 
@@ -263,22 +263,7 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
     distance_matrix = np.zeros((I, J), dtype=np.float64)
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
     for i in range(I):
         for j in range(J):
@@ -303,22 +288,7 @@ def sequential(double[:, ::1] X, double theta, metric='euclidean', all_out=False
         metricp metric_func = &euclidean
         double cnt_orig = 0
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -403,22 +373,7 @@ def sequential_pexact(double[:, ::1] X, double theta, metric='euclidean', all_ou
         double cnt_orig = 0
 
     # choose metric function under the GIL
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
     with nogil:
 
