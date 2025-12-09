@@ -264,6 +264,6 @@ def test_direct(verbose=True):
         plot_centroids_colormap_by_counts(X, dcents, Xhcounts, title="X centroids colored by counts", cmap='hot')
     # plot_centroids_colormap_by_counts(data, centroids, centroid_counts, title='test', cmap='hot')
 if __name__ == "__main__":
-    # test_sequential_pexact_matches_sequential()
+    test_sequential_pexact_matches_sequential()
     # test_assign_vs_assign_pexact()
-    test_assign_hashx(True)
+    # test_assign_hashx(True)

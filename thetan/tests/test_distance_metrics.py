@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from thetan import distance_matrix
+from thetan.metrics import distance_matrix
 
 
 class TestGetMetricFunc:

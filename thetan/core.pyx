@@ -8,7 +8,7 @@ from cython.parallel cimport prange
 from thetan.hashing import hash32, hash64, hash_rows_32, hash_rows_64
 
 from libc.math cimport fabs
-from thetan.theta cimport metricp,get_metric_func
+from thetan.metrics cimport metricp,get_metric_func
 
 cdef extern from "math.h" nogil:
     double fabs(double x)
@@ -45,10 +45,6 @@ ctypedef struct Linkedlist:
 ctypedef struct Node:
     cnp.npy_intp sz
     cnp.npy_intp * elements
-
-
-
-
 
 
 cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
@@ -248,29 +244,6 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
     cdef cnp.npy_intp temp = a[0]
     a[0] = b[0]
     b[0] = temp
-
-
-def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
-
-    cdef:
-        cnp.npy_intp i = 0
-        cnp.npy_intp j = 0
-        cnp.npy_intp I = X1.shape[0]
-        cnp.npy_intp J = X2.shape[0]
-        cnp.npy_intp D = X1.shape[1]
-        metricp metric_func = &euclidean
-        double[:, ::1] distance_matrix
-
-    distance_matrix = np.zeros((I, J), dtype=np.float64)
-
-    metric_func = get_metric_func(metric)
-
-    for i in range(I):
-        for j in range(J):
-            distance_matrix[i, j] = metric_func(&X1[i, 0], &X2[j, 0], D)
-
-    return np.asarray(distance_matrix)
-
 
 def sequential(double[:, ::1] X, double theta, metric='euclidean', all_out=False, verbose=False):
 
@@ -577,25 +550,7 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
         cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
     with nogil:
 
         for i in range(N):
@@ -642,25 +597,7 @@ def sequential_prelim(double[:, ::1] X, double[:, ::1] means_prev, double theta,
         double * data = NULL
 
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
     with nogil:
 
         # Let's work first on integrating prior information
@@ -782,25 +719,7 @@ def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
         cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
     with nogil:
 
         for i in range(N):
@@ -889,25 +808,7 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
         double summ = 0, dist = 0
         metricp metric_func = &euclidean
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -930,25 +831,7 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
         cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
     with nogil:
 
         for i in range(N):
@@ -983,25 +866,7 @@ def assign_pexact(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'
         cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
     with nogil:
 
         for i in prange(N, schedule='static'):
@@ -1039,25 +904,7 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
         cnp.uint64_t [:] row_chashes
 
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'inf_norm':
-        metric_func = &inf_norm
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
-
+    metric_func = get_metric_func(metric)
     Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (theta), 0), dtype=np.uint64)
     row_Xhashes = hash_rows_64(Xarr)
 
