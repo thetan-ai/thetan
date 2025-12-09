@@ -357,11 +357,12 @@ cython_sources = [
   'core',
   'dbscan',
   'image',
+  'metrics',
   ]
 
 cython_headers = [
   'cythonutils.pxd',
-  'theta.pxd',
+  'metrics.pxd',
   ]
 
 foreach ext: cython_sources

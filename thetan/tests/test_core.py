@@ -245,8 +245,7 @@ def test_direct(verbose=True):
 
 
 if __name__ == "__main__":
-    # test_sequential_pexact_matches_sequential()
+    test_sequential_pexact_matches_sequential()
     # test_assign_vs_assign_pexact()
     # test_assign_hashx(True)
     test_direct(True)
-
