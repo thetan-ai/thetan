@@ -42,69 +42,6 @@ ctypedef struct Node:
     cnp.npy_intp sz
     cnp.npy_intp * elements
 
-
-
-
-
-
-cdef double euclidean(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        cnp.npy_intp d
-        double summ = 0.0
-
-    for d in range(D):
-        summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
-
-    return sqrt(summ)
-
-
-cdef double inf_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        cnp.npy_intp d
-        double overall_max = DBL_MIN
-        double tmp_max
-
-    for d in range(D):
-        tmp_max = fabs(ptr1[d] - ptr2[d])
-        if tmp_max > overall_max:
-            overall_max = tmp_max
-
-    return overall_max
-
-
-cdef double norm_ssd(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        cnp.npy_intp d
-        double summ = 0.0
-
-    for d in range(D):
-        summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
-
-    return summ / D
-
-
-cdef double ssd(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        cnp.npy_intp d
-        double summ = 0.0
-
-    for d in range(D):
-        summ += (ptr1[d] - ptr2[d]) * (ptr1[d] - ptr2[d])
-
-    return summ
-
-
-cdef double dot_prod(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        cnp.npy_intp d
-        double summ = 0.0
-
-    for d in range(D):
-        summ += ptr1[d] * ptr2[d]
-
-    return summ
-
-
 # // Function to calculate the magnitude of a vector
 # double magnitude(double *vec, int n) {
 #     double mag = 0.0;
@@ -113,18 +50,6 @@ cdef double dot_prod(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogi
 #     }
 #     return sqrt(mag);
 # }
-
-cdef double magnitude(double * vec, cnp.npy_intp D) noexcept nogil:
-    # magnitude of vector of size D
-    cdef:
-        double mag = 0.0
-        cnp.npy_intp d
-
-    for d in range(D):
-        mag += vec[d] * vec[d]
-
-    return sqrt(mag)
-
 
 # // Function to calculate the cosine distance
 # double cosine_distance(double *vec1, double *vec2, int n) {
@@ -140,29 +65,6 @@ cdef double magnitude(double * vec, cnp.npy_intp D) noexcept nogil:
 #     double cosine_similarity = dot / (mag1 * mag2);
 #     return 1.0 - cosine_similarity; // Convert similarity to distance
 # }
-
-cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
-
-    cdef:
-        double dot, mag1, mag2, cosine_similarity
-
-    dot = dot_prod(vec1, vec2, D)
-    mag1 = magnitude(vec1, D)
-    mag2 = magnitude(vec2, D)
-
-    if mag1 == 0 or mag2 == 0:
-        return 1
-
-    cosine_similarity = dot / (mag1 * mag2)
-
-    if cosine_similarity < -1.0:
-        cosine_similarity = -1.0
-
-    if cosine_similarity > 1.0:
-        cosine_similarity = 1.0
-
-    return 1.0 - cosine_similarity
-
 
 # // Function to calculate the arccosine distance
 # double arccosine_distance(double *vec1, double *vec2, int n) {
@@ -183,62 +85,6 @@ cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcep
 
 #     return acos(cosine_similarity); // Return arccosine distance
 # }
-
-
-cdef double arccosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcept nogil:
-
-    cdef:
-        double dot, mag1, mag2
-
-    dot = dot_prod(vec1, vec2, D)
-    mag1 = magnitude(vec1, D)
-    mag2 = magnitude(vec2, D)
-
-    if mag1 == 0 or mag2 == 0:
-        return 0
-
-    cosine_similarity = dot / (mag1 * mag2)
-
-    if cosine_similarity < -1.0:
-        cosine_similarity = -1.0
-
-    if cosine_similarity > 1.0:
-        cosine_similarity = 1.0
-
-    return acos(cosine_similarity)
-
-
-cdef double l1_norm(double * ptr1, double * ptr2, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        cnp.npy_intp d
-        double summ = 0.0
-
-    for d in range(D):
-        summ += fabs(ptr1[d] - ptr2[d])
-
-    return summ
-
-
-cdef double norm_ssd_un(double * a, double * b, cnp.npy_intp D) noexcept nogil:
-    cdef:
-        int i
-        int n = D // 4
-        int rem = D % 4
-        double result = 0
-
-    # We manually unroll the loop for better cache optimization.
-    for i in range(n):
-        result += ((a[0] - b[0]) * (a[0] - b[0])
-                  +(a[1] - b[1]) * (a[1] - b[1])
-                  +(a[2] - b[2]) * (a[2] - b[2])
-                  +(a[3] - b[3]) * (a[3] - b[3]))
-        a += 4; b += 4
-
-    for i in range(rem):
-        result += (a[i] - b[i]) * (a[i] - b[i])
-
-    return result / D
-
 
 cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
     cdef cnp.npy_intp temp = a[0]
@@ -292,12 +138,10 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
         cnp.npy_intp I = X1.shape[0]
         cnp.npy_intp J = X2.shape[0]
         cnp.npy_intp D = X1.shape[1]
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
         double[:, ::1] distance_matrix
 
     distance_matrix = np.zeros((I, J), dtype=np.float64)
-
-    metric_func = get_metric_func(metric)
 
     for i in range(I):
         for j in range(J):
@@ -332,10 +176,10 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 #         cnp.npy_intp cnt = 0
 #         double dist = 0, minimum = DBL_MAX
 #         cnp.npy_intp argmin = -1
-#         metricp metric_func = &euclidean
+#         metricp metric_func = get_metric_func(metric)
 
 #     if metric == 'euclidean':
-#         metric_func = &euclidean
+#         metric_func = get_metric_func(metric)
 #     if metric == 'inf_norm':
 #         metric_func = &inf_norm
 #     if metric == 'ssd':
@@ -476,14 +320,14 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 #         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
 #         double dist = 0, minimum = DBL_MAX
 #         cnp.npy_intp argmin = -1
-#         metricp metric_func = &euclidean
+#         metricp metric_func = get_metric_func(metric)
 #         double * clusters_densities_in = <double *> malloc(<size_t> 1 * sizeof(double))
 #         double * clusters_densities_out = <double *> malloc(<size_t> 1 * sizeof(double))
 #         double * clusters_ignore = <double *> malloc(<size_t> 1 * sizeof(double))
 
 
 #     if metric == 'euclidean':
-#         metric_func = &euclidean
+#         metric_func = get_metric_func(metric)
 #     if metric == 'inf_norm':
 #         metric_func = &inf_norm
 #     if metric == 'ssd':
@@ -602,10 +446,8 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
         double cnt_orig = 0
-
-    metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -708,14 +550,10 @@ def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double * c_hash = <double *> malloc(<size_t> 1 * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
         double x_hash = 0
         double cnt_dist = 0, cnt_orig = 0
         double mdiv = 1 / (2 * theta)
-
-
-    metric_func = get_metric_func(metric)
-
 
     with nogil:
 
@@ -819,13 +657,9 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double * c_bin = <double *> malloc(<size_t> D * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1, abort = 0
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
         double cnt_dist = 0, cnt_orig = 0
         double mdiv = 1 / (2 * theta)
-
-
-    metric_func = get_metric_func(metric)
-
 
     with nogil:
 
@@ -1045,9 +879,7 @@ def reassign_uncertain_update_labels(double[:, ::1] X, double[:, ::1] centroids,
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1091,11 +923,8 @@ def theta_means(double[:, ::1] X, double[:, ::1] means_prev, double theta, metri
         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
         double * data = NULL
-
-
-    metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1216,9 +1045,7 @@ def reassign_uncertain(double[:, ::1] X, double[:, ::1] centroids,
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1306,10 +1133,7 @@ def wcss(double[:, ::1] X, cnp.npy_intp[:] indices, double[:, ::1] centroids, me
         cnp.npy_intp D = X.shape[1]
         cnp.npy_intp i = 0
         double summ = 0, dist = 0
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
-
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1332,9 +1156,7 @@ def theta_g1w(double[:, ::1] X, double theta, metric='euclidean', double w=1.0, 
         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1412,9 +1234,7 @@ def theta_delta(double[:, ::1] X, double theta, metric='euclidean', double w=1.0
         double * clusters_sizes = <double *> malloc(<size_t> 1 * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1499,9 +1319,7 @@ def assign(double[:, ::1] X, double[:, ::1] centroids, metric='euclidean'):
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1539,12 +1357,10 @@ def gravity(double[:, ::1] X, double[:, ::1] centroids,
 
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
+        metricp metric_func = get_metric_func(metric)
 
         cnp.npy_intp maximum = 0
         cnp.npy_intp argmax = -1
-
-    metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1577,9 +1393,7 @@ def calibrate(double[:, ::1] X, double[:, ::1] centroids, cnp.npy_intp[:] indice
         # cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -1622,9 +1436,7 @@ def theta_g1t(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double * dtmp = <double *> malloc(<size_t> D * sizeof(double))
         double dist = 0, minimum = DBL_MAX
         cnp.npy_intp argmin = -1
-        metricp metric_func = &euclidean
-
-    metric_func = get_metric_func(metric)
+        metricp metric_func = get_metric_func(metric)
 
     with nogil:
 
