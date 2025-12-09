@@ -361,6 +361,7 @@ cython_sources = [
 
 cython_headers = [
   'cythonutils.pxd',
+  'theta.pxd',
   ]
 
 foreach ext: cython_sources

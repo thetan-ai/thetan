@@ -5,7 +5,6 @@ import numpy as np
 cimport numpy as cnp
 # from scipy.linalg.cython_blas cimport ddot
 
-
 from libc.math cimport fabs
 cdef extern from "math.h" nogil:
     double fabs(double x)
@@ -31,8 +30,6 @@ cdef extern from "float.h":
 
 from libc.time cimport time
 from libc.stdlib cimport srand, rand
-
-ctypedef double (*metricp)(double *, double *, cnp.npy_intp) noexcept nogil
 
 ctypedef struct Linkedlist:
 
@@ -287,6 +284,27 @@ cdef void swap(cnp.npy_intp * a, cnp.npy_intp * b) noexcept nogil:
 
 #     return np.asarray(X2)
 
+cdef metricp get_metric_func(str metric) except NULL:
+    """Return the appropriate metric function pointer based on the metric name."""
+    if metric == 'euclidean':
+        return &euclidean
+    if metric == 'ssd':
+        return &ssd
+    if metric == 'norm_ssd':
+        return &norm_ssd
+    if metric == 'norm_ssd_un':
+        return &norm_ssd_un
+    if metric == 'dot_prod':
+        return &dot_prod
+    if metric == 'l1_norm':
+        return &l1_norm
+    if metric == 'cosine':
+        return &cosine_distance
+    if metric == 'arccos':
+        return &arccosine_distance
+    else:
+        raise ValueError(f"Unknown metric.")
+
 
 def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
@@ -301,22 +319,7 @@ def distance_matrix(double[:, ::1] X1, double[:, ::1] X2, metric='norm_ssd'):
 
     distance_matrix = np.zeros((I, J), dtype=np.float64)
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
     for i in range(I):
         for j in range(J):
@@ -624,22 +627,7 @@ def theta_g1(double[:, ::1] X, double theta, metric='euclidean', all_out=False, 
         metricp metric_func = &euclidean
         double cnt_orig = 0
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
     with nogil:
 
@@ -748,22 +736,7 @@ def theta_g1h(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double mdiv = 1 / (2 * theta)
 
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
 
     with nogil:
@@ -873,22 +846,7 @@ def theta_g1d(double[:, ::1] X, double theta, metric='euclidean', all_out=False)
         double mdiv = 1 / (2 * theta)
 
 
-    if metric == 'euclidean':
-        metric_func = &euclidean
-    if metric == 'ssd':
-        metric_func = &ssd
-    if metric == 'norm_ssd':
-        metric_func = &norm_ssd
-    if metric == 'norm_ssd_un':
-        metric_func = &norm_ssd_un
-    if metric == 'dot_prod':
-        metric_func = &dot_prod
-    if metric == 'l1_norm':
-        metric_func = &l1_norm
-    if metric == 'cosine':
-        metric_func = &cosine_distance
-    if metric == 'arccos':
-        metric_func = &arccosine_distance
+    metric_func = get_metric_func(metric)
 
 
     with nogil:
