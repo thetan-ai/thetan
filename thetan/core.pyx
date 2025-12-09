@@ -1076,37 +1076,44 @@ def assign_hashx(double[:, ::1] X, double[:, ::1] centroids, double theta, metri
     return final_indices
 
 
-def direct(double[:, ::1] X, double[:, ::1] centroids, double theta, metric='euclidean', labels_from_hashes=False):
+def direct(double[:, ::1] X, double theta, metric='euclidean', labels_from_hashes=False):
 
     cdef:
         cnp.npy_intp N = X.shape[0]
         cnp.npy_intp D = X.shape[1]
         cnp.npy_intp i = 0
-        cnp.npy_intp k = 0, K = centroids.shape[0]
+        # cnp.npy_intp k = 0, K = centroids.shape[0]
         cnp.npy_intp [:] indices = np.empty(N, dtype='i8')
         double dist = 0, minimum = DBL_MAX
-        cnp.npy_intp argmin = -1
+        # cnp.npy_intp argmin = -1
         metricp metric_func = &euclidean
-        cnp.uint64_t [:] row_Xhashes
-        cnp.uint64_t [:] row_chashes
+        # cnp.uint64_t [:] row_Xhashes
+        # cnp.uint64_t [:] row_chashes
 
 
     metric_func = get_metric_func(metric)
+    from time import time
 
-    Xarr = np.ascontiguousarray(np.round(np.asarray(X) / (theta), 0), dtype=np.uint64)
-    row_Xhashes = hash_rows_64(Xarr)
+    t1 = time()
+    Xh = np.ascontiguousarray(np.round(np.asarray(X) / theta, 0), dtype=np.uint64)
+    row_Xhashes = hash_rows_64(Xh)
+    t2 = time()
+    print(f"Time to hash X: {t2 - t1:.4f} seconds")
 
-    Carr = np.ascontiguousarray(np.round(np.asarray(centroids) / (theta), 0), dtype=np.uint64)
-    row_chashes = hash_rows_64(Carr)
-
-    Xhunq, Xinv, Xhcounts = np.unique(Xh, return_inverse=True, return_counts=True)
+    Xhunq, Xinv, Xhcounts = np.unique(row_Xhashes, return_inverse=True, return_counts=True)
     print(f"Number of unique X hashes: {len(Xhunq)}")
+    t3 = time()
+    print(f"Time to find unique hashes: {t3 - t2:.4f} seconds")
     print(Xhcounts.min(), Xhcounts.max(), Xhcounts.mean())
 
     dcents = []
+    Xnp = np.asarray(X)
+    print(Xnp.shape)
     for i, unc in enumerate(Xhunq):
-        dcents.append(np.sum(X[Xh == unc], axis=0)/Xhcounts[i])
+        dcents.append(np.sum(Xnp[row_Xhashes == unc], axis=0)/Xhcounts[i])
     dcents = np.vstack(dcents)
+    t4 = time()
+    print(f"Time to compute dcents: {t4 - t3:.4f} seconds")
 
     if labels_from_hashes:
 

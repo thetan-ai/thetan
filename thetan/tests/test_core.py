@@ -3,7 +3,7 @@ import numpy.testing as npt
 from time import time
 from thetan import sequential, berserker, sequential_pexact, assign, assign_pexact, assign_hashx
 from thetan import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
-from thetan import berserker_dbg, candidate_labels
+from thetan import berserker_dbg, candidate_labels, direct
 from itertools import product
 
 
@@ -234,41 +234,19 @@ def test_direct(verbose=True):
     X, _, _ = make_grid_gaussians(A=20, B=20, l=10.0, sigma=1.0, n_per=500)
     print(X.shape)
 
-    from thetan.hashing import hash_rows_64
+    theta = 8.0
 
-    Xh =
-
-    Xhunq, Xinv, Xhcounts = np.unique(Xh, return_inverse=True, return_counts=True)
-    print(f"Number of unique X hashes: {len(Xhunq)}")
-    print(Xhcounts.min(), Xhcounts.max(), Xhcounts.mean())
-
-    cents1hunq, cents1hinv, cents1hcounts = np.unique(cents1h, return_inverse=True, return_counts=True)
-    print(f"Number of unique centroid hashes: {len(cents1hunq)}")
-    print(cents1hcounts.min(), cents1hcounts.max(), cents1hcounts.mean())
-
-    # create labels directly from hashes
-    order = np.argsort(-Xhcounts)  # descending by count
-    # map old uniq indices -> new ordered indices
-    new_index = np.empty_like(order)
-    new_index[order] = np.arange(len(order))
-    labels_ordered = new_index[Xinv]
-
-    if verbose:
-        plot_centroids_clusters(X, None, labels_ordered, title="assign_hashx with X hashes")
+    dcents = direct(X, theta=theta, metric='euclidean')
+    print(dcents.shape)
     t = 1
-
-    dcents = []
-    for i, unc in enumerate(Xhunq):
-        dcents.append(np.sum(X[Xh == unc], axis=0)/Xhcounts[i])
-    dcents = np.vstack(dcents)
-
     if verbose:
+        from thetan.viz import plot_centroids_clusters
         plot_centroids_clusters(X, dcents, title="direct centroid calc")
 
-    if verbose:
-        plot_centroids_colormap_by_counts(X, dcents, Xhcounts, title="X centroids colored by counts", cmap='hot')
-    # plot_centroids_colormap_by_counts(data, centroids, centroid_counts, title='test', cmap='hot')
+
 if __name__ == "__main__":
     # test_sequential_pexact_matches_sequential()
     # test_assign_vs_assign_pexact()
-    test_assign_hashx(True)
+    # test_assign_hashx(True)
+    test_direct(True)
+
