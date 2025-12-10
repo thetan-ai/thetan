@@ -4,7 +4,8 @@ from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
-from thetan import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, distance_matrix, candidate_labels_c, assign
+from thetan.core import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, candidate_labels_c, assign
+from thetan.metrics import distance_matrix
 
 # from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
 # from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
