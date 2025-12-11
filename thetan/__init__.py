@@ -3,6 +3,7 @@ from thetan.core import centroids_from_labels, candidate_labels_c, assign, reord
 from thetan.berserker import berserker, berserker_dbg, candidate_labels
 from thetan.core import sequential_pexact, assign_pexact, assign_hashx, direct
 from thetan.metrics import distance_matrix
+from thetan.neighbors import tbknn
 
 TS = sequential
 TB = berserker

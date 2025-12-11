@@ -339,6 +339,7 @@ python_sources = [
   'experimental.py',
   'accuracy.py',
   'patchify.py',
+  'neighbors.py'
 ]
 
 py3.install_sources(
