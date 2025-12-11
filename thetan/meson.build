@@ -339,6 +339,7 @@ python_sources = [
   'experimental.py',
   'accuracy.py',
   'patchify.py',
+  'tbknn.py'
 ]
 
 py3.install_sources(
