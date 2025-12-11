@@ -1,4 +1,4 @@
-from thetan.tbknn import tbknn
+from thetan import tbknn
 from thetan import berserker
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
