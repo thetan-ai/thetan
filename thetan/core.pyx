@@ -824,3 +824,34 @@ def direct(double[:, ::1] X, double theta, metric='euclidean', labels_from_hashe
         return dcents, labels_ordered
 
     return dcents
+
+
+def centroids_from_counting_hashes(const double[:, ::1] X, cnp.npy_intp[:] Xh, cnp.npy_intp[:] Xhunc, cnp.npy_intp[:] Xcounts):
+
+    cdef:
+        cnp.npy_intp N = X.shape[0]
+        cnp.npy_intp D = X.shape[1]
+        cnp.npy_intp K = len(Xhunc)
+        cnp.npy_intp i = 0, d = 0, k = 0
+        double * centroids = <double *> calloc(<size_t> K, <size_t> D * sizeof(double))
+        # double * cluster_sizes = <double *> calloc(<size_t> K, <size_t> sizeof(double))
+        double summ = 0.0
+
+    with nogil:
+        for k in range(K):
+            unc = Xhunc[k]
+            for i in range(N):
+                if Xh[k] != unc:
+                    continue
+
+                for d in range(D):
+                    centroids[k * D + d] += X[i][d]
+
+            for d in range(D):
+                centroids[k * D + d] /= Xcounts[k]
+
+    # cluster_sizes = NULL
+    # final_cluster_sizes = np.asarray(<double[:K]> cluster_sizes, dtype=np.float64)
+    final_centroids = np.asarray(<double[:K, :D]> centroids, dtype=np.float64)
+    # del final_cluster_sizes
+    return np.ascontiguousarray(final_centroids)

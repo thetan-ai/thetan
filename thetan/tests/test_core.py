@@ -231,8 +231,8 @@ def test_assign_hashx(verbose=True):
 
 def test_direct(verbose=True):
 
-    # X, _, _ = make_grid_gaussians(A=2000, B=20, l=10.0, sigma=1.0, n_per=500)
-    X, _, _ = make_grid_gaussians_d(grid_shape=(10, 2, 2, 2, 10, 2, 2, 2, 2, 2), l=20.0, sigma=1.0, n_per=500, d=10)
+    X, _, _ = make_grid_gaussians(A=20, B=20, l=10.0, sigma=1.0, n_per=500)
+    # X, _, _ = make_grid_gaussians_d(grid_shape=(10, 2, 2, 2, 10, 2, 2, 2, 2, 2), l=20.0, sigma=1.0, n_per=500, d=10)
     print(X.shape)
 
     theta = 8.0
@@ -246,8 +246,8 @@ def test_direct(verbose=True):
 
 
 if __name__ == "__main__":
-    test_sequential_pexact_matches_sequential()
+    # test_sequential_pexact_matches_sequential()
     # test_assign_vs_assign_pexact()
     # test_assign_hashx(True)
-    test_direct(False)
+    test_direct(True)
 
