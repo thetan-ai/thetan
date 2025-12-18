@@ -237,12 +237,12 @@ def test_direct(verbose=True):
 
     theta = 8.0
 
-    dcents = direct(X, theta=theta, metric='euclidean')
+    dcents, labels = direct(X, theta=theta, metric='euclidean', labels_from_hashes=True)
     print(dcents.shape)
     t = 1
     if verbose:
         from thetan.viz import plot_centroids_clusters
-        plot_centroids_clusters(X, dcents, title="direct centroid calc")
+        plot_centroids_clusters(X, dcents, labels, title="direct centroid calc")
 
 
 if __name__ == "__main__":

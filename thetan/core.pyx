@@ -855,3 +855,4 @@ def centroids_from_counting_hashes(const double[:, ::1] X, cnp.npy_intp[:] Xh, c
     final_centroids = np.asarray(<double[:K, :D]> centroids, dtype=np.float64)
     # del final_cluster_sizes
     return np.ascontiguousarray(final_centroids)
+    
