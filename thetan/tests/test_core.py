@@ -5,6 +5,7 @@ from thetan import sequential, berserker, sequential_pexact, assign, assign_pexa
 from thetan import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
 from thetan import berserker_dbg, candidate_labels, direct
 from itertools import product
+from thetan.hashing import hash_rows_64
 
 
 rng = np.random.default_rng(42)
@@ -239,6 +240,19 @@ def test_direct(verbose=True):
 
     dcents, labels = direct(X, theta=theta, metric='euclidean', labels_from_hashes=True)
     print(dcents.shape)
+
+    from thetan.core import centroids_from_counting_hashes
+
+    t1 = time()
+    Xh = np.ascontiguousarray(np.round(np.asarray(X) / theta, 0), dtype=np.uint64)
+    row_Xhashes = hash_rows_64(Xh)
+    t2 = time()
+    print(f"Time to hash X: {t2 - t1:.4f} seconds")
+
+    Xhunq, Xinv, Xhcounts = np.unique(row_Xhashes, return_inverse=True, return_counts=True)
+
+    dcents2 = centroids_from_counting_hashes(X, Xh, Xhunq, Xhcounts)
+
     t = 1
     if verbose:
         from thetan.viz import plot_centroids_clusters
