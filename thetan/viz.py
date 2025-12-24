@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 
-
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
                             merged_centroids=None, show=True, maxwindow=False, savefn=None, centroids_label=True):
@@ -137,11 +136,94 @@ def plot_centroids_colormap_by_counts(data, centroids, centroid_counts, labels=N
     if savefn is not None:
         plt.savefig(savefn, bbox_inches='tight')
 
+def project_to_2d(data):
+    pca = PCA(n_components=2)
+    return pca.fit_transform(data)
+
+def visualize_separation(data, centroids, labels, result, save_path=None, show=True):
+    """
+    Visualize the separation (discs with bridge in between) results for n-dimensional data. 
+    Automatically projects to 2D if data has more than 2 dimensions.
+
+    Parameters:
+    * data: Original Data.
+    * centroids: Original centroids.
+    * labels: Original labels.
+    * results: dict which the filtered_data, filtered_centroids, filtered_labels.
+    * save_path: Path to save figure.
+    * show: Whether to display the plot.
+
+    Returns:
+    * A plot.
+    """
+    n_dims = data.shape[1]
+    if n_dims > 2:
+        print(f'Projecting {n_dims}D data to 2D using PCA.')
+        data_2d = project_to_2d(data)
+        centroids_2d = project_to_2d(centroids)
+        filtered_data_2d = project_to_2d(result['filtered_data'])
+        filtered_centroids_2d = project_to_2d(result['filtered_centroids'])
+        removed_data_2d = project_to_2d(result['removed_data']) if len(result['removed_data']) > 0 else np.array([]).reshape(0,2)
+    else:
+        data_2d = data
+        centroids_2d = centroids
+        filtered_data_2d = result['filtered_data']
+        filtered_centroids_2d = result['filtered_centroids']
+        removed_data_2d = result['removed_data'] if len(result['removed_data']) > 0 else np.array([]).reshape(0,2)
+    
+    counts = result['counts']
+    sparse_indices = result['sparse_indices']
+    removed_mask = result['removed_mask']
+
+    fig, axes = plt.subplots(2,2,figsize=(14,14))
+
+    ax = axes[0,0]
+    ax.scatter(data_2d[:,0], data_2d[:,1],c=labels,cmap='tab20',s=1,alpha=0.5)
+    ax.scatter(centroids_2d[:,0],centroids_2d[:,1],c='red',marker='x',s=50,linewidths=2)
+    ax.set_title(f'Original Clustering \n({len(centroids)} centroids, {len(data)} points)')
+    ax.set_aspect('equal')
+
+    ax = axes[0,1]
+    ax.scatter(data_2d[:,0],data_2d[:,1],c='lightgray',s=1,alpha=0.3)
+    scatter = ax.scatter(centroids_2d[:,0], centroids_2d[:,1], c=counts, cmap='RdYlGn', s=100, edgecolors='black',linewidths=1)
+    if len(sparse_indices) > 0:
+        sparse_centroids_2d = centroids_2d[sparse_indices]
+        ax.scatter(sparse_centroids_2d[:,0], sparse_centroids_2d[:,1],facecolors='none',edgecolors='red',s=250,linewidths=3)
+    plt.colorbar(scatter, ax=ax, label='Neighbor Count')
+    ax.set_title(f'Centroid Neighbor Counts \n(Red Circles = Sparse Centroids, to remove)')
+    ax.set_aspect('equal')
+
+    ax = axes[1,0]
+    kept_2d = data_2d[~removed_mask]
+    ax.scatter(kept_2d[:, 0], kept_2d[:, 1], c='lightblue', s=1, alpha=0.5, label='Kept')
+    if len(removed_data_2d) > 0:
+        ax.scatter(removed_data_2d[:,0],removed_data_2d[:,1],c='red', s=2,alpha=0.8,label='Removed')
+    if len(sparse_indices) > 0:
+        sparse_centroids_2d = centroids_2d[sparse_indices]
+        ax.scatter(sparse_centroids_2d[:, 0], sparse_centroids_2d[:,1],c='darkred', marker='x', s=100, linewidths=2)
+    ax.legend()
+    ax.set_title(f'Removed points ({np.sum(removed_mask)} points, {len(sparse_indices)} centroids)')
+    ax.set_aspect('equal')
+
+    ax = axes[1,1]
+    ax.scatter(filtered_data_2d[:,0],filtered_data_2d[:,1],c=result['filtered_labels'],cmap='tab20',s=1,alpha=0.5)
+    ax.scatter(filtered_centroids_2d[:,0], filtered_centroids_2d[:,1],c='red', marker='x', s=50, linewidths=2)
+    ax.set_title(f'Separated Regions \n({len(result['filtered_centroids'])} centroids, {len(result['filtered_data'])} points)')
+    ax.set_aspect('equal')
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        print(f'Saved figure to {save_path}')
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
 
 if __name__ == '__main__':
 
     # plot_stacked_dists()
     pass
-
 
