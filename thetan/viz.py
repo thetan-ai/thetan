@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+from sklearn.decomposition import PCA
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,

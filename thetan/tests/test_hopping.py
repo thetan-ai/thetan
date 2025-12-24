@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from thetan import berserker
 from thetan.metrics import distance_matrix
 from thetan.viz import visualize_separation
-from sklearn.decomposition import PCA
 from PIL import Image
+
 
 
 def one_hop_counts(D, eps, directed=False, return_adjacency=False):
@@ -191,10 +191,12 @@ def load_image_points(image_path, threshold=50, max_points=20000, seed=None):
 
     return np.ascontiguousarray(coords, dtype=np.float64)
 
-def sample_ball(center, radius, n_points):
+def sample_ball(center, radius, n_points, n_dim, rng=None):
     """
     Sample points uniformly from an n-dimensional ball.
     """
+    if rng is None:
+        rng = np.random.default_rng()
     directions = rng.standard_normal((n_points, n_dim))
     directions /= np.linalg.norm(directions, axis=1, keepdims=True)
 
@@ -226,8 +228,8 @@ def generate_nd_connected_balls(n_dim=3, n_points_per_ball=5000, n_bridge_points
     ball2_center = np.zeros(n_dim)
     ball2_center[0] = ball_separation
     
-    ball1 = sample_ball(ball1_center, ball_radius, n_points_per_ball)
-    ball2 = sample_ball(ball2_center, ball_radius, n_points_per_ball)
+    ball1 = sample_ball(ball1_center, ball_radius, n_points_per_ball, n_dim, rng=rng)
+    ball2 = sample_ball(ball2_center, ball_radius, n_points_per_ball, n_dim, rng=rng)
 
     bridge_start = ball_radius * 0.8
     bridge_end = ball_separation - ball_radius * 0.8
@@ -299,13 +301,14 @@ def pipeline(data, theta, eps, min_neighbors=3, metric='euclidean', visualize=Tr
     return result
 
 if __name__ == '__main__':
+    # For 2d image
     data = load_image_points('Density_balls.png',threshold=50,max_points=50000)
     theta = 50
     eps = 85 
     result = pipeline(data, theta=theta, eps=eps, min_neighbors=3,visualize=True,save_prefix='2dimage',verbose=True)
 
     # For 3D Example
-    # data, ground_truth = generate_nd_connected_balls(n_dims=3, n_points_per_ball=3000, n_bridge_points=300, ball_radius=50,ball_separation=150,bridge_width=8,seed=42)
+    # data, ground_truth = generate_nd_connected_balls(n_dim=3, n_points_per_ball=3000, n_bridge_points=300, ball_radius=50,ball_separation=150,bridge_width=8,seed=42)
     # print(f'Generated {len(data)} points')
     # print(f"Ground truth: {np.sum(ground_truth == 0)} ball1, {np.sum(ground_truth == 1)} ball2, {np.sum(ground_truth == 2)} bridge")
-    # result = pipeline(data, theta=30, eps=90, min_neighbors=3, visualize=True, save_prefix='3d_synthetic')
+    # result = pipeline(data, theta=30, eps=90, min_neighbors=3, visualize=True, save_prefix='3d_synthetic', verbose=True)
