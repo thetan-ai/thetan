@@ -1,0 +1,120 @@
+from unittest import signals
+import numpy as np
+from thetan.hashing import hash_rows_64, hash64
+from time import time
+from dipy.io.image import load_nifti
+
+
+
+qname = "/home/elef/Data/HCP_3T/136126/denoised_arr_p2s.nii.gz"
+mname = "/home/elef/Data/HCP_3T/136126/nodif_brain_mask.nii.gz"
+
+mask, mask_affine = load_nifti(mname)
+mask = mask.astype(bool)
+print("Mask shape:", mask.shape)
+
+
+qata, qaffine = load_nifti(qname)
+print("Query shape:", qata.shape)
+
+qata_shape = qata.shape
+
+qata = qata * mask[..., np.newaxis]  # Apply mask to each channel
+
+qata_flattened = qata.reshape(-1, qata.shape[-1])
+print("Reshaped query shape:", qata_flattened.shape)
+
+qata_flattened[qata_flattened <= 0] = 0
+
+# Crucial normalization step
+mask_norm = np.linalg.norm(qata_flattened, axis=1, keepdims=True)
+
+mask_norm[mask_norm == 0] = 1.0
+
+qata_norm = 100 * (qata_flattened / mask_norm)
+qata_norm = np.ascontiguousarray(qata_norm)
+
+flat_index = np.ravel_multi_index((72, 110, 72), qata_shape[:-1])
+print(qata[72, 110, 72])
+print(qata_flattened[flat_index])
+print(qata_norm[flat_index])
+
+
+# Load simulations
+sims_path = "simulated_data.npz"  # expects this file in the same directory\
+data = np.load(sims_path, allow_pickle=False)
+
+X = data["signals"]
+labels = data["labels"]
+
+print("Loaded:")
+print("  X shape:", X.shape)
+print("  labels shape:", labels.shape)
+
+dbg = True
+
+print("Ranges after normalization:")
+print(X.min(), X.max())
+print(qata_norm.min(), qata_norm.max())
+
+
+# Hashing simulations
+
+divider = 15
+
+# start = time()
+# Xh = np.ascontiguousarray(np.round(np.asarray(X) / divider, 0), dtype=np.uint64)
+# row_Xhashes = hash_rows_64(Xh)
+# end = time()
+# print("Hashing sims took:", end - start, "seconds")
+
+# start = time()
+# unq, idx, cnts = np.unique(row_Xhashes, return_index=True, return_counts=True)
+# end = time()
+# print("Unique hashes:", len(unq))
+# print("Counting unique hashes took:", end - start, "seconds")
+
+
+# Hashing measurements
+
+# start = time()
+# qh = np.ascontiguousarray(np.round(np.asarray(qata_norm) / divider, 0), dtype=np.uint64)
+# row_qhashes = hash_rows_64(qh)
+# end = time()
+# print("Hashing measurements took:", end - start, "seconds")
+
+# start = time()
+# qunq, qidx, qcnts = np.unique(row_qhashes, return_index=True, return_counts=True)
+# end = time()
+# print("Unique hashes:", len(qunq))
+# print("Counting unique hashes took:", end - start, "seconds")
+
+
+# common = np.intersect1d(qunq, unq)
+# print(common.size, "common hashes between sims and measurements")
+
+# for u in unq:
+#     if query == u:
+#         print("Match!")
+#         print(u)
+#         # Here do cosine for idxs
+
+dbg = True
+
+
+from thetan import berserker, sequential
+
+# centroids, labels = berserker(X, n_clusters=1000, random_state=42)
+
+theta = 0.2
+
+qatad = qata_norm.astype('f8')
+qatad = qatad[flat_index:flat_index + 50000 + 1].copy()
+print("Subset shape:", qatad.shape)
+
+start = time()
+centroids, labels = sequential(qatad, theta, metric='cosine')
+end = time()
+print("Sequential took:", end - start, "seconds")
+print("Centroids shape:", centroids.shape)
+dbg = True

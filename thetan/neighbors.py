@@ -16,7 +16,7 @@ def fit_tbknn(X, theta):
     X = np.asarray(X)
     if X.ndim != 2:
         raise ValueError("X must be 2D array of shape (n_samples, n_features).")
-    
+
     n_samples, n_features = X.shape
 
     centroids, data_labels = berserker(X, theta)
@@ -30,7 +30,7 @@ def fit_tbknn(X, theta):
 
     if centroids.ndim != 2 or centroids.shape[1] != n_features:
         raise ValueError(f"Centroids must have shape (K, {n_features}) and not {centroids.shape}")
-    
+
     K = centroids.shape[0]
     cluster_members = [np.where(data_labels==k)[0] for k in range(K)]
 
@@ -70,10 +70,10 @@ def query_tbknn(index, q, k=10, nprobe=3, return_distances=True, reject_out_of_r
 
     if q.ndim != 1 or q.shape[0] != X.shape[1]:
         raise ValueError(f"q must have shape ({X.shape[1]},).")
-    
+
     if k<=0:
         raise ValueError("k must be a positive integer.")
-    
+
     K = centroids.shape[0]
     nprobe = max(1, min(nprobe,K))
 
@@ -84,19 +84,19 @@ def query_tbknn(index, q, k=10, nprobe=3, return_distances=True, reject_out_of_r
             return np.array([], dtype=int), np.array([],dtype=float)
         else:
             return np.array([],dtype=int)
-        
+
     candidate_indices = []
     for c_idx in order[:nprobe]:
         members = cluster_members[c_idx]
         if members.size > 0:
             candidate_indices.append(members)
-    
+
     if not candidate_indices:
         if return_distances:
             return np.array([], dtype=int), np.array([],dtype=float)
         else:
             return np.array([],dtype=int)
-    
+
     candidate_indices = np.concatenate(candidate_indices, axis=0)
     candidate_points = X[candidate_indices]
 
@@ -115,7 +115,7 @@ def query_tbknn(index, q, k=10, nprobe=3, return_distances=True, reject_out_of_r
 def tbknn(X, q, k=10, theta=0.5, nprobe=3, index=None):
     """
     Finding the Approximate k nearest neighbors.
-    
+
     X : Input data of shape (n_samples, n_features)
     q : query point of shape (n_features,)
     k : Number of nearest neighbors to return.
@@ -126,7 +126,7 @@ def tbknn(X, q, k=10, theta=0.5, nprobe=3, index=None):
 
     if index is None:
         index = fit_tbknn(X, theta)
-    
+
     indices, distances = query_tbknn(index, q, k, nprobe)
 
     return indices, distances, index
