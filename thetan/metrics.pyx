@@ -82,7 +82,7 @@ cdef double cosine_distance(double * vec1, double *vec2, cnp.npy_intp D) noexcep
     mag2 = magnitude(vec2, D)
 
     if mag1 == 0 or mag2 == 0:
-        return 1
+        return 0
 
     cosine_similarity = dot / (mag1 * mag2)
 

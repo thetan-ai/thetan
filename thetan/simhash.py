@@ -106,13 +106,11 @@ divider = 15
 
 dbg = True
 
-
-
-
-
-
 qatad = qata_norm.astype('f8')
+# Enable for testing highly structured areas
 qatad = qatad[flat_index:flat_index + 10000].copy()
+# Enable for testing background areas
+# qatad = qatad[:10000].copy()
 print("Subset shape:", qatad.shape)
 
 # Simhash
@@ -130,13 +128,16 @@ h = simhash_xxhash_64(qatad, R)
 end = time()
 print("Simhashing took:", end - start, "seconds")
 
+hunq, hidx, hcnts = np.unique(h, return_index=True, return_counts=True)
+print("Unique simhashes:", len(hunq))
+
 dbg = True
 
 from thetan import berserker, sequential
 
 # centroids, labels = berserker(X, n_clusters=1000, random_state=42)
 
-theta = 0.5
+theta = 0.2
 
 start = time()
 centroids, labels = sequential(qatad, theta, metric='cosine')
