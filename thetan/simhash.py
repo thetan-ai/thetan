@@ -1,6 +1,6 @@
 from unittest import signals
 import numpy as np
-from thetan.hashing import hash_rows_64, hash64
+from thetan.hashing import hash_rows_64, hash64, simhash_xxhash_64
 from time import time
 from dipy.io.image import load_nifti
 
@@ -8,6 +8,12 @@ from dipy.io.image import load_nifti
 
 qname = "/home/elef/Data/HCP_3T/136126/denoised_arr_p2s.nii.gz"
 mname = "/home/elef/Data/HCP_3T/136126/nodif_brain_mask.nii.gz"
+
+qname = "C:/Users/Eleftherios/Data/136126/data.nii.gz"
+mname = "C:/Users/Eleftherios/Data/136126/nodif_brain_mask.nii.gz"
+
+sims_path = "C:/Users/Eleftherios/Downloads/simulated_data.npz"  # expects this file in the same directory\
+
 
 mask, mask_affine = load_nifti(mname)
 mask = mask.astype(bool)
@@ -41,7 +47,6 @@ print(qata_norm[flat_index])
 
 
 # Load simulations
-sims_path = "simulated_data.npz"  # expects this file in the same directory\
 data = np.load(sims_path, allow_pickle=False)
 
 X = data["signals"]
@@ -102,19 +107,41 @@ divider = 15
 dbg = True
 
 
+
+
+
+
+qatad = qata_norm.astype('f8')
+qatad = qatad[flat_index:flat_index + 10000].copy()
+print("Subset shape:", qatad.shape)
+
+# Simhash
+
+# Normalize once
+# Xn = X / np.linalg.norm(X, axis=1, keepdims=True)
+
+# Fixed random planes (store them!)
+rng = np.random.default_rng(0)
+R = rng.standard_normal((128, qatad.shape[1]))
+
+# Hash
+start = time()
+h = simhash_xxhash_64(qatad, R)
+end = time()
+print("Simhashing took:", end - start, "seconds")
+
+dbg = True
+
 from thetan import berserker, sequential
 
 # centroids, labels = berserker(X, n_clusters=1000, random_state=42)
 
-theta = 0.2
-
-qatad = qata_norm.astype('f8')
-qatad = qatad[flat_index:flat_index + 50000 + 1].copy()
-print("Subset shape:", qatad.shape)
+theta = 0.5
 
 start = time()
 centroids, labels = sequential(qatad, theta, metric='cosine')
 end = time()
 print("Sequential took:", end - start, "seconds")
 print("Centroids shape:", centroids.shape)
+
 dbg = True

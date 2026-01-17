@@ -241,17 +241,17 @@ def test_direct(verbose=True):
     dcents, labels = direct(X, theta=theta, metric='euclidean', labels_from_hashes=True)
     print(dcents.shape)
 
-    from thetan.core import centroids_from_counting_hashes
+    # from thetan.core import centroids_from_counting_hashes
 
-    t1 = time()
-    Xh = np.ascontiguousarray(np.round(np.asarray(X) / theta, 0), dtype=np.uint64)
-    row_Xhashes = hash_rows_64(Xh)
-    t2 = time()
-    print(f"Time to hash X: {t2 - t1:.4f} seconds")
+    # t1 = time()
+    # Xh = np.ascontiguousarray(np.round(np.asarray(X) / theta, 0), dtype=np.uint64)
+    # row_Xhashes = hash_rows_64(Xh)
+    # t2 = time()
+    # print(f"Time to hash X: {t2 - t1:.4f} seconds")
 
-    Xhunq, Xinv, Xhcounts = np.unique(row_Xhashes, return_inverse=True, return_counts=True)
+    # Xhunq, Xinv, Xhcounts = np.unique(row_Xhashes, return_inverse=True, return_counts=True)
 
-    dcents2 = centroids_from_counting_hashes(X, Xh, Xhunq, Xhcounts)
+    # dcents2 = centroids_from_counting_hashes(X, Xh, Xhunq, Xhcounts)
 
     t = 1
     if verbose:
