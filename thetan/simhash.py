@@ -137,7 +137,7 @@ from thetan import berserker, sequential
 
 # centroids, labels = berserker(X, n_clusters=1000, random_state=42)
 
-theta = 0.2
+theta = 0.05
 
 start = time()
 centroids, labels = sequential(qatad, theta, metric='cosine')
