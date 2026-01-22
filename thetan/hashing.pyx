@@ -18,6 +18,9 @@ cdef extern from "xxhash.h" nogil:
     uint32_t XXH32(const void* data, size_t length, uint32_t seed)
     uint64_t XXH64(const void* data, size_t length, uint64_t seed)
 
+from cython.parallel cimport prange
+
+
 def hash32(bytes data, uint32_t seed=0):
     """Compute XXH32 hash of data with an optional seed.
 
@@ -156,11 +159,12 @@ def simhash_xxhash_64(double[:, ::1] X, double[:, ::1] R, uint64_t seed=0):
         cnp.ndarray[uint64_t, ndim=2] bits = np.zeros((N, nwords), dtype=np.uint64)
         cnp.ndarray[uint64_t, ndim=1] hashes = np.empty(N, dtype=np.uint64)
 
-        double dot
-        uint64_t word, mask
+        double dot = 0.0
+        uint64_t word = 0
+        uint64_t mask = 0
 
     with nogil:
-        for i in range(N):
+        for i in prange(N):
 
             # compute sign(R x)
             for j in range(K):

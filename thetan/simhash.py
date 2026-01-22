@@ -131,29 +131,33 @@ print("Simhashing took:", end - start, "seconds")
 hunq, hidx, hcnts = np.unique(h, return_index=True, return_counts=True)
 print("Unique simhashes:", len(hunq))
 
-dbg = True
 
-from thetan import berserker, sequential, sequential_pexact
 
-# centroids, labels = berserker(X, n_clusters=1000, random_state=42)
+use_thetan = False
 
-theta = 0.025
+if use_thetan:
 
-start = time()
-centroids, labels = sequential(qatad, theta, metric='cosine')
-end = time()
-print("Sequential took:", end - start, "seconds")
-print("Centroids shape:", centroids.shape)
+    from thetan import berserker, sequential, sequential_pexact
 
-dbg = True
+    # centroids, labels = berserker(X, n_clusters=1000, random_state=42)
 
-theta = 0.025
+    theta = 0.025
 
-start = time()
-centroids, labels = sequential_pexact(qatad, theta, metric='cosine')
-end = time()
-print("Sequential Pexact took:", end - start, "seconds")
-print("Centroids shape:", centroids.shape)
+    start = time()
+    centroids, labels = sequential(qatad, theta, metric='cosine')
+    end = time()
+    print("Sequential took:", end - start, "seconds")
+    print("Centroids shape:", centroids.shape)
+
+    dbg = True
+
+    theta = 0.025
+
+    start = time()
+    centroids, labels = sequential_pexact(qatad, theta, metric='cosine')
+    end = time()
+    print("Sequential Pexact took:", end - start, "seconds")
+    print("Centroids shape:", centroids.shape)
 
 # from berspar2 import berserker_papprox
 
