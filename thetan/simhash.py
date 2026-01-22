@@ -9,11 +9,11 @@ from dipy.io.image import load_nifti
 qname = "/home/elef/Data/HCP_3T/136126/denoised_arr_p2s.nii.gz"
 mname = "/home/elef/Data/HCP_3T/136126/nodif_brain_mask.nii.gz"
 
-qname = "C:/Users/Eleftherios/Data/136126/data.nii.gz"
-mname = "C:/Users/Eleftherios/Data/136126/nodif_brain_mask.nii.gz"
+# qname = "C:/Users/Eleftherios/Data/136126/data.nii.gz"
+# mname = "C:/Users/Eleftherios/Data/136126/nodif_brain_mask.nii.gz"
 
 sims_path = "C:/Users/Eleftherios/Downloads/simulated_data.npz"  # expects this file in the same directory\
-
+sims_path = "/home/elef/Devel/FORCE_hash/simulated_signals/simulated_data.npz"
 
 mask, mask_affine = load_nifti(mname)
 mask = mask.astype(bool)
@@ -108,7 +108,7 @@ dbg = True
 
 qatad = qata_norm.astype('f8')
 # Enable for testing highly structured areas
-qatad = qatad[flat_index:flat_index + 10000].copy()
+# qatad = qatad[flat_index:flat_index + 10000].copy()
 # Enable for testing background areas
 # qatad = qatad[:10000].copy()
 print("Subset shape:", qatad.shape)
@@ -122,7 +122,7 @@ print("Subset shape:", qatad.shape)
 rng = np.random.default_rng(0)
 R = rng.standard_normal((128, qatad.shape[1]))
 
-# Hash
+
 start = time()
 h = simhash_xxhash_64(qatad, R)
 end = time()
@@ -133,16 +133,36 @@ print("Unique simhashes:", len(hunq))
 
 dbg = True
 
-from thetan import berserker, sequential
+from thetan import berserker, sequential, sequential_pexact
 
 # centroids, labels = berserker(X, n_clusters=1000, random_state=42)
 
-theta = 0.05
+theta = 0.025
 
 start = time()
 centroids, labels = sequential(qatad, theta, metric='cosine')
 end = time()
 print("Sequential took:", end - start, "seconds")
 print("Centroids shape:", centroids.shape)
+
+dbg = True
+
+theta = 0.025
+
+start = time()
+centroids, labels = sequential_pexact(qatad, theta, metric='cosine')
+end = time()
+print("Sequential Pexact took:", end - start, "seconds")
+print("Centroids shape:", centroids.shape)
+
+# from berspar2 import berserker_papprox
+
+# theta = 0.025
+
+# start = time()
+# centroids, labels = berserker_papprox(qatad, theta, metric='cosine', chunks_per_cpu=2, target_chunk_mb=64)
+# end = time()
+# print("Berserker Parallel Approx took:", end - start, "seconds")
+# print("Centroids shape:", centroids.shape)
 
 dbg = True
