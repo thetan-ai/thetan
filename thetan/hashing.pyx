@@ -18,7 +18,7 @@ cdef extern from "xxhash.h" nogil:
     uint32_t XXH32(const void* data, size_t length, uint32_t seed)
     uint64_t XXH64(const void* data, size_t length, uint64_t seed)
 
-from cython.parallel cimport prange
+# from cython.parallel cimport prange
 
 
 def hash32(bytes data, uint32_t seed=0):
@@ -164,7 +164,7 @@ def simhash_xxhash_64(double[:, ::1] X, double[:, ::1] R, uint64_t seed=0):
         uint64_t mask = 0
 
     with nogil:
-        for i in prange(N):
+        for i in range(N):
 
             # compute sign(R x)
             for j in range(K):
