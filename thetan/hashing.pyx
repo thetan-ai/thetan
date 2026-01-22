@@ -186,3 +186,27 @@ def simhash_xxhash_64(double[:, ::1] X, double[:, ::1] R, uint64_t seed=0):
             )
 
     return np.asarray(hashes)
+
+
+def simhash_xxhash_tables_64(double[:, ::1] X,
+                             double[:, ::1] R,
+                             int L,
+                             uint64_t seed0=0,
+                             uint64_t seed_stride=0x9E3779B97F4A7C15):
+    """
+    Returns hashes of shape (L, N). Each table uses the same hyperplanes R,
+    but a different XXH64 seed (seed0 + t*seed_stride).
+
+    X must be normalized if you want cosine geometry.
+    """
+    cdef:
+        Py_ssize_t N = X.shape[0]
+        Py_ssize_t K = R.shape[0]
+        Py_ssize_t nwords = (K + 63) // 64
+        int t
+        cnp.ndarray[cnp.uint64_t, ndim=2] out = np.empty((L, N), dtype=np.uint64)
+
+    for t in range(L):
+        out[t, :] = simhash_xxhash_64(X, R, seed=seed0 + <uint64_t>t * seed_stride)
+
+    return out

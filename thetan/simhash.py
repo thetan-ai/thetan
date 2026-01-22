@@ -1,6 +1,6 @@
 from unittest import signals
 import numpy as np
-from thetan.hashing import hash_rows_64, hash64, simhash_xxhash_64
+from thetan.hashing import hash_rows_64, hash64, simhash_xxhash_64, simhash_xxhash_tables_64
 from time import time
 from dipy.io.image import load_nifti
 
@@ -106,7 +106,8 @@ divider = 15
 
 dbg = True
 
-qatad = qata_norm.astype('f8')
+qatad = qata_norm.astype('f8') / 100.0
+
 # Enable for testing highly structured areas
 # qatad = qatad[flat_index:flat_index + 10000].copy()
 # Enable for testing background areas
@@ -131,6 +132,14 @@ print("Simhashing took:", end - start, "seconds")
 hunq, hidx, hcnts = np.unique(h, return_index=True, return_counts=True)
 print("Unique simhashes:", len(hunq))
 
+
+start = time()
+h2 = simhash_xxhash_tables_64(qatad, R, L=4)
+end = time()
+print("Simhashing took:", end - start, "seconds")
+
+hunq2, hidx2, hcnts2 = np.unique(h2, return_index=True, return_counts=True)
+print("Unique simhashes:", len(hunq))
 
 
 use_thetan = False
