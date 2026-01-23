@@ -6,14 +6,14 @@ from dipy.io.image import load_nifti
 
 
 
-qname = "/home/elef/Data/HCP_3T/136126/denoised_arr_p2s.nii.gz"
-mname = "/home/elef/Data/HCP_3T/136126/nodif_brain_mask.nii.gz"
+# qname = "/home/elef/Data/HCP_3T/136126/denoised_arr_p2s.nii.gz"
+# mname = "/home/elef/Data/HCP_3T/136126/nodif_brain_mask.nii.gz"
+# sims_path = "/home/elef/Devel/FORCE_hash/simulated_signals/simulated_data.npz"
 
-# qname = "C:/Users/Eleftherios/Data/136126/data.nii.gz"
-# mname = "C:/Users/Eleftherios/Data/136126/nodif_brain_mask.nii.gz"
-
+qname = "C:/Users/Eleftherios/Data/136126/data.nii.gz"
+mname = "C:/Users/Eleftherios/Data/136126/nodif_brain_mask.nii.gz"
 sims_path = "C:/Users/Eleftherios/Downloads/simulated_data.npz"  # expects this file in the same directory\
-sims_path = "/home/elef/Devel/FORCE_hash/simulated_signals/simulated_data.npz"
+
 
 mask, mask_affine = load_nifti(mname)
 mask = mask.astype(bool)
@@ -63,46 +63,8 @@ print(X.min(), X.max())
 print(qata_norm.min(), qata_norm.max())
 
 
-# Hashing simulations
 
-divider = 15
-
-# start = time()
-# Xh = np.ascontiguousarray(np.round(np.asarray(X) / divider, 0), dtype=np.uint64)
-# row_Xhashes = hash_rows_64(Xh)
-# end = time()
-# print("Hashing sims took:", end - start, "seconds")
-
-# start = time()
-# unq, idx, cnts = np.unique(row_Xhashes, return_index=True, return_counts=True)
-# end = time()
-# print("Unique hashes:", len(unq))
-# print("Counting unique hashes took:", end - start, "seconds")
-
-
-# Hashing measurements
-
-# start = time()
-# qh = np.ascontiguousarray(np.round(np.asarray(qata_norm) / divider, 0), dtype=np.uint64)
-# row_qhashes = hash_rows_64(qh)
-# end = time()
-# print("Hashing measurements took:", end - start, "seconds")
-
-# start = time()
-# qunq, qidx, qcnts = np.unique(row_qhashes, return_index=True, return_counts=True)
-# end = time()
-# print("Unique hashes:", len(qunq))
-# print("Counting unique hashes took:", end - start, "seconds")
-
-
-# common = np.intersect1d(qunq, unq)
-# print(common.size, "common hashes between sims and measurements")
-
-# for u in unq:
-#     if query == u:
-#         print("Match!")
-#         print(u)
-#         # Here do cosine for idxs
+# Hashing measurements & simulations
 
 dbg = True
 
@@ -117,32 +79,54 @@ print("Subset shape:", qatad.shape)
 # Simhash
 
 # Normalize once
-# Xn = X / np.linalg.norm(X, axis=1, keepdims=True)
+Xn = X / np.linalg.norm(X, axis=1, keepdims=True)
+Xn = np.ascontiguousarray(Xn, dtype='f8')
 
 # Fixed random planes (store them!)
 rng = np.random.default_rng(0)
-R = rng.standard_normal((128, qatad.shape[1]))
-
-
-start = time()
-h = simhash_xxhash_64(qatad, R)
-end = time()
-print("Simhashing took:", end - start, "seconds")
-
-hunq, hidx, hcnts = np.unique(h, return_index=True, return_counts=True)
-print("Unique simhashes:", len(hunq))
-
+R = rng.standard_normal((32, qatad.shape[1]))
 
 start = time()
-h2 = simhash_xxhash_tables_64(qatad, R, L=4)
+h = simhash_xxhash_64(Xn, R)
 end = time()
-print("Simhashing took:", end - start, "seconds")
+print("Sims Simhashing took:", end - start, "seconds")
 
-hunq2, hidx2, hcnts2 = np.unique(h2, return_index=True, return_counts=True)
-print("Unique simhashes:", len(hunq))
+shunq, shidx, shcnts = np.unique(h, return_index=True, return_counts=True)
+print("Sims Unique simhashes:", len(shunq))
+
+start = time()
+q = simhash_xxhash_64(qatad, R)
+end = time()
+print("Data Simhashing took:", end - start, "seconds")
+
+hunq, hidx, hcnts = np.unique(q, return_index=True, return_counts=True)
+print("Data Unique simhashes:", len(hunq))
+
+common = np.intersect1d(shunq, hunq)
+print("Common simhashes between sims and data:", len(common))
+
+from scipy.spatial.distance import cosine
+
+# for cs in common:
+#     sim_indices = np.where(shunq == cs)[0]
+#     data_indices = np.where(h == cs)[0]
+
+#     for si in sim_indices:
+#         for di in data_indices:
+#             dist = cosine(Xn[si], qatad[di])
+#             if dist < 0.2:
+#                 print(f"Close match found for simhash {cs}: sim index {si}, data index {di}, cosine distance {dist}")
+
+# start = time()
+# h2 = simhash_xxhash_tables_64(qatad, R, L=4)
+# end = time()
+# print("Simhashing tables took:", end - start, "seconds")
+
+# hunq2, hidx2, hcnts2 = np.unique(h2, return_index=True, return_counts=True)
+# print("Unique simhashes:", len(hunq2))
 
 
-use_thetan = False
+use_thetan = True
 
 if use_thetan:
 
