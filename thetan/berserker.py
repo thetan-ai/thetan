@@ -1651,7 +1651,7 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
         print('Calculating laplacian')
         # Wgrad = gaussian_gradient_magnitude(W, sigma=5)
         # Wgrad = laplace(W)
-        Wgrad = np.abs(gaussian_laplace(W, sigma=1))
+        Wgrad = gaussian_laplace(W, sigma=1)
         Xng = X.copy()
         Xng[:, 3] -= 2 * Wgrad.ravel()
         Ivol, Jvol, Kvol, W = X_to_many_3D(Xng, data.shape)
@@ -1661,7 +1661,11 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     W = np.ascontiguousarray(W, dtype='f8')
 
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
-    images = horizon_support(aff,(Wcp, 'Worig'), (Wgrad, 'Wgrad'), (W, 'Wwithng'), (W_alpha, 'W_alpha'))
+
+    if ng:
+        images = horizon_support(aff,(Wcp, 'Worig'), (Wgrad, 'Wgrad'), (W, 'Wwithng'), (W_alpha, 'W_alpha'))
+    else:
+        images = horizon_support(aff,(Wcp, 'Worig'), (W, 'W'), (W_alpha, 'W_alpha'))
 
     return images
 
