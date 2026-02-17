@@ -1624,165 +1624,60 @@ def biggestx(labels, x=10):
     return bigx
 
 
-def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300):
+def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_min=0, perc_max=98):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
+    # blurred = gaussian_filter(data, sigma=10)
+
+    # blurred_inverted = 0.5*data.max() - blurred
+
+    # # Avoid division by zero
+    # epsilon = 1e-6
+    # result = data / (blurred_inverted + epsilon)
+
+    # images = horizon_support(np.eye(4), (data, 'data'), (blurred, 'blurred'), (blurred_inverted, 'blurred_inverted'), (result, 'result'))
+    # return images
+
     print('Preparing data')
-    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
+    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    Wcp = W.copy()
+
+    ng = False
+
+    if ng:
+        print('Calculating laplacian')
+        # Wgrad = gaussian_gradient_magnitude(W, sigma=5)
+        # Wgrad = laplace(W)
+        Wgrad = np.abs(gaussian_laplace(W, sigma=1))
+        Xng = X.copy()
+        Xng[:, 3] -= 2 * Wgrad.ravel()
+        Ivol, Jvol, Kvol, W = X_to_many_3D(Xng, data.shape)
 
     aff = np.eye(4)
 
     W = np.ascontiguousarray(W, dtype='f8')
 
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
-    images = horizon_support(aff, (W, 'W'), (W_alpha, 'W_alpha'))
+    images = horizon_support(aff,(Wcp, 'Worig'), (Wgrad, 'Wgrad'), (W, 'Wwithng'), (W_alpha, 'W_alpha'))
 
-    from skimage.segmentation import slic
-
-    W_alpha_slic = slic(W_alpha, n_segments=10, compactness=0.05, sigma=1, start_label=1, channel_axis=None)
-    images += horizon_support(aff, (W_alpha_slic, 'W_alpha_slic'))
-
-    W_alpha_slic2 = slic(W_alpha, n_segments=20, compactness=0.01, sigma=1,
-                         enforce_connectivity=True,
-                         min_size_factor=0.1,
-                         max_size_factor=1,
-                         start_label=1, channel_axis=None)
-    images += horizon_support(aff, (W_alpha_slic2, 'W_alpha_slic2'))
-
-
-
-
-
-    # W_cc_5, num_ = connected_components(W, delta=5)
-    # images += horizon_support(aff, (W_cc_5, 'W_cc_5'))
-
-    # W_cc_10, num_ = connected_components(W, delta=10)
-    # images += horizon_support(aff, (W_cc_10, 'W_cc_10'))
-
-    # W_alpha_cc_7, num_ = connected_components(W_alpha, delta=7)
-    # images += horizon_support(aff, (W_alpha_cc_7, 'W_alpha_cc_7'))
-
-    # W_alpha_cc_8, num_ = connected_components(W_alpha, delta=8)
-    # images += horizon_support(aff, (W_alpha_cc_8, 'W_alpha_cc_8'))
-
-    # W_alpha_cc_9, num_ = connected_components(W_alpha, delta=9)
-    # images += horizon_support(aff, (W_alpha_cc_9, 'W_alpha_cc_9'))
-
-
-    # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W, theta)
-    # images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+    return images
 
     data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
-    min_size_factor = 0.1
-    max_size_factor = 40
+    # min_size_factor = 0.1
+    # max_size_factor = 40
 
     n_centroids = centroids.shape[0]
-    segment_size = np.prod(data.shape[:3]) / n_centroids
-    min_size = int(min_size_factor * segment_size)
-    max_size = int(max_size_factor * segment_size)
-
-    # data_labels_cc = correct_connectivity(data_labels.astype('i8'), min_size, max_size, start_label=0)
-    # images += horizon_support(aff, (data_labels_cc, 'dl_cc'))
-
-    # centroids_im_cc = correct_connectivity(np.round(centroids_im, 0).astype('i8'), min_size, max_size, start_label=0)
-    # images += horizon_support(aff, (centroids_im_cc, 'centroids_im_cc'))
-
-    # centroids_median_im_cc = correct_connectivity(np.round(centroids_median_im, 0).astype('i8'), min_size, max_size, start_label=0)
-    # images += horizon_support(aff, (centroids_median_im_cc, 'centroids_median_im_cc'))
-
-
-
-    cim_cc3d_10, num_ = connected_components(centroids_im, delta=10)
-    images += horizon_support(aff, (cim_cc3d_10, 'cim_cc3d_10'))
-
-    cim_cc3d_5, num_ = connected_components(centroids_im, delta=5)
-    images += horizon_support(aff, (cim_cc3d_5, 'cim_cc3d_5'))
-
-    # big10o = biggestx(cim_cc3d_10, x=10)
-    # images += horizon_support(aff, (big10o, 'big10o'))
-
-
-    # cim_cc3d_20 = cc3d.connected_components(centroids_im, connectivity=26, delta=20)
-    # images += horizon_support(aff, (cim_cc3d_20, 'cim_cc3d_20'))
-
-    # cmim_cc3d_10 = cc3d.connected_components(centroids_median_im, connectivity=26, delta=10)
-    # images += horizon_support(aff, (cmim_cc3d_10, 'cmim_cc3d_10'))
-
-    # big10 = biggestx(cmim_cc3d_10, x=10)
-    # images += horizon_support(aff, (big10, 'big10'))
-
-    # cmim_cc3d_20 = cc3d.connected_components(centroids_median_im, connectivity=26, delta=20)
-    # images += horizon_support(aff, (cmim_cc3d_20, 'cmim_cc3d_20'))
-
-    # W_cc3d_10 = cc3d.connected_components(W, connectivity=26, delta=10)
-    # images += horizon_support(aff, (W_cc3d_10, 'W_cc3d_10'))
-
-    # W_big10 = biggestx(W_cc3d_10, x=10)
-    # images += horizon_support(aff, (W_big10, 'W_big10'))
-
-    # W_cc3d_20 = cc3d.connected_components(W, connectivity=26, delta=20)
-    # images += horizon_support(aff, (W_cc3d_20, 'W_cc3d_20'))
-
-    # Walpha_cc3d_10 = cc3d.connected_components(W_alpha, connectivity=26, delta=10)
-    # images += horizon_support(aff, (Walpha_cc3d_10, 'Walpha_cc3d_10'))
-
-    # Walpha_cc3d_20 = cc3d.connected_components(W_alpha, connectivity=26, delta=20)
-    # images += horizon_support(aff, (Walpha_cc3d_20, 'Walpha_cc3d_20'))
-
-
-    # cmimr = np.round(centroids_median_im, 0).astype('i8')
-
-    # cmimr_cc = correct_connectivity(cmimr, min_size=1000000, max_size=2000000, start_label=1)
-    # images += horizon_support(aff, (cmimr_cc, 'cmimr_cc'))
-
-    # centroids_median_im3 = median_filter(centroids_median_im, size=3)
-    # images += horizon_support(aff, (centroids_median_im3, 'cmim3'))
-
-    # centroids_median_im5 = median_filter(centroids_median_im, size=5)
-    # images += horizon_support(aff, (centroids_median_im5, 'cmim5'))
-
-    # def spherical_footprint(radius):
-    #     """Creates a spherical footprint for median filtering."""
-    #     L = 2 * radius + 1
-    #     x, y, z = np.ogrid[-radius:radius+1, -radius:radius+1, -radius:radius+1]
-    #     mask = x**2 + y**2 + z**2 <= radius**2
-    #     return mask
-
-    # # Apply median filter with spherical footprint
-    # radius = 1
-    # footprint = spherical_footprint(radius)
-
-    # centroids_median_im7 = median_filter(centroids_im, footprint=footprint)
-    # images += horizon_support(aff, (centroids_median_im7, 'cmimr1'))
-
-    # radius = 2
-    # footprint = spherical_footprint(radius)
-
-    # centroids_median_im9 = median_filter(centroids_im, footprint=footprint)
-    # images += horizon_support(aff, (centroids_median_im9, 'cmimr2'))
-
-    # radius = 3
-    # footprint = spherical_footprint(radius)
-
-    # centroids_median_im9 = median_filter(centroids_im, footprint=footprint)
-    # images += horizon_support(aff, (centroids_median_im9, 'cmimr3'))
-
-
-    # Py_ssize_t[:, :, ::1] segments,
-    # Py_ssize_t min_size,
-    # Py_ssize_t max_size,
-    # Py_ssize_t start_label=1
+    # segment_size = np.prod(data.shape[:3]) / n_centroids
+    # min_size = int(min_size_factor * segment_size)
+    # max_size = int(max_size_factor * segment_size)
 
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
-
-    bk = 20 * bk_im.astype('f8')
-    bk_im_cc, num_ = connected_components(bk, delta=100)
-    images += horizon_support(aff, (bk_im_cc, 'bk_im_cc'))
 
     tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=2)
     tps = tps / tps.max()
@@ -1794,9 +1689,6 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
 
     bk_cim = centroids_median_im > bk2 # previously it was centroids_im
     images += horizon_support(aff, (bk_cim.astype('f8'), 'bk_cim'))
-
-    # bk_cim_cc = cc3d.connected_components(bk_cim, connectivity=6)
-    # images += horizon_support(aff, (bk_cim_cc.astype('f8'), 'bk_cim_cc'))
 
     # TODO: rounding and dtypes to int can generate useful labels
 
