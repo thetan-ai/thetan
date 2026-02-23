@@ -118,32 +118,99 @@ def patch_covariance_features(volume, grad, patch_radius=2, eps=1e-6, use_log_ma
     
     return feats
 
-def build_mri_features(volume, mask=None, spd_mode='structure_tensor',gradient_sigma=1.0, structure_tensor_sigma=2.0, patch_radius=2, use_log_matrix=False, spatial_weight=1.0, normalize=True, eps=1e-6):
+# def build_mri_features(volume, mask=None, spd_mode='structure_tensor',gradient_sigma=1.0, structure_tensor_sigma=2.0, patch_radius=2, use_log_matrix=False, spatial_weight=1.0, normalize=True, eps=1e-6):
+#     volume = np.asarray(volume, dtype=np.float64)
+#     if volume.ndim != 3:
+#         raise ValueError(f'Expected 3D Volume, got shape {volume.shape}')
+    
+#     X, Y, Z = volume.shape
+#     print(f'[FeatureBuilder] Volume shape: ({X}, {Y}, {Z})')
+
+#     # Normalize Intensity
+#     I_norm = normalized_intensity(volume)
+#     print('[FeatureBuilder] Intensity normalized to [0,1]')
+
+#     # Gradients
+#     grad, grad_mag = compute_gradients(I_norm, sigma=gradient_sigma)
+#     print('[FeatureBuilder] Gradients computed with sigma={}'.format(gradient_sigma))
+
+#     # Spatial Coordinates
+#     coords = build_spatial_coords((X,Y,Z)) * spatial_weight
+
+#     # SPD Features
+#     if spd_mode == "none":
+#         spd_feats = None
+#         print('[FeatureBuilder] SPD mode: none')
+#     elif spd_mode == 'structure_tensor':
+#         spd_feats = structure_tensor_features(grad, sigma_st = structure_tensor_sigma, eps = eps)
+#         print('[FeatureBuilder] Structure tensor features computed with sigma={}'.format(structure_tensor_sigma))
+#     elif spd_mode in ('patch_covariance', 'patch_covariance_logm'):
+#         use_logm = (spd_mode == 'patch_covariance_logm')
+#         spd_feats = patch_covariance_features(I_norm, grad, patch_radius=patch_radius, eps=eps, use_log_matrix=use_logm)
+#         d_spd = spd_feats.shape[-1]
+#         print(f'[FeatureBuilder] Patch covariance features computed with radius={patch_radius}, log_matrix={use_logm}, d_spd={d_spd}')
+#     elif spd_mode == 'ge':
+#         spd_feats = structure_tensor_features(grad, sigma_st=structure_tensor_sigma, eps=eps)
+#         print('[FeatureBuilder] GE mode: structure tensor eigenvalues (no spatial coords)')
+#     else:
+#         raise ValueError(f'Unknown spd_mode: {spd_mode}')
+
+
+#     channels = [I_norm[..., None], grad_mag[..., None]]
+#     if spd_feats is not None:
+#         channels.append(spd_feats)
+#     if spd_mode != 'ge':
+#         channels.append(coords)
+    
+
+#     feat_volume = np.concatenate(channels, axis=-1)
+#     D = feat_volume.shape[-1]
+#     print(f'[FeatureBuilder] Total channels: {D}')
+    
+#     if mask is None:
+#         mask = volume > 0
+#         print(f'[FeatureBuilder] Auto-mask: volume > 0')
+    
+#     mask = np.asarray(mask, dtype=bool)
+#     idx = np.argwhere(mask)
+#     features = feat_volume[mask]
+#     print(f'[FeatureBuilder] Masked voxels: {features.shape[0]:,} / {X*Y*Z:,} total ({100*features.shape[0]/(X*Y*Z):.1f}%)')
+
+#     if normalize:
+#         features = zscore_columns(features)
+#         print('[FeatureBuilder] Features z-score normalized')
+    
+#     return features, idx
+
+def build_mri_features(volume, mask=None, spd_mode='structure_tensor',
+                       gradient_sigma=1.0, structure_tensor_sigma=2.0,
+                       patch_radius=2, use_log_matrix=False,
+                       spatial_weight=1.0, normalize=True, eps=1e-6):
     volume = np.asarray(volume, dtype=np.float64)
     if volume.ndim != 3:
         raise ValueError(f'Expected 3D Volume, got shape {volume.shape}')
-    
+
     X, Y, Z = volume.shape
     print(f'[FeatureBuilder] Volume shape: ({X}, {Y}, {Z})')
 
-    # Normalize Intensity
     I_norm = normalized_intensity(volume)
     print('[FeatureBuilder] Intensity normalized to [0,1]')
 
-    # Gradients
     grad, grad_mag = compute_gradients(I_norm, sigma=gradient_sigma)
     print('[FeatureBuilder] Gradients computed with sigma={}'.format(gradient_sigma))
 
-    # Spatial Coordinates
-    coords = build_spatial_coords((X,Y,Z)) * spatial_weight
+    coords = build_spatial_coords((X, Y, Z)) * spatial_weight
 
     # SPD Features
     if spd_mode == "none":
         spd_feats = None
         print('[FeatureBuilder] SPD mode: none')
     elif spd_mode == 'structure_tensor':
-        spd_feats = structure_tensor_features(grad, sigma_st = structure_tensor_sigma, eps = eps)
+        spd_feats = structure_tensor_features(grad, sigma_st=structure_tensor_sigma, eps=eps)
         print('[FeatureBuilder] Structure tensor features computed with sigma={}'.format(structure_tensor_sigma))
+    elif spd_mode == 'ge':
+        spd_feats = structure_tensor_features(grad, sigma_st=structure_tensor_sigma, eps=eps)
+        print('[FeatureBuilder] GE mode: [I, |∇I|, log λ₁, log λ₂, log λ₃] (no spatial coords)')
     elif spd_mode in ('patch_covariance', 'patch_covariance_logm'):
         use_logm = (spd_mode == 'patch_covariance_logm')
         spd_feats = patch_covariance_features(I_norm, grad, patch_radius=patch_radius, eps=eps, use_log_matrix=use_logm)
@@ -152,20 +219,20 @@ def build_mri_features(volume, mask=None, spd_mode='structure_tensor',gradient_s
     else:
         raise ValueError(f'Unknown spd_mode: {spd_mode}')
 
-
     channels = [I_norm[..., None], grad_mag[..., None]]
     if spd_feats is not None:
         channels.append(spd_feats)
-    channels.append(coords)
+    if spd_mode != 'ge':
+        channels.append(coords)
 
     feat_volume = np.concatenate(channels, axis=-1)
     D = feat_volume.shape[-1]
     print(f'[FeatureBuilder] Total channels: {D}')
-    
+
     if mask is None:
         mask = volume > 0
         print(f'[FeatureBuilder] Auto-mask: volume > 0')
-    
+
     mask = np.asarray(mask, dtype=bool)
     idx = np.argwhere(mask)
     features = feat_volume[mask]
@@ -174,7 +241,7 @@ def build_mri_features(volume, mask=None, spd_mode='structure_tensor',gradient_s
     if normalize:
         features = zscore_columns(features)
         print('[FeatureBuilder] Features z-score normalized')
-    
+
     return features, idx
 
 def labels_to_volume(labels, indices, shape):
@@ -193,15 +260,16 @@ def extract_largest_cluster_mask(data_labels, indices, shape):
     return mask, largest_label
 
 if __name__ == "__main__":
-    input_path = r'/Users/prajwal/Desktop/thetan_seg/IXI002-Guys-0828-T1.nii.gz'
+    input_path = r'/home/prajwal/Desktop/brain_seg/IXI002-Guys-0828-T1.nii.gz'
     
-    spd_mode = 'structure_tensor'
+    spd_mode = 'ge'
+    # spd_mode = 'structure_tensor'
     # spd_mode = 'patch_covariance'
     # spd_mode = 'patch_covariance_logm'
-    spatial_weight = 1.0
+    spatial_weight = 0.8
     gradient_sigma = 1.0
     st_sigma = 2.0
-    theta_value = 2.5
+    theta_value = 2.6
 
     print(f'Loading t1')
     vol, affine = load_nifti(input_path)
@@ -239,6 +307,7 @@ if __name__ == "__main__":
     )
     t_feat = time.time() - t0
 
+
     print(f"\nFeature matrix  : {features.shape}  "
           f"({features.nbytes / 1e6:.1f} MB)")
     print(f"Time            : {t_feat:.1f}s")
@@ -269,26 +338,42 @@ if __name__ == "__main__":
     print(f"Label volume shape: {label_vol.shape}")
     print(f"Background voxels (label=-1): {(label_vol == -1).sum():,}")
 
-    brain_mask, largest_label = extract_largest_cluster_mask(
-        data_labels, indices, vol.shape
-    )
+    # brain_mask, largest_label = extract_largest_cluster_mask(
+    #     data_labels, indices, vol.shape
+    # )
 
-    unique, counts = np.unique(data_labels, return_counts=True)
-    largest_count = counts[unique == largest_label][0]
-    print(f"Largest cluster : label {largest_label}")
-    print(f"Voxel count     : {largest_count:,} / {len(data_labels):,} "
-          f"({100 * largest_count / len(data_labels):.1f}%)")
-    print(f"Mask volume     : {brain_mask.sum():,} voxels")
+    # unique, counts = np.unique(data_labels, return_counts=True)
+    # largest_count = counts[unique == largest_label][0]
+    # print(f"Largest cluster : label {largest_label}")
+    # print(f"Voxel count     : {largest_count:,} / {len(data_labels):,} "
+    #       f"({100 * largest_count / len(data_labels):.1f}%)")
+    # print(f"Mask volume     : {brain_mask.sum():,} voxels")
 
-    # Apply mask to T1 to get skull-stripped volume
-    brain_vol = vol * brain_mask
+
+    # # Apply mask to T1 to get skull-stripped volume
+    # brain_vol = vol * brain_mask
+
+    # # ---- Visualize ----
+    # images = horizon_support(
+    # affine,
+    # (vol, "t1"),
+    # (label_vol, "berserker_labels"),
+    # (brain_mask, "brain_mask"),
+    # (brain_vol, "brain_extracted"),
+    # (excluded_vol, "excluded_cluster_0"),
+    # )
+    # horizon(images=images, bg_color=(1, 0.5, 0.5))
+    excluded_mask = np.zeros(vol.shape, dtype=np.uint8)
+    non_zero_voxels = indices[data_labels != 0]
+    excluded_mask[non_zero_voxels[:, 0], non_zero_voxels[:, 1], non_zero_voxels[:, 2]] = 1
+    excluded_vol = vol * excluded_mask
+    print(f"Non-zero voxels: {(data_labels != 0).sum():,}")
 
     # ---- Visualize ----
     images = horizon_support(
         affine,
         (vol, "t1"),
         (label_vol, "berserker_labels"),
-        (brain_mask, "brain_mask"),
-        (brain_vol, "brain_extracted"),
+        (excluded_vol, "excluded_cluster_0"),
     )
     horizon(images=images, bg_color=(1, 0.5, 0.5))
