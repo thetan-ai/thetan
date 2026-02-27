@@ -1649,7 +1649,7 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
 
     if ng:
         print('Calculating laplacian')
-        # Wgrad = gaussian_gradient_magnitude(W, sigma=5)
+        # Wgrad = gaussian_gradient_magnitude(W, sigma=3)
         # Wgrad = laplace(W)
         Wgrad = gaussian_laplace(W, sigma=1)
         Xng = X.copy()
@@ -1667,7 +1667,7 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     else:
         images = horizon_support(aff,(Wcp, 'Worig'), (W, 'W'), (W_alpha, 'W_alpha'))
 
-    return images
+    # return images
 
     data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
@@ -1687,7 +1687,7 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     tps = tps / tps.max()
     images.append((tps, aff, 'tps'))
 
-    tps_mask = tps > 0.02
+    tps_mask = tps > 0.2
     tps_largest = detect_largest_object(tps_mask, None)
     images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
 
