@@ -7,7 +7,11 @@ from thetan.berserker import horizon_support, prepare_data_3d, X_to_many_3D, ber
 from scipy.ndimage import median_filter, gaussian_laplace
 # import cc3d
 
-data, affine = load_nifti(r'IXI002-Guys-0828-T1.nii.gz')
+
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
+
+data, affine = load_nifti(fname)
 print('Data Loaded!')
 print(data.shape)
 
@@ -35,7 +39,9 @@ print(f'Feature space with TVM: {X.shape}')
 
 Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 TVMvol = tvm_norm.reshape(data.shape)
-images = horizon_support(affine, (data, 'data'), (W, 'W'), (TVMvol, 'TVM'))
+images = horizon_support(affine, (data, 'data'), (W, 'W'), (tvm, 'TVM'), (TVMvol, 'TVMvol'))
+
+horizon(images=images, bg_color=(1,0.5,0.5))
 
 # Max and min values of TVM volume
 print('TVM max:', np.max(TVMvol))
