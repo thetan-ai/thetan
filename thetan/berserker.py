@@ -1683,7 +1683,7 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
-    tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=2)
+    tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=1)
     tps = tps / tps.max()
     images.append((tps, aff, 'tps'))
 
