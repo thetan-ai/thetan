@@ -20,6 +20,37 @@ from sklearn.cluster import DBSCAN
 from sklearn.cluster import AgglomerativeClustering
 
 
+def hessian_3d(image):
+    """
+    Compute the 3D Hessian matrix (all second-order partial derivatives).
+
+    Parameters
+    ----------
+    image : np.ndarray, shape (X, Y, Z)
+        3D scalar image.
+
+    Returns
+    -------
+    H : np.ndarray, shape (3, 3, X, Y, Z)
+        H[i, j] = ∂²image / ∂x_i ∂x_j
+    """
+    # First-order gradients
+    g0, g1, g2 = np.gradient(image)
+
+    # Second-order (symmetric, so we only compute upper triangle)
+    H = np.empty((3, 3) + image.shape, dtype=image.dtype)
+
+    H[0, 0], H[0, 1], H[0, 2] = np.gradient(g0)  # ∂²f/∂x², ∂²f/∂x∂y, ∂²f/∂x∂z
+    _,       H[1, 1], H[1, 2] = np.gradient(g1)  # _,       ∂²f/∂y², ∂²f/∂y∂z
+    _,       _,       H[2, 2] = np.gradient(g2)  # _,       _,       ∂²f/∂z²
+
+    # Symmetry
+    H[1, 0] = H[0, 1]
+    H[2, 0] = H[0, 2]
+    H[2, 1] = H[1, 2]
+
+    return H
+
 def check_arr(a):
     print(a.shape, a.dtype, a.min(), a.max())
 
@@ -1686,6 +1717,9 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
 
     voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
 
+    print('Affine matrix: ', affine)
+    print('Affine voxel sizes: ', voxel_sizes)
+
     gi, gj, gk = np.gradient(data, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
     tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
 
@@ -1698,12 +1732,26 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     # use tvm_blur to suppress W_alpha
     # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
 
-    W_alpha_tvm = W_alpha * (1 - 2 *tvm_blur / tvm_blur.max())
+    W_alpha_tvm = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
     images += horizon_support(aff, (W_alpha_tvm, 'W_alpha_tvm'))
+
+    # calulate second order derivatives of W_alpha
+    W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
+    hess_elements = hessian_3d(W_alpha_blur)
+
+
+    hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
+    local_curv = (hess_elements_compact ** 2).sum(axis=0)
+    images += horizon_support(aff, (local_curv, 'local_curv'))
+
+    local_curv_blur = gaussian_filter(local_curv, sigma=1)
+    images += horizon_support(aff, (local_curv_blur, 'local_curv_blur'))
 
     tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=1)
     tps = tps / tps.max()
     images.append((tps, aff, 'tps'))
+
+
 
     tps_mask = tps > 0.2
     tps_largest = detect_largest_object(tps_mask, None)
