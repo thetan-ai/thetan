@@ -1,4 +1,5 @@
 from time import time
+from cv2 import data
 import numpy as np
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
@@ -1682,6 +1683,23 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
 
     bk_im = W_alpha < bk
     images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
+
+    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+
+    gi, gj, gk = np.gradient(data, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
+    tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+
+    images += horizon_support(aff, (tvm, 'tvm'))
+
+    # blur tvm to get more stable gradients
+    tvm_blur = gaussian_filter(tvm, sigma=1)
+    images += horizon_support(aff, (tvm_blur, 'tvm_blur'))
+
+    # use tvm_blur to suppress W_alpha
+    # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
+
+    W_alpha_tvm = W_alpha * (1 - 2 *tvm_blur / tvm_blur.max())
+    images += horizon_support(aff, (W_alpha_tvm, 'W_alpha_tvm'))
 
     tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=1)
     tps = tps / tps.max()
