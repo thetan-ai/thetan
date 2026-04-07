@@ -1748,9 +1748,9 @@ def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_m
 
     fo = find_objects(bigz)
     print('Volumes')
-    big_five_vols = bbox_from_fo(fo)
-    print(big_five_vols)
-    print(big_five_labels)
+    # big_five_vols = bbox_from_fo(fo)
+    # print(big_five_vols)
+    # print(big_five_labels)
 
     from dipy.io.image import save_nifti
     save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
