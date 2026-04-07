@@ -1,6 +1,7 @@
 from time import time
 from cv2 import data
 import numpy as np
+from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
@@ -1758,6 +1759,19 @@ def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_m
 
     images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
 
+
+    from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
+
+
+    kernel = make_ball_kernel(3)   # radius 5 -> shape (11, 11, 11)
+
+    labels, num, sizes = label_binary_3d(1 - bk2_im, kernel, return_num=True, return_sizes=True)
+    print('bk2_im number of objects (binary_label_3d): ', num)
+    print('Sizes of objects: ', sizes)
+    print('labels shape: ', labels.shape)
+
+    images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
+    save_nifti('labels_binary_3d.nii.gz', labels.astype('i4'), affine)
 
     # calulate second order derivatives of W_alpha
     W_alpha_blur = gaussian_filter(W_alpha, sigma=1)

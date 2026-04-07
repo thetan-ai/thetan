@@ -13,8 +13,8 @@ from sklearn.cluster import KMeans
 fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
-fname = '/home/elef/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
+# fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
+# fname = '/home/elef/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
 
 # fname = '/home/elef/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST17_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220509080452_8.nii.gz'
