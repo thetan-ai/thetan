@@ -5,15 +5,15 @@ from time import time
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
-from thetan.berserker import berserker2_brain_seg, berserker2_brain_seg_mini, exponentiation_normalization, plot_exp_norm
+from thetan.berserker import berserker2_brain_seg, berserker2_brain_seg_mini, exponentiation_normalization, plot_exp_norm, brainget
 from sklearn.cluster import KMeans
 
 
 # T1 dataset
-# fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
+fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
 # fname = '/home/elef/Downloads/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = '/home/elef/Data/IXI-T1/IXI012-HH-1211-T1.nii.gz'
-fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
+# fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 
 # fname = 'C:/Users/Eleftherios/tmp/IXI002-Guys-0828-T1.nii.gz'
 
@@ -75,7 +75,9 @@ print('Starting Thetan Berserker 2 for Brain Segmentation ...')
 t = time()
 # images, images2 = berserker2_brain_seg(data, affine, return_all=True, orig_est=100, m_est=3, theta_value=120., percb=5, pg=False, ng=False)
 
-images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
+# images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
+
+images = brainget(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=300.)
 
 print('Total duration ', time() - t)
 print()

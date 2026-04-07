@@ -1656,6 +1656,133 @@ def biggestx(labels, x=10):
     return bigx
 
 
+def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_min=0, perc_max=98):
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    # blurred = gaussian_filter(data, sigma=10)
+
+    # blurred_inverted = 0.5*data.max() - blurred
+
+    # # Avoid division by zero
+    # epsilon = 1e-6
+    # result = data / (blurred_inverted + epsilon)
+
+    # images = horizon_support(np.eye(4), (data, 'data'), (blurred, 'blurred'), (blurred_inverted, 'blurred_inverted'), (result, 'result'))
+    # return images
+
+    print('Preparing data')
+    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    Wcp = W.copy()
+
+
+    aff = np.eye(4)
+
+    W = np.ascontiguousarray(W, dtype='f8')
+
+    W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
+
+    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta)
+    images = horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+
+    # min_size_factor = 0.1
+    # max_size_factor = 40
+
+    n_centroids = centroids.shape[0]
+    # segment_size = np.prod(data.shape[:3]) / n_centroids
+    # min_size = int(min_size_factor * segment_size)
+    # max_size = int(max_size_factor * segment_size)
+
+    bk_im = W_alpha < bk
+    images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
+
+    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+
+    print('Affine matrix: ', affine)
+    print('Affine voxel sizes: ', voxel_sizes)
+
+    gi, gj, gk = np.gradient(data, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
+    tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+
+    images += horizon_support(aff, (tvm, 'tvm'))
+
+    # blur tvm to get more stable gradients
+    tvm_blur = gaussian_filter(tvm, sigma=1)
+    images += horizon_support(aff, (tvm_blur, 'tvm_blur'))
+
+    # use tvm_blur to suppress W_alpha
+    # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
+
+    W_alpha_tvm = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
+    images += horizon_support(aff, (W_alpha_tvm, 'W_alpha_tvm'))
+
+
+    bk2_im = W_alpha_tvm < bk2
+    images += horizon_support(aff, (1 - bk2_im.astype('f8'), 'bk2im'))
+
+    # strel = ball(5)
+    data_labels_bk2_im, num_bk2_im = label(1 - bk2_im)
+    print('bk2_im number of objects: ', num_bk2_im)
+    unq, cnts = np.unique(data_labels_bk2_im, return_counts=True)
+
+    largest_index = np.argmax(cnts)
+
+
+    # print('bk2_im unique labels and counts: ', list(zip(unq, cnts)))
+
+    images += horizon_support(aff, (data_labels_bk2_im.astype('f8'), 'data_labels_bk2_im'))
+
+    big_five_cnts = np.sort(cnts)[-6:-1]
+    big_five_labels = np.argsort(cnts)[-6:-1]
+
+    print('Large counts ', big_five_cnts)
+    print('And their indices ', big_five_labels)
+
+    bigz = np.zeros(data.shape, dtype='i8')
+    cnt = 1
+    for bfl in big_five_labels:
+        bigz[data_labels_bk2_im == bfl] = cnt
+        cnt += 1
+
+    fo = find_objects(bigz)
+    print('Volumes')
+    big_five_vols = bbox_from_fo(fo)
+    print(big_five_vols)
+    print(big_five_labels)
+
+    from dipy.io.image import save_nifti
+    save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
+
+
+    images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
+
+
+    # calulate second order derivatives of W_alpha
+    W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
+    hess_elements = hessian_3d(W_alpha_blur)
+
+
+    hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
+    local_curv = (hess_elements_compact ** 2).sum(axis=0)
+    images += horizon_support(aff, (local_curv, 'local_curv'))
+
+    local_curv_blur = gaussian_filter(local_curv, sigma=1)
+    images += horizon_support(aff, (local_curv_blur, 'local_curv_blur'))
+
+    # tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=1)
+    # tps = tps / tps.max()
+    # images.append((tps, aff, 'tps'))
+
+    # tps_mask = tps > 0.2
+    # tps_largest = detect_largest_object(tps_mask, None)
+    # images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
+
+
+    return images
+
+
 def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_min=0, perc_max=98):
 
     data = np.ascontiguousarray(data, dtype='f8')
