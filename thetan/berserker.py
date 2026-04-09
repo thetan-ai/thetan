@@ -1657,7 +1657,7 @@ def biggestx(labels, x=10):
     return bigx
 
 
-def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=20., perc_min=0, perc_max=98):
+def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, perc_max=98):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1718,10 +1718,15 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=20., perc_min=0, pe
     # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
 
     W_alpha_reweighted = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
+    W_alpha_reweighted[W_alpha_reweighted < 0] = 0
     images += horizon_support(aff, (W_alpha_reweighted, 'W_alpha_reweighted'))
 
     data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha_reweighted, theta)
     images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+
+    print('Centroids shape: ', centroids.shape)
+    print('Centroids (last column - sorted): ')
+    print(np.sort(centroids[:, -1]))
 
     bk_im = W_alpha_reweighted < bk
     images += horizon_support(aff, (1 - bk_im.astype('f8'), 'bkim'))
@@ -1755,11 +1760,11 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=20., perc_min=0, pe
     # print(big_five_vols)
     # print(big_five_labels)
 
-    from dipy.io.image import save_nifti
+    # from dipy.io.image import save_nifti
 
-    save_nifti('W_alpha.nii.gz', W_alpha.astype('f8'), affine)
-    save_nifti('dl.nii.gz', data_labels.astype('i4'), affine)
-    save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
+    # save_nifti('W_alpha.nii.gz', W_alpha.astype('f8'), affine)
+    # save_nifti('dl.nii.gz', data_labels.astype('i4'), affine)
+    # save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
 
 
     images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
@@ -1776,8 +1781,9 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=20., perc_min=0, pe
     print('labels shape: ', labels.shape)
 
     images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
-    save_nifti('labels_binary_3d.nii.gz', labels.astype('i4'), affine)
-    save_nifti('bk_im_inverted.nii.gz', (1 - bk_im).astype('i4'), affine)
+
+    # save_nifti('labels_binary_3d.nii.gz', labels.astype('i4'), affine)
+    # save_nifti('bk_im_inverted.nii.gz', (1 - bk_im).astype('i4'), affine)
 
     # calulate second order derivatives of W_alpha
     # W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
