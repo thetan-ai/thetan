@@ -11,4 +11,5 @@ skepsi Documentation
 
    installation
    usage
+   berserker_tutorial
    release-history
