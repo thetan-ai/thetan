@@ -8,11 +8,11 @@ from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binar
 from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
 from thetan.core import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, candidate_labels_c, assign
 from thetan.metrics import distance_matrix
+from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
 
 # from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
 # from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 # from thetan.theta import assign, distance_matrix, correct_connectivity, connected_components
-
 
 from thetan.image import img3d_to_ijkv_features, img2d_to_ijv_features, connected_components
 from skimage.segmentation import flood_fill
@@ -1657,7 +1657,7 @@ def biggestx(labels, x=10):
     return bigx
 
 
-def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_min=0, perc_max=98):
+def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=20., perc_min=0, perc_max=98):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1683,21 +1683,22 @@ def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_m
 
     W = np.ascontiguousarray(W, dtype='f8')
 
+    images = horizon_support(aff, (W, 'W'))
+
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
 
-    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta)
-    images = horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+    images += horizon_support(aff, (W_alpha, 'W_alpha'))
 
     # min_size_factor = 0.1
     # max_size_factor = 40
 
-    n_centroids = centroids.shape[0]
+    # n_centroids = centroids.shape[0]
     # segment_size = np.prod(data.shape[:3]) / n_centroids
     # min_size = int(min_size_factor * segment_size)
     # max_size = int(max_size_factor * segment_size)
 
-    bk_im = W_alpha < bk
-    images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
+    # bk_im = W_alpha < bk
+    # images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
     voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
 
@@ -1716,24 +1717,25 @@ def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_m
     # use tvm_blur to suppress W_alpha
     # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
 
-    W_alpha_tvm = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
-    images += horizon_support(aff, (W_alpha_tvm, 'W_alpha_tvm'))
+    W_alpha_reweighted = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
+    images += horizon_support(aff, (W_alpha_reweighted, 'W_alpha_reweighted'))
 
+    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha_reweighted, theta)
+    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
-    bk2_im = W_alpha_tvm < bk2
-    images += horizon_support(aff, (1 - bk2_im.astype('f8'), 'bk2im'))
+    bk_im = W_alpha_reweighted < bk
+    images += horizon_support(aff, (1 - bk_im.astype('f8'), 'bkim'))
 
     # strel = ball(5)
-    data_labels_bk2_im, num_bk2_im = label(1 - bk2_im)
-    print('bk2_im number of objects: ', num_bk2_im)
-    unq, cnts = np.unique(data_labels_bk2_im, return_counts=True)
+    data_labels_bk_im, num_bk_im = label(1 - bk_im)
+    print('bk_im number of objects: ', num_bk_im)
+    unq, cnts = np.unique(data_labels_bk_im, return_counts=True)
 
     largest_index = np.argmax(cnts)
 
+    # print('bk_im unique labels and counts: ', list(zip(unq, cnts)))
 
-    # print('bk2_im unique labels and counts: ', list(zip(unq, cnts)))
-
-    images += horizon_support(aff, (data_labels_bk2_im.astype('f8'), 'data_labels_bk2_im'))
+    images += horizon_support(aff, (data_labels_bk_im.astype('f8'), 'data_labels_bk_im'))
 
     big_five_cnts = np.sort(cnts)[-6:-1]
     big_five_labels = np.argsort(cnts)[-6:-1]
@@ -1744,7 +1746,7 @@ def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_m
     bigz = np.zeros(data.shape, dtype='i8')
     cnt = 1
     for bfl in big_five_labels:
-        bigz[data_labels_bk2_im == bfl] = cnt
+        bigz[data_labels_bk_im == bfl] = cnt
         cnt += 1
 
     fo = find_objects(bigz)
@@ -1754,36 +1756,40 @@ def brainget(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_m
     # print(big_five_labels)
 
     from dipy.io.image import save_nifti
+
+    save_nifti('W_alpha.nii.gz', W_alpha.astype('f8'), affine)
+    save_nifti('dl.nii.gz', data_labels.astype('i4'), affine)
     save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
 
 
     images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
 
 
-    from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
 
 
-    kernel = make_ball_kernel(3)   # radius 5 -> shape (11, 11, 11)
+    kernel = make_ball_kernel(5)   # radius 5 -> shape (11, 11, 11)
 
-    labels, num, sizes = label_binary_3d(1 - bk2_im, kernel, return_num=True, return_sizes=True)
+
+    labels, num, sizes = label_binary_3d(1 - bk_im, kernel, min_coverage=0.5, return_num=True, return_sizes=True)
     print('bk2_im number of objects (binary_label_3d): ', num)
     print('Sizes of objects: ', sizes)
     print('labels shape: ', labels.shape)
 
     images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
     save_nifti('labels_binary_3d.nii.gz', labels.astype('i4'), affine)
+    save_nifti('bk_im_inverted.nii.gz', (1 - bk_im).astype('i4'), affine)
 
     # calulate second order derivatives of W_alpha
-    W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
-    hess_elements = hessian_3d(W_alpha_blur)
+    # W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
+    # hess_elements = hessian_3d(W_alpha_blur)
 
 
-    hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
-    local_curv = (hess_elements_compact ** 2).sum(axis=0)
-    images += horizon_support(aff, (local_curv, 'local_curv'))
+    # hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
+    # local_curv = (hess_elements_compact ** 2).sum(axis=0)
+    # images += horizon_support(aff, (local_curv, 'local_curv'))
 
-    local_curv_blur = gaussian_filter(local_curv, sigma=1)
-    images += horizon_support(aff, (local_curv_blur, 'local_curv_blur'))
+    # local_curv_blur = gaussian_filter(local_curv, sigma=1)
+    # images += horizon_support(aff, (local_curv_blur, 'local_curv_blur'))
 
     # tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=1)
     # tps = tps / tps.max()

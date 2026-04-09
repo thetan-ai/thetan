@@ -5,7 +5,8 @@ from time import time
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
-from thetan.berserker import berserker2_brain_seg, berserker2_brain_seg_mini, exponentiation_normalization, plot_exp_norm, brainget
+from skimage.data import brain
+from thetan.berserker import berserker2_brain_seg, berserker2_brain_seg_mini, exponentiation_normalization, plot_exp_norm, enkefalos
 from sklearn.cluster import KMeans
 
 
@@ -89,7 +90,7 @@ t = time()
 
 # images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
 
-images = brainget(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=300.)
+images = enkefalos(data, affine, theta=120., alpha=1.5, scale=9, bk=300.)
 
 print('Total duration ', time() - t)
 print()
