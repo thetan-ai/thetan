@@ -1,7 +1,7 @@
 from time import time
 from cv2 import data
 import numpy as np
-from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
+from thetan.binary_label_3d import label_binary_3d, make_ball_kernel, label_binary_3d_v2, make_connectivity_kernel, make_connectivity_kernel
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
@@ -1728,11 +1728,16 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     print('Centroids (last column - sorted): ')
     print(np.sort(centroids[:, -1]))
 
+
+
     bk_im = W_alpha_reweighted < bk
-    images += horizon_support(aff, (1 - bk_im.astype('f8'), 'bkim'))
+
+    bk_im_inv = 1 - bk_im
+
+    images += horizon_support(aff, (bk_im_inv.astype('f8'), 'bkim'))
 
     # strel = ball(5)
-    data_labels_bk_im, num_bk_im = label(1 - bk_im)
+    data_labels_bk_im, num_bk_im = label(bk_im_inv)
     print('bk_im number of objects: ', num_bk_im)
     unq, cnts = np.unique(data_labels_bk_im, return_counts=True)
 
@@ -1774,16 +1779,28 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
 
     kernel = make_ball_kernel(5)   # radius 5 -> shape (11, 11, 11)
 
+    min_coverage = 0.36
 
-    labels, num, sizes = label_binary_3d(1 - bk_im, kernel, min_coverage=0.5, return_num=True, return_sizes=True)
+    labels, num, sizes = label_binary_3d(bk_im_inv, kernel, min_coverage=min_coverage, return_num=True, return_sizes=True)
     print('bk2_im number of objects (binary_label_3d): ', num)
     print('Sizes of objects: ', sizes)
     print('labels shape: ', labels.shape)
 
     images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
 
+    support_kernel = make_ball_kernel(5)                # 11x11x11 local support
+    connectivity_kernel = make_connectivity_kernel(26)  # local graph edges
+
+    labels2, num2, sizes2, filtered = label_binary_3d_v2(bk_im_inv, support_kernel, connectivity_kernel=connectivity_kernel, min_coverage=min_coverage, return_num=True, return_sizes=True, return_filtered=True)
+    print('bk2_im_inv number of objects (binary_label_3d_v2): ', num2)
+    print('Sizes of objects: ', sizes2)
+    print('labels2 shape: ', labels2.shape)
+
+    images += horizon_support(aff, (labels2.astype('f8'), 'labels_binary_3d_v2'))
+    images += horizon_support(aff, (filtered.astype('f8'), 'filtered_binary_3d_v2'))
+
     # save_nifti('labels_binary_3d.nii.gz', labels.astype('i4'), affine)
-    # save_nifti('bk_im_inverted.nii.gz', (1 - bk_im).astype('i4'), affine)
+    # save_nifti('bk_im_inverted.nii.gz', (bk_im_inv).astype('i4'), affine)
 
     # calulate second order derivatives of W_alpha
     # W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
