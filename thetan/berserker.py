@@ -1734,7 +1734,7 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
 
     bk_im_inv = 1 - bk_im
 
-    images += horizon_support(aff, (bk_im_inv.astype('f8'), 'bkim'))
+    images += horizon_support(aff, (bk_im_inv.astype('f8'), 'bk_im_inv'))
 
     # strel = ball(5)
     data_labels_bk_im, num_bk_im = label(bk_im_inv)
