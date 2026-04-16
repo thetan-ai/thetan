@@ -1705,7 +1705,7 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     print('Affine matrix: ', affine)
     print('Affine voxel sizes: ', voxel_sizes)
 
-    gi, gj, gk = np.gradient(data, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
+    gi, gj, gk = np.gradient(W_alpha, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) # previously this was data, but it makes more sense to calculate gradients on W_alpha
     tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
 
     images += horizon_support(aff, (tvm, 'tvm'))
@@ -1789,7 +1789,7 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
 
     support_kernel = make_ball_kernel(5)                # 11x11x11 local support
-    connectivity_kernel = make_connectivity_kernel(26)  # local graph edges
+    connectivity_kernel = make_connectivity_kernel(6)  # local graph edges
 
     labels2, num2, sizes2, filtered = label_binary_3d_v2(bk_im_inv, support_kernel, connectivity_kernel=connectivity_kernel, min_coverage=min_coverage, return_num=True, return_sizes=True, return_filtered=True)
     print('bk2_im_inv number of objects (binary_label_3d_v2): ', num2)
