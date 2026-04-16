@@ -1685,6 +1685,27 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
 
     images = horizon_support(aff, (W, 'W'))
 
+
+    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
+    images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
+
+    print('Centroids shape: ', centroids_orig.shape)
+    print('Centroids (last column - sorted): ')
+    print(np.sort(centroids_orig[:, -1]))
+
+    # bk_im = W_alpha_reweighted < bk
+    bk_im_orig = centroids_median_im_orig < bk
+
+    images += horizon_support(aff, (bk_im_orig.astype('f8'), 'bk_im_orig'))
+
+    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+
+    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) # previously this was data, but it makes more sense to calculate gradients on W_alpha
+    tvm_orig = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+
+    images += horizon_support(aff, (tvm_orig, 'tvm_orig'))
+
+
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
 
     images += horizon_support(aff, (W_alpha, 'W_alpha'))
@@ -1700,7 +1721,7 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     # bk_im = W_alpha < bk
     # images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
 
-    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+
 
     print('Affine matrix: ', affine)
     print('Affine voxel sizes: ', voxel_sizes)
@@ -1730,7 +1751,10 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
 
 
 
-    bk_im = W_alpha_reweighted < bk
+    # bk_im = W_alpha_reweighted < bk
+    bk_im = centroids_median_im < bk
+
+    images += horizon_support(aff, (bk_im.astype('f8'), 'bk_im'))
 
     bk_im_inv = 1 - bk_im
 
