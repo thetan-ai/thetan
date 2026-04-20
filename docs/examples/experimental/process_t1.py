@@ -91,7 +91,7 @@ t = time()
 
 # images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
 
-images = enkefalos(data, affine, theta=80., alpha=2.0, scale=9, bk=70., softmax_scale=1000000.0, temperature=0.5)
+images = enkefalos(data, affine, theta=80., alpha=2.0, scale=9, bk=70., softmax_scale=1000000.0, temperature=0.1)
 
 print('Total duration ', time() - t)
 print()
