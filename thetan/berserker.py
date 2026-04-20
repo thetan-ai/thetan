@@ -1575,7 +1575,7 @@ def softmax_normalization(W, scale, eps=1e-12):
 
 def histogram_softmax_normalization(W, scale, bins=100, temperature=1.0):
     hist, bin_edges = np.histogram(W, bins=bins, density=True)
-    # hist[15:] = 0  # Keep only the first 10 bins
+    hist[15:] = 0  # Keep only the first 10 bins
     hist_exp = np.exp(hist / temperature)
     hist_softmax = hist_exp / (np.sum(hist_exp))  # Add epsilon to avoid division by zero
 
