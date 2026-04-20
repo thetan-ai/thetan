@@ -17,10 +17,10 @@ from sklearn.cluster import KMeans
 # fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
 
-# fname = '/home/elef/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
+fname = '/home/elef/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST17_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220509080452_8.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
-fname = '/home/elef/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
+# fname = '/home/elef/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST26_T1w_MPRAGE_FreeSurfer_0.8iso_2_9_T1w_MPRAGE_FreeSurfer_0.8iso_20230321092955_9.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/TE_S07_MPRAGESAGITTALTIME_9_50_2_MPRAGE_SAGITTAL_TIME_9_50_20150409085358_2.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/TE-S34_t1_mprage_SAG_2_t1_mprage_SAG_20180911091132_2.nii.gz'
@@ -91,12 +91,12 @@ t = time()
 
 # images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
 
-images = enkefalos(data, affine, theta=80., alpha=2.0, scale=9, bk=70.)
+images = enkefalos(data, affine, theta=80., alpha=2.0, scale=9, bk=70., softmax_scale=1000000.0, temperature=0.5)
 
 print('Total duration ', time() - t)
 print()
 
-horizon(images=images, bg_color=(1, 0.5, 0.5))
+horizon(images=images)
 print('Done')
 
 t = 1

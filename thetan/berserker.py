@@ -1556,6 +1556,35 @@ def exponentiation_normalization(W, alpha, scale):
 
     return 100 * scale * (W_interp ** alpha)
 
+# def softmax_normalization(W, scale):
+
+#     W_exp = np.exp(W)
+#     W_softmax = W_exp / np.sum(W_exp)
+#     return scale * W_softmax
+
+def softmax_normalization(W, scale, eps=1e-12):
+    W_interp = np.interp(W, xp=[0, W.max()], fp=[0., 1.])
+    W_exp = np.exp(W)  # Subtract max for numerical stability
+    # W_softmax = W_exp / np.sum(W_exp)  # Add epsilon to avoid division by zero
+    # print(W_exp)
+    # print(W_softmax)
+    # W_softmax = np.clip(W_softmax, 0, 1)  # Ensure values are between 0 and 1
+    return scale * W_exp
+
+# Perform softmax on the histogram of W and return new images with normalized W values
+
+def histogram_softmax_normalization(W, scale, bins=100, temperature=1.0):
+    hist, bin_edges = np.histogram(W, bins=bins, density=True)
+    hist[15:] = 0  # Keep only the first 10 bins
+    hist_exp = np.exp(hist / temperature)
+    hist_softmax = hist_exp / (np.sum(hist_exp))  # Add epsilon to avoid division by zero
+
+    # Map the original W values to their corresponding softmax values based on the histogram
+    W_interp = np.interp(W, xp=bin_edges[:-1], fp=hist_softmax)
+
+    return scale * W_interp
+
+
 def plot_exp_norm():
     W = np.arange(0, 900)
 
@@ -1657,7 +1686,7 @@ def biggestx(labels, x=10):
     return bigx
 
 
-def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, perc_max=98):
+def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, perc_max=98, softmax_scale=0.1, temperature=1.0):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1700,7 +1729,7 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
 
     voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
 
-    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) # previously this was data, but it makes more sense to calculate gradients on W_alpha
+    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
     tvm_orig = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
 
     images += horizon_support(aff, (tvm_orig, 'tvm_orig'))
@@ -1709,6 +1738,22 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
 
     images += horizon_support(aff, (W_alpha, 'W_alpha'))
+
+    W_soft = softmax_normalization(W, scale=softmax_scale)
+
+    images += horizon_support(aff, (W_soft, 'W_soft'))
+
+    W_hist_soft = histogram_softmax_normalization(W, scale=softmax_scale, temperature=temperature)
+
+    images += horizon_support(aff, (np.round((W_hist_soft- W_hist_soft.min())/2, 0).astype('i8'), 'W_hist_soft'))
+
+
+    W_hist_soft2 = histogram_softmax_normalization(centroids_median_im_orig, scale=softmax_scale)
+
+    images += horizon_support(aff, (np.round((W_hist_soft2- W_hist_soft2.min())/2, 0).astype('i8'), 'W_hist_soft2'))
+
+    return images
+
 
     # min_size_factor = 0.1
     # max_size_factor = 40
