@@ -5,7 +5,7 @@ from thetan.binary_label_3d import label_binary_3d, make_ball_kernel, label_bina
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
 from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
-from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace
+from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace, minimum_filter
 from thetan.core import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, candidate_labels_c, assign
 from thetan.metrics import distance_matrix
 from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
@@ -1666,9 +1666,14 @@ def berserker2_to_3D_plus_extra(X, W_alpha, theta):
     centroids_im = centroid_images(data_labels, centroids)
     centroids_median_im = median_filter(centroids_im, size=3)
 
+    # add min filter
+    min_filtered = minimum_filter(W_alpha, size=3)
+
+
+
     # fg_im = centroids_median_im > fg
 
-    return data_labels, centroids, centroids_im, centroids_median_im # , fg_im.astype('f8')
+    return data_labels, centroids, centroids_im, centroids_median_im, min_filtered # , fg_im.astype('f8')
 
 
 def biggestx(labels, x=10):
@@ -1715,8 +1720,8 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     images = horizon_support(aff, (W, 'W'))
 
 
-    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
-    images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
+    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig, min_filtered = berserker2_to_3D_plus_extra(X, W, theta)
+    images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'), (min_filtered, 'min_filtered'))
 
     print('Centroids shape: ', centroids_orig.shape)
     print('Centroids (last column - sorted): ')
@@ -1726,6 +1731,9 @@ def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, p
     bk_im_orig = centroids_median_im_orig < bk
 
     images += horizon_support(aff, (bk_im_orig.astype('f8'), 'bk_im_orig'))
+
+    bk_min = min_filtered < bk
+    images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
 
     voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
 
