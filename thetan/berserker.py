@@ -1667,13 +1667,13 @@ def berserker2_to_3D_plus_extra(X, W_alpha, theta):
     centroids_median_im = median_filter(centroids_im, size=3)
 
     # add min filter
-    min_filtered = minimum_filter(W_alpha, size=3)
+    # min_filtered = minimum_filter(W_alpha, size=3)
 
-
+    # min_centroids_im = centroid_images(data_labels, min_filtered)
 
     # fg_im = centroids_median_im > fg
 
-    return data_labels, centroids, centroids_im, centroids_median_im, min_filtered # , fg_im.astype('f8')
+    return data_labels, centroids, centroids_im, centroids_median_im
 
 
 def biggestx(labels, x=10):
@@ -1691,74 +1691,49 @@ def biggestx(labels, x=10):
     return bigx
 
 
-def enkefalos(data, affine, theta=120., alpha=2, scale=9, bk=300., perc_min=0, perc_max=98, softmax_scale=0.1, temperature=1.0):
+def gradient_reweighting(W, affine, scale=2, sigma=1):
+
+    # TODO: use gaussian_gradient_magnitude instead of calculating gradients separately and then blurring them.
+    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) 
+    tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+    tvm_blur = gaussian_filter(tvm, sigma=sigma)
+    W_r = W * (1 - scale * tvm_blur / tvm_blur.max())
+    W_r[W_r < 0] = 0
+
+    return W_r, tvm_blur
+
+
+
+def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98):
 
     data = np.ascontiguousarray(data, dtype='f8')
-
-    # blurred = gaussian_filter(data, sigma=10)
-
-    # blurred_inverted = 0.5*data.max() - blurred
-
-    # # Avoid division by zero
-    # epsilon = 1e-6
-    # result = data / (blurred_inverted + epsilon)
-
-    # images = horizon_support(np.eye(4), (data, 'data'), (blurred, 'blurred'), (blurred_inverted, 'blurred_inverted'), (result, 'result'))
-    # return images
 
     print('Preparing data')
     X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     Wcp = W.copy()
-
-
     aff = np.eye(4)
 
     W = np.ascontiguousarray(W, dtype='f8')
-
     images = horizon_support(aff, (W, 'W'))
 
-
-    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig, min_filtered = berserker2_to_3D_plus_extra(X, W, theta)
-    images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'), (min_filtered, 'min_filtered'))
+    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
+    images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
     print('Centroids shape: ', centroids_orig.shape)
     print('Centroids (last column - sorted): ')
     print(np.sort(centroids_orig[:, -1]))
 
-    # bk_im = W_alpha_reweighted < bk
-    bk_im_orig = centroids_median_im_orig < bk
-
-    images += horizon_support(aff, (bk_im_orig.astype('f8'), 'bk_im_orig'))
+    min_filtered = minimum_filter(centroids_im_orig, size=3)
+    images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
     bk_min = min_filtered < bk
     images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
 
-    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
-
-    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
-    tvm_orig = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
-
-    images += horizon_support(aff, (tvm_orig, 'tvm_orig'))
-
-
-    W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
-
-    images += horizon_support(aff, (W_alpha, 'W_alpha'))
-
-    W_soft = softmax_normalization(W, scale=softmax_scale)
-
-    images += horizon_support(aff, (W_soft, 'W_soft'))
-
-    W_hist_soft = histogram_softmax_normalization(W, scale=softmax_scale, temperature=temperature)
-
-    images += horizon_support(aff, (np.round((W_hist_soft- W_hist_soft.min())/2, 0).astype('i8'), 'W_hist_soft'))
-
-
-    W_hist_soft2 = histogram_softmax_normalization(centroids_median_im_orig, scale=softmax_scale)
-
-    images += horizon_support(aff, (np.round((W_hist_soft2- W_hist_soft2.min())/2, 0).astype('i8'), 'W_hist_soft2'))
+    min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
+    images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
 
     return images
 

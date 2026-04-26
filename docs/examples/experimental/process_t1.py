@@ -44,7 +44,8 @@ from sklearn.cluster import KMeans
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
-fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
+# fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
 
 
 # if platform.node() == 'Serges-MacBook-Pro.local':
@@ -91,7 +92,7 @@ t = time()
 
 # images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
 
-images = enkefalos(data, affine, theta=80., alpha=2.0, scale=9, bk=70., softmax_scale=1000000.0, temperature=0.1)
+images = enkefalos(data, affine, theta=80., bk=120.)
 
 print('Total duration ', time() - t)
 print()
