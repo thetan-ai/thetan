@@ -1719,7 +1719,20 @@ def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98
     W = np.ascontiguousarray(W, dtype='f8')
     images = horizon_support(aff, (W, 'W'))
 
-    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
+    Wggm = gaussian_gradient_magnitude(W, sigma=1)
+    # Wggm = gaussian_filter(Wggm, sigma=2)
+    Wggm = Wggm / Wggm.max()
+    # Wggm[Wggm > 1] = 1.
+    images += horizon_support(aff, (Wggm, 'Wggm'))
+
+    Wn = W - 1 * Wggm * W
+    Wn[Wn < 0] = 0
+    images += horizon_support(aff, (Wn, 'Wn'))
+
+    bk_Wn = Wn < bk
+    images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
+
+    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, Wn, theta)
     images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
     print('Centroids shape: ', centroids_orig.shape)
@@ -1727,13 +1740,19 @@ def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98
     print(np.sort(centroids_orig[:, -1]))
 
     min_filtered = minimum_filter(centroids_im_orig, size=3)
+    min_filetered = gaussian_filter(min_filtered, sigma=2)
     images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
     bk_min = min_filtered < bk
     images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
 
-    min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
-    images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
+    # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
+    # images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
+
+
+    # tps = throwing_planets(bk_min, W=W, radius=16, samples=20000, perc=5)
+    # tps = tps / tps.max()
+    # images.append((tps, aff, 'tps'))
 
     return images
 
