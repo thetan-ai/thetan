@@ -1731,6 +1731,14 @@ def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98
 
     # TODO: repeat the process of calculating ggm but now for Wn
 
+    Wnggm = gaussian_gradient_magnitude(Wn, sigma=1)
+    Wnggm = Wnggm / Wnggm.max()
+    images += horizon_support(aff, (Wnggm, 'Wnggm'))
+
+    Wn2 = Wn - Wnggm * Wn
+    Wn2[Wn2 < 0] = 0
+    images += horizon_support(aff, (Wn2, 'Wn2'))
+
     bk_Wn = Wn < bk
     images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
 
