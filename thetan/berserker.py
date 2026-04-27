@@ -1725,9 +1725,11 @@ def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98
     # Wggm[Wggm > 1] = 1.
     images += horizon_support(aff, (Wggm, 'Wggm'))
 
-    Wn = W - 1 * Wggm * W
+    Wn = W - Wggm * W
     Wn[Wn < 0] = 0
     images += horizon_support(aff, (Wn, 'Wn'))
+
+    # TODO: repeat the process of calculating ggm but now for Wn
 
     bk_Wn = Wn < bk
     images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
