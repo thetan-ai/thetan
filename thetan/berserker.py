@@ -1695,7 +1695,7 @@ def gradient_reweighting(W, affine, scale=2, sigma=1):
 
     # TODO: use gaussian_gradient_magnitude instead of calculating gradients separately and then blurring them.
     voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
-    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) 
+    gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
     tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
     tvm_blur = gaussian_filter(tvm, sigma=sigma)
     W_r = W * (1 - scale * tvm_blur / tvm_blur.max())
@@ -1705,7 +1705,7 @@ def gradient_reweighting(W, affine, scale=2, sigma=1):
 
 
 
-def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98):
+def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1718,6 +1718,12 @@ def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98
 
     W = np.ascontiguousarray(W, dtype='f8')
     images = horizon_support(aff, (W, 'W'))
+
+    from skimage.segmentation import felzenszwalb
+
+    felzenszwalb_seg = felzenszwalb(W, scale=100, sigma=1, min_size=50, channel_axis=None)
+    tmp = 1
+    images += horizon_support(aff, (felzenszwalb_seg.astype('f8'), 'felzenszwalb_seg'))
 
     Wggm = gaussian_gradient_magnitude(W, sigma=1)
     # Wggm = gaussian_filter(Wggm, sigma=2)
@@ -1742,18 +1748,31 @@ def enkefalos(data, affine, theta=120., scale=9, bk=70., perc_min=0, perc_max=98
     bk_Wn = Wn < bk
     images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
 
-    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, Wn, theta)
+    laplacian_Wn2 = laplace(Wn2)
+    images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
+
+
+    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
     images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
     print('Centroids shape: ', centroids_orig.shape)
     print('Centroids (last column - sorted): ')
     print(np.sort(centroids_orig[:, -1]))
 
+    # create an image with the minimum intensity value of each label
+    min_labels_orig = np.zeros(data.shape, dtype='f8')
+    for i, _ in enumerate(centroids_orig):
+        min_labels_orig[data_labels_orig == i] = np.min(W[data_labels_orig == i])
+    images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
+
+
     min_filtered = minimum_filter(centroids_im_orig, size=3)
-    min_filetered = gaussian_filter(min_filtered, sigma=2)
     images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
-    bk_min = min_filtered < bk
+    min_filtered = gaussian_filter(min_filtered, sigma=1)
+    images += horizon_support(aff, (min_filtered, 'min_filtered_sigma1'))
+
+    bk_min = min_filtered < 85
     images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
 
     # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
