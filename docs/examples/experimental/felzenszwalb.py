@@ -357,7 +357,7 @@ if __name__ == "__main__":
 
     labels = felzenszwalb_3d_numba(W, scale=200, sigma=1., min_size=100)
 
-    centroids = centroids_from_labels(labels, W)
+    centroids = centroids_from_labels(W, labels)
     centroids_im = centroid_images(labels, centroids)
 
     save_nifti('felzenszwalb_labels.nii.gz', labels.astype('int32'), affine)
