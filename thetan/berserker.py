@@ -1719,11 +1719,11 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     W = np.ascontiguousarray(W, dtype='f8')
     images = horizon_support(aff, (W, 'W'))
 
-    from skimage.segmentation import felzenszwalb
+    # from skimage.segmentation import felzenszwalb
 
-    felzenszwalb_seg = felzenszwalb(W, scale=100, sigma=1, min_size=50, channel_axis=None)
-    tmp = 1
-    images += horizon_support(aff, (felzenszwalb_seg.astype('f8'), 'felzenszwalb_seg'))
+    # felzenszwalb_seg = felzenszwalb(W, scale=100, sigma=1, min_size=50, channel_axis=None)
+    # tmp = 1
+    # images += horizon_support(aff, (felzenszwalb_seg.astype('f8'), 'felzenszwalb_seg'))
 
     Wggm = gaussian_gradient_magnitude(W, sigma=1)
     # Wggm = gaussian_filter(Wggm, sigma=2)
