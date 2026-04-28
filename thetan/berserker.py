@@ -1748,6 +1748,12 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     bk_Wn = Wn < bk
     images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
 
+    laplacian_W = laplace(W)
+    images += horizon_support(aff, (laplacian_W, 'laplacian_W'))
+
+    glap_W = gaussian_laplace(W, sigma=1)
+    images += horizon_support(aff, (glap_W, 'glap_W'))
+
     laplacian_Wn2 = laplace(Wn2)
     images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
 

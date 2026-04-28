@@ -357,7 +357,17 @@ if __name__ == "__main__":
 
     labels = felzenszwalb_3d_numba(W, scale=200, sigma=1., min_size=100)
 
-    centroids = centroids_from_labels(W, labels)
+    W = np.ascontiguousarray(W, dtype='f8')
+
+    # compute centroids from labels and create an image with the centroid values
+
+    W2 = np.zeros((W.ravel().shape[0], 4), dtype='f8')
+    W2[:, 0] = W.ravel()
+    W2[:, 1] = W.ravel()
+    W2[:, 2] = W.ravel()
+    W2[:, 3] = W.ravel()
+
+    centroids = centroids_from_labels(W2, labels.ravel())
     centroids_im = centroid_images(labels, centroids)
 
     save_nifti('felzenszwalb_labels.nii.gz', labels.astype('int32'), affine)
