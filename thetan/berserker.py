@@ -1754,6 +1754,25 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     glap_W = gaussian_laplace(W, sigma=1)
     images += horizon_support(aff, (glap_W, 'glap_W'))
 
+    # compute biharmonic of W and add to images
+
+    biharmonic_W = laplace(laplacian_W)
+    images += horizon_support(aff, (biharmonic_W, 'biharmonic_W'))
+
+    gbih_W = gaussian_laplace(glap_W, sigma=1)
+    images += horizon_support(aff, (gbih_W, 'gbih_W'))
+
+    # Hessian computation
+    W_blur = gaussian_filter(W, sigma=1)
+    hess_elements = hessian_3d(W_blur)
+    hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
+    # local curvature measure based on the sum of squares of the Hessian elements
+    local_curv_W = (hess_elements_compact ** 2).sum(axis=0)
+    images += horizon_support(aff, (local_curv_W, 'local_curv_W'))
+    # Determinant of the Hessian
+    det_hess_W = np.linalg.det(hess_elements_compact.reshape(3, 3, W.shape[0], W.shape[1], W.shape[2]).transpose(2, 3, 4, 0, 1))
+    images += horizon_support(aff, (det_hess_W, 'det_hess_W'))
+
     laplacian_Wn2 = laplace(Wn2)
     images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
 

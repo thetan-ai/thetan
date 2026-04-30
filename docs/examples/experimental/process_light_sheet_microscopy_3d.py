@@ -44,6 +44,7 @@ images += horizon_support(affine, (W, 'W'), (data_labels, 'dl'), (centroids_im, 
 print('Centroids Shape:', centroids.shape)
 
 
+
 dbg = 1
 
 if show:
