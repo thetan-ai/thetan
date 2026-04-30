@@ -3,26 +3,31 @@ import metaimageio
 from thetan.berserker import X_to_many_3D, berserker2_to_3D_plus_extra, prepare_data_3d, horizon_support
 from dipy.viz import skyline
 
+dparent = "C:/Users/Eleftherios/Data/S-BIAD2106/SELMA3D2026_training_annotated/contiguous_structures/"
+dparent = "/home/elef/Downloads/S-BIAD2106/SELMA3D2026_training_annotated/contiguous_structures/"
 
-draw = "C:/Users/Eleftherios/Data/S-BIAD2106/SELMA3D2026_training_annotated/contiguous_structures/raw/"
-dgt = "C:/Users/Eleftherios/Data/S-BIAD2106/SELMA3D2026_training_annotated/contiguous_structures/gt/"
 
-# fname = draw + "peripheral_nerve_patchvolume_227.mha"
-# flabel = dgt + "peripheral_nerve_patchvolume_227.mha"
+draw = dparent + "raw/"
+dgt = dparent + "gt/"
 
-fname = draw + "blood_vessel_patchvolume_010.mha"
-flabel = dgt + "blood_vessel_patchvolume_010.mha"
+fname = draw + "peripheral_nerve_patchvolume_227.mha"
+flabel = dgt + "peripheral_nerve_patchvolume_227.mha"
+
+# fname = draw + "blood_vessel_patchvolume_010.mha"
+# flabel = dgt + "blood_vessel_patchvolume_010.mha"
 
 [data, meta] = metaimageio.read(fname)
 [label, meta2] = metaimageio.read(flabel)
 
+print('Data Shape:', data.shape)
 
 
 show = True
 theta = 120.
 
 affine = np.eye(4)
-images=[(data, affine, 'raw'), (label, affine, 'gt')]
+images=[(data, affine, 'raw'), (label, affine, 'labels (gt)')]
+
 
 
 data = np.ascontiguousarray(data, dtype='f8')
@@ -39,7 +44,7 @@ images += horizon_support(affine, (W, 'W'), (data_labels, 'dl'), (centroids_im, 
 print('Centroids Shape:', centroids.shape)
 
 
-
+dbg = 1
 
 if show:
     skyline(images=images)
