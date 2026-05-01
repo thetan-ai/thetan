@@ -13,8 +13,8 @@ dgt = dparent + "gt/"
 fname = draw + "peripheral_nerve_patchvolume_227.mha"
 flabel = dgt + "peripheral_nerve_patchvolume_227.mha"
 
-# fname = draw + "blood_vessel_patchvolume_010.mha"
-# flabel = dgt + "blood_vessel_patchvolume_010.mha"
+fname = draw + "blood_vessel_patchvolume_010.mha"
+flabel = dgt + "blood_vessel_patchvolume_010.mha"
 
 [data, meta] = metaimageio.read(fname)
 [label, meta2] = metaimageio.read(flabel)

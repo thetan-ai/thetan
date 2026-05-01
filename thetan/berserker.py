@@ -1,6 +1,7 @@
 from time import time
 from cv2 import data
 import numpy as np
+from scipy import ndimage
 from thetan.binary_label_3d import label_binary_3d, make_ball_kernel, label_binary_3d_v2, make_connectivity_kernel, make_connectivity_kernel
 from thetan.patchify import patchify
 from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
@@ -1772,6 +1773,44 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # Determinant of the Hessian
     det_hess_W = np.linalg.det(hess_elements_compact.reshape(3, 3, W.shape[0], W.shape[1], W.shape[2]).transpose(2, 3, 4, 0, 1))
     images += horizon_support(aff, (det_hess_W, 'det_hess_W'))
+
+
+    advanced_gradients = False
+
+    if advanced_gradients:
+
+        bk_tmp = 100 * (W < bk)
+        images += horizon_support(aff, (bk_tmp.astype('f8'), 'bk_tmp'))
+
+        gx = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(1,0,0))
+        gy = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,1,0))
+        gz = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,0,1))
+
+
+        grad_dirs = np.stack([gx, gy, gz], axis=-1)
+
+        norms = np.linalg.norm(grad_dirs, axis=-1, keepdims=True)
+        norms[norms == 0] = 1.0
+        grad_dirs = grad_dirs / norms
+
+        mask = np.linalg.norm(np.stack([gx, gy, gz], axis=-1), axis=-1) > 0
+        grad_dirs[~mask] = 0
+
+        peaks = grad_dirs[:,:,:,np.newaxis,:]
+        step = 1
+
+        from dipy.direction.peaks import PeaksAndMetrics
+        from dipy.io.peaks import save_pam
+
+        pam = PeaksAndMetrics()
+        pam.peak_dirs = peaks
+        pam.peak_values = np.ones(pam.peak_dirs.shape[:-1], dtype='f8')
+        pam.affine = np.eye(4)
+
+        from dipy.viz import skyline
+
+        skyline(images=[(bk_tmp, aff, 'bk_tmp')], peaks=[(pam, 'vf')])
+
 
     laplacian_Wn2 = laplace(Wn2)
     images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
