@@ -65,7 +65,7 @@ def find_neighbor_pairs(
                                 if unique_buf[idx] == la:
                                     already = 1
                                     break
-                            if not already:
+                            if already == 0:
                                 unique_buf[n_unique] = la
                                 n_unique += 1
                 if n_unique < 2:
@@ -92,14 +92,14 @@ def find_neighbor_pairs(
 # Union-Find 
 
 cdef class UnionFind:
-    cdef cnp.int64_t _parent
-    cdef cnp.int64_t _rank
-    cdef cnp.float64_t _min_int
-    cdef cnp.float64_t _max_int
+    cdef cnp.int64_t[:] _parent
+    cdef cnp.int64_t[:] _sz
+    cdef cnp.float64_t[:] _min_int
+    cdef cnp.float64_t[:] _max_int
     cdef Py_ssize_t _n
 
-    def __init__(self, Py_ssize_t n,
-                 cnp.float64_t[:] sizes,
+    def __cinit__(self, Py_ssize_t n,
+                 cnp.int64_t[:] sizes,
                  cnp.float64_t[:] centroid_ints):
         
         cdef Py_ssize_t i
