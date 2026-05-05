@@ -1,27 +1,63 @@
 from time import time
-from cv2 import data
-import numpy as np
-from scipy import ndimage
-from thetan.binary_label_3d import label_binary_3d, make_ball_kernel, label_binary_3d_v2, make_connectivity_kernel, make_connectivity_kernel
-from thetan.patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
-from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
-from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace, minimum_filter
-from thetan.core import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, candidate_labels_c, assign
-from thetan.metrics import distance_matrix
-from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
-from thetan.clobber import UnionFind, compute_cluster_stats, find_neighbor_pairs, remap_labels
-# from thetan.fast_merge import merge_labels_core
 
+import numpy as np
+from cv2 import data
+from scipy import ndimage
+from scipy.ndimage import (
+    binary_closing,
+    binary_dilation,
+    binary_erosion,
+    binary_fill_holes,
+    binary_opening,
+    center_of_mass,
+    distance_transform_edt,
+    find_objects,
+    gaussian_filter,
+    gaussian_gradient_magnitude,
+    gaussian_laplace,
+    generate_binary_structure,
+    generic_gradient_magnitude,
+    label,
+    laplace,
+    median_filter,
+    minimum_filter,
+)
+from skimage.morphology import reconstruction
+from skimage.segmentation import flood_fill
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
+
+from thetan.binary_label_3d import (
+    label_binary_3d,
+    label_binary_3d_v2,
+    make_ball_kernel,
+    make_connectivity_kernel,
+)
+from thetan.clobber import (
+    UnionFind,
+    compute_cluster_stats,
+    find_neighbor_pairs,
+    remap_labels,
+)
+from thetan.core import (
+    assign,
+    candidate_labels_c,
+    centroids_from_labels,
+    reassign_uncertain_update_labels,
+    sequential,
+    sequential_prelim,
+)
+
+# from thetan.fast_merge import merge_labels_core
 # from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
 # from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 # from thetan.theta import assign, distance_matrix, correct_connectivity, connected_components
-
-from thetan.image import img3d_to_ijkv_features, img2d_to_ijv_features, connected_components
-from skimage.segmentation import flood_fill
-from skimage.morphology import reconstruction
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import AgglomerativeClustering
+from thetan.image import (
+    connected_components,
+    img2d_to_ijv_features,
+    img3d_to_ijkv_features,
+)
+from thetan.metrics import distance_matrix
+from thetan.patchify import patchify
 
 
 def hessian_3d(image):
@@ -1603,7 +1639,7 @@ def plot_exp_norm():
     W_alpha_8_scale_5 = exponentiation_normalization(W, alpha=8, scale=5)
     W_alpha_8_scale_9 = exponentiation_normalization(W, alpha=8, scale=9)
 
-    from pylab import figure, plot, show, legend, grid, xlabel, ylabel
+    from pylab import figure, grid, legend, plot, show, xlabel, ylabel
 
     figure()
 
@@ -2687,7 +2723,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     show_points = False
     if show_points:
-        from fury import actor, window, colormap
+        from fury import actor, colormap, window
         scene = window.Scene()
 
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
@@ -2774,14 +2810,14 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     return images
     """
 
-def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=30, patch_size=(3,3,3), verbose=True):
+def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=30, patch_size=(3,3,3), individual_labels=False, verbose=True):
 
     X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
     W = np.ascontiguousarray(W, dtype='f8')
 
     data_labels_init, centroids_init, centroids_im_init, centroids_median_im_init = berserker2_to_3D_plus_extra(X, W, theta)
-    data_labels_init = median_filter(data_labels_init, size=3)
+    # data_labels_init = median_filter(data_labels_init, size=3)
     # data_labels_init = minimum_filter(data_labels_init, size=3)
     label_patches = np.ascontiguousarray(patchify(data_labels_init, patch_size), dtype=np.int64)
     data_patches = np.ascontiguousarray(patchify(W, patch_size), dtype=np.float64)
@@ -2825,9 +2861,9 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
     merge_candidates.sort(key=lambda x: min(centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]))
 
     if max_intensity_threshold is None:
-        max_intensity_threshold_cython = -1.0
+        max_intensity_threshold = -1.0
     else:
-        max_intensity_threshold_cython = float(max_intensity_threshold)
+        max_intensity_threshold = float(max_intensity_threshold)
 
     uf = UnionFind(n_labels, np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64))
 
@@ -2840,9 +2876,6 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
         print(f"Merges rejected (would exceed "
               f"max_intensity_threshold={max_intensity_threshold}): {rejected}")
         
-    # label_map = np.full(n_labels, -1, dtype=np.int64)
-    # for lab in range(n_labels):
-    #     label_map[lab] = uf.find(lab)
 
     roots = np.empty(len(unique_labels), dtype=np.int64)
     for idx, lab in enumerate(unique_labels):
@@ -2861,27 +2894,11 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
     n_before = len(unique_labels)
     n_after = len(unique_roots)
     
-    # unique_roots = np.unique(label_map)
-    # compact = np.zeros(n_labels, dtype=np.int64)
-    # for new_id, root in enumerate(unique_roots):
-    #     compact[root] = new_id
-    # full_map = np.array([compact[label_map[i]] for i in range(n_labels)], dtype=np.int64)
-
-    # data_labels_merged = np.ascontiguousarray(np.copy(labels_i64), dtype=np.int64)
-    # remap_labels(data_labels_merged, full_map)
-
-    # n_before = len(np.unique(data_labels_init))
-    # n_after = len(np.unique(data_labels_merged))
-
     if verbose:
         print(f"\nClusters before merging: {n_before}")
         print(f"Clusters after merging:  {n_after}")
         print(f"Clusters reduced by:     {n_before - n_after}")
 
-    # assert data_labels_merged.min() == 0
-    # assert data_labels_merged.max() == n_after - 1
-    
-    # n_merged = int(data_labels_merged.max()) + 1
     centroids_merged = np.zeros((n_after, centroids_init.shape[1]), dtype=np.float64)
 
     for new_label in range(n_after):
@@ -2916,152 +2933,10 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
         (centroids_im_median_merged, affine, "centroids_im_median_merged"),
     ]
 
-    for i in range(n_after):
-        # labels_found, num_features = label(data_labels_merged[i])
-        # images += (labels_found, affine, f'label_{i}')
-        label_individual = (data_labels_merged == i).astype(np.int64)
-        images += [(label_individual, affine, f'label_{i}')]
-        # images += [(label_individual.reshape(data.shape), affine, f'label_{i}')]
-        # print(f'Number of labels found in {i}: {num_features}')
+    if individual_labels:
+        for i in range(n_after):
+            label_individual = (data_labels_merged == i).astype(np.int64)
+            images += [(label_individual, affine, f'label_{i}')]
     
 
     return images
-
-
-# def _print_merge_diagnostics(info, threshold, max_intensity_threshold, max_candidate_print=None):
-#     print(
-#         f"Total patches: {info['total_patches']}, "
-#         f"skipped: {info['skipped']}, "
-#         f"Processed: {info['processed']}"
-#     )
-#     print(f"Total neighbor pairs: {info['n_neighbor_pairs']}")
-#     print(f"Merge candidates (diff < {threshold}): {info['n_merge_candidates']}\n")
-
-#     candidate_pairs = info["candidate_pairs"]
-#     candidate_diffs = info["candidate_diffs"]
-#     unique_original_labels = info["unique_original_labels"]
-#     cluster_intensities = info["cluster_intensities"]
-
-#     n_to_print = candidate_pairs.shape[0]
-#     if max_candidate_print is not None:
-#         n_to_print = min(n_to_print, int(max_candidate_print))
-
-#     print(f"{'Cluster A':>10} {'Cluster B':>10} {'Mean A':>10} {'Mean B':>10} {'Diff':>10}")
-#     print("-" * 55)
-
-#     for row in range(n_to_print):
-#         a_compact = int(candidate_pairs[row, 0])
-#         b_compact = int(candidate_pairs[row, 1])
-
-#         a_orig = int(unique_original_labels[a_compact])
-#         b_orig = int(unique_original_labels[b_compact])
-
-#         mean_a = float(cluster_intensities[a_compact])
-#         mean_b = float(cluster_intensities[b_compact])
-#         diff = float(candidate_diffs[row])
-
-#         print(f"{a_orig:10d} {b_orig:10d} {mean_a:10.2f} {mean_b:10.2f} {diff:10.2f}")
-
-#     if max_candidate_print is not None and candidate_pairs.shape[0] > n_to_print:
-#         print(f"... skipped printing {candidate_pairs.shape[0] - n_to_print} more candidates")
-
-#     print(
-#         f"Merges rejected (would exceed "
-#         f"max_intensity_threshold={max_intensity_threshold}): {info['rejected']}"
-#     )
-#     print(f"\nClusters before merging: {info['n_before']}")
-#     print(f"Clusters after merging:  {info['n_after']}")
-#     print(f"Clusters reduced by:     {info['n_before'] - info['n_after']}")
-
-
-# def cluster_merge(
-#     data,
-#     affine,
-#     theta=80,
-#     threshold=10,
-#     max_intensity_threshold=30,
-#     patch_size=(3, 3, 3),
-#     var_threshold=1e-6,
-#     use_w_for_merging=True,
-#     verbose=True,
-#     max_candidate_print=None,
-#     return_info=False,
-# ):
-#     data_f64 = np.ascontiguousarray(data, dtype=np.float64)
-
-#     X = prepare_data_3d(data, affine, perc=(0, 98), mult=300.0, enh=3.0)
-#     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
-#     W = np.ascontiguousarray(W, dtype=np.float64)
-
-#     (
-#         data_labels_init,
-#         centroids_init,
-#         centroids_im_init,
-#         centroids_median_im_init,
-#     ) = berserker2_to_3D_plus_extra(X, W, theta)
-
-#     data_labels_init = np.ascontiguousarray(data_labels_init, dtype=np.int64)
-#     centroids_init = np.ascontiguousarray(centroids_init, dtype=np.float64)
-
-#     # Use exactly one intensity image consistently for:
-#     #   1. patch variance filtering,
-#     #   2. cluster mean-intensity thresholding,
-#     #   3. merged centroid intensity recomputation.
-#     intensity_for_merging = W if use_w_for_merging else data_f64
-
-#     data_labels_merged, centroids_merged, info = merge_labels_core(
-#         data_labels_init,
-#         intensity_for_merging,
-#         centroids_init,
-#         threshold=float(threshold),
-#         max_intensity_threshold=max_intensity_threshold,
-#         patch_size=patch_size,
-#         var_threshold=float(var_threshold),
-#         return_neighbor_pairs=False,
-#     )
-
-#     data_labels_merged = np.ascontiguousarray(data_labels_merged, dtype=np.int64)
-#     centroids_merged = np.ascontiguousarray(centroids_merged, dtype=np.float64)
-
-#     n_after = int(info["n_after"])
-#     unique_after = np.unique(data_labels_merged)
-
-#     if data_labels_merged.min() != 0:
-#         raise RuntimeError("Merged labels are not compact: minimum label is not 0")
-#     if data_labels_merged.max() != n_after - 1:
-#         raise RuntimeError("Merged labels are not compact: maximum label is not n_after - 1")
-#     if len(unique_after) != n_after:
-#         raise RuntimeError("Merged labels are not compact: unique label count does not match n_after")
-
-#     # Correct fix: use recomputed merged centroids, not centroids_init.
-#     centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)
-#     centroids_im_median_merged = median_filter(centroids_im_merged, size=3)
-
-#     if verbose:
-#         _print_merge_diagnostics(
-#             info,
-#             threshold=threshold,
-#             max_intensity_threshold=max_intensity_threshold,
-#             max_candidate_print=max_candidate_print,
-#         )
-#         print(f"data labels merged, {n_after} clusters remaining")
-#         print(f"data labels merged max, {np.max(data_labels_merged)}")
-#         print(f"data labels merged min, {np.min(data_labels_merged)}")
-
-#     images = [
-#         (data, affine, "data"),
-#         (W, affine, "W"),
-#         (data_labels_init, affine, "data_labels_initial"),
-#         (data_labels_merged, affine, "data_labels_merged"),
-#         (centroids_im_init, affine, "centroids_im_initial"),
-#         (centroids_median_im_init, affine, "centroids_median_im_initial"),
-#         (centroids_im_merged, affine, "centroids_im_merged"),
-#         (centroids_im_median_merged, affine, "centroids_im_median_merged"),
-#     ]
-
-#     if return_info:
-#         info = dict(info)
-#         info["centroids_merged"] = centroids_merged
-#         return images, info
-
-#     return images
