@@ -2835,20 +2835,20 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
     centroid_intensities_arr = np.zeros(n_labels, dtype=np.float64)
     for i, lab in enumerate(unique_labels):
         centroid_intensities_arr[lab] = centroids_init[i, 3]
-    
+
     neighbor_pairs, skipped = find_neighbor_pairs(label_patches, data_patches)
     n0, n1, n2 = label_patches.shape[:3]
 
     if verbose:
         total = n0 * n1 * n2
         print(f'Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}')
-    
+
     merge_candidates = []
     for a, b in sorted(neighbor_pairs):
         diff = abs(cluster_intensities_arr[a] - cluster_intensities_arr[b])
         if diff < threshold:
             merge_candidates.append((a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff))
-    
+
     if verbose:
         print(f"Total neighbor pairs: {len(neighbor_pairs)}")
         print(f"Merge candidates (diff < {threshold}): "
@@ -2857,7 +2857,7 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
               f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}")
         for a, b, ma, mb, d in merge_candidates:
             print(f"{a:10d} {b:10d} {ma:10.2f} {mb:10.2f} {d:10.2f}")
-    
+
     merge_candidates.sort(key=lambda x: min(centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]))
 
     if max_intensity_threshold is None:
@@ -2871,29 +2871,29 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
     for a, b, _, _, _ in merge_candidates:
         if not uf.union(int(a), int(b), float(centroid_intensities_arr[a]), float(centroid_intensities_arr[b]), max_intensity_threshold):
             rejected += 1
-    
+
     if verbose:
         print(f"Merges rejected (would exceed "
               f"max_intensity_threshold={max_intensity_threshold}): {rejected}")
-        
+
 
     roots = np.empty(len(unique_labels), dtype=np.int64)
     for idx, lab in enumerate(unique_labels):
         roots[idx] = uf.find(int(lab))
-    
+
     unique_roots = np.unique(roots)
     root_to_new = {int(root): new_id for new_id, root in enumerate(unique_roots)}
 
     full_map = np.full(n_labels, -1, dtype=np.int64)
     for lab, root in enumerate(roots):
         full_map[int(lab)] = root_to_new[int(root)]
-    
+
     data_labels_merged = np.ascontiguousarray(labels_i64.copy(), dtype=np.int64)
     remap_labels(data_labels_merged, full_map)
 
     n_before = len(unique_labels)
     n_after = len(unique_roots)
-    
+
     if verbose:
         print(f"\nClusters before merging: {n_before}")
         print(f"Clusters after merging:  {n_after}")
@@ -2913,7 +2913,8 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
         centroids_merged[new_label, 2] = np.mean(voxel_coords[:, 2])
 
         centroids_merged[new_label, 3] = np.mean(W[mask])
-        
+        print(f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}")
+
     centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)
     centroids_im_median_merged = median_filter(centroids_im_merged, size=3)
 
@@ -2937,6 +2938,6 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
         for i in range(n_after):
             label_individual = (data_labels_merged == i).astype(np.int64)
             images += [(label_individual, affine, f'label_{i}')]
-    
+
 
     return images
