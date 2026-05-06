@@ -1,25 +1,63 @@
 from time import time
-from cv2 import data
-import numpy as np
-from scipy import ndimage
-from thetan.binary_label_3d import label_binary_3d, make_ball_kernel, label_binary_3d_v2, make_connectivity_kernel, make_connectivity_kernel
-from thetan.patchify import patchify
-from scipy.ndimage import gaussian_gradient_magnitude, label, distance_transform_edt, binary_fill_holes, find_objects
-from scipy.ndimage import binary_erosion, binary_dilation, binary_opening, binary_closing, laplace, generic_gradient_magnitude
-from scipy.ndimage import generate_binary_structure, gaussian_filter, center_of_mass, median_filter, gaussian_laplace, minimum_filter
-from thetan.core import sequential, reassign_uncertain_update_labels, centroids_from_labels, sequential_prelim, candidate_labels_c, assign
-from thetan.metrics import distance_matrix
-from thetan.binary_label_3d import label_binary_3d, make_ball_kernel
 
+import numpy as np
+from cv2 import data
+from scipy import ndimage
+from scipy.ndimage import (
+    binary_closing,
+    binary_dilation,
+    binary_erosion,
+    binary_fill_holes,
+    binary_opening,
+    center_of_mass,
+    distance_transform_edt,
+    find_objects,
+    gaussian_filter,
+    gaussian_gradient_magnitude,
+    gaussian_laplace,
+    generate_binary_structure,
+    generic_gradient_magnitude,
+    label,
+    laplace,
+    median_filter,
+    minimum_filter,
+)
+from skimage.morphology import reconstruction
+from skimage.segmentation import flood_fill
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
+
+from thetan.binary_label_3d import (
+    label_binary_3d,
+    label_binary_3d_v2,
+    make_ball_kernel,
+    make_connectivity_kernel,
+)
+from thetan.clobber import (
+    UnionFind,
+    compute_cluster_stats,
+    find_neighbor_pairs,
+    remap_labels,
+)
+from thetan.core import (
+    assign,
+    candidate_labels_c,
+    centroids_from_labels,
+    reassign_uncertain_update_labels,
+    sequential,
+    sequential_prelim,
+)
+
+# from thetan.fast_merge import merge_labels_core
 # from thetan.theta import reassign_uncertain_update_labels, centroids_from_labels
 # from thetan.theta import theta_means, candidate_labels_c, candidate_labels_outliers_c
 # from thetan.theta import assign, distance_matrix, correct_connectivity, connected_components
-
-from thetan.image import img3d_to_ijkv_features, img2d_to_ijv_features, connected_components
-from skimage.segmentation import flood_fill
-from skimage.morphology import reconstruction
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import AgglomerativeClustering
+from thetan.image import (
+    connected_components,
+    img2d_to_ijv_features,
+    img3d_to_ijkv_features,
+)
+from thetan.metrics import distance_matrix
+from thetan.patchify import patchify
 
 
 def hessian_3d(image):
@@ -1601,7 +1639,7 @@ def plot_exp_norm():
     W_alpha_8_scale_5 = exponentiation_normalization(W, alpha=8, scale=5)
     W_alpha_8_scale_9 = exponentiation_normalization(W, alpha=8, scale=9)
 
-    from pylab import figure, plot, show, legend, grid, xlabel, ylabel
+    from pylab import figure, grid, legend, plot, show, xlabel, ylabel
 
     figure()
 
@@ -2685,7 +2723,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     show_points = False
     if show_points:
-        from fury import actor, window, colormap
+        from fury import actor, colormap, window
         scene = window.Scene()
 
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
@@ -2772,3 +2810,133 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     return images
     """
 
+def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=30, patch_size=(3,3,3), individual_labels=False, verbose=True):
+
+    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+    W = np.ascontiguousarray(W, dtype='f8')
+
+    data_labels_init, centroids_init, centroids_im_init, centroids_median_im_init = berserker2_to_3D_plus_extra(X, W, theta)
+    # data_labels_init = median_filter(data_labels_init, size=3)
+    # data_labels_init = minimum_filter(data_labels_init, size=3)
+    label_patches = np.ascontiguousarray(patchify(data_labels_init, patch_size), dtype=np.int64)
+    data_patches = np.ascontiguousarray(patchify(W, patch_size), dtype=np.float64)
+
+    labels_i64 = np.ascontiguousarray(data_labels_init, dtype=np.int64)
+    W_f64 = np.ascontiguousarray(W, dtype=np.float64)
+    n_labels = int(labels_i64.max()) + 1
+
+    cluster_intensities_arr, cluster_sizes_arr = compute_cluster_stats(labels_i64, W_f64, n_labels)
+
+    unique_labels = np.unique(labels_i64)
+
+    if unique_labels[0] < 0:
+        raise ValueError('Labels must be non-negative for this remap_labels implementation.')
+    centroid_intensities_arr = np.zeros(n_labels, dtype=np.float64)
+    for i, lab in enumerate(unique_labels):
+        centroid_intensities_arr[lab] = centroids_init[i, 3]
+    
+    neighbor_pairs, skipped = find_neighbor_pairs(label_patches, data_patches)
+    n0, n1, n2 = label_patches.shape[:3]
+
+    if verbose:
+        total = n0 * n1 * n2
+        print(f'Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}')
+    
+    merge_candidates = []
+    for a, b in sorted(neighbor_pairs):
+        diff = abs(cluster_intensities_arr[a] - cluster_intensities_arr[b])
+        if diff < threshold:
+            merge_candidates.append((a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff))
+    
+    if verbose:
+        print(f"Total neighbor pairs: {len(neighbor_pairs)}")
+        print(f"Merge candidates (diff < {threshold}): "
+              f"{len(merge_candidates)}\n")
+        print(f"{'Cluster A':>10} {'Cluster B':>10} "
+              f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}")
+        for a, b, ma, mb, d in merge_candidates:
+            print(f"{a:10d} {b:10d} {ma:10.2f} {mb:10.2f} {d:10.2f}")
+    
+    merge_candidates.sort(key=lambda x: min(centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]))
+
+    if max_intensity_threshold is None:
+        max_intensity_threshold = -1.0
+    else:
+        max_intensity_threshold = float(max_intensity_threshold)
+
+    uf = UnionFind(n_labels, np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64))
+
+    rejected = 0
+    for a, b, _, _, _ in merge_candidates:
+        if not uf.union(int(a), int(b), float(centroid_intensities_arr[a]), float(centroid_intensities_arr[b]), max_intensity_threshold):
+            rejected += 1
+    
+    if verbose:
+        print(f"Merges rejected (would exceed "
+              f"max_intensity_threshold={max_intensity_threshold}): {rejected}")
+        
+
+    roots = np.empty(len(unique_labels), dtype=np.int64)
+    for idx, lab in enumerate(unique_labels):
+        roots[idx] = uf.find(int(lab))
+    
+    unique_roots = np.unique(roots)
+    root_to_new = {int(root): new_id for new_id, root in enumerate(unique_roots)}
+
+    full_map = np.full(n_labels, -1, dtype=np.int64)
+    for lab, root in enumerate(roots):
+        full_map[int(lab)] = root_to_new[int(root)]
+    
+    data_labels_merged = np.ascontiguousarray(labels_i64.copy(), dtype=np.int64)
+    remap_labels(data_labels_merged, full_map)
+
+    n_before = len(unique_labels)
+    n_after = len(unique_roots)
+    
+    if verbose:
+        print(f"\nClusters before merging: {n_before}")
+        print(f"Clusters after merging:  {n_after}")
+        print(f"Clusters reduced by:     {n_before - n_after}")
+
+    centroids_merged = np.zeros((n_after, centroids_init.shape[1]), dtype=np.float64)
+
+    for new_label in range(n_after):
+        mask = data_labels_merged == new_label
+        voxel_coords = np.argwhere(mask)
+
+        if voxel_coords.size == 0:
+            continue
+
+        centroids_merged[new_label, 0] = np.mean(voxel_coords[:, 0])
+        centroids_merged[new_label, 1] = np.mean(voxel_coords[:, 1])
+        centroids_merged[new_label, 2] = np.mean(voxel_coords[:, 2])
+
+        centroids_merged[new_label, 3] = np.mean(W[mask])
+        
+    centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)
+    centroids_im_median_merged = median_filter(centroids_im_merged, size=3)
+
+    if verbose:
+        print(f"data labels merged, {n_after} clusters remaining")
+        print(f"data labels merged max, {np.max(data_labels_merged)}")
+        print(f"data labels merged min, {np.min(data_labels_merged)}")
+
+    images = [
+        (data, affine, "data"),
+        (W, affine, "W"),
+        (data_labels_init, affine, "data_labels_initial"),
+        (data_labels_merged, affine, "data_labels_merged"),
+        (centroids_im_init, affine, "centroids_im_initial"),
+        (centroids_median_im_init, affine, "centroids_median_im_initial"),
+        (centroids_im_merged, affine, "centroids_im_merged"),
+        (centroids_im_median_merged, affine, "centroids_im_median_merged"),
+    ]
+
+    if individual_labels:
+        for i in range(n_after):
+            label_individual = (data_labels_merged == i).astype(np.int64)
+            images += [(label_individual, affine, f'label_{i}')]
+    
+
+    return images

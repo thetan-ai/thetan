@@ -360,6 +360,7 @@ cython_sources = [
   'dbscan',
   'image',
   'metrics',
+  'clobber',
   ]
 
 cython_headers = [
