@@ -16,7 +16,7 @@ def process_chunk(data, start, end, theta_value):
     # X.setflags(write=True)
     X = data[start:end]
 
-    cents, labels = berserker(X, theta_value=theta_value, metric="euclidean")
+    cents, labels = berserker(X, theta=theta_value, metric="euclidean")
     return cents, labels
 
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     t11 = time()
     print("Ray init time: %.4f s" % (t11 - t10))
 
-    X, Ctrue, _ = make_grid_gaussians(A=50, B=50, l=10.0, sigma=1.0, n_per=500)
+    X, Ctrue, _ = make_grid_gaussians(A=30, B=20, l=10.0, sigma=1.0, n_per=500)
     t12 = time()
     print("Data generation time: %.4f s" % (t12 - t11))
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     theta = 6
 
     t0 = time()
-    centroids, labels = berserker(X, theta_value=theta, metric="euclidean")
+    centroids, labels = berserker(X, theta=theta, metric="euclidean")
     t1 = time()
 
     cents, labels = berserker_papprox(X, theta_value=theta, metric='euclidean')
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     print("Number of chunks:", len(cents))
     print("Done.")
 
-    print("Final number of centroids:", len(centroids))
+    print("Berserker number of centroids:", len(centroids))
     print("Cents:", len(cents[0]))
 
     t = 1
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     all_cents = np.vstack(cents)
     t4 = time()
 
-    final_cents, final_labels = berserker(all_cents, theta_value=t, metric='euclidean')
+    final_cents, final_labels = berserker(all_cents, theta=t, metric='euclidean')
     t5 = time()
     print("After merging, number of centroids:", len(final_cents))
 

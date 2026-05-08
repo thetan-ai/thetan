@@ -2913,6 +2913,7 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
         centroids_merged[new_label, 2] = np.mean(voxel_coords[:, 2])
 
         centroids_merged[new_label, 3] = np.mean(W[mask])
+
         print(f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}")
 
     centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)

@@ -25,7 +25,7 @@ ray.init(
 def process_chunk(X, start, end, theta_value, metric, return_labels):
     X_chunk = np.require(X[start:end],dtype=np.float64,requirements=["C","W"])
 
-    cents, labels = berserker(X_chunk, theta_value=theta_value, metric=metric)
+    cents, labels = berserker(X_chunk, theta=theta_value, metric=metric)
 
     if not return_labels:
         return cents
@@ -93,7 +93,8 @@ def make_grid_gaussians(A=4, B=3, l=5.0, sigma=1.0, n_per=150, d=2):
 
 if __name__ == "__main__":
 
-    X, Ctrue, _ = make_grid_gaussians(A=200, B=50, l=10.0, sigma=1.0, n_per=500)
+    print('Create dataset ...')
+    X, Ctrue, _ = make_grid_gaussians(A=300, B=20, l=10.0, sigma=1.0, n_per=500)
 
     # np.random.shuffle(X)
 
@@ -101,9 +102,12 @@ if __name__ == "__main__":
 
     theta = 6
 
-    # t0 = time()
-    # centroids, labels = berserker(X, theta_value=theta, metric="euclidean")
+    t0 = time()
+    centroids, labels = berserker(X, theta=theta, metric="euclidean")
     t1 = time()
+    print("Berserker time: %.4f s" % (t1 - t0))
+    print("Berserker number of centroids:", centroids.shape[0])
+
     # mem_usage = memory_usage(
     # (berserker, (X, theta), {'metric': 'euclidean'}),
     # interval=0.1,
@@ -112,7 +116,7 @@ if __name__ == "__main__":
     # print(f"Peak memory of original berserker: {mem_usage:.2f} MB")
 
 
-
+    print('Starting Berserker papprox ...')
     cents, labels = berserker_papprox(X, theta_value=theta, metric='euclidean')
     t2 = time()
     # mem_usage = memory_usage(
@@ -129,7 +133,7 @@ if __name__ == "__main__":
     print("Done.")
 
     # print("Final number of centroids:", len(centroids))
-    print("Cents:", len(cents[0]))
+    # print("Cents:", len(cents[0]))
 
     t = 1
 
@@ -142,7 +146,7 @@ if __name__ == "__main__":
     all_cents = np.vstack(cents)
     t4 = time()
 
-    final_cents, final_labels = berserker(all_cents, theta_value=theta, metric='euclidean')
+    final_cents, final_labels = berserker(all_cents, theta=theta, metric='euclidean')
     t5 = time()
     print("After merging, number of centroids:", len(final_cents))
 
@@ -155,9 +159,9 @@ if __name__ == "__main__":
     t7 = time()
     print("Recomputed centroids shape:", centroids.shape)
 
-    print(f"Second phase times: shutdown ray {t3 - t2:.4f}, s gather {t4 - t3:.4f} s, merge {t5 - t4:.4f} s, assign {t6 - t5:.4f} s, recompute cents {t7 - t6:.4f} s")
+    print(f"Phase times: papprox {t2 - t1:.4f} s, shutdown ray {t3 - t2:.4f}, s gather {t4 - t3:.4f} s, merge {t5 - t4:.4f} s, assign {t6 - t5:.4f} s, recompute cents {t7 - t6:.4f} s")
 
-    sum = t3 - t2 + t4 - t3 + t5 - t4 + t6 - t5 + t7 - t6
-    print(f"Total second phase time: {sum:.4f} s")
+    sum = t2 - t1 +t3 - t2 + t4 - t3 + t5 - t4 + t6 - t5 + t7 - t6
+    print(f"Total papprox time: {sum:.4f} s")
 
     # plot_centroids_clusters(X, centroids, labels, title="berserker papprox final clusters")
