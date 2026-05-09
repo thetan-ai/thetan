@@ -1744,7 +1744,7 @@ def gradient_reweighting(W, affine, scale=2, sigma=1):
 
 
 
-def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98):
+def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98, diff=30, max_diff=100):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
@@ -1857,9 +1857,28 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
     images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
+
     print('Centroids shape: ', centroids_orig.shape)
     print('Centroids (last column - sorted): ')
     print(np.sort(centroids_orig[:, -1]))
+
+
+    data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged = welder(W, data_labels_orig, centroids_orig, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)
+    images += horizon_support(aff, (data_labels_merged, 'dl_merged'), (centroids_im_merged, 'cim_merged'), (centroids_im_median_merged, 'cmim_merged'))
+    print('New centroids shape: ', centroids_merged.shape)
+    print(np.sort(centroids_merged[:, -1]))
+
+    labels_sorted = np.argsort(centroids_merged[:, -1])
+    data_labels_lowest = np.zeros(data.shape, dtype='i8')
+    data_labels_lowest[data_labels_merged == labels_sorted[0]] = 1
+    images += horizon_support(aff, (data_labels_lowest.astype('f8'), 'dl_lowest'))
+
+    data_labels_second = np.zeros(data.shape, dtype='i8')
+    data_labels_second[data_labels_merged == labels_sorted[1]] = 1
+    images += horizon_support(aff, (data_labels_second.astype('f8'), 'dl_second'))
+
+
+    # for i, idx in enumerate(labels_sorted):
 
     # create an image with the minimum intensity value of each label
     min_labels_orig = np.zeros(data.shape, dtype='f8')
@@ -2942,3 +2961,115 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
 
 
     return images
+
+
+def welder(W, data_labels_init, centroids_init, threshold=10, max_intensity_threshold=30, patch_size=(3,3,3), verbose=True):
+
+    # X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
+    # Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+    # W = np.ascontiguousarray(W, dtype='f8')
+
+    # data_labels_init, centroids_init, centroids_im_init, centroids_median_im_init = berserker2_to_3D_plus_extra(X, W, theta)
+    # data_labels_init = median_filter(data_labels_init, size=3)
+    # data_labels_init = minimum_filter(data_labels_init, size=3)
+    label_patches = np.ascontiguousarray(patchify(data_labels_init, patch_size), dtype=np.int64)
+    data_patches = np.ascontiguousarray(patchify(W, patch_size), dtype=np.float64)
+
+    labels_i64 = np.ascontiguousarray(data_labels_init, dtype=np.int64)
+    W_f64 = np.ascontiguousarray(W, dtype=np.float64)
+    n_labels = int(labels_i64.max()) + 1
+
+    cluster_intensities_arr, cluster_sizes_arr = compute_cluster_stats(labels_i64, W_f64, n_labels)
+
+    unique_labels = np.unique(labels_i64)
+
+    if unique_labels[0] < 0:
+        raise ValueError('Labels must be non-negative for this remap_labels implementation.')
+    centroid_intensities_arr = np.zeros(n_labels, dtype=np.float64)
+    for i, lab in enumerate(unique_labels):
+        centroid_intensities_arr[lab] = centroids_init[i, 3]
+
+    neighbor_pairs, skipped = find_neighbor_pairs(label_patches, data_patches)
+    n0, n1, n2 = label_patches.shape[:3]
+
+    if verbose:
+        total = n0 * n1 * n2
+        print(f'Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}')
+
+    merge_candidates = []
+    for a, b in sorted(neighbor_pairs):
+        diff = abs(cluster_intensities_arr[a] - cluster_intensities_arr[b])
+        if diff < threshold:
+            merge_candidates.append((a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff))
+
+    if verbose:
+        print(f"Total neighbor pairs: {len(neighbor_pairs)}")
+        print(f"Merge candidates (diff < {threshold}): "
+              f"{len(merge_candidates)}\n")
+        print(f"{'Cluster A':>10} {'Cluster B':>10} "
+              f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}")
+        for a, b, ma, mb, d in merge_candidates:
+            print(f"{a:10d} {b:10d} {ma:10.2f} {mb:10.2f} {d:10.2f}")
+
+    merge_candidates.sort(key=lambda x: min(centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]))
+
+    if max_intensity_threshold is None:
+        max_intensity_threshold = -1.0
+    else:
+        max_intensity_threshold = float(max_intensity_threshold)
+
+    uf = UnionFind(n_labels, np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64))
+
+    rejected = 0
+    for a, b, _, _, _ in merge_candidates:
+        if not uf.union(int(a), int(b), float(centroid_intensities_arr[a]), float(centroid_intensities_arr[b]), max_intensity_threshold):
+            rejected += 1
+
+    if verbose:
+        print(f"Merges rejected (would exceed "
+              f"max_intensity_threshold={max_intensity_threshold}): {rejected}")
+
+
+    roots = np.empty(len(unique_labels), dtype=np.int64)
+    for idx, lab in enumerate(unique_labels):
+        roots[idx] = uf.find(int(lab))
+
+    unique_roots = np.unique(roots)
+    root_to_new = {int(root): new_id for new_id, root in enumerate(unique_roots)}
+
+    full_map = np.full(n_labels, -1, dtype=np.int64)
+    for lab, root in enumerate(roots):
+        full_map[int(lab)] = root_to_new[int(root)]
+
+    data_labels_merged = np.ascontiguousarray(labels_i64.copy(), dtype=np.int64)
+    remap_labels(data_labels_merged, full_map)
+
+    n_before = len(unique_labels)
+    n_after = len(unique_roots)
+
+    if verbose:
+        print(f"\nClusters before merging: {n_before}")
+        print(f"Clusters after merging:  {n_after}")
+        print(f"Clusters reduced by:     {n_before - n_after}")
+
+    centroids_merged = np.zeros((n_after, centroids_init.shape[1]), dtype=np.float64)
+
+    for new_label in range(n_after):
+        mask = data_labels_merged == new_label
+        voxel_coords = np.argwhere(mask)
+
+        if voxel_coords.size == 0:
+            continue
+
+        centroids_merged[new_label, 0] = np.mean(voxel_coords[:, 0])
+        centroids_merged[new_label, 1] = np.mean(voxel_coords[:, 1])
+        centroids_merged[new_label, 2] = np.mean(voxel_coords[:, 2])
+
+        centroids_merged[new_label, 3] = np.mean(W[mask])
+
+        print(f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}")
+
+    centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)
+    centroids_im_median_merged = median_filter(centroids_im_merged, size=3)
+
+    return data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged
