@@ -1753,7 +1753,8 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     Wcp = W.copy()
-    aff = np.eye(4)
+    # aff = np.eye(4)
+    aff = affine.copy()
 
     W = np.ascontiguousarray(W, dtype='f8')
     images = horizon_support(aff, (W, 'W'))
@@ -1887,7 +1888,7 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
 
 
-    min_filtered = minimum_filter(centroids_im_orig, size=3)
+    min_filtered = minimum_filter(centroids_im_merged, size=3)
     images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
     min_filtered = gaussian_filter(min_filtered, sigma=1)
@@ -1895,6 +1896,9 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     bk_min = min_filtered < 85
     images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
+
+    bk_min2 = min_filtered < 65
+    images += horizon_support(aff, (bk_min2.astype('f8'), 'bk_min2'))
 
     # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
     # images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
