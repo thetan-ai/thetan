@@ -1771,19 +1771,15 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # Wggm[Wggm > 1] = 1.
     images += horizon_support(aff, (Wggm, 'Wggm'))
 
-    Wn = W - Wggm * W
+    # Wn = W - Wggm * W
+    # Wn[Wn < 0] = 0
+
+    Wggm = Wggm / (0.8 * Wggm.max())
+    Wggm[Wggm > 1] = 1.
+
+    Wn = W - 200 * Wggm
     Wn[Wn < 0] = 0
     images += horizon_support(aff, (Wn, 'Wn'))
-
-    # TODO: repeat the process of calculating ggm but now for Wn
-
-    Wnggm = gaussian_gradient_magnitude(Wn, sigma=1)
-    Wnggm = Wnggm / Wnggm.max()
-    images += horizon_support(aff, (Wnggm, 'Wnggm'))
-
-    Wn2 = Wn - Wnggm * Wn
-    Wn2[Wn2 < 0] = 0
-    images += horizon_support(aff, (Wn2, 'Wn2'))
 
     bk_Wn = Wn < bk
     images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
@@ -1851,8 +1847,8 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
         skyline(images=[(bk_tmp, aff, 'bk_tmp')], peaks=[(pam, 'vf')])
 
 
-    laplacian_Wn2 = laplace(Wn2)
-    images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
+    # laplacian_Wn2 = laplace(Wn2)
+    # images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
 
 
     data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
@@ -1888,7 +1884,7 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
 
 
-    min_filtered = minimum_filter(centroids_im_merged, size=3)
+    min_filtered = minimum_filter(W, size=3)
     images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
     min_filtered = gaussian_filter(min_filtered, sigma=1)
@@ -1899,6 +1895,15 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     bk_min2 = min_filtered < 65
     images += horizon_support(aff, (bk_min2.astype('f8'), 'bk_min2'))
+
+    bk_min3 = min_filtered < 45
+    images += horizon_support(aff, (bk_min3.astype('f8'), 'bk_min3'))
+
+    bk_min4 = min_filtered < 25
+    images += horizon_support(aff, (bk_min4.astype('f8'), 'bk_min4'))
+
+    bk_min5 = min_filtered < 15
+    images += horizon_support(aff, (bk_min5.astype('f8'), 'bk_min5'))
 
     # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
     # images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
