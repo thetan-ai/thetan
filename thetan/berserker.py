@@ -21,6 +21,7 @@ from scipy.ndimage import (
     laplace,
     median_filter,
     minimum_filter,
+    percentile_filter,
 )
 from skimage.morphology import reconstruction
 from skimage.segmentation import flood_fill
@@ -1893,17 +1894,11 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     bk_min = min_filtered < 85
     images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
 
-    bk_min2 = min_filtered < 65
-    images += horizon_support(aff, (bk_min2.astype('f8'), 'bk_min2'))
+    perc_filtered = percentile_filter(W, percentile=25, size=3)
+    images += horizon_support(aff, (perc_filtered, 'perc_filtered'))
 
-    bk_min3 = min_filtered < 45
-    images += horizon_support(aff, (bk_min3.astype('f8'), 'bk_min3'))
-
-    bk_min4 = min_filtered < 25
-    images += horizon_support(aff, (bk_min4.astype('f8'), 'bk_min4'))
-
-    bk_min5 = min_filtered < 15
-    images += horizon_support(aff, (bk_min5.astype('f8'), 'bk_min5'))
+    perc_filtered_enh = perc_filtered + 100 * Wggm
+    images += horizon_support(aff, (perc_filtered_enh, 'perc_filtered_enh'))
 
     # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
     # images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))

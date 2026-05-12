@@ -44,7 +44,7 @@ fname = '/home/elef/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
 
 
