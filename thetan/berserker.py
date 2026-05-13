@@ -1800,8 +1800,8 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     images += horizon_support(aff, (gbih_W, 'gbih_W'))
 
     # Hessian computation
-    W_blur = gaussian_filter(W, sigma=1)
-    hess_elements = hessian_3d(W_blur)
+    # W_blur = gaussian_filter(W, sigma=1)
+    hess_elements = hessian_3d(W)
     hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
     # local curvature measure based on the sum of squares of the Hessian elements
     local_curv_W = (hess_elements_compact ** 2).sum(axis=0)
@@ -1809,6 +1809,37 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # Determinant of the Hessian
     det_hess_W = np.linalg.det(hess_elements_compact.reshape(3, 3, W.shape[0], W.shape[1], W.shape[2]).transpose(2, 3, 4, 0, 1))
     images += horizon_support(aff, (det_hess_W, 'det_hess_W'))
+
+    # Sato filter
+    # from skimage.filters import sato
+    # sato_W = sato(W, sigmas=[1], black_ridges=False)
+    # images += horizon_support(aff, (sato_W, 'sato_W'))
+
+    # Sobel filter
+    from skimage.filters import sobel, meijering
+    sobel_W = sobel(W)
+    images += horizon_support(aff, (sobel_W, 'sobel_W'))
+
+    W_meijering = meijering(W, sigmas=range(1, 2), black_ridges=False)
+    images += horizon_support(aff, (W_meijering, 'W_meijering'))
+
+    # Blur W with Gaussian filter and add to images
+    W_blur = gaussian_filter(W, sigma=10)
+    images += horizon_support(aff, (W_blur, 'W_blur'))
+
+    W2 = W / (W_blur + 0.01) # add small constant to avoid division by zero
+    images += horizon_support(aff, (W2, 'W2'))
+
+    # Run Sobel on W2 and add to images
+    sobel_W2 = sobel(W2)
+    images += horizon_support(aff, (sobel_W2, 'sobel_W2'))
+
+    # Run Meijering on W2 and add to images
+    W2_meijering = meijering(W2, sigmas=range(1, 2), black_ridges=False)
+    images += horizon_support(aff, (W2_meijering, 'W2_meijering'))
+
+    W2 = np.interp(W2, xp=[0, 0.8* W2.max()], fp=[0., 900.])
+    images += horizon_support(aff, (W2, 'W2_scaled'))
 
 
     advanced_gradients = False
@@ -1852,7 +1883,10 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
 
 
-    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W, theta)
+
+    # return images
+
+    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W2, theta)
     images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
 
@@ -1861,7 +1895,7 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     print(np.sort(centroids_orig[:, -1]))
 
 
-    data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged = welder(W, data_labels_orig, centroids_orig, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)
+    data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged = welder(W2, data_labels_orig, centroids_orig, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)
     images += horizon_support(aff, (data_labels_merged, 'dl_merged'), (centroids_im_merged, 'cim_merged'), (centroids_im_median_merged, 'cmim_merged'))
     print('New centroids shape: ', centroids_merged.shape)
     print(np.sort(centroids_merged[:, -1]))
@@ -1879,26 +1913,26 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # for i, idx in enumerate(labels_sorted):
 
     # create an image with the minimum intensity value of each label
-    min_labels_orig = np.zeros(data.shape, dtype='f8')
-    for i, _ in enumerate(centroids_orig):
-        min_labels_orig[data_labels_orig == i] = np.min(W[data_labels_orig == i])
-    images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
+    # min_labels_orig = np.zeros(data.shape, dtype='f8')
+    # for i, _ in enumerate(centroids_orig):
+    #     min_labels_orig[data_labels_orig == i] = np.min(W[data_labels_orig == i])
+    # images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
 
 
-    min_filtered = minimum_filter(W, size=3)
+    min_filtered = minimum_filter(W2, size=3)
     images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
-    min_filtered = gaussian_filter(min_filtered, sigma=1)
-    images += horizon_support(aff, (min_filtered, 'min_filtered_sigma1'))
+    # min_filtered = gaussian_filter(min_filtered, sigma=1)
+    # images += horizon_support(aff, (min_filtered, 'min_filtered_sigma1'))
 
-    bk_min = min_filtered < 85
-    images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
+    # bk_min = min_filtered < 85
+    # images += horizon_support(aff, (bk_min.astype('f8'), 'bk_min'))
 
-    perc_filtered = percentile_filter(W, percentile=25, size=3)
-    images += horizon_support(aff, (perc_filtered, 'perc_filtered'))
+    # perc_filtered = percentile_filter(W, percentile=25, size=3)
+    # images += horizon_support(aff, (perc_filtered, 'perc_filtered'))
 
-    perc_filtered_enh = perc_filtered + 100 * Wggm
-    images += horizon_support(aff, (perc_filtered_enh, 'perc_filtered_enh'))
+    # perc_filtered_enh = perc_filtered + 100 * Wggm
+    # images += horizon_support(aff, (perc_filtered_enh, 'perc_filtered_enh'))
 
     # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
     # images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
