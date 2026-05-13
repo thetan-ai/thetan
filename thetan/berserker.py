@@ -1801,14 +1801,14 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     # Hessian computation
     # W_blur = gaussian_filter(W, sigma=1)
-    hess_elements = hessian_3d(W)
-    hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
-    # local curvature measure based on the sum of squares of the Hessian elements
-    local_curv_W = (hess_elements_compact ** 2).sum(axis=0)
-    images += horizon_support(aff, (local_curv_W, 'local_curv_W'))
+    # hess_elements = hessian_3d(W)
+    # hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
+    # # local curvature measure based on the sum of squares of the Hessian elements
+    # local_curv_W = (hess_elements_compact ** 2).sum(axis=0)
+    # images += horizon_support(aff, (local_curv_W, 'local_curv_W'))
     # Determinant of the Hessian
-    det_hess_W = np.linalg.det(hess_elements_compact.reshape(3, 3, W.shape[0], W.shape[1], W.shape[2]).transpose(2, 3, 4, 0, 1))
-    images += horizon_support(aff, (det_hess_W, 'det_hess_W'))
+    # det_hess_W = np.linalg.det(hess_elements_compact.reshape(3, 3, W.shape[0], W.shape[1], W.shape[2]).transpose(2, 3, 4, 0, 1))
+    # images += horizon_support(aff, (det_hess_W, 'det_hess_W'))
 
     # Sato filter
     # from skimage.filters import sato
@@ -1824,11 +1824,25 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     images += horizon_support(aff, (W_meijering, 'W_meijering'))
 
     # Blur W with Gaussian filter and add to images
-    W_blur = gaussian_filter(W, sigma=10)
+    W_blur = gaussian_filter(W, sigma=5)
     images += horizon_support(aff, (W_blur, 'W_blur'))
 
     W2 = W / (W_blur + 0.01) # add small constant to avoid division by zero
     images += horizon_support(aff, (W2, 'W2'))
+
+    W3 = 0.5 * W + 0.5 * W2
+    images += horizon_support(aff, (W3, 'W3'))
+
+    W4 = 0.5 * W + 0.5 * W_blur
+    images += horizon_support(aff, (W4, 'W4'))
+
+    W5 = W // 30
+    images += horizon_support(aff, (W5.astype('i8'), 'W5'))
+
+    W6 = W // 40
+    images += horizon_support(aff, (W6.astype('i8'), 'W6'))
+
+    return images
 
     # Run Sobel on W2 and add to images
     sobel_W2 = sobel(W2)
