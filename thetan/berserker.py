@@ -43,7 +43,6 @@ from thetan.core import (
     assign,
     candidate_labels_c,
     centroids_from_labels,
-    centroids_from_labels_3d,
     reassign_uncertain_update_labels,
     sequential,
     sequential_prelim,
@@ -1817,7 +1816,7 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # images += horizon_support(aff, (sato_W, 'sato_W'))
 
     # Sobel filter
-    from skimage.filters import meijering, sobel
+    from skimage.filters import sobel, meijering
     sobel_W = sobel(W)
     images += horizon_support(aff, (sobel_W, 'sobel_W'))
 
@@ -1842,13 +1841,6 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     W6 = W // 40
     images += horizon_support(aff, (W6.astype('i8'), 'W6'))
-
-    W6_centroids = centroids_from_labels_3d(W, W6.astype('i8'), affine)
-    print('W6 centroids shape: ', W6_centroids.shape)
-
-    W6_labels = np.ascontiguousarray(W6, dtype=np.int64)
-    W6_merged = welder(W6, W6_labels, W6_centroids, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)[0]
-    images += horizon_support(aff, (W6_merged.astype('i8'), 'W6_merged'))
 
     return images
 
