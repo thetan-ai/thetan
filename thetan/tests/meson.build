@@ -8,6 +8,8 @@ python_sources = [
   'test_dbscan.py',
   'test_distance_metrics.py',
   'test_neighbors.py',
+  'test_centroids_from_labels.py',
+  'test_clobber.py',
   ]
 
 

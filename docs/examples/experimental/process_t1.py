@@ -1,14 +1,20 @@
 import platform
-
 from os.path import join as pjoin
 from time import time
+
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import horizon
 from skimage.data import brain
-from thetan.berserker import berserker2_brain_seg, berserker2_brain_seg_mini, exponentiation_normalization, plot_exp_norm, enkefalos
 from sklearn.cluster import KMeans
 
+from thetan.berserker import (
+    berserker2_brain_seg,
+    berserker2_brain_seg_mini,
+    enkefalos,
+    exponentiation_normalization,
+    plot_exp_norm,
+)
 
 # T1 dataset
 fname = '/home/elef/tmp/IXI002-Guys-0828-T1.nii.gz'
