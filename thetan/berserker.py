@@ -1817,88 +1817,116 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # images += horizon_support(aff, (sato_W, 'sato_W'))
 
     # Sobel filter
-    from skimage.filters import meijering, sobel
-    sobel_W = sobel(W)
-    images += horizon_support(aff, (sobel_W, 'sobel_W'))
+    # from skimage.filters import meijering, sobel
+    # sobel_W = sobel(W)
+    # images += horizon_support(aff, (sobel_W, 'sobel_W'))
 
-    W_meijering = meijering(W, sigmas=range(1, 2), black_ridges=False)
-    images += horizon_support(aff, (W_meijering, 'W_meijering'))
+    # W_meijering = meijering(W, sigmas=range(1, 2), black_ridges=False)
+    # images += horizon_support(aff, (W_meijering, 'W_meijering'))
 
-    # Blur W with Gaussian filter and add to images
-    W_blur = gaussian_filter(W, sigma=5)
-    images += horizon_support(aff, (W_blur, 'W_blur'))
+    # # Blur W with Gaussian filter and add to images
+    # W_blur = gaussian_filter(W, sigma=5)
+    # images += horizon_support(aff, (W_blur, 'W_blur'))
 
-    W2 = W / (W_blur + 0.01) # add small constant to avoid division by zero
-    images += horizon_support(aff, (W2, 'W2'))
+    # W2 = W / (W_blur + 0.01) # add small constant to avoid division by zero
+    # images += horizon_support(aff, (W2, 'W2'))
 
-    W3 = 0.5 * W + 0.5 * W2
-    images += horizon_support(aff, (W3, 'W3'))
+    # W3 = 0.5 * W + 0.5 * W2
+    # images += horizon_support(aff, (W3, 'W3'))
 
-    W4 = 0.5 * W + 0.5 * W_blur
-    images += horizon_support(aff, (W4, 'W4'))
+    # W4 = 0.5 * W + 0.5 * W_blur
+    # images += horizon_support(aff, (W4, 'W4'))
 
-    W5 = W // 30
-    images += horizon_support(aff, (W5.astype('i8'), 'W5'))
+    # W5 = W // 30
+    # images += horizon_support(aff, (W5.astype('i8'), 'W5'))
 
     W6 = W // 40
     images += horizon_support(aff, (W6.astype('i8'), 'W6'))
 
-    W6_centroids = centroids_from_labels_3d(W, W6.astype('i8'), affine)
-    print('W6 centroids shape: ', W6_centroids.shape)
+    # W6_centroids = centroids_from_labels_3d(W, W6.astype('i8'), affine)
+    # print('W6 centroids shape: ', W6_centroids.shape)
 
-    W6_labels = np.ascontiguousarray(W6, dtype=np.int64)
-    W6_merged = welder(W6, W6_labels, W6_centroids, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)[0]
-    images += horizon_support(aff, (W6_merged.astype('i8'), 'W6_merged'))
+    # W6_labels = np.ascontiguousarray(W6, dtype=np.int64)
+    # W6_merged = welder(W6, W6_labels, W6_centroids, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)[0]
+    # images += horizon_support(aff, (W6_merged.astype('i8'), 'W6_merged'))
+
+    # Use patchify to create 3x3x3 patches of W and calculate the mean and variance of each patch, then add to images
+    # from thetan.patchify import patchify
+    W_patches = patchify(W, (3, 3, 3), step=1)
+    W_patches_mean = W_patches.mean(axis=(3, 4, 5))
+    W_patches_var = W_patches.var(axis=(3, 4, 5))
+    images += horizon_support(aff, (W_patches_mean, 'W_patches_mean'), (W_patches_var, 'W_patches_var'))
+
+
+    # Do the same as above for W6
+    W6 = np.pad(W6, pad_width=1, mode='constant', constant_values=0)
+    W6_patches = patchify(W6, (3, 3, 3), step=1)
+    W6_patches_mean = W6_patches.mean(axis=(3, 4, 5))
+    W6_patches_var = W6_patches.var(axis=(3, 4, 5))
+    images += horizon_support(aff, (W6_patches_mean, 'W6_patches_mean'), (W6_patches_var, 'W6_patches_var'))
+
+    # Concatenate mean and variance of W6 patches to create a similar shape with X (N, 2)
+    X = np.concatenate([5 * W6_patches_mean.reshape(-1, 1), W6_patches_var.reshape(-1, 1)], axis=1)
+    X = np.ascontiguousarray(X, dtype='f8')
+
+    # Find the most frequent values in W6_patches as integers for each patch and keep the top 3
+    # W6_unique = np.unique(W6_patches.reshape(-1, 27), axis=0)[:, -3:]
+
+
+    centroids, labels = berserker(X, theta=theta, metric='euclidean')
+
+    labels_im = labels.reshape(W.shape)
+    images += horizon_support(aff, (labels_im, 'W6_m_std_labels'))
 
     return images
 
     # Run Sobel on W2 and add to images
-    sobel_W2 = sobel(W2)
-    images += horizon_support(aff, (sobel_W2, 'sobel_W2'))
+    # sobel_W2 = sobel(W2)
+    # images += horizon_support(aff, (sobel_W2, 'sobel_W2'))
 
     # Run Meijering on W2 and add to images
-    W2_meijering = meijering(W2, sigmas=range(1, 2), black_ridges=False)
-    images += horizon_support(aff, (W2_meijering, 'W2_meijering'))
+    # W2_meijering = meijering(W2, sigmas=range(1, 2), black_ridges=False)
+    # images += horizon_support(aff, (W2_meijering, 'W2_meijering'))
 
-    W2 = np.interp(W2, xp=[0, 0.8* W2.max()], fp=[0., 900.])
-    images += horizon_support(aff, (W2, 'W2_scaled'))
-
-
-    advanced_gradients = False
-
-    if advanced_gradients:
-
-        bk_tmp = 100 * (W < bk)
-        images += horizon_support(aff, (bk_tmp.astype('f8'), 'bk_tmp'))
-
-        gx = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(1,0,0))
-        gy = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,1,0))
-        gz = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,0,1))
+    # W2 = np.interp(W2, xp=[0, 0.8* W2.max()], fp=[0., 900.])
+    # images += horizon_support(aff, (W2, 'W2_scaled'))
 
 
-        grad_dirs = np.stack([gx, gy, gz], axis=-1)
+    # advanced_gradients = False
 
-        norms = np.linalg.norm(grad_dirs, axis=-1, keepdims=True)
-        norms[norms == 0] = 1.0
-        grad_dirs = grad_dirs / norms
+    # if advanced_gradients:
 
-        mask = np.linalg.norm(np.stack([gx, gy, gz], axis=-1), axis=-1) > 0
-        grad_dirs[~mask] = 0
+    #     bk_tmp = 100 * (W < bk)
+    #     images += horizon_support(aff, (bk_tmp.astype('f8'), 'bk_tmp'))
 
-        peaks = grad_dirs[:,:,:,np.newaxis,:]
-        step = 1
+    #     gx = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(1,0,0))
+    #     gy = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,1,0))
+    #     gz = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,0,1))
 
-        from dipy.direction.peaks import PeaksAndMetrics
-        from dipy.io.peaks import save_pam
 
-        pam = PeaksAndMetrics()
-        pam.peak_dirs = peaks
-        pam.peak_values = np.ones(pam.peak_dirs.shape[:-1], dtype='f8')
-        pam.affine = np.eye(4)
+    #     grad_dirs = np.stack([gx, gy, gz], axis=-1)
 
-        from dipy.viz import skyline
+    #     norms = np.linalg.norm(grad_dirs, axis=-1, keepdims=True)
+    #     norms[norms == 0] = 1.0
+    #     grad_dirs = grad_dirs / norms
 
-        skyline(images=[(bk_tmp, aff, 'bk_tmp')], peaks=[(pam, 'vf')])
+    #     mask = np.linalg.norm(np.stack([gx, gy, gz], axis=-1), axis=-1) > 0
+    #     grad_dirs[~mask] = 0
+
+    #     peaks = grad_dirs[:,:,:,np.newaxis,:]
+    #     step = 1
+
+    #     from dipy.direction.peaks import PeaksAndMetrics
+    #     from dipy.io.peaks import save_pam
+
+    #     pam = PeaksAndMetrics()
+    #     pam.peak_dirs = peaks
+    #     pam.peak_values = np.ones(pam.peak_dirs.shape[:-1], dtype='f8')
+    #     pam.affine = np.eye(4)
+
+    #     from dipy.viz import skyline
+
+    #     skyline(images=[(bk_tmp, aff, 'bk_tmp')], peaks=[(pam, 'vf')])
 
 
     # laplacian_Wn2 = laplace(Wn2)
@@ -1908,28 +1936,28 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     # return images
 
-    data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W2, theta)
-    images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
+    # data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W2, theta)
+    # images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
 
-    print('Centroids shape: ', centroids_orig.shape)
-    print('Centroids (last column - sorted): ')
-    print(np.sort(centroids_orig[:, -1]))
+    # print('Centroids shape: ', centroids_orig.shape)
+    # print('Centroids (last column - sorted): ')
+    # print(np.sort(centroids_orig[:, -1]))
 
 
-    data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged = welder(W2, data_labels_orig, centroids_orig, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)
-    images += horizon_support(aff, (data_labels_merged, 'dl_merged'), (centroids_im_merged, 'cim_merged'), (centroids_im_median_merged, 'cmim_merged'))
-    print('New centroids shape: ', centroids_merged.shape)
-    print(np.sort(centroids_merged[:, -1]))
+    # data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged = welder(W2, data_labels_orig, centroids_orig, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)
+    # images += horizon_support(aff, (data_labels_merged, 'dl_merged'), (centroids_im_merged, 'cim_merged'), (centroids_im_median_merged, 'cmim_merged'))
+    # print('New centroids shape: ', centroids_merged.shape)
+    # print(np.sort(centroids_merged[:, -1]))
 
-    labels_sorted = np.argsort(centroids_merged[:, -1])
-    data_labels_lowest = np.zeros(data.shape, dtype='i8')
-    data_labels_lowest[data_labels_merged == labels_sorted[0]] = 1
-    images += horizon_support(aff, (data_labels_lowest.astype('f8'), 'dl_lowest'))
+    # labels_sorted = np.argsort(centroids_merged[:, -1])
+    # data_labels_lowest = np.zeros(data.shape, dtype='i8')
+    # data_labels_lowest[data_labels_merged == labels_sorted[0]] = 1
+    # images += horizon_support(aff, (data_labels_lowest.astype('f8'), 'dl_lowest'))
 
-    data_labels_second = np.zeros(data.shape, dtype='i8')
-    data_labels_second[data_labels_merged == labels_sorted[1]] = 1
-    images += horizon_support(aff, (data_labels_second.astype('f8'), 'dl_second'))
+    # data_labels_second = np.zeros(data.shape, dtype='i8')
+    # data_labels_second[data_labels_merged == labels_sorted[1]] = 1
+    # images += horizon_support(aff, (data_labels_second.astype('f8'), 'dl_second'))
 
 
     # for i, idx in enumerate(labels_sorted):
@@ -1941,8 +1969,8 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
 
 
-    min_filtered = minimum_filter(W2, size=3)
-    images += horizon_support(aff, (min_filtered, 'min_filtered'))
+    # min_filtered = minimum_filter(W2, size=3)
+    # images += horizon_support(aff, (min_filtered, 'min_filtered'))
 
     # min_filtered = gaussian_filter(min_filtered, sigma=1)
     # images += horizon_support(aff, (min_filtered, 'min_filtered_sigma1'))
@@ -1964,7 +1992,7 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # tps = tps / tps.max()
     # images.append((tps, aff, 'tps'))
 
-    return images
+    # return images
 
 
     # min_size_factor = 0.1
@@ -1980,68 +2008,68 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
 
 
-    print('Affine matrix: ', affine)
-    print('Affine voxel sizes: ', voxel_sizes)
+    # print('Affine matrix: ', affine)
+    # print('Affine voxel sizes: ', voxel_sizes)
 
-    gi, gj, gk = np.gradient(W_alpha, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) # previously this was data, but it makes more sense to calculate gradients on W_alpha
-    tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+    # gi, gj, gk = np.gradient(W_alpha, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2]) # previously this was data, but it makes more sense to calculate gradients on W_alpha
+    # tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
 
-    images += horizon_support(aff, (tvm, 'tvm'))
+    # images += horizon_support(aff, (tvm, 'tvm'))
 
-    # blur tvm to get more stable gradients
-    tvm_blur = gaussian_filter(tvm, sigma=1)
-    images += horizon_support(aff, (tvm_blur, 'tvm_blur'))
+    # # blur tvm to get more stable gradients
+    # tvm_blur = gaussian_filter(tvm, sigma=1)
+    # images += horizon_support(aff, (tvm_blur, 'tvm_blur'))
 
     # use tvm_blur to suppress W_alpha
     # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
 
-    W_alpha_reweighted = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
-    W_alpha_reweighted[W_alpha_reweighted < 0] = 0
-    images += horizon_support(aff, (W_alpha_reweighted, 'W_alpha_reweighted'))
+    # W_alpha_reweighted = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
+    # W_alpha_reweighted[W_alpha_reweighted < 0] = 0
+    # images += horizon_support(aff, (W_alpha_reweighted, 'W_alpha_reweighted'))
 
-    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha_reweighted, theta)
-    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+    # data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha_reweighted, theta)
+    # images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
 
-    print('Centroids shape: ', centroids.shape)
-    print('Centroids (last column - sorted): ')
-    print(np.sort(centroids[:, -1]))
+    # print('Centroids shape: ', centroids.shape)
+    # print('Centroids (last column - sorted): ')
+    # print(np.sort(centroids[:, -1]))
 
 
 
     # bk_im = W_alpha_reweighted < bk
-    bk_im = centroids_median_im < bk
+    # bk_im = centroids_median_im < bk
 
-    images += horizon_support(aff, (bk_im.astype('f8'), 'bk_im'))
+    # images += horizon_support(aff, (bk_im.astype('f8'), 'bk_im'))
 
-    bk_im_inv = 1 - bk_im
+    # bk_im_inv = 1 - bk_im
 
-    images += horizon_support(aff, (bk_im_inv.astype('f8'), 'bk_im_inv'))
+    # images += horizon_support(aff, (bk_im_inv.astype('f8'), 'bk_im_inv'))
 
-    # strel = ball(5)
-    data_labels_bk_im, num_bk_im = label(bk_im_inv)
-    print('bk_im number of objects: ', num_bk_im)
-    unq, cnts = np.unique(data_labels_bk_im, return_counts=True)
+    # # strel = ball(5)
+    # data_labels_bk_im, num_bk_im = label(bk_im_inv)
+    # print('bk_im number of objects: ', num_bk_im)
+    # unq, cnts = np.unique(data_labels_bk_im, return_counts=True)
 
-    largest_index = np.argmax(cnts)
+    # largest_index = np.argmax(cnts)
 
     # print('bk_im unique labels and counts: ', list(zip(unq, cnts)))
 
-    images += horizon_support(aff, (data_labels_bk_im.astype('f8'), 'data_labels_bk_im'))
+    # images += horizon_support(aff, (data_labels_bk_im.astype('f8'), 'data_labels_bk_im'))
 
-    big_five_cnts = np.sort(cnts)[-6:-1]
-    big_five_labels = np.argsort(cnts)[-6:-1]
+    # big_five_cnts = np.sort(cnts)[-6:-1]
+    # big_five_labels = np.argsort(cnts)[-6:-1]
 
-    print('Large counts ', big_five_cnts)
-    print('And their indices ', big_five_labels)
+    # print('Large counts ', big_five_cnts)
+    # print('And their indices ', big_five_labels)
 
-    bigz = np.zeros(data.shape, dtype='i8')
-    cnt = 1
-    for bfl in big_five_labels:
-        bigz[data_labels_bk_im == bfl] = cnt
-        cnt += 1
+    # bigz = np.zeros(data.shape, dtype='i8')
+    # cnt = 1
+    # for bfl in big_five_labels:
+    #     bigz[data_labels_bk_im == bfl] = cnt
+    #     cnt += 1
 
-    fo = find_objects(bigz)
-    print('Volumes')
+    # fo = find_objects(bigz)
+    # print('Volumes')
     # big_five_vols = bbox_from_fo(fo)
     # print(big_five_vols)
     # print(big_five_labels)
@@ -2053,32 +2081,32 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
 
 
-    images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
+    # images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
 
 
 
 
-    kernel = make_ball_kernel(5)   # radius 5 -> shape (11, 11, 11)
+    # kernel = make_ball_kernel(5)   # radius 5 -> shape (11, 11, 11)
 
-    min_coverage = 0.36
+    # min_coverage = 0.36
 
-    labels, num, sizes = label_binary_3d(bk_im_inv, kernel, min_coverage=min_coverage, return_num=True, return_sizes=True)
-    print('bk2_im number of objects (binary_label_3d): ', num)
-    print('Sizes of objects: ', sizes)
-    print('labels shape: ', labels.shape)
+    # labels, num, sizes = label_binary_3d(bk_im_inv, kernel, min_coverage=min_coverage, return_num=True, return_sizes=True)
+    # print('bk2_im number of objects (binary_label_3d): ', num)
+    # print('Sizes of objects: ', sizes)
+    # print('labels shape: ', labels.shape)
 
-    images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
+    # images += horizon_support(aff, (labels.astype('f8'), 'labels_binary_3d'))
 
-    support_kernel = make_ball_kernel(5)                # 11x11x11 local support
-    connectivity_kernel = make_connectivity_kernel(6)  # local graph edges
+    # support_kernel = make_ball_kernel(5)                # 11x11x11 local support
+    # connectivity_kernel = make_connectivity_kernel(6)  # local graph edges
 
-    labels2, num2, sizes2, filtered = label_binary_3d_v2(bk_im_inv, support_kernel, connectivity_kernel=connectivity_kernel, min_coverage=min_coverage, return_num=True, return_sizes=True, return_filtered=True)
-    print('bk2_im_inv number of objects (binary_label_3d_v2): ', num2)
-    print('Sizes of objects: ', sizes2)
-    print('labels2 shape: ', labels2.shape)
+    # labels2, num2, sizes2, filtered = label_binary_3d_v2(bk_im_inv, support_kernel, connectivity_kernel=connectivity_kernel, min_coverage=min_coverage, return_num=True, return_sizes=True, return_filtered=True)
+    # print('bk2_im_inv number of objects (binary_label_3d_v2): ', num2)
+    # print('Sizes of objects: ', sizes2)
+    # print('labels2 shape: ', labels2.shape)
 
-    images += horizon_support(aff, (labels2.astype('f8'), 'labels_binary_3d_v2'))
-    images += horizon_support(aff, (filtered.astype('f8'), 'filtered_binary_3d_v2'))
+    # images += horizon_support(aff, (labels2.astype('f8'), 'labels_binary_3d_v2'))
+    # images += horizon_support(aff, (filtered.astype('f8'), 'filtered_binary_3d_v2'))
 
     # save_nifti('labels_binary_3d.nii.gz', labels.astype('i4'), affine)
     # save_nifti('bk_im_inverted.nii.gz', (bk_im_inv).astype('i4'), affine)
@@ -2104,7 +2132,7 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
 
 
-    return images
+    # return images
 
 
 def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_min=0, perc_max=98):
