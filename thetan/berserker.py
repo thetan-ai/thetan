@@ -1791,7 +1791,66 @@ def get_top_3_frequent(X, pad_val=-1):
     return out
 
 
+
 def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98, diff=30, max_diff=100):
+
+
+    data = np.ascontiguousarray(data, dtype='f8')
+
+    print('Preparing data')
+    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
+    Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
+
+    Wcp = W.copy()
+    # aff = np.eye(4)
+    aff = affine.copy()
+
+    W = np.ascontiguousarray(W, dtype='f8')
+    images = horizon_support(aff, (W, 'W'))
+
+    # calculate min max of W
+    W_min = W.min()
+    W_max = W.max()
+    print('Wmin Wmax: ', W_min, W_max)
+
+    W_patches = patchify(W, (3, 3, 3), step=1)
+    W_patches_mean = W_patches.mean(axis=(3, 4, 5))
+    W_patches_var = W_patches.var(axis=(3, 4, 5))
+    images += horizon_support(aff, (W_patches_mean, 'W_patches_mean'), (W_patches_var, 'W_patches_var'))
+
+    # coefficient of variation (interesting)
+    W_patches_cv = W_patches_var / (W_patches_mean + 1e-12)
+    images += horizon_support(aff, (W_patches_cv, 'W_patches_cv'))
+
+    # Z-score normalization and standard error were not interesting
+    # Working with larger patches did not lead to any interesting results either. The coefficient of variation seems to be the most informative feature.
+
+    # blur cv
+    W_patches_cv_blur = gaussian_filter(W_patches_cv, sigma=1)  # sigma 2 was good as well.
+    images += horizon_support(aff, (W_patches_cv_blur, 'W_patches_cv_blur'))
+    
+    # pad W_patches_cv_blur to match the shape of W
+    pad_width = 1  # Adjust based on the patch size and step
+    W_patches_cv_blur_padded = np.pad(W_patches_cv_blur, pad_width, mode='edge')
+    W_patches_cv_blur = np.pad(W_patches_cv_blur, pad_width=1, mode='constant', constant_values=0)
+
+    # Devide W by cv_blur
+    W_cv_blur = W / (W_patches_cv_blur + 1e-12)
+    images += horizon_support(aff, (W_cv_blur, 'W_cv_blur'))
+    # Create mask corresponding to small values
+    W_cv_blur_sum = 0 * W_cv_blur
+    for th in [1, 2, 3, 4, 5, 6]:
+        W_cv_blur_mask = W_cv_blur < th
+        W_cv_blur_sum += W_cv_blur_mask.astype('f8')
+        images += horizon_support(aff, (W_cv_blur_mask.astype('f8'), f'W_cv_blur_mask_{th}'))
+
+    images += horizon_support(aff, (W_cv_blur_sum, 'W_cv_blur_sum'))
+
+    return images
+
+
+
+def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98, diff=30, max_diff=100):
 
     data = np.ascontiguousarray(data, dtype='f8')
 
