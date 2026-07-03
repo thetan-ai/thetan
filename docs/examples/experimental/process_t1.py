@@ -4,7 +4,7 @@ from time import time
 
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
-from dipy.viz import horizon
+from dipy.viz import skyline
 from skimage.data import brain
 from sklearn.cluster import KMeans
 
@@ -98,12 +98,12 @@ t = time()
 
 # images = berserker2_brain_seg_mini(data, affine, theta=120., alpha=1.5, scale=9, bk=20., bk2=400.)
 
-images = enkefalos(data, affine, theta=60., bk=80., diff=30, max_diff=80)
+images = enkefalos(data, affine, theta=50., bk=80., diff=30, max_diff=80)
 
 print('Total duration ', time() - t)
 print()
 
-horizon(images=images)
+skyline(images=images)
 print('Done')
 
 t = 1

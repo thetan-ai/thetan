@@ -1745,6 +1745,51 @@ def gradient_reweighting(W, affine, scale=2, sigma=1):
     return W_r, tvm_blur
 
 
+def get_top_3_frequent(X, pad_val=-1):
+    """
+    Returns the top 3 most frequent integers for each row in a 2D array.
+    
+    Parameters:
+    X (np.ndarray): 2D array of integers.
+    pad_val (int): Value used to pad rows that have fewer than 3 unique integers.
+    """
+    # 1. Find the global min and max to determine the required count array size
+    min_val = np.min(X)
+    max_val = np.max(X)
+    range_val = max_val - min_val + 1
+    
+    # 2. Shift values so the minimum integer becomes index 0
+    X_shifted = X - min_val
+    
+    # 3. Count frequencies dynamically based on the value spread
+    counts = np.zeros((X.shape[0], range_val), dtype=int)
+    np.add.at(counts, (np.arange(X.shape[0])[:, None], X_shifted), 1)
+    
+    # 4. Handle edge cases where the whole array has fewer than 3 unique numbers
+    top_k = min(3, range_val)
+    
+    # 5. Get the top indices (shifted) and their actual counts
+    top_idx = np.argsort(counts, axis=1)[:, -top_k:][:, ::-1]
+    top_counts = counts[np.arange(X.shape[0])[:, None], top_idx]
+    
+    # 6. Shift the values back to their original numerical domain
+    top_vals = top_idx + min_val
+    
+    # 7. Initialize the final (Rows, 3) output array with the pad_val
+    out = np.full((X.shape[0], 3), pad_val, dtype=X.dtype)
+    
+    # 8. Apply the mask: write the true values if count > 0, otherwise leave as pad_val
+    out[:, :top_k] = np.where(top_counts > 0, top_vals, pad_val)
+    
+    # 9. Replace the -1 with the top value in that row
+    for i in range(out.shape[0]):
+        if out[i, 1] == pad_val:
+            out[i, 1] = out[i, 0]
+        if out[i, 2] == pad_val:
+            out[i, 2] = out[i, 0]
+
+    return out
+
 
 def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98, diff=30, max_diff=100):
 
@@ -1761,6 +1806,26 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     W = np.ascontiguousarray(W, dtype='f8')
     images = horizon_support(aff, (W, 'W'))
 
+    # from skimage import filters, segmentation, measure
+
+    # img_s = filters.gaussian(img, sigma=1.0, preserve_range=True)
+
+    # gx = sobel(img_s, axis=0)
+    # gy = sobel(img_s, axis=1)
+    # gz = sobel(img_s, axis=2)
+    # grad = np.sqrt(gx**2 + gy**2 + gz**2)
+
+    # # markers should ideally come from prior thresholding,
+    # # manual seeds, connected components, or a learned probability map
+    # markers = measure.label(seed_mask)
+
+    # labels = segmentation.watershed(
+    #     grad,
+    #     markers=markers,
+    #     mask=foreground_mask
+    # )
+
+
     # from skimage.segmentation import felzenszwalb
 
     # felzenszwalb_seg = felzenszwalb(W, scale=100, sigma=1, min_size=50, channel_axis=None)
@@ -1773,6 +1838,13 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     # Wggm[Wggm > 1] = 1.
     images += horizon_support(aff, (Wggm, 'Wggm'))
 
+    # Wggm_mask = Wggm < 0.1
+    # images += horizon_support(aff, (Wggm_mask.astype('f8'), 'Wggm_mask'))
+
+    # # look only at thin boundaries between 0.08 and 0.14
+    # Wggm_region = (Wggm > 0.08) & (Wggm < 0.14)
+    # images += horizon_support(aff, (Wggm_region.astype('f8'), 'Wggm_region'))
+
     # Wn = W - Wggm * W
     # Wn[Wn < 0] = 0
 
@@ -1783,22 +1855,28 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     Wn[Wn < 0] = 0
     images += horizon_support(aff, (Wn, 'Wn'))
 
+    Wp = W + 200 * Wggm
+    Wp[Wp < 0] = 0
+    images += horizon_support(aff, (Wp, 'Wp'))
+
+
+
     bk_Wn = Wn < bk
     images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
 
-    laplacian_W = laplace(W)
-    images += horizon_support(aff, (laplacian_W, 'laplacian_W'))
+    # laplacian_W = laplace(W)
+    # images += horizon_support(aff, (laplacian_W, 'laplacian_W'))
 
-    glap_W = gaussian_laplace(W, sigma=1)
-    images += horizon_support(aff, (glap_W, 'glap_W'))
+    # glap_W = gaussian_laplace(W, sigma=1)
+    # images += horizon_support(aff, (glap_W, 'glap_W'))
 
     # compute biharmonic of W and add to images
 
-    biharmonic_W = laplace(laplacian_W)
-    images += horizon_support(aff, (biharmonic_W, 'biharmonic_W'))
+    # biharmonic_W = laplace(laplacian_W)
+    # images += horizon_support(aff, (biharmonic_W, 'biharmonic_W'))
 
-    gbih_W = gaussian_laplace(glap_W, sigma=1)
-    images += horizon_support(aff, (gbih_W, 'gbih_W'))
+    # gbih_W = gaussian_laplace(glap_W, sigma=1)
+    # images += horizon_support(aff, (gbih_W, 'gbih_W'))
 
     # Hessian computation
     # W_blur = gaussian_filter(W, sigma=1)
@@ -1843,6 +1921,12 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     W6 = W // 40
     images += horizon_support(aff, (W6.astype('i8'), 'W6'))
 
+    # W6n = Wn // 40
+    # images += horizon_support(aff, (W6n.astype('i8'), 'W6n'))
+
+    # W6p = Wp // 40
+    # images += horizon_support(aff, (W6p.astype('i8'), 'W6p'))
+
     # W6_centroids = centroids_from_labels_3d(W, W6.astype('i8'), affine)
     # print('W6 centroids shape: ', W6_centroids.shape)
 
@@ -1857,26 +1941,115 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     W_patches_var = W_patches.var(axis=(3, 4, 5))
     images += horizon_support(aff, (W_patches_mean, 'W_patches_mean'), (W_patches_var, 'W_patches_var'))
 
+    # create a ball mask of shape (3, 3, 3)
+    ball_mask = np.zeros((3, 3, 3))
+    center = (1, 1, 1)
+    for x in range(3):
+        for y in range(3):
+            for z in range(3):
+                if np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2 + (z - center[2]) ** 2) <= 1.5:
+                    ball_mask[x, y, z] = 1
+    
+    print('Ball mask sum: ')
+    print(ball_mask.sum())
+    print('Ball mask ratio: ')
+    print(ball_mask.sum() / 27)
 
     # Do the same as above for W6
     W6 = np.pad(W6, pad_width=1, mode='constant', constant_values=0)
     W6_patches = patchify(W6, (3, 3, 3), step=1)
+
+    # multiply each patch with the ball mask to keep only the values within the ball
+    # W6_patches = W6_patches * ball_mask[None, None, None, :, :, :]
+    # rather than multiplying, we can use the ball mask as a boolean mask to keep only the values within the ball and ignore the rest
+    
+    Xn = np.reshape(W6_patches, (W6_patches.shape[0], W6_patches.shape[1], W6_patches.shape[2], -1))
+
+    Xf = get_top_3_frequent(Xn.reshape(-1, 27).astype(int), pad_val=-1)
+
+    Xf_im = Xf.reshape(W6_patches.shape[:3] + (3,))
+    # Xf_im = np.interp(Xf_im, xp=[Xf_im.min(), Xf_im.max()], fp=[0., 1.])  
+    images += horizon_support(aff, (Xf_im, 'W6_patches_top3'))
+
+    Xf_first = Xf[:, 0].reshape(W6_patches.shape[:3])
+    images += horizon_support(aff, (Xf_first, 'W6_patches_top3_first'))
+
+    # create difference between W6 and Xf_first and add to images
+    # Diff = W6[1:-1, 1:-1, 1:-1] - Xf_first
+    # images += horizon_support(aff, (Diff, 'W6_minus_top3_first'))
+
     W6_patches_mean = W6_patches.mean(axis=(3, 4, 5))
     W6_patches_var = W6_patches.var(axis=(3, 4, 5))
     images += horizon_support(aff, (W6_patches_mean, 'W6_patches_mean'), (W6_patches_var, 'W6_patches_var'))
 
+
+    # Keep W6 less than 10 
+    W6_2 = W6[1:-1, 1:-1, 1:-1].copy()
+    # Keep only values in W6_2 that are less than or equal to 10, set the rest to 0
+    W6_2[W6_2 > 10] = 10
+    images += horizon_support(aff, (W6_2, 'W6_2'))
+
+    # Apply median filter to W6_2 and add to images
+    W6_2_median = median_filter(W6_2, size=3)
+    images += horizon_support(aff, (W6_2_median, 'W6_2_median'))
+
+    # Caclulate the difference between W6_2 and its median filtered version and add to images
+    W6_2_diff = W6_2 - W6_2_median
+    images += horizon_support(aff, (W6_2_diff, 'W6_2_diff'))
+
+    # Same with absolute difference
+    W6_2_abs_diff = np.abs(W6_2_diff)
+    images += horizon_support(aff, (W6_2_abs_diff, 'W6_2_abs_diff'))
+
+    # return images
+
+    # print('----------------------')
+    # print('Shape of Xf_first:', Xf_first.shape)
+    # print('W6 shape: ', W6.shape)
+    # print('----------------------')
+    
+    # Xf_sum = Xf.sum(axis=1)
+    # Xf_sum_im = Xf_sum.reshape(W6_patches.shape[:3])
+    # images += horizon_support(aff, (Xf_sum_im, 'W6_patches_top3_sum'))
+
+    # Xf_sum_im_unq, Xf_sum_im_cnts = np.unique(Xf_sum_im.ravel(), return_counts=True)
+    # print('W6 patches top 3 sum - unique values: ', Xf_sum_im_unq)
+    # print('W6 patches top 3 sum - counts: ', Xf_sum_im_cnts)
+
+    # Xf_sum_mask = Xf_sum_im > 8
+    # images += horizon_support(aff, (Xf_sum_mask.astype('f8'), 'W6_patches_top3_sum_mask'))
+
+    # W6_patches_sum = W6_patches.sum(axis=(3, 4, 5))
+
+    # W6sunq, W6cnts = np.unique(W6_patches_sum.ravel(), return_counts=True)
+    # print('W6 patch sums - unique values: ', W6sunq)
+    # print('W6 patch sums - counts: ', W6cnts)
+
+    # W6_patches_mean = W6_patches.mean(axis=(3, 4, 5))
+    # W6_patches_var = W6_patches.var(axis=(3, 4, 5))
+    # images += horizon_support(aff, (W6_patches_sum, 'W6_patches_sum'), (W6_patches_mean, 'W6_patches_mean'), (W6_patches_var, 'W6_patches_var'))
+
     # Concatenate mean and variance of W6 patches to create a similar shape with X (N, 2)
-    X = np.concatenate([5 * W6_patches_mean.reshape(-1, 1), W6_patches_var.reshape(-1, 1)], axis=1)
-    X = np.ascontiguousarray(X, dtype='f8')
+    # X = np.concatenate([5 * W6_patches_mean.reshape(-1, 1), W6_patches_var.reshape(-1, 1)], axis=1)
+    # X = np.ascontiguousarray(X, dtype='f8')
 
     # Find the most frequent values in W6_patches as integers for each patch and keep the top 3
     # W6_unique = np.unique(W6_patches.reshape(-1, 27), axis=0)[:, -3:]
 
+    X6 = W6_2.reshape(-1, 1)
 
-    centroids, labels = berserker(X, theta=theta, metric='euclidean')
+    centroids6, labels6 = berserker(X6, theta=2, metric='euclidean')
 
-    labels_im = labels.reshape(W.shape)
-    images += horizon_support(aff, (labels_im, 'W6_m_std_labels'))
+    labels_im6 = labels6.reshape(W6_2.shape)
+    images += horizon_support(aff, (labels_im6, 'W6_2_labels'))
+
+    # X[:, 3] = 90 * W6_2.ravel()
+    # centroids6f, labels6f = berserker(X, theta=theta, metric='euclidean')
+    # labels_im6f = labels6f.reshape(W6_2.shape)
+    # images += horizon_support(aff, (labels_im6f, 'W6_2_labels_fullX'))
+
+    # centroids6f_im = centroid_images(labels_im6f, centroids6f)
+    # images += horizon_support(aff, (centroids6f_im, 'W6_2_labels_fullX_centroids'))
 
     return images
 
@@ -2005,8 +2178,6 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     # bk_im = W_alpha < bk
     # images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
-
-
 
     # print('Affine matrix: ', affine)
     # print('Affine voxel sizes: ', voxel_sizes)
