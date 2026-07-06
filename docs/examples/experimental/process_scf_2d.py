@@ -5,7 +5,7 @@ from matplotlib.colors import PowerNorm
 from matplotlib.patches import Patch
 from scipy.ndimage import binary_dilation
 
-from thetan.berserker import scf_2d
+from thetan import scf_2d
 
 
 # Generating synthetic data

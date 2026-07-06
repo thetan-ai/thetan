@@ -4,7 +4,7 @@ import numpy as np
 from dipy.viz import skyline
 from scipy.ndimage import binary_dilation
 
-from thetan.berserker import scf_3d
+from thetan import scf_3d
 
 
 def make_sphere_fragment(

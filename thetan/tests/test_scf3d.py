@@ -2,7 +2,7 @@ import numpy as np
 import numpy.testing as npt
 from scipy.ndimage import gaussian_filter1d, shift
 
-from thetan.berserker import (
+from thetan.completion import (
     _advect_3d,
     _inject_field_3d,
     _propagate_3d,
