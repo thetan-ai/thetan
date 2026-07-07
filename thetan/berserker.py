@@ -1846,6 +1846,16 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
 
     images += horizon_support(aff, (W_cv_blur_sum, 'W_cv_blur_sum'))
 
+    # Create a mask for regular background from W
+    W_bk_mask = W < bk
+    images += horizon_support(aff, (W_bk_mask.astype('f8'), 'W_bk_mask'))
+
+    # Consider applying SCFs directly on gradient magnitude
+    # To be done
+
+    # Check back to new Wn (-200)
+    # Might be useful for separating the dark regions in the boundary of the brain
+
     return images
 
 
