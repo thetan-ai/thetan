@@ -13,6 +13,7 @@ from scipy.ndimage import (
     distance_transform_edt,
     find_objects,
     gaussian_filter,
+    gaussian_filter1d,
     gaussian_gradient_magnitude,
     gaussian_laplace,
     generate_binary_structure,
@@ -22,6 +23,8 @@ from scipy.ndimage import (
     median_filter,
     minimum_filter,
     percentile_filter,
+    shift,
+    sobel,
 )
 from skimage.morphology import reconstruction
 from skimage.segmentation import flood_fill
@@ -83,8 +86,8 @@ def hessian_3d(image):
     H = np.empty((3, 3) + image.shape, dtype=image.dtype)
 
     H[0, 0], H[0, 1], H[0, 2] = np.gradient(g0)  # ∂²f/∂x², ∂²f/∂x∂y, ∂²f/∂x∂z
-    _,       H[1, 1], H[1, 2] = np.gradient(g1)  # _,       ∂²f/∂y², ∂²f/∂y∂z
-    _,       _,       H[2, 2] = np.gradient(g2)  # _,       _,       ∂²f/∂z²
+    _, H[1, 1], H[1, 2] = np.gradient(g1)  # _,       ∂²f/∂y², ∂²f/∂y∂z
+    _, _, H[2, 2] = np.gradient(g2)  # _,       _,       ∂²f/∂z²
 
     # Symmetry
     H[1, 0] = H[0, 1]
@@ -93,17 +96,18 @@ def hessian_3d(image):
 
     return H
 
+
 def check_arr(a):
     print(a.shape, a.dtype, a.min(), a.max())
 
+
 def check_module_load():
 
-    print('yep')
+    print("yep")
 
 
 def candidate_labels(centroids, labels, initial_labels):
-    """ Find labels for removal in cases of conflict
-    """
+    """Find labels for removal in cases of conflict"""
     nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
     updated_labels = initial_labels.copy()
     clusters = np.empty((centroids.shape[0], 0)).tolist()
@@ -135,13 +139,11 @@ def candidate_labels(centroids, labels, initial_labels):
             if l > can:
                 updated_labels[i] -= 1
 
-
     return nice, candidates, clusters, updated_labels
 
 
 def candidate_labels_outliers(centroids, candidates, initial_labels):
-    """ Find labels for removal in cases of outliers
-    """
+    """Find labels for removal in cases of outliers"""
     nice = np.ones(initial_labels.shape[0], dtype=initial_labels.dtype)
     updated_labels = initial_labels.copy()
 
@@ -169,18 +171,17 @@ def candidate_labels_outliers(centroids, candidates, initial_labels):
 
 def labels_to_centroids(data, labels):
 
-    unique_labels, unique_counts = np.unique(labels,
-                                             return_counts=True)
+    unique_labels, unique_counts = np.unique(labels, return_counts=True)
 
     centroids = np.zeros((len(unique_labels), data.shape[1]))
 
-    for (i, (u, c)) in enumerate(zip(unique_labels, unique_counts)):
+    for i, (u, c) in enumerate(zip(unique_labels, unique_counts)):
         centroids[i] = np.sum(data[labels == u], axis=0) / c
 
     return centroids
 
 
-def tsg_randomized(X, theta, metric='euclidean', num_shuffles=10):
+def tsg_randomized(X, theta, metric="euclidean", num_shuffles=10):
     sum_of_time = 0
     all_centroids = {}
     X_work = X.copy()
@@ -188,47 +189,44 @@ def tsg_randomized(X, theta, metric='euclidean', num_shuffles=10):
     num_centroids = []
     timings = []
     for s in range(num_shuffles):
-
         np.random.shuffle(X_work)
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
         centroids, _ = sequential(X_work_cp, theta=theta, metric=metric)
         t2 = time()
-        timings.append(t2-t1)
+        timings.append(t2 - t1)
 
         all_centroids[s] = centroids
         num_centroids.append(len(centroids))
 
-    print('Time for tg1 calls', np.sum(timings))
+    print("Time for tg1 calls", np.sum(timings))
     sum_of_time += np.sum(timings)
     total_num_centroids = np.sum(num_centroids)
-    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype='f8')
+    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype="f8")
 
     offset = 0
 
     for s in range(num_shuffles):
-
-        X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
+        X_centroids[offset : offset + all_centroids[s].shape[0]] = all_centroids[s]
         offset += all_centroids[s].shape[0]
 
     t1 = time()
     new_centroids, _ = sequential(X_centroids, theta=theta, metric=metric)
     t2 = time()
     sum_of_time += t2 - t1
-    print('Time for tg1 on centroids', t2 - t1)
-
+    print("Time for tg1 on centroids", t2 - t1)
 
     t1 = time()
     final_indices = assign(X, new_centroids, metric=metric)
     t2 = time()
     sum_of_time += t2 - t1
-    print('Time for assign calls', t2 - t1)
+    print("Time for assign calls", t2 - t1)
     final_centroids = labels_to_centroids(X, final_indices)
 
     return final_centroids, final_indices, sum_of_time
 
 
-def berserker_dbg(points, theta, metric='euclidean', all_out=True, verbose=True):
+def berserker_dbg(points, theta, metric="euclidean", all_out=True, verbose=True):
 
     info_dict = {}
     t0 = time()
@@ -239,58 +237,60 @@ def berserker_dbg(points, theta, metric='euclidean', all_out=True, verbose=True)
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-
     t1 = time()
-    info_dict['Shuffle 1 X'] = t1 - t0
+    info_dict["Shuffle 1 X"] = t1 - t0
 
-    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta, metric=metric,
-                                                       all_out=True)
+    initial_centroids, initial_labels, _, _ = sequential(
+        points2, theta=theta, metric=metric, all_out=True
+    )
 
     t2 = time()
 
-    info_dict['Shuffle 1 TG1 X'] = t2 - t1
+    info_dict["Shuffle 1 TG1 X"] = t2 - t1
 
     if verbose:
-        print('ic', initial_centroids.shape)
+        print("ic", initial_centroids.shape)
 
     t3 = time()
-    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta, metric=metric,
-                                           all_out=True)
+    c_centroids, c_labels, _, _ = sequential(
+        initial_centroids, theta=theta, metric=metric, all_out=True
+    )
 
     t4 = time()
 
-    info_dict['Shuffle 1 TG1 C'] = t4 - t3
+    info_dict["Shuffle 1 TG1 C"] = t4 - t3
 
     t5 = time()
 
-    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(
+        c_centroids, c_labels, initial_labels
+    )
 
     t6 = time()
 
-    info_dict['Shuffle 1 CL'] = t6 - t5
+    info_dict["Shuffle 1 CL"] = t6 - t5
 
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
     if verbose:
-        print('ec', even_centroids.shape)
+        print("ec", even_centroids.shape)
 
     t7 = time()
 
-    info_dict['Shuffle 1 DEL'] = t7 - t6
+    info_dict["Shuffle 1 DEL"] = t7 - t6
 
-    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
-                                                       updated_labels, nice,
-                                                       metric=metric)
+    updated_labels2 = reassign_uncertain_update_labels(
+        points2, even_centroids, updated_labels, nice, metric=metric
+    )
 
     t8 = time()
 
-    info_dict['Shuffle 1 REA X'] = t8 - t7
+    info_dict["Shuffle 1 REA X"] = t8 - t7
 
     even_centroids_ex = centroids_from_labels(points2, updated_labels2)
 
     t9 = time()
 
-    info_dict['Shuffle 1 CEN_LA X'] = t9 - t8
-
+    info_dict["Shuffle 1 CEN_LA X"] = t9 - t8
 
     # This second shuffle resolves many problems with centroids appearing between clusters
     # np.random.shuffle(points)
@@ -300,49 +300,50 @@ def berserker_dbg(points, theta, metric='euclidean', all_out=True, verbose=True)
 
     t10 = time()
 
-    info_dict['Shuffle 2 X'] = t10 - t9
+    info_dict["Shuffle 2 X"] = t10 - t9
 
-    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta,
-                                              metric=metric,
-                                              all_out=True)
+    p_centroids, p_labels, _, _ = sequential_prelim(
+        points3, even_centroids_ex, theta=theta, metric=metric, all_out=True
+    )
 
     t11 = time()
     if verbose:
-        print('p_centroids', p_centroids.shape)
+        print("p_centroids", p_centroids.shape)
 
-    info_dict['Shuffle 2 TM X'] = t11 - t10
-
+    info_dict["Shuffle 2 TM X"] = t11 - t10
 
     t12 = time()
-    c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta,
-                                             metric=metric, all_out=True)
+    c_centroids2, c_labels2, _, _ = sequential(
+        p_centroids, theta=theta, metric=metric, all_out=True
+    )
 
     t13 = time()
 
-
-    info_dict['Shuffle 2 TG1 PC'] = t13 - t12
+    info_dict["Shuffle 2 TG1 PC"] = t13 - t12
 
     # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
-    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(
+        c_centroids2, c_labels2, p_labels
+    )
 
     t14 = time()
 
-    info_dict['Shuffle 2 CL'] = t14 - t13
+    info_dict["Shuffle 2 CL"] = t14 - t13
 
     even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
 
     t15 = time()
     if verbose:
-        print('ec2 ', even_centroids2.shape)
+        print("ec2 ", even_centroids2.shape)
 
-    info_dict['Shuffle 2 DEL'] = t15 - t14
+    info_dict["Shuffle 2 DEL"] = t15 - t14
 
-    updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
-                                                          updated_labels2x, nice2,
-                                                          metric=metric)
+    updated_labels_ex2 = reassign_uncertain_update_labels(
+        points3, even_centroids2, updated_labels2x, nice2, metric=metric
+    )
     t16 = time()
 
-    info_dict['Shuffle 2 REA X'] = t16 - t15
+    info_dict["Shuffle 2 REA X"] = t16 - t15
 
     # bring labels back from original points (not points3)
     updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
@@ -351,42 +352,60 @@ def berserker_dbg(points, theta, metric='euclidean', all_out=True, verbose=True)
     t17 = time()
 
     if verbose:
-        print('ec2x ', even_centroids_ex2.shape)
+        print("ec2x ", even_centroids_ex2.shape)
 
-    info_dict['Shuffle 2 CEN_LA *'] = t17 - t16
+    info_dict["Shuffle 2 CEN_LA *"] = t17 - t16
 
     # quality over speed option not available in this version yet
     if verbose:
-        print('Times')
+        print("Times")
         print(info_dict)
 
     t = 1
 
     if all_out:
-        return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
+        return (
+            even_centroids_ex2,
+            updated_labels_ex2,
+            initial_centroids,
+            even_centroids,
+            even_centroids_ex,
+            p_centroids,
+            p_labels,
+            even_centroids2,
+        )
 
     else:
         return even_centroids_ex2, updated_labels_ex2
 
+
 # @profile
-def berserker(points, theta, metric='euclidean'):
+def berserker(points, theta, metric="euclidean"):
     # required in order to computer properly memory consumption
 
     ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-    initial_centroids, initial_labels = sequential(points2, theta=theta, metric=metric, all_out=False)
+    initial_centroids, initial_labels = sequential(
+        points2, theta=theta, metric=metric, all_out=False
+    )
 
-    c_centroids, c_labels = sequential(initial_centroids, theta=theta, metric=metric, all_out=False)
+    c_centroids, c_labels = sequential(
+        initial_centroids, theta=theta, metric=metric, all_out=False
+    )
 
-    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(
+        c_centroids, c_labels, initial_labels
+    )
 
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
 
     del initial_centroids, initial_labels, candidates, _clusters, c_centroids, c_labels
 
-    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids, updated_labels, nice, metric=metric)
+    updated_labels2 = reassign_uncertain_update_labels(
+        points2, even_centroids, updated_labels, nice, metric=metric
+    )
 
     del nice, even_centroids, updated_labels
 
@@ -400,11 +419,17 @@ def berserker(points, theta, metric='euclidean'):
     points3 = points[ind2].copy()
     ind2_inv = np.argsort(ind2)
 
-    p_centroids, p_labels = sequential_prelim(points3, even_centroids_ex, theta=theta, metric=metric, all_out=False)
+    p_centroids, p_labels = sequential_prelim(
+        points3, even_centroids_ex, theta=theta, metric=metric, all_out=False
+    )
 
-    c_centroids2, c_labels2 = sequential(p_centroids, theta=theta, metric=metric, all_out=False)
+    c_centroids2, c_labels2 = sequential(
+        p_centroids, theta=theta, metric=metric, all_out=False
+    )
 
-    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(
+        c_centroids2, c_labels2, p_labels
+    )
 
     del c_centroids2, c_labels2, p_labels, _clusters2
 
@@ -412,9 +437,9 @@ def berserker(points, theta, metric='euclidean'):
 
     del p_centroids, candidates2
 
-    updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
-                                                          updated_labels2x, nice2,
-                                                          metric=metric)
+    updated_labels_ex2 = reassign_uncertain_update_labels(
+        points3, even_centroids2, updated_labels2x, nice2, metric=metric
+    )
 
     del points3, even_centroids2, updated_labels2x, nice2
 
@@ -425,7 +450,7 @@ def berserker(points, theta, metric='euclidean'):
     return even_centroids_ex2, updated_labels_ex2
 
 
-def berserker2_ablation(points, theta, metric='euclidean', all_out=True, verbose=True):
+def berserker2_ablation(points, theta, metric="euclidean", all_out=True, verbose=True):
 
     info_dict = {}
     t0 = time()
@@ -437,56 +462,59 @@ def berserker2_ablation(points, theta, metric='euclidean', all_out=True, verbose
     ind_inv = np.argsort(ind)
 
     t1 = time()
-    info_dict['Shuffle 1 X'] = t1 - t0
+    info_dict["Shuffle 1 X"] = t1 - t0
 
-    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta, metric=metric,
-                                                       all_out=True)
+    initial_centroids, initial_labels, _, _ = sequential(
+        points2, theta=theta, metric=metric, all_out=True
+    )
 
     t2 = time()
 
-    info_dict['Shuffle 1 TG1 X'] = t2 - t1
+    info_dict["Shuffle 1 TG1 X"] = t2 - t1
 
     if verbose:
-        print('ic', initial_centroids.shape)
+        print("ic", initial_centroids.shape)
 
     t3 = time()
-    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta, metric=metric,
-                                           all_out=True)
+    c_centroids, c_labels, _, _ = sequential(
+        initial_centroids, theta=theta, metric=metric, all_out=True
+    )
 
     t4 = time()
 
-    info_dict['Shuffle 1 TG1 C'] = t4 - t3
+    info_dict["Shuffle 1 TG1 C"] = t4 - t3
 
     t5 = time()
 
-    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(
+        c_centroids, c_labels, initial_labels
+    )
 
     t6 = time()
 
-    info_dict['Shuffle 1 CL'] = t6 - t5
+    info_dict["Shuffle 1 CL"] = t6 - t5
 
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
     if verbose:
-        print('ec', even_centroids.shape)
+        print("ec", even_centroids.shape)
 
     t7 = time()
 
-    info_dict['Shuffle 1 DEL'] = t7 - t6
+    info_dict["Shuffle 1 DEL"] = t7 - t6
 
-    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
-                                                       updated_labels, nice,
-                                                       metric=metric)
+    updated_labels2 = reassign_uncertain_update_labels(
+        points2, even_centroids, updated_labels, nice, metric=metric
+    )
 
     t8 = time()
 
-    info_dict['Shuffle 1 REA X'] = t8 - t7
+    info_dict["Shuffle 1 REA X"] = t8 - t7
 
     even_centroids_ex = centroids_from_labels(points2, updated_labels2)
 
     t9 = time()
 
-    info_dict['Shuffle 1 CEN_LA X'] = t9 - t8
-
+    info_dict["Shuffle 1 CEN_LA X"] = t9 - t8
 
     # This second shuffle resolves many problems with centroids appearing between clusters
     # np.random.shuffle(points)
@@ -496,49 +524,50 @@ def berserker2_ablation(points, theta, metric='euclidean', all_out=True, verbose
 
     t10 = time()
 
-    info_dict['Shuffle 2 X'] = t10 - t9
+    info_dict["Shuffle 2 X"] = t10 - t9
 
-    p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta,
-                                              metric=metric,
-                                              all_out=True)
+    p_centroids, p_labels, _, _ = sequential_prelim(
+        points3, even_centroids_ex, theta=theta, metric=metric, all_out=True
+    )
 
     t11 = time()
     if verbose:
-        print('p_centroids', p_centroids.shape)
+        print("p_centroids", p_centroids.shape)
 
-    info_dict['Shuffle 2 TM X'] = t11 - t10
-
+    info_dict["Shuffle 2 TM X"] = t11 - t10
 
     t12 = time()
-    c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta,
-                                             metric=metric, all_out=True)
+    c_centroids2, c_labels2, _, _ = sequential(
+        p_centroids, theta=theta, metric=metric, all_out=True
+    )
 
     t13 = time()
 
-
-    info_dict['Shuffle 2 TG1 PC'] = t13 - t12
+    info_dict["Shuffle 2 TG1 PC"] = t13 - t12
 
     # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
-    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+    nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(
+        c_centroids2, c_labels2, p_labels
+    )
 
     t14 = time()
 
-    info_dict['Shuffle 2 CL'] = t14 - t13
+    info_dict["Shuffle 2 CL"] = t14 - t13
 
     even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
 
     t15 = time()
     if verbose:
-        print('ec2 ', even_centroids2.shape)
+        print("ec2 ", even_centroids2.shape)
 
-    info_dict['Shuffle 2 DEL'] = t15 - t14
+    info_dict["Shuffle 2 DEL"] = t15 - t14
 
-    updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
-                                                          updated_labels2x, nice2,
-                                                          metric=metric)
+    updated_labels_ex2 = reassign_uncertain_update_labels(
+        points3, even_centroids2, updated_labels2x, nice2, metric=metric
+    )
     t16 = time()
 
-    info_dict['Shuffle 2 REA X'] = t16 - t15
+    info_dict["Shuffle 2 REA X"] = t16 - t15
 
     # bring labels back from original points (not points3)
     updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
@@ -547,13 +576,13 @@ def berserker2_ablation(points, theta, metric='euclidean', all_out=True, verbose
     t17 = time()
 
     if verbose:
-        print('ec2x ', even_centroids_ex2.shape)
+        print("ec2x ", even_centroids_ex2.shape)
 
-    info_dict['Shuffle 2 CEN_LA *'] = t17 - t16
+    info_dict["Shuffle 2 CEN_LA *"] = t17 - t16
 
     # quality over speed option not available in this version yet
     if verbose:
-        print('Times')
+        print("Times")
         print(info_dict)
 
     t = 1
@@ -561,56 +590,77 @@ def berserker2_ablation(points, theta, metric='euclidean', all_out=True, verbose
     if all_out:
         # return even_centroids_ex2, updated_labels_ex2, initial_centroids, even_centroids, even_centroids_ex, p_centroids, p_labels, even_centroids2
 
-        return even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv
+        return (
+            even_centroids_ex2,
+            updated_labels_ex2,
+            initial_centroids,
+            initial_labels,
+            even_centroids_ex,
+            updated_labels2,
+            p_centroids,
+            p_labels,
+            ind_inv,
+            ind2_inv,
+        )
     else:
         return even_centroids_ex2, updated_labels_ex2
 
 
-def berserker2_iterative(points, theta, metric='euclidean', all_out=True, verbose=True, iter_max=1):
+def berserker2_iterative(
+    points, theta, metric="euclidean", all_out=True, verbose=True, iter_max=1
+):
 
     ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
     points2 = points[ind].copy()
     ind_inv = np.argsort(ind)
 
-    initial_centroids, initial_labels, _, _ = sequential(points2, theta=theta, metric=metric,
-                                                       all_out=True)
+    initial_centroids, initial_labels, _, _ = sequential(
+        points2, theta=theta, metric=metric, all_out=True
+    )
 
-    c_centroids, c_labels, _, _ = sequential(initial_centroids, theta=theta, metric=metric,
-                                           all_out=True)
+    c_centroids, c_labels, _, _ = sequential(
+        initial_centroids, theta=theta, metric=metric, all_out=True
+    )
 
-    nice, candidates, _clusters, updated_labels = candidate_labels_c(c_centroids, c_labels, initial_labels)
+    nice, candidates, _clusters, updated_labels = candidate_labels_c(
+        c_centroids, c_labels, initial_labels
+    )
 
     even_centroids = np.delete(initial_centroids, candidates, axis=0)
 
-    updated_labels2 = reassign_uncertain_update_labels(points2, even_centroids,
-                                                       updated_labels, nice,
-                                                       metric=metric)
+    updated_labels2 = reassign_uncertain_update_labels(
+        points2, even_centroids, updated_labels, nice, metric=metric
+    )
 
     even_centroids_ex = centroids_from_labels(points2, updated_labels2)
 
     iter_cnt = 1
     while True:
-
         # This second shuffle resolves many problems with centroids appearing between clusters
-        ind2 = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+        ind2 = np.random.choice(
+            np.arange(points.shape[0]), points.shape[0], replace=False
+        )
         points3 = points[ind2].copy()
         ind2_inv = np.argsort(ind2)
 
-        p_centroids, p_labels, _, _ = sequential_prelim(points3, even_centroids_ex, theta=theta,
-                                                  metric=metric,
-                                                  all_out=True)
+        p_centroids, p_labels, _, _ = sequential_prelim(
+            points3, even_centroids_ex, theta=theta, metric=metric, all_out=True
+        )
 
-        c_centroids2, c_labels2, _, _ = sequential(p_centroids, theta=theta,
-                                                metric=metric, all_out=True)
+        c_centroids2, c_labels2, _, _ = sequential(
+            p_centroids, theta=theta, metric=metric, all_out=True
+        )
 
         # nice2, candidates2, _clusters2, updated_labels2x = candidate_labels(c_centroids2, c_labels2, p_labels)
-        nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(c_centroids2, c_labels2, p_labels)
+        nice2, candidates2, _clusters2, updated_labels2x = candidate_labels_c(
+            c_centroids2, c_labels2, p_labels
+        )
 
         even_centroids2 = np.delete(p_centroids, candidates2, axis=0)
 
-        updated_labels_ex2 = reassign_uncertain_update_labels(points3, even_centroids2,
-                                                              updated_labels2x, nice2,
-                                                              metric=metric)
+        updated_labels_ex2 = reassign_uncertain_update_labels(
+            points3, even_centroids2, updated_labels2x, nice2, metric=metric
+        )
 
         # bring labels back from original points (not points3)
         updated_labels_ex2 = updated_labels_ex2[ind2_inv].copy()
@@ -623,12 +673,23 @@ def berserker2_iterative(points, theta, metric='euclidean', all_out=True, verbos
             iter_cnt += 1
 
     if all_out:
-        return even_centroids_ex2, updated_labels_ex2, initial_centroids, initial_labels, even_centroids_ex, updated_labels2, p_centroids, p_labels, ind_inv, ind2_inv
+        return (
+            even_centroids_ex2,
+            updated_labels_ex2,
+            initial_centroids,
+            initial_labels,
+            even_centroids_ex,
+            updated_labels2,
+            p_centroids,
+            p_labels,
+            ind_inv,
+            ind2_inv,
+        )
     else:
         return even_centroids_ex2, updated_labels_ex2
 
 
-def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
+def tb_randomized(X, theta, metric="euclidean", num_shuffles=10):
     sum_of_time = 0
     all_centroids = {}
     X_work = X.copy()
@@ -636,45 +697,45 @@ def tb_randomized(X, theta, metric='euclidean', num_shuffles=10):
     num_centroids = []
     timings = []
     for s in range(num_shuffles):
-
         np.random.shuffle(X_work)
         X_work_cp = np.ascontiguousarray(X_work)
         t1 = time()
-        centroids, _ = berserker_dbg(X_work_cp, theta=theta, metric=metric, all_out=False, verbose=False)
+        centroids, _ = berserker_dbg(
+            X_work_cp, theta=theta, metric=metric, all_out=False, verbose=False
+        )
         t2 = time()
-        timings.append(t2-t1)
+        timings.append(t2 - t1)
 
         all_centroids[s] = centroids
         num_centroids.append(len(centroids))
 
-    print('Time for TB calls', np.sum(timings))
+    print("Time for TB calls", np.sum(timings))
     sum_of_time += np.sum(timings)
     total_num_centroids = np.sum(num_centroids)
-    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype='f8')
+    X_centroids = np.zeros((total_num_centroids, X_work.shape[1]), dtype="f8")
 
     offset = 0
 
     for s in range(num_shuffles):
-
-        X_centroids[offset:offset + all_centroids[s].shape[0]] = all_centroids[s]
+        X_centroids[offset : offset + all_centroids[s].shape[0]] = all_centroids[s]
         offset += all_centroids[s].shape[0]
 
     t1 = time()
-    new_centroids, _ = berserker_dbg(X_centroids, theta=theta, metric=metric, all_out=False, verbose=False)
+    new_centroids, _ = berserker_dbg(
+        X_centroids, theta=theta, metric=metric, all_out=False, verbose=False
+    )
     t2 = time()
     sum_of_time += t2 - t1
-    print('Time for tg1 on centroids', t2 - t1)
-
+    print("Time for tg1 on centroids", t2 - t1)
 
     t1 = time()
     final_indices = assign(X, new_centroids, metric=metric)
     t2 = time()
     sum_of_time += t2 - t1
-    print('Time for assign calls', t2 - t1)
+    print("Time for assign calls", t2 - t1)
     final_centroids = labels_to_centroids(X, final_indices)
 
     return final_centroids, final_indices, sum_of_time
-
 
 
 def berserker2_to_3D_labels(X, theta, data_dims, verbose=False, mask=None):
@@ -704,17 +765,12 @@ def berserker2_to_3D_labels(X, theta, data_dims, verbose=False, mask=None):
 
     data_labels = labelsp.copy()
     data_labels = data_labels.reshape(data_dims)
-    data_labels = data_labels.astype('f8')
+    data_labels = data_labels.astype("f8")
     return data_labels, centroids
 
 
-
-
-
-
-
 def X_to_many_3D(X, data_dims):
-    """ Currently assuming only 4 features"""
+    """Currently assuming only 4 features"""
 
     X0 = X[:, 0].reshape(data_dims)
     X1 = X[:, 1].reshape(data_dims)
@@ -730,12 +786,12 @@ def berserker2_to_2D_labels(X, theta, data_dims):
 
     data_labels = labels.copy()
     data_labels = data_labels.reshape(data_dims)
-    data_labels = data_labels.astype('f8')
+    data_labels = data_labels.astype("f8")
     return data_labels, centroids
 
 
 def X_to_many_2D(X, data_dims):
-    """ Currently assuming only 4 features"""
+    """Currently assuming only 4 features"""
 
     X0 = X[:, 0].reshape(data_dims)
     X1 = X[:, 1].reshape(data_dims)
@@ -744,8 +800,8 @@ def X_to_many_2D(X, data_dims):
     return X0, X1, X2
 
 
-def prepare_data_2d(data, enh=2.):
-    """ Returns feature space X(rows, cols, data) with rows and cols
+def prepare_data_2d(data, enh=2.0):
+    """Returns feature space X(rows, cols, data) with rows and cols
     coordinates originating at the center of the image."""
 
     data = np.ascontiguousarray(data)
@@ -769,7 +825,7 @@ def prepare_data_3d(data, affine, perc=(2, 99), mult=300, enh=3):
     else:
         value_range = np.percentile(data, q=perc)
         data2 = np.interp(data, value_range, (0, 1))
-        data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+        data2 = mult * np.ascontiguousarray(data2, dtype="f8")
 
     X = img3d_to_ijkv_features(data2)
     # X = np.zeros((np.prod(data2.shape), 4), dtype='f8')
@@ -796,7 +852,7 @@ def prepare_data_3d_as_2d_series(data, affine, perc=(2, 99), mult=300, enh=3):
     else:
         value_range = np.percentile(data, q=[2, 99])
         data2 = np.interp(data, value_range, (0, 1))
-        data2 =  mult * np.ascontiguousarray(data2, dtype='f8')
+        data2 = mult * np.ascontiguousarray(data2, dtype="f8")
 
     X = img3d_to_ijkv_features(data2)
     # move to world coordinates W (xyz)
@@ -823,8 +879,8 @@ def analyze_labels(data_labels_focused, num_focused, verbose=False, return_sizes
     if verbose:
         print(sizes)
     favorites = np.argsort(sizes)[::-1][:3]
-    favorite = favorites[1] # 0 most likely bk
-    print('Favorite index')
+    favorite = favorites[1]  # 0 most likely bk
+    print("Favorite index")
     print(favorite, sizes[favorite])
     if return_sizes:
         return sizes
@@ -832,8 +888,7 @@ def analyze_labels(data_labels_focused, num_focused, verbose=False, return_sizes
 
 
 def mask_lt(data_labels, centroids, bk_thr=300, updated_labels=False):
-    """ Remove low intensities using label centroids
-    """
+    """Remove low intensities using label centroids"""
     # bk_thr = 300 # 400 or 250 interesting too
     data_labels_u = data_labels.copy()
     indx = np.where(centroids[:, -1] < bk_thr)[0]
@@ -844,7 +899,7 @@ def mask_lt(data_labels, centroids, bk_thr=300, updated_labels=False):
 
     mask = data_labels_u == min_indx
     maskb = mask.copy()
-    mask = mask.astype('f8')
+    mask = mask.astype("f8")
 
     if updated_labels:
         return mask, data_labels_u
@@ -852,8 +907,7 @@ def mask_lt(data_labels, centroids, bk_thr=300, updated_labels=False):
 
 
 def mask_gt(data_labels, centroids, bk_thr=300, updated_labels=False):
-    """ Keep high intensities using label centroids
-    """
+    """Keep high intensities using label centroids"""
 
     data_labels_u = data_labels.copy()
     indx = np.where(centroids[:, -1] > bk_thr)[0]
@@ -864,7 +918,7 @@ def mask_gt(data_labels, centroids, bk_thr=300, updated_labels=False):
 
     mask = data_labels_u == max_indx
     maskb = mask.copy()
-    mask = mask.astype('f8')
+    mask = mask.astype("f8")
     if updated_labels:
         return mask, data_labels_u
     return mask
@@ -877,40 +931,40 @@ def print_centroids(centroids):
 
 
 def patch_sums(data, patch):
-    """ Sums in linearized patches
-    """
+    """Sums in linearized patches"""
 
-    data2 = np.pad(data, patch[0]//2)
+    data2 = np.pad(data, patch[0] // 2)
     data2_enh = patchify(data2, patch)
-    data2_enh = data2_enh.reshape(data2_enh.shape[0],
-                                  data2_enh.shape[1],
-                                  data2_enh.shape[2],
-                                  patch[0] * patch[1] * patch[2])
+    data2_enh = data2_enh.reshape(
+        data2_enh.shape[0],
+        data2_enh.shape[1],
+        data2_enh.shape[2],
+        patch[0] * patch[1] * patch[2],
+    )
 
     return np.sum(data2_enh, axis=-1)
 
 
 def patch_median(data, patch):
-    """ Sums in linearized patches
-    """
+    """Sums in linearized patches"""
 
-    data2 = np.pad(data, patch[0]//2)
+    data2 = np.pad(data, patch[0] // 2)
     data2_enh = patchify(data2, patch)
-    data2_enh = data2_enh.reshape(data2_enh.shape[0],
-                                  data2_enh.shape[1],
-                                  data2_enh.shape[2],
-                                  patch[0] * patch[1] * patch[2])
+    data2_enh = data2_enh.reshape(
+        data2_enh.shape[0],
+        data2_enh.shape[1],
+        data2_enh.shape[2],
+        patch[0] * patch[1] * patch[2],
+    )
 
     return np.median(data2_enh, axis=-1)
 
 
 def labels_sp_centroids(labels, centroids):
-    """ count labels in patch
-    """
+    """count labels in patch"""
     tmp = labels.copy()
 
     for i in range(centroids.shape[0]):
-
         tmp[labels == i] = centroids[i][3]
 
     return tmp
@@ -918,10 +972,10 @@ def labels_sp_centroids(labels, centroids):
 
 def ball(radius, strict=True, dtype=np.uint8):
     n = 2 * radius + 1
-    Z, Y, X = np.mgrid[-radius:radius:n * 1j,
-                        -radius:radius:n * 1j,
-                        -radius:radius:n * 1j]
-    s = X ** 2 + Y ** 2 + Z ** 2
+    Z, Y, X = np.mgrid[
+        -radius : radius : n * 1j, -radius : radius : n * 1j, -radius : radius : n * 1j
+    ]
+    s = X**2 + Y**2 + Z**2
     if not strict:
         radius += 0.5
     return np.array(s <= radius * radius, dtype=dtype)
@@ -931,7 +985,7 @@ def throwing_planets(mask, W, radius=10, samples=100, perc=5):
     # keep the spheres that have overlaping volume of less than percentage above
 
     mask_orig = mask.copy()
-    print('Starting throwing planets ... light version ')
+    print("Starting throwing planets ... light version ")
     t = time()
 
     # mask = binary_closing(mask, iterations=1)
@@ -945,27 +999,28 @@ def throwing_planets(mask, W, radius=10, samples=100, perc=5):
     tmp = mask * 0
     kernel = ball(radius)
     kernel_sum = kernel.sum()
-    print('>> Kernel sum', kernel_sum)
+    print(">> Kernel sum", kernel_sum)
 
     kI, kJ, kK = np.asarray(kernel.shape) // 2
     I, J, K = tmp.shape
 
     volcov = np.prod(kernel.shape)
-    print('>> Kernel ratio ', kernel_sum / volcov)
+    print(">> Kernel ratio ", kernel_sum / volcov)
 
-    perc = perc / 100.
+    perc = perc / 100.0
 
     i_s = np.random.randint(radius, I - radius, size=samples)
     j_s = np.random.randint(radius, J - radius, size=samples)
     k_s = np.random.randint(radius, K - radius, size=samples)
 
     for i, j, k in zip(i_s, j_s, k_s):
-
-        hit = (mask[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] * kernel).sum()
+        hit = (
+            mask[i - kI : i + kI + 1, j - kJ : j + kJ + 1, k - kK : k + kK + 1] * kernel
+        ).sum()
         if hit < perc * kernel_sum:
-            tmp[i - kI:i + kI + 1, j - kJ:j + kJ + 1, k - kK : k + kK + 1] += kernel
+            tmp[i - kI : i + kI + 1, j - kJ : j + kJ + 1, k - kK : k + kK + 1] += kernel
 
-    print('Duration ', time() - t)
+    print("Duration ", time() - t)
     print()
 
     return tmp
@@ -990,12 +1045,12 @@ def medroid_images(data_labels, data):
     return medroids_image
 
 
-def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
+def cluster_analysis(data_labels_pg, centroids_pg, lod=0.8):
 
     data_labels_pg_u = data_labels_pg.copy()
     unq, cnts = np.unique(data_labels_pg_u.ravel(), return_counts=True)
 
-    print('Further analyzing clusters')
+    print("Further analyzing clusters")
     # from dipy.viz import horizon
     total = np.zeros(data_labels_pg.shape)
     total_cnt = np.zeros(data_labels_pg.shape)
@@ -1003,13 +1058,12 @@ def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
 
     cnt = 1
     for i, u in enumerate(unq):
-
-        print('Unique label ', u, ' centroid ', centroids_pg[i, 3])
-        tmp = (data_labels_pg_u == u)
+        print("Unique label ", u, " centroid ", centroids_pg[i, 3])
+        tmp = data_labels_pg_u == u
         print(tmp.min(), tmp.max())
         dt_tmp = distance_transform_edt(tmp)
 
-        tmp_o = dt_tmp > lod # 1 will darken most smaller structures
+        tmp_o = dt_tmp > lod  # 1 will darken most smaller structures
         print(tmp_o.min(), tmp_o.max())
 
         # ratio = tmp_o.sum() / np.prod(data_labels_pg.shape)
@@ -1019,7 +1073,7 @@ def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
 
         total[tmp_o == 1] = centroids_pg[int(u), 3]
 
-    print('Duration ', time() - t)
+    print("Duration ", time() - t)
 
     # total_blur = np.zeros(data.shape)
     # total_blur[total > 0] = 10.0
@@ -1031,7 +1085,7 @@ def cluster_analysis(data_labels_pg, centroids_pg, lod = 0.8):
 
 def labels_analysis(data_labels, mask, grand_thr=100000):
 
-    print('Focusing on the grand objects ...')
+    print("Focusing on the grand objects ...")
     t = time()
     unq, cnts = np.unique(data_labels.ravel(), return_counts=True)
     lrg = grand_thr
@@ -1039,25 +1093,29 @@ def labels_analysis(data_labels, mask, grand_thr=100000):
     label_cnt = 1
     grand_labels = 0 * data_labels
     from dipy.viz import horizon
-    for l in unq:
 
-        biggest = detect_largest_object(data_labels == l, structure=np.ones((3, 3, 3))) # second largest
+    for l in unq:
+        biggest = detect_largest_object(
+            data_labels == l, structure=np.ones((3, 3, 3))
+        )  # second largest
         if biggest.sum() > grand_thr:
             kernel = ball(1)
-            biggest = binary_opening(biggest, structure=kernel, iterations=1, border_value=0)
+            biggest = binary_opening(
+                biggest, structure=kernel, iterations=1, border_value=0
+            )
             grand_labels[biggest > 0] = label_cnt
             print(biggest.max())
             # horizon(images=[(biggest.astype('f8'), np.eye(4), 'current')])
             label_cnt += 1
 
     # t = 1
-    print('Duration ', time() - t)
+    print("Duration ", time() - t)
     return grand_labels
 
 
 def labels_analysis2(data_labels, mask, grand_thr=100000):
 
-    print('Focusing on the grand objects ...')
+    print("Focusing on the grand objects ...")
     t = time()
     unq, cnts = np.unique(data_labels.ravel(), return_counts=True)
     lrg = grand_thr
@@ -1066,19 +1124,22 @@ def labels_analysis2(data_labels, mask, grand_thr=100000):
     grand_labels = 0 * data_labels
     # from dipy.viz import horizon
     for l in unq:
-
         if l > -1:
-            biggest = detect_largest_object(data_labels == l, structure=np.ones((3, 3, 3))) # second largest
+            biggest = detect_largest_object(
+                data_labels == l, structure=np.ones((3, 3, 3))
+            )  # second largest
 
             kernel = ball(1)
-            biggest = binary_opening(biggest, structure=kernel, iterations=1, border_value=0)
+            biggest = binary_opening(
+                biggest, structure=kernel, iterations=1, border_value=0
+            )
             grand_labels[biggest > 0] = label_cnt
             print(biggest.max())
             # horizon(images=[(biggest.astype('f8'), np.eye(4), 'current')])
             label_cnt += 1
 
     # t = 1
-    print('Duration ', time() - t)
+    print("Duration ", time() - t)
     return grand_labels
 
 
@@ -1106,11 +1167,11 @@ def weighted_image2(dt, W, idt, masko):
     data_labels_focused, num_focused = label(weights)
     favorite = analyze_labels(data_labels_focused, num_focused)
 
-    focus  = np.zeros(dt.shape)
+    focus = np.zeros(dt.shape)
     focus[data_labels_focused == favorite] = 1
 
     cm = center_of_mass(focus)
-    cx, cy, cz = np.round(cm).astype('int32')
+    cx, cy, cz = np.round(cm).astype("int32")
 
     cm_im = np.ones(dt.shape)
     cm_im[cx, cy, cz] = 0
@@ -1128,19 +1189,23 @@ def weighted_image2(dt, W, idt, masko):
     return focus * W
 
 
-def berserker2_3D(data, affine, theta=120., perc=(0, 98), mult=300., enh=3., medroids=False):
+def berserker2_3D(
+    data, affine, theta=120.0, perc=(0, 98), mult=300.0, enh=3.0, medroids=False
+):
     "Thetan Berserker2 applied on 3D images"
 
-    data = np.ascontiguousarray(data, dtype='f8')
+    data = np.ascontiguousarray(data, dtype="f8")
 
-    print('Preparing data')
+    print("Preparing data")
     X = prepare_data_3d(data, affine, perc=perc, mult=mult, enh=enh)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    print("Applying Berserker 2 on X (i, j, k, 3w)")
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
+    data_labels, centroids = berserker2_to_3D_labels(
+        X, theta, data_dims=data.shape, verbose=False
+    )
+    print("Duration ", time() - t)
     print()
 
     print_centroids(centroids)
@@ -1157,20 +1222,24 @@ def berserker2_3D(data, affine, theta=120., perc=(0, 98), mult=300., enh=3., med
     return data_labels, centroids, centroids_im, W
 
 
-def berserker2_3D_rt(data, affine, theta=120., perc=(0, 98), mult=300., enh=3., medroids=False):
+def berserker2_3D_rt(
+    data, affine, theta=120.0, perc=(0, 98), mult=300.0, enh=3.0, medroids=False
+):
     "Thetan Berserker2 applied on 3D images"
 
-    data = np.ascontiguousarray(data, dtype='f8')
+    data = np.ascontiguousarray(data, dtype="f8")
 
-    print('Preparing data')
+    print("Preparing data")
     X = prepare_data_3d(data, affine, perc=perc, mult=mult, enh=enh)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    print("Applying Berserker 2 on X (i, j, k, 3w)")
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
+    data_labels, centroids = berserker2_to_3D_labels(
+        X, theta, data_dims=data.shape, verbose=False
+    )
     duration = time() - t
-    print('Duration ', duration)
+    print("Duration ", duration)
     print()
 
     print_centroids(centroids)
@@ -1185,7 +1254,7 @@ def berserker2_3D_rt(data, affine, theta=120., perc=(0, 98), mult=300., enh=3., 
     return data_labels, centroids, centroids_im, W, duration
 
 
-def tbscan(X, theta, eps=2., min_samples=1):
+def tbscan(X, theta, eps=2.0, min_samples=1):
 
     # theta = 3.6
 
@@ -1198,9 +1267,14 @@ def tbscan(X, theta, eps=2., min_samples=1):
     model.fit(initial_centroids)
 
     unq = np.unique(model.labels_)
-    db_nclusters = np.sum(unq>=0)
+    db_nclusters = np.sum(unq >= 0)
 
-    dbcentroids = np.array([np.mean(initial_centroids[model.labels_==l], axis=0) for l in range(db_nclusters)])
+    dbcentroids = np.array(
+        [
+            np.mean(initial_centroids[model.labels_ == l], axis=0)
+            for l in range(db_nclusters)
+        ]
+    )
     dblabels = model.labels_
 
     final_labels = initial_labels.copy()
@@ -1213,7 +1287,8 @@ def tbscan(X, theta, eps=2., min_samples=1):
 
     return centroids, labels
 
-def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels=None):
+
+def tbscan_half(X, eps=2.0, min_samples=1, initial_centroids=None, initial_labels=None):
     # Currently supporting only L2
 
     model = DBSCAN(eps=eps, min_samples=min_samples)
@@ -1223,7 +1298,9 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
 
     dblabels = model.labels_
     dbl_max = dblabels.max()
-    dblabels[dblabels < 0] = dbl_max + 1 # this is important because -1 is the outlier label and we want to keep it
+    dblabels[dblabels < 0] = (
+        dbl_max + 1
+    )  # this is important because -1 is the outlier label and we want to keep it
     dblabels = np.ascontiguousarray(dblabels, dtype=np.int64)
 
     final_labels = initial_labels.copy()
@@ -1238,7 +1315,7 @@ def tbscan_half(X, eps=2., min_samples=1, initial_centroids=None, initial_labels
     return centroids, labels
 
 
-def tb_of_tb(X, initial_centroids, initial_labels, theta, metric='euclidean'):
+def tb_of_tb(X, initial_centroids, initial_labels, theta, metric="euclidean"):
 
     _, labels = berserker(initial_centroids, theta, metric=metric)
 
@@ -1251,9 +1328,9 @@ def tb_of_tb(X, initial_centroids, initial_labels, theta, metric='euclidean'):
     return final_centroids, final_labels
 
 
-def tbward_half(X, initial_centroids, initial_labels, K, metric='euclidean'):
+def tbward_half(X, initial_centroids, initial_labels, K, metric="euclidean"):
 
-    linkage = 'ward'
+    linkage = "ward"
     clustering = AgglomerativeClustering(linkage=linkage, n_clusters=1000)
     clustering.fit(initial_centroids)
 
@@ -1261,7 +1338,9 @@ def tbward_half(X, initial_centroids, initial_labels, K, metric='euclidean'):
 
     wardlabels = tbward_labels
     dbl_max = wardlabels.max()
-    wardlabels[wardlabels < 0] = dbl_max + 1 # this is important because -1 is the outlier label and we want to keep it
+    wardlabels[wardlabels < 0] = (
+        dbl_max + 1
+    )  # this is important because -1 is the outlier label and we want to keep it
     wardlabels = np.ascontiguousarray(wardlabels, dtype=np.int64)
 
     final_labels = initial_labels.copy()
@@ -1275,12 +1354,12 @@ def tbward_half(X, initial_centroids, initial_labels, K, metric='euclidean'):
     return final_centroids, final_labels
 
 
-def ward(X, K, metric='euclidean'):
+def ward(X, K, metric="euclidean"):
 
     # X5 = np.ascontiguousarray(X[::2])
     X5 = X
 
-    linkage = 'ward'
+    linkage = "ward"
     clustering = AgglomerativeClustering(linkage=linkage, n_clusters=K)
     clustering.fit(X5)
 
@@ -1296,32 +1375,44 @@ def ward(X, K, metric='euclidean'):
     return final_centroids, final_labels
 
 
-def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_est=100, m_est=3, theta=120., percb=1., pg=False, ng=False):
-    """ Process each slice of the volume independently """
+def berserker2_brain_seg_3d_as_2d_series(
+    data,
+    affine,
+    return_all=False,
+    orig_est=100,
+    m_est=3,
+    theta=120.0,
+    percb=1.0,
+    pg=False,
+    ng=False,
+):
+    """Process each slice of the volume independently"""
 
-    data = np.ascontiguousarray(data, dtype='f8')
+    data = np.ascontiguousarray(data, dtype="f8")
 
-    print('Preparing data')
-    X = prepare_data_3d_as_2d_series(data, affine, perc=(0, 98), mult=300., enh=2.)
+    print("Preparing data")
+    X = prepare_data_3d_as_2d_series(data, affine, perc=(0, 98), mult=300.0, enh=2.0)
     W = data
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    print("Applying Berserker 2 on X (i, j, k, 3w)")
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
+    data_labels, centroids = berserker2_to_3D_labels(
+        X, theta, data_dims=data.shape, verbose=False
+    )
+    print("Duration ", time() - t)
     print()
 
     print_centroids(centroids)
 
-    mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+    mask = mask_lt(data_labels, centroids, bk_thr=orig_est * m_est)
     dt = distance_transform_edt(1 - mask)
 
     mask_orig = W < orig_est
     W[mask_orig] = 0
-    mask_orig = mask_orig.astype('uint8')
+    mask_orig = mask_orig.astype("uint8")
 
     if pg or ng:
-        print('Calculating gradients')
+        print("Calculating gradients")
         Wgrad = gaussian_gradient_magnitude(W, sigma=1)
 
     if pg:
@@ -1329,30 +1420,34 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
         Xpg[:, 3] += 1.4 * Wgrad.ravel()
         # Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
 
-        print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
+        print("Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)")
         t = time()
-        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(
+            Xpg, theta, data_dims=data.shape, verbose=False
+        )
+        print("Duration ", time() - t)
         print()
 
         print_centroids(centroids_pg)
 
-        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
+        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=orig_est * m_est)
         dt_pg = distance_transform_edt(1 - mask_pg)
 
     if ng:
         Xng = X.copy()
         Xng[:, 3] -= 1.4 * Wgrad.ravel()
         # Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
-        print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
+        print("Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)")
         t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(
+            Xng, theta, data_dims=data.shape, verbose=False
+        )
+        print("Duration ", time() - t)
         print()
 
         print_centroids(centroids_ng)
 
-        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
+        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=orig_est * m_est)
         dt_ng = distance_transform_edt(1 - mask_ng)
 
     centroids_im = centroid_images(data_labels, centroids)
@@ -1360,17 +1455,17 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
 
     standard_filters = False
     if standard_filters:
-
         centroids_imb = gaussian_filter(centroids_im, sigma=1)
         centroids_imb2 = gaussian_filter(centroids_im, sigma=2)
         centroids_imm = median_filter(centroids_im, size=3)
 
-
-    print('Applying Berserker 2 on X masked (i, j, k, 3w)')
+    print("Applying Berserker 2 on X masked (i, j, k, 3w)")
     t = time()
-    maskr = mask.ravel().astype('bool')
-    data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
-    print('Duration ', time() - t)
+    maskr = mask.ravel().astype("bool")
+    data_labels_mask, centroids_mask = berserker2_to_3D_labels(
+        X, theta / 2.0, data_dims=data.shape, verbose=False, mask=maskr
+    )
+    print("Duration ", time() - t)
     print()
 
     centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
@@ -1381,35 +1476,34 @@ def berserker2_brain_seg_3d_as_2d_series(data, affine, return_all=False, orig_es
 
     aff = np.eye(4)
     images = []
-    images.append((mask_orig, aff, 'mask_orig'))
-    images.append((mask, aff, 'mask'))
+    images.append((mask_orig, aff, "mask_orig"))
+    images.append((mask, aff, "mask"))
 
     if pg:
-        images.append((mask_pg, aff, 'mask_pg'))
-        images.append((data_labels_pg, aff, 'dl_pg'))
-        images.append((W+Wgrad*1.4, aff, 'Wpg'))
+        images.append((mask_pg, aff, "mask_pg"))
+        images.append((data_labels_pg, aff, "dl_pg"))
+        images.append((W + Wgrad * 1.4, aff, "Wpg"))
 
     if standard_filters:
-        images.append((centroids_im, aff, 'centroids_im'))
-        images.append((centroids_imb, aff, 'centroids_imb'))
-        images.append((centroids_imb2, aff, 'centroids_imb2'))
-        images.append((centroids_imm, aff, 'centroids_imm'))
-    images.append((data_labels, aff, 'dl'))
+        images.append((centroids_im, aff, "centroids_im"))
+        images.append((centroids_imb, aff, "centroids_imb"))
+        images.append((centroids_imb2, aff, "centroids_imb2"))
+        images.append((centroids_imm, aff, "centroids_imm"))
+    images.append((data_labels, aff, "dl"))
 
     if pg or ng:
-        images.append((Wgrad, aff, 'Wgrad'))
+        images.append((Wgrad, aff, "Wgrad"))
 
     # images.append((sums_im, aff, 'sums_im'))
 
-    images.append((centroids_im, aff, 'centroids_im'))
-    images.append((centroids_median_im, aff, 'centroids_median_im'))
-    images.append((centroids_mask_im, aff, 'centroids_mask_im'))
-    images.append((centroids_mask_median_im, aff, 'centroids_mask_median_im'))
+    images.append((centroids_im, aff, "centroids_im"))
+    images.append((centroids_median_im, aff, "centroids_median_im"))
+    images.append((centroids_mask_im, aff, "centroids_mask_im"))
+    images.append((centroids_mask_median_im, aff, "centroids_mask_median_im"))
 
-    images.append((data_labels_mask, aff, 'dl_mask'))
-    images.append((W, aff, 'W'))
-    images.append((data, aff, 'data'))
-
+    images.append((data_labels_mask, aff, "dl_mask"))
+    images.append((W, aff, "W"))
+    images.append((data, aff, "data"))
 
     t = 1
 
@@ -1436,20 +1530,24 @@ def berserker2_seg_2d(data, theta, enh=2, pg=False, ng=False):
     return data_labels, centroids, centroids_im
 
 
-def berserker2_recovery(data, affine, theta=120., perc=(0, 98), mult=300., enh=3, reps=100, medroids=False):
+def berserker2_recovery(
+    data, affine, theta=120.0, perc=(0, 98), mult=300.0, enh=3, reps=100, medroids=False
+):
     """Signal recovery"""
 
     t_start = time()
-    c_f = np.zeros(data.shape, dtype='f8')
-    m_f = np.zeros(data.shape, dtype='f8')
+    c_f = np.zeros(data.shape, dtype="f8")
+    m_f = np.zeros(data.shape, dtype="f8")
 
     for i in range(reps):
-        print('>>> ', i)
-        print('Starting Thetan Berserker 2 applied to 3D images...')
+        print(">>> ", i)
+        print("Starting Thetan Berserker 2 applied to 3D images...")
         t = time()
-        data_labels, centroids, centroids_im, W = berserker2_3D(data, affine, theta=theta, perc=perc, mult=mult, enh=enh)
+        data_labels, centroids, centroids_im, W = berserker2_3D(
+            data, affine, theta=theta, perc=perc, mult=mult, enh=enh
+        )
 
-        print('TB Duration ', time() - t)
+        print("TB Duration ", time() - t)
         print()
         c_f += centroids_im
         if medroids:
@@ -1461,9 +1559,7 @@ def berserker2_recovery(data, affine, theta=120., perc=(0, 98), mult=300., enh=3
         m_f /= reps
         return c_f, W, m_f
 
-    print('All runs ', time() - t_start)
-
-
+    print("All runs ", time() - t_start)
 
     return c_f, W
 
@@ -1477,8 +1573,8 @@ def detect_largest_object(data, structure=np.ones((3, 3, 3)), actually=False):
         dl_final = dlt_unq[np.argsort(dlt_cnts)[-1]]
     else:
         dl_final = dlt_unq[np.argsort(dlt_cnts)[-2]]
-    final = np.zeros(data.shape, dtype='f8')
-    final[data_labels_t == dl_final] = 1.
+    final = np.zeros(data.shape, dtype="f8")
+    final[data_labels_t == dl_final] = 1.0
     return final
 
 
@@ -1486,9 +1582,9 @@ def gaussian_gradients(data, sigma=1):
     # calculate gaussian gradients
     # data should be f8
 
-    dx = gaussian_filter(data, sigma=sigma, order = (1, 0, 0))
-    dy = gaussian_filter(data, sigma=sigma, order = (0, 1, 0))
-    dz = gaussian_filter(data, sigma=sigma, order = (0, 0, 1))
+    dx = gaussian_filter(data, sigma=sigma, order=(1, 0, 0))
+    dy = gaussian_filter(data, sigma=sigma, order=(0, 1, 0))
+    dz = gaussian_filter(data, sigma=sigma, order=(0, 0, 1))
 
     gm = np.sqrt(dx**2 + dy**2 + dz**2)
 
@@ -1504,20 +1600,31 @@ def random_walk_auto(X, reps=1):
 
     all_dists = []
     for i in range(reps):
-        ind = np.random.choice(np.arange(points.shape[0]), points.shape[0], replace=False)
+        ind = np.random.choice(
+            np.arange(points.shape[0]), points.shape[0], replace=False
+        )
         points2 = points[ind].copy()
 
         dx = np.diff(points2[:, 0])
         dy = np.diff(points2[:, 1])
 
-        dists = np.sqrt(dx ** 2 + dy ** 2)
+        dists = np.sqrt(dx**2 + dy**2)
         all_dists.append(dists)
 
     return all_dists
 
 
-
-def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_im_rnd, X_median, theta_value_small):
+def breaking_phase(
+    data,
+    affine,
+    center,
+    vals,
+    orig_est,
+    poi,
+    centroids_median_im_rnd,
+    X_median,
+    theta_value_small,
+):
 
     ci, cj, ck = center
     puzz_mask = np.zeros(data.shape)
@@ -1535,25 +1642,29 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
 
     all_puzz_centroids = []
 
-    print('Breaking ', str(vals.shape[0]), ' parts...')
+    print("Breaking ", str(vals.shape[0]), " parts...")
 
     for v in vals:
-
         # print(v)
 
         # if v > orig_est: # original mask intensity
         if True:
-
             mask_tmp = np.zeros(data.shape)
             mask_tmp[centroids_median_im_rnd == v] = 1
 
-            print('Working on ', str(v))
+            print("Working on ", str(v))
             t1 = time()
-            data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(X_median, theta_value_small, data_dims=data.shape, verbose=False, mask=mask_tmp.ravel().astype('bool'))
+            data_labels_tmp, centroids_tmp = berserker2_to_3D_labels(
+                X_median,
+                theta_value_small,
+                data_dims=data.shape,
+                verbose=False,
+                mask=mask_tmp.ravel().astype("bool"),
+            )
             t2 = time()
             dl_tmp = np.unique(data_labels_tmp, return_counts=False)
             t3 = time()
-            print('Durations ', t2-t1, t3-t2)
+            print("Durations ", t2 - t1, t3 - t2)
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
 
             # starting from 1 because we have -1 in dl_tmp
@@ -1562,7 +1673,7 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
 
             t4 = time()
             for i, p in enumerate(puzz):
-                relabel_breaking[data_labels_tmp==i] = cnt_r
+                relabel_breaking[data_labels_tmp == i] = cnt_r
                 cnt_r += 1
             t5 = time()
             puzz2center = []
@@ -1582,7 +1693,7 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
                     puzz_mask_cnt[data_labels_tmp == dl_tmp[i + 1]] = cnt
                     cnt += 1
             t7 = time()
-            print('Durations ', t5 - t4, t6 - t5, t7 - t6)
+            print("Durations ", t5 - t4, t6 - t5, t7 - t6)
             # data_labels_tmp, num_tmp = label(mask_tmp, structure=None)
             # horizon(images=[(data_labels_tmp, aff, 'dl_tmp')])
             # dl_tmp, _ = np.unique(data_labels_tmp, return_counts=True)
@@ -1593,9 +1704,10 @@ def breaking_phase(data, affine, center, vals, orig_est, poi, centroids_median_i
 
 
 def exponentiation_normalization(W, alpha, scale):
-    W_interp = np.interp(W, xp=[0, W.max()], fp=[0., 1.])
+    W_interp = np.interp(W, xp=[0, W.max()], fp=[0.0, 1.0])
 
-    return 100 * scale * (W_interp ** alpha)
+    return 100 * scale * (W_interp**alpha)
+
 
 # def softmax_normalization(W, scale):
 
@@ -1603,8 +1715,9 @@ def exponentiation_normalization(W, alpha, scale):
 #     W_softmax = W_exp / np.sum(W_exp)
 #     return scale * W_softmax
 
+
 def softmax_normalization(W, scale, eps=1e-12):
-    W_interp = np.interp(W, xp=[0, W.max()], fp=[0., 1.])
+    W_interp = np.interp(W, xp=[0, W.max()], fp=[0.0, 1.0])
     W_exp = np.exp(W)  # Subtract max for numerical stability
     # W_softmax = W_exp / np.sum(W_exp)  # Add epsilon to avoid division by zero
     # print(W_exp)
@@ -1612,13 +1725,17 @@ def softmax_normalization(W, scale, eps=1e-12):
     # W_softmax = np.clip(W_softmax, 0, 1)  # Ensure values are between 0 and 1
     return scale * W_exp
 
+
 # Perform softmax on the histogram of W and return new images with normalized W values
+
 
 def histogram_softmax_normalization(W, scale, bins=100, temperature=1.0):
     hist, bin_edges = np.histogram(W, bins=bins, density=True)
     hist[15:] = 0  # Keep only the first 10 bins
     hist_exp = np.exp(hist / temperature)
-    hist_softmax = hist_exp / (np.sum(hist_exp))  # Add epsilon to avoid division by zero
+    hist_softmax = hist_exp / (
+        np.sum(hist_exp)
+    )  # Add epsilon to avoid division by zero
 
     # Map the original W values to their corresponding softmax values based on the histogram
     W_interp = np.interp(W, xp=bin_edges[:-1], fp=hist_softmax)
@@ -1645,21 +1762,20 @@ def plot_exp_norm():
 
     figure()
 
-    plot(W, W_alpha_2_scale_5, '-', label='W_alpha_2_scale_5')
-    plot(W, W_alpha_2_scale_9, '-', label='W_alpha_2_scale_9')
+    plot(W, W_alpha_2_scale_5, "-", label="W_alpha_2_scale_5")
+    plot(W, W_alpha_2_scale_9, "-", label="W_alpha_2_scale_9")
 
-    plot(W, W_alpha_4_scale_5, '-', label='W_alpha_4_scale_5')
-    plot(W, W_alpha_4_scale_9, '-', label='W_alpha_4_scale_9')
+    plot(W, W_alpha_4_scale_5, "-", label="W_alpha_4_scale_5")
+    plot(W, W_alpha_4_scale_9, "-", label="W_alpha_4_scale_9")
 
-    plot(W, W_alpha_6_scale_5, '-', label='W_alpha_6_scale_5')
-    plot(W, W_alpha_6_scale_9, '-', label='W_alpha_6_scale_9')
+    plot(W, W_alpha_6_scale_5, "-", label="W_alpha_6_scale_5")
+    plot(W, W_alpha_6_scale_9, "-", label="W_alpha_6_scale_9")
 
-    plot(W, W_alpha_8_scale_5, '-', label='W_alpha_8_scale_5')
-    plot(W, W_alpha_8_scale_9, '-', label='W_alpha_8_scale_9')
+    plot(W, W_alpha_8_scale_5, "-", label="W_alpha_8_scale_5")
+    plot(W, W_alpha_8_scale_9, "-", label="W_alpha_8_scale_9")
 
-
-    xlabel('x')
-    ylabel('y')
+    xlabel("x")
+    ylabel("y")
 
     legend()
 
@@ -1685,7 +1801,6 @@ def bbox_from_fo(fo_out):
 def horizon_support(affine, *args):
     images = []
     for arg in args:
-
         _data = arg[0]
         _data_name = arg[1]
 
@@ -1698,10 +1813,12 @@ def berserker2_to_3D_plus_extra(X, W_alpha, theta):
     X_tmp = X.copy()
     X_tmp[:, 3] = W_alpha.ravel()
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    print("Applying Berserker 2 on X (i, j, k, 3w)")
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X_tmp, theta, data_dims=W_alpha.shape, verbose=False)
-    print('Duration ', time() - t)
+    data_labels, centroids = berserker2_to_3D_labels(
+        X_tmp, theta, data_dims=W_alpha.shape, verbose=False
+    )
+    print("Duration ", time() - t)
     print()
 
     centroids_im = centroid_images(data_labels, centroids)
@@ -1723,7 +1840,7 @@ def biggestx(labels, x=10):
 
     large_idx = np.argsort(cnts)[::-1][:x]
 
-    bigx = np.zeros(labels.shape, dtype='f8') + x + 1
+    bigx = np.zeros(labels.shape, dtype="f8") + x + 1
     cnt = 0
     for li in large_idx:
         bigx[labels == unq[li]] = cnt
@@ -1735,9 +1852,9 @@ def biggestx(labels, x=10):
 def gradient_reweighting(W, affine, scale=2, sigma=1):
 
     # TODO: use gaussian_gradient_magnitude instead of calculating gradients separately and then blurring them.
-    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] ** 2, axis=0))
     gi, gj, gk = np.gradient(W, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
-    tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+    tvm = np.sqrt(gi**2 + gj**2 + gk**2)
     tvm_blur = gaussian_filter(tvm, sigma=sigma)
     W_r = W * (1 - scale * tvm_blur / tvm_blur.max())
     W_r[W_r < 0] = 0
@@ -1748,7 +1865,7 @@ def gradient_reweighting(W, affine, scale=2, sigma=1):
 def get_top_3_frequent(X, pad_val=-1):
     """
     Returns the top 3 most frequent integers for each row in a 2D array.
-    
+
     Parameters:
     X (np.ndarray): 2D array of integers.
     pad_val (int): Value used to pad rows that have fewer than 3 unique integers.
@@ -1757,30 +1874,30 @@ def get_top_3_frequent(X, pad_val=-1):
     min_val = np.min(X)
     max_val = np.max(X)
     range_val = max_val - min_val + 1
-    
+
     # 2. Shift values so the minimum integer becomes index 0
     X_shifted = X - min_val
-    
+
     # 3. Count frequencies dynamically based on the value spread
     counts = np.zeros((X.shape[0], range_val), dtype=int)
     np.add.at(counts, (np.arange(X.shape[0])[:, None], X_shifted), 1)
-    
+
     # 4. Handle edge cases where the whole array has fewer than 3 unique numbers
     top_k = min(3, range_val)
-    
+
     # 5. Get the top indices (shifted) and their actual counts
     top_idx = np.argsort(counts, axis=1)[:, -top_k:][:, ::-1]
     top_counts = counts[np.arange(X.shape[0])[:, None], top_idx]
-    
+
     # 6. Shift the values back to their original numerical domain
     top_vals = top_idx + min_val
-    
+
     # 7. Initialize the final (Rows, 3) output array with the pad_val
     out = np.full((X.shape[0], 3), pad_val, dtype=X.dtype)
-    
+
     # 8. Apply the mask: write the true values if count > 0, otherwise leave as pad_val
     out[:, :top_k] = np.where(top_counts > 0, top_vals, pad_val)
-    
+
     # 9. Replace the -1 with the top value in that row
     for i in range(out.shape[0]):
         if out[i, 1] == pad_val:
@@ -1791,60 +1908,76 @@ def get_top_3_frequent(X, pad_val=-1):
     return out
 
 
+def enkefalos(
+    data,
+    affine,
+    theta=120.0,
+    bk=70.0,
+    scale=9,
+    perc_min=0,
+    perc_max=98,
+    diff=30,
+    max_diff=100,
+):
 
-def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98, diff=30, max_diff=100):
+    data = np.ascontiguousarray(data, dtype="f8")
 
-
-    data = np.ascontiguousarray(data, dtype='f8')
-
-    print('Preparing data')
-    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
+    print("Preparing data")
+    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300.0, enh=3.0)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     Wcp = W.copy()
     # aff = np.eye(4)
     aff = affine.copy()
 
-    W = np.ascontiguousarray(W, dtype='f8')
-    images = horizon_support(aff, (W, 'W'))
+    W = np.ascontiguousarray(W, dtype="f8")
+    images = horizon_support(aff, (W, "W"))
 
     # calculate min max of W
     W_min = W.min()
     W_max = W.max()
-    print('Wmin Wmax: ', W_min, W_max)
+    print("Wmin Wmax: ", W_min, W_max)
 
     W_patches = patchify(W, (3, 3, 3), step=1)
     W_patches_mean = W_patches.mean(axis=(3, 4, 5))
     W_patches_var = W_patches.var(axis=(3, 4, 5))
-    images += horizon_support(aff, (W_patches_mean, 'W_patches_mean'), (W_patches_var, 'W_patches_var'))
+    images += horizon_support(
+        aff, (W_patches_mean, "W_patches_mean"), (W_patches_var, "W_patches_var")
+    )
 
     # coefficient of variation (interesting)
     W_patches_cv = W_patches_var / (W_patches_mean + 1e-12)
-    images += horizon_support(aff, (W_patches_cv, 'W_patches_cv'))
+    images += horizon_support(aff, (W_patches_cv, "W_patches_cv"))
 
     # Z-score normalization and standard error were not interesting
     # Working with larger patches did not lead to any interesting results either. The coefficient of variation seems to be the most informative feature.
 
     # blur cv
-    W_patches_cv_blur = gaussian_filter(W_patches_cv, sigma=1)  # sigma 2 was good as well.
-    images += horizon_support(aff, (W_patches_cv_blur, 'W_patches_cv_blur'))
-    
+    W_patches_cv_blur = gaussian_filter(
+        W_patches_cv, sigma=1
+    )  # sigma 2 was good as well.
+    images += horizon_support(aff, (W_patches_cv_blur, "W_patches_cv_blur"))
+
     # pad W_patches_cv_blur to match the shape of W
     pad_width = 1  # Adjust based on the patch size and step
-    W_patches_cv_blur_padded = np.pad(W_patches_cv_blur, pad_width, mode='edge')
-    W_patches_cv_blur = np.pad(W_patches_cv_blur, pad_width=1, mode='constant', constant_values=0)
+    W_patches_cv_blur_padded = np.pad(W_patches_cv_blur, pad_width, mode="edge")
+    W_patches_cv_blur = np.pad(
+        W_patches_cv_blur, pad_width=1, mode="constant", constant_values=0
+    )
 
     # Devide W by cv_blur
     W_cv_blur = W / (W_patches_cv_blur + 1e-12)
-    images += horizon_support(aff, (W_cv_blur, 'W_cv_blur'))
+    images += horizon_support(aff, (W_cv_blur, "W_cv_blur"))
     # Create mask corresponding to small values
     W_cv_blur_sum = 0 * W_cv_blur
     for th in [1, 2, 3, 4, 5, 6]:
         W_cv_blur_mask = W_cv_blur < th
-        W_cv_blur_sum += W_cv_blur_mask.astype('f8')
-        images += horizon_support(aff, (W_cv_blur_mask.astype('f8'), f'W_cv_blur_mask_{th}'))
+        W_cv_blur_sum += W_cv_blur_mask.astype("f8")
+        images += horizon_support(
+            aff, (W_cv_blur_mask.astype("f8"), f"W_cv_blur_mask_{th}")
+        )
 
-    images += horizon_support(aff, (W_cv_blur_sum, 'W_cv_blur_sum'))
+    images += horizon_support(aff, (W_cv_blur_sum, "W_cv_blur_sum"))
 
     # Create a mask for regular background from W
     W_bk_mask = W < bk
@@ -1859,21 +1992,30 @@ def enkefalos(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98
     return images
 
 
+def extreme_reduction(
+    data,
+    affine,
+    theta=120.0,
+    bk=70.0,
+    scale=9,
+    perc_min=0,
+    perc_max=98,
+    diff=30,
+    max_diff=100,
+):
 
-def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, perc_max=98, diff=30, max_diff=100):
+    data = np.ascontiguousarray(data, dtype="f8")
 
-    data = np.ascontiguousarray(data, dtype='f8')
-
-    print('Preparing data')
-    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
+    print("Preparing data")
+    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300.0, enh=3.0)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     Wcp = W.copy()
     # aff = np.eye(4)
     aff = affine.copy()
 
-    W = np.ascontiguousarray(W, dtype='f8')
-    images = horizon_support(aff, (W, 'W'))
+    W = np.ascontiguousarray(W, dtype="f8")
+    images = horizon_support(aff, (W, "W"))
 
     # from skimage import filters, segmentation, measure
 
@@ -1894,7 +2036,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     #     mask=foreground_mask
     # )
 
-
     # from skimage.segmentation import felzenszwalb
 
     # felzenszwalb_seg = felzenszwalb(W, scale=100, sigma=1, min_size=50, channel_axis=None)
@@ -1905,7 +2046,7 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # Wggm = gaussian_filter(Wggm, sigma=2)
     Wggm = Wggm / Wggm.max()
     # Wggm[Wggm > 1] = 1.
-    images += horizon_support(aff, (Wggm, 'Wggm'))
+    images += horizon_support(aff, (Wggm, "Wggm"))
 
     # Wggm_mask = Wggm < 0.1
     # images += horizon_support(aff, (Wggm_mask.astype('f8'), 'Wggm_mask'))
@@ -1918,20 +2059,18 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # Wn[Wn < 0] = 0
 
     Wggm = Wggm / (0.8 * Wggm.max())
-    Wggm[Wggm > 1] = 1.
+    Wggm[Wggm > 1] = 1.0
 
     Wn = W - 200 * Wggm
     Wn[Wn < 0] = 0
-    images += horizon_support(aff, (Wn, 'Wn'))
+    images += horizon_support(aff, (Wn, "Wn"))
 
     Wp = W + 200 * Wggm
     Wp[Wp < 0] = 0
-    images += horizon_support(aff, (Wp, 'Wp'))
-
-
+    images += horizon_support(aff, (Wp, "Wp"))
 
     bk_Wn = Wn < bk
-    images += horizon_support(aff, (bk_Wn.astype('f8'), 'bk_Wn'))
+    images += horizon_support(aff, (bk_Wn.astype("f8"), "bk_Wn"))
 
     # laplacian_W = laplace(W)
     # images += horizon_support(aff, (laplacian_W, 'laplacian_W'))
@@ -1988,7 +2127,7 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # images += horizon_support(aff, (W5.astype('i8'), 'W5'))
 
     W6 = W // 40
-    images += horizon_support(aff, (W6.astype('i8'), 'W6'))
+    images += horizon_support(aff, (W6.astype("i8"), "W6"))
 
     # W6n = Wn // 40
     # images += horizon_support(aff, (W6n.astype('i8'), 'W6n'))
@@ -2008,7 +2147,9 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     W_patches = patchify(W, (3, 3, 3), step=1)
     W_patches_mean = W_patches.mean(axis=(3, 4, 5))
     W_patches_var = W_patches.var(axis=(3, 4, 5))
-    images += horizon_support(aff, (W_patches_mean, 'W_patches_mean'), (W_patches_var, 'W_patches_var'))
+    images += horizon_support(
+        aff, (W_patches_mean, "W_patches_mean"), (W_patches_var, "W_patches_var")
+    )
 
     # create a ball mask of shape (3, 3, 3)
     ball_mask = np.zeros((3, 3, 3))
@@ -2016,32 +2157,41 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     for x in range(3):
         for y in range(3):
             for z in range(3):
-                if np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2 + (z - center[2]) ** 2) <= 1.5:
+                if (
+                    np.sqrt(
+                        (x - center[0]) ** 2
+                        + (y - center[1]) ** 2
+                        + (z - center[2]) ** 2
+                    )
+                    <= 1.5
+                ):
                     ball_mask[x, y, z] = 1
-    
-    print('Ball mask sum: ')
+
+    print("Ball mask sum: ")
     print(ball_mask.sum())
-    print('Ball mask ratio: ')
+    print("Ball mask ratio: ")
     print(ball_mask.sum() / 27)
 
     # Do the same as above for W6
-    W6 = np.pad(W6, pad_width=1, mode='constant', constant_values=0)
+    W6 = np.pad(W6, pad_width=1, mode="constant", constant_values=0)
     W6_patches = patchify(W6, (3, 3, 3), step=1)
 
     # multiply each patch with the ball mask to keep only the values within the ball
     # W6_patches = W6_patches * ball_mask[None, None, None, :, :, :]
     # rather than multiplying, we can use the ball mask as a boolean mask to keep only the values within the ball and ignore the rest
-    
-    Xn = np.reshape(W6_patches, (W6_patches.shape[0], W6_patches.shape[1], W6_patches.shape[2], -1))
+
+    Xn = np.reshape(
+        W6_patches, (W6_patches.shape[0], W6_patches.shape[1], W6_patches.shape[2], -1)
+    )
 
     Xf = get_top_3_frequent(Xn.reshape(-1, 27).astype(int), pad_val=-1)
 
     Xf_im = Xf.reshape(W6_patches.shape[:3] + (3,))
-    # Xf_im = np.interp(Xf_im, xp=[Xf_im.min(), Xf_im.max()], fp=[0., 1.])  
-    images += horizon_support(aff, (Xf_im, 'W6_patches_top3'))
+    # Xf_im = np.interp(Xf_im, xp=[Xf_im.min(), Xf_im.max()], fp=[0., 1.])
+    images += horizon_support(aff, (Xf_im, "W6_patches_top3"))
 
     Xf_first = Xf[:, 0].reshape(W6_patches.shape[:3])
-    images += horizon_support(aff, (Xf_first, 'W6_patches_top3_first'))
+    images += horizon_support(aff, (Xf_first, "W6_patches_top3_first"))
 
     # create difference between W6 and Xf_first and add to images
     # Diff = W6[1:-1, 1:-1, 1:-1] - Xf_first
@@ -2049,26 +2199,27 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
 
     W6_patches_mean = W6_patches.mean(axis=(3, 4, 5))
     W6_patches_var = W6_patches.var(axis=(3, 4, 5))
-    images += horizon_support(aff, (W6_patches_mean, 'W6_patches_mean'), (W6_patches_var, 'W6_patches_var'))
+    images += horizon_support(
+        aff, (W6_patches_mean, "W6_patches_mean"), (W6_patches_var, "W6_patches_var")
+    )
 
-
-    # Keep W6 less than 10 
+    # Keep W6 less than 10
     W6_2 = W6[1:-1, 1:-1, 1:-1].copy()
     # Keep only values in W6_2 that are less than or equal to 10, set the rest to 0
     W6_2[W6_2 > 10] = 10
-    images += horizon_support(aff, (W6_2, 'W6_2'))
+    images += horizon_support(aff, (W6_2, "W6_2"))
 
     # Apply median filter to W6_2 and add to images
     W6_2_median = median_filter(W6_2, size=3)
-    images += horizon_support(aff, (W6_2_median, 'W6_2_median'))
+    images += horizon_support(aff, (W6_2_median, "W6_2_median"))
 
     # Caclulate the difference between W6_2 and its median filtered version and add to images
     W6_2_diff = W6_2 - W6_2_median
-    images += horizon_support(aff, (W6_2_diff, 'W6_2_diff'))
+    images += horizon_support(aff, (W6_2_diff, "W6_2_diff"))
 
     # Same with absolute difference
     W6_2_abs_diff = np.abs(W6_2_diff)
-    images += horizon_support(aff, (W6_2_abs_diff, 'W6_2_abs_diff'))
+    images += horizon_support(aff, (W6_2_abs_diff, "W6_2_abs_diff"))
 
     # return images
 
@@ -2076,7 +2227,7 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # print('Shape of Xf_first:', Xf_first.shape)
     # print('W6 shape: ', W6.shape)
     # print('----------------------')
-    
+
     # Xf_sum = Xf.sum(axis=1)
     # Xf_sum_im = Xf_sum.reshape(W6_patches.shape[:3])
     # images += horizon_support(aff, (Xf_sum_im, 'W6_patches_top3_sum'))
@@ -2107,10 +2258,10 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
 
     X6 = W6_2.reshape(-1, 1)
 
-    centroids6, labels6 = berserker(X6, theta=2, metric='euclidean')
+    centroids6, labels6 = berserker(X6, theta=2, metric="euclidean")
 
     labels_im6 = labels6.reshape(W6_2.shape)
-    images += horizon_support(aff, (labels_im6, 'W6_2_labels'))
+    images += horizon_support(aff, (labels_im6, "W6_2_labels"))
 
     # X[:, 3] = 90 * W6_2.ravel()
     # centroids6f, labels6f = berserker(X, theta=theta, metric='euclidean')
@@ -2133,7 +2284,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # W2 = np.interp(W2, xp=[0, 0.8* W2.max()], fp=[0., 900.])
     # images += horizon_support(aff, (W2, 'W2_scaled'))
 
-
     # advanced_gradients = False
 
     # if advanced_gradients:
@@ -2144,7 +2294,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     #     gx = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(1,0,0))
     #     gy = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,1,0))
     #     gz = ndimage.gaussian_filter(bk_tmp.astype('f8'), sigma=1, order=(0,0,1))
-
 
     #     grad_dirs = np.stack([gx, gy, gz], axis=-1)
 
@@ -2170,22 +2319,17 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
 
     #     skyline(images=[(bk_tmp, aff, 'bk_tmp')], peaks=[(pam, 'vf')])
 
-
     # laplacian_Wn2 = laplace(Wn2)
     # images += horizon_support(aff, (laplacian_Wn2, 'laplacian_Wn2'))
-
-
 
     # return images
 
     # data_labels_orig, centroids_orig, centroids_im_orig, centroids_median_im_orig = berserker2_to_3D_plus_extra(X, W2, theta)
     # images += horizon_support(aff, (data_labels_orig, 'dl_orig'), (centroids_im_orig, 'cim_orig'), (centroids_median_im_orig, 'cmim_orig'))
 
-
     # print('Centroids shape: ', centroids_orig.shape)
     # print('Centroids (last column - sorted): ')
     # print(np.sort(centroids_orig[:, -1]))
-
 
     # data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged = welder(W2, data_labels_orig, centroids_orig, threshold=diff, max_intensity_threshold=max_diff, patch_size=(3,3,3), verbose=True)
     # images += horizon_support(aff, (data_labels_merged, 'dl_merged'), (centroids_im_merged, 'cim_merged'), (centroids_im_median_merged, 'cmim_merged'))
@@ -2201,7 +2345,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # data_labels_second[data_labels_merged == labels_sorted[1]] = 1
     # images += horizon_support(aff, (data_labels_second.astype('f8'), 'dl_second'))
 
-
     # for i, idx in enumerate(labels_sorted):
 
     # create an image with the minimum intensity value of each label
@@ -2209,7 +2352,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # for i, _ in enumerate(centroids_orig):
     #     min_labels_orig[data_labels_orig == i] = np.min(W[data_labels_orig == i])
     # images += horizon_support(aff, (min_labels_orig, 'min_labels_orig'))
-
 
     # min_filtered = minimum_filter(W2, size=3)
     # images += horizon_support(aff, (min_filtered, 'min_filtered'))
@@ -2229,13 +2371,11 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # min_r, tvm_blur = gradient_reweighting(min_filtered, affine, scale=scale, sigma=1)
     # images += horizon_support(aff, (tvm_blur, 'tvm_blur'), (min_r, 'min_r'))
 
-
     # tps = throwing_planets(bk_min, W=W, radius=16, samples=20000, perc=5)
     # tps = tps / tps.max()
     # images.append((tps, aff, 'tps'))
 
     # return images
-
 
     # min_size_factor = 0.1
     # max_size_factor = 40
@@ -2273,8 +2413,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # print('Centroids shape: ', centroids.shape)
     # print('Centroids (last column - sorted): ')
     # print(np.sort(centroids[:, -1]))
-
-
 
     # bk_im = W_alpha_reweighted < bk
     # bk_im = centroids_median_im < bk
@@ -2320,11 +2458,7 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # save_nifti('dl.nii.gz', data_labels.astype('i4'), affine)
     # save_nifti('bigz.nii.gz', bigz.astype('i4'), affine)
 
-
     # images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
-
-
-
 
     # kernel = make_ball_kernel(5)   # radius 5 -> shape (11, 11, 11)
 
@@ -2355,7 +2489,6 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
     # hess_elements = hessian_3d(W_alpha_blur)
 
-
     # hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
     # local_curv = (hess_elements_compact ** 2).sum(axis=0)
     # images += horizon_support(aff, (local_curv, 'local_curv'))
@@ -2371,13 +2504,22 @@ def extreme_reduction(data, affine, theta=120., bk=70., scale=9, perc_min=0, per
     # tps_largest = detect_largest_object(tps_mask, None)
     # images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
 
-
     # return images
 
 
-def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20., bk2=300, perc_min=0, perc_max=98):
+def berserker2_brain_seg_mini(
+    data,
+    affine,
+    theta=120.0,
+    alpha=2,
+    scale=9,
+    bk=20.0,
+    bk2=300,
+    perc_min=0,
+    perc_max=98,
+):
 
-    data = np.ascontiguousarray(data, dtype='f8')
+    data = np.ascontiguousarray(data, dtype="f8")
 
     # blurred = gaussian_filter(data, sigma=10)
 
@@ -2390,8 +2532,8 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     # images = horizon_support(np.eye(4), (data, 'data'), (blurred, 'blurred'), (blurred_inverted, 'blurred_inverted'), (result, 'result'))
     # return images
 
-    print('Preparing data')
-    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300., enh=3.)
+    print("Preparing data")
+    X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300.0, enh=3.0)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
     Wcp = W.copy()
@@ -2399,7 +2541,7 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     ng = False
 
     if ng:
-        print('Calculating laplacian')
+        print("Calculating laplacian")
         # Wgrad = gaussian_gradient_magnitude(W, sigma=3)
         # Wgrad = laplace(W)
         Wgrad = gaussian_laplace(W, sigma=1)
@@ -2409,19 +2551,25 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
 
     aff = np.eye(4)
 
-    W = np.ascontiguousarray(W, dtype='f8')
+    W = np.ascontiguousarray(W, dtype="f8")
 
     W_alpha = exponentiation_normalization(W, alpha=alpha, scale=scale)
 
     if ng:
-        images = horizon_support(aff,(Wcp, 'Worig'), (Wgrad, 'Wgrad'), (W, 'Wwithng'), (W_alpha, 'W_alpha'))
+        images = horizon_support(
+            aff, (Wcp, "Worig"), (Wgrad, "Wgrad"), (W, "Wwithng"), (W_alpha, "W_alpha")
+        )
     else:
-        images = horizon_support(aff,(Wcp, 'Worig'), (W, 'W'), (W_alpha, 'W_alpha'))
+        images = horizon_support(aff, (Wcp, "Worig"), (W, "W"), (W_alpha, "W_alpha"))
 
     # return images
 
-    data_labels, centroids, centroids_im, centroids_median_im = berserker2_to_3D_plus_extra(X, W_alpha, theta)
-    images += horizon_support(aff, (data_labels, 'dl'), (centroids_im, 'cim'), (centroids_median_im, 'cmim'))
+    data_labels, centroids, centroids_im, centroids_median_im = (
+        berserker2_to_3D_plus_extra(X, W_alpha, theta)
+    )
+    images += horizon_support(
+        aff, (data_labels, "dl"), (centroids_im, "cim"), (centroids_median_im, "cmim")
+    )
 
     # min_size_factor = 0.1
     # max_size_factor = 40
@@ -2432,80 +2580,79 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     # max_size = int(max_size_factor * segment_size)
 
     bk_im = W_alpha < bk
-    images += horizon_support(aff, (bk_im.astype('f8'), 'bkim'))
+    images += horizon_support(aff, (bk_im.astype("f8"), "bkim"))
 
-    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] **2, axis=0))
+    voxel_sizes = np.sqrt(np.sum(affine[:3, :3] ** 2, axis=0))
 
-    print('Affine matrix: ', affine)
-    print('Affine voxel sizes: ', voxel_sizes)
+    print("Affine matrix: ", affine)
+    print("Affine voxel sizes: ", voxel_sizes)
 
     gi, gj, gk = np.gradient(data, voxel_sizes[0], voxel_sizes[1], voxel_sizes[2])
-    tvm = np.sqrt(gi ** 2 + gj ** 2 + gk ** 2)
+    tvm = np.sqrt(gi**2 + gj**2 + gk**2)
 
-    images += horizon_support(aff, (tvm, 'tvm'))
+    images += horizon_support(aff, (tvm, "tvm"))
 
     # blur tvm to get more stable gradients
     tvm_blur = gaussian_filter(tvm, sigma=1)
-    images += horizon_support(aff, (tvm_blur, 'tvm_blur'))
+    images += horizon_support(aff, (tvm_blur, "tvm_blur"))
 
     # use tvm_blur to suppress W_alpha
     # if tvm_blur is high, it means we are at an edge, and we want to suppress W_alpha to avoid false positives
 
     W_alpha_tvm = W_alpha * (1 - 2 * tvm_blur / tvm_blur.max())
-    images += horizon_support(aff, (W_alpha_tvm, 'W_alpha_tvm'))
+    images += horizon_support(aff, (W_alpha_tvm, "W_alpha_tvm"))
 
     # calulate second order derivatives of W_alpha
     W_alpha_blur = gaussian_filter(W_alpha, sigma=1)
     hess_elements = hessian_3d(W_alpha_blur)
 
-
-    hess_elements_compact  = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
-    local_curv = (hess_elements_compact ** 2).sum(axis=0)
-    images += horizon_support(aff, (local_curv, 'local_curv'))
+    hess_elements_compact = hess_elements.reshape(9, W.shape[0], W.shape[1], W.shape[2])
+    local_curv = (hess_elements_compact**2).sum(axis=0)
+    images += horizon_support(aff, (local_curv, "local_curv"))
 
     local_curv_blur = gaussian_filter(local_curv, sigma=1)
-    images += horizon_support(aff, (local_curv_blur, 'local_curv_blur'))
+    images += horizon_support(aff, (local_curv_blur, "local_curv_blur"))
 
     tps = throwing_planets(bk_im, W=W, radius=28, samples=20000, perc=1)
     tps = tps / tps.max()
-    images.append((tps, aff, 'tps'))
-
-
+    images.append((tps, aff, "tps"))
 
     tps_mask = tps > 0.2
     tps_largest = detect_largest_object(tps_mask, None)
-    images.append((tps_largest.astype('f8'), aff, 'tps_largest'))
+    images.append((tps_largest.astype("f8"), aff, "tps_largest"))
 
-    bk_cim = centroids_median_im > bk2 # previously it was centroids_im
-    images += horizon_support(aff, (bk_cim.astype('f8'), 'bk_cim'))
+    bk_cim = centroids_median_im > bk2  # previously it was centroids_im
+    images += horizon_support(aff, (bk_cim.astype("f8"), "bk_cim"))
 
     # TODO: rounding and dtypes to int can generate useful labels
 
     # strel = generate_binary_structure(3, 1)
-    data_labels_bk_cim, num_bk_cim = label(bk_cim) # , structure=strel)
+    data_labels_bk_cim, num_bk_cim = label(bk_cim)  # , structure=strel)
     unq, cnts = np.unique(data_labels_bk_cim, return_counts=True)
 
-    images += horizon_support(aff, (data_labels_bk_cim.astype('f8'), 'data_labels_bk_cim'))
+    images += horizon_support(
+        aff, (data_labels_bk_cim.astype("f8"), "data_labels_bk_cim")
+    )
 
     big_five_cnts = np.sort(cnts)[-6:-1]
     big_five_labels = np.argsort(cnts)[-6:-1]
 
-    print('Large counts ', big_five_cnts)
-    print('And their indices ', big_five_labels)
+    print("Large counts ", big_five_cnts)
+    print("And their indices ", big_five_labels)
 
-    bigz = np.zeros(data.shape, dtype='i8')
+    bigz = np.zeros(data.shape, dtype="i8")
     cnt = 1
     for bfl in big_five_labels:
         bigz[data_labels_bk_cim == bfl] = cnt
         cnt += 1
 
     fo = find_objects(bigz)
-    print('Volumes')
+    print("Volumes")
     big_five_vols = bbox_from_fo(fo)
     print(big_five_vols)
     print(big_five_labels)
 
-    images += horizon_support(aff, (bigz.astype('f8'), 'bigz'))
+    images += horizon_support(aff, (bigz.astype("f8"), "bigz"))
 
     cn2 = big_five_cnts[-2]
     an2 = big_five_labels[-2]
@@ -2526,62 +2673,72 @@ def berserker2_brain_seg_mini(data, affine, theta=120., alpha=2, scale=9, bk=20.
     dl_bk_cim_focus[data_labels_bk_cim == unq[brain_label]] = 1
     dl_bk_cim_focus[data_labels_bk_cim == unq[skull_label]] = 2
 
-
     t = 1
 
-    images += horizon_support(aff, (dl_bk_cim_focus.astype('f8'), 'dl_bk_cim_focus'))
+    images += horizon_support(aff, (dl_bk_cim_focus.astype("f8"), "dl_bk_cim_focus"))
 
-    brain_estimate = gaussian_filter(100 * (dl_bk_cim_focus == 1).astype('f8'), sigma=1)
-    images += horizon_support(aff, (brain_estimate.astype('f8'), 'brain_estimate'))
+    brain_estimate = gaussian_filter(100 * (dl_bk_cim_focus == 1).astype("f8"), sigma=1)
+    images += horizon_support(aff, (brain_estimate.astype("f8"), "brain_estimate"))
 
-    skull_estimate = gaussian_filter(100 * (dl_bk_cim_focus == 2).astype('f8'), sigma=1)
-    images += horizon_support(aff, (skull_estimate.astype('f8'), 'skull_estimate'))
+    skull_estimate = gaussian_filter(100 * (dl_bk_cim_focus == 2).astype("f8"), sigma=1)
+    images += horizon_support(aff, (skull_estimate.astype("f8"), "skull_estimate"))
 
     W_alpha_masked = W_alpha.copy()
     W_alpha_masked[skull_estimate > 20] = 0
 
-    images += horizon_support(aff, (W_alpha_masked.astype('f8'), 'W_alpha_masked'))
+    images += horizon_support(aff, (W_alpha_masked.astype("f8"), "W_alpha_masked"))
 
     # TODO: still not sure why we cannot label this
     # data_labels_bk_cim2, num_bk_cim2 = label(dl_bk_cim_focus > 0)
     # images += horizon_support(aff, (data_labels_bk_cim2.astype('f8'), 'dl_bk_cim_focus2'))
-
 
     t = 1
 
     return images
 
 
-def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, theta=120., percb=1., pg=False, ng=False):
+def berserker2_brain_seg(
+    data,
+    affine,
+    return_all=False,
+    orig_est=100,
+    m_est=3,
+    theta=120.0,
+    percb=1.0,
+    pg=False,
+    ng=False,
+):
 
-    data = np.ascontiguousarray(data, dtype='f8')
+    data = np.ascontiguousarray(data, dtype="f8")
 
-    print('Preparing data')
-    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
+    print("Preparing data")
+    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300.0, enh=3.0)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
 
-    print('Applying Berserker 2 on X (i, j, k, 3w)')
+    print("Applying Berserker 2 on X (i, j, k, 3w)")
     t = time()
-    data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
-    print('Duration ', time() - t)
+    data_labels, centroids = berserker2_to_3D_labels(
+        X, theta, data_dims=data.shape, verbose=False
+    )
+    print("Duration ", time() - t)
     print()
 
-    print('Intensity estimates ...')
+    print("Intensity estimates ...")
     print_centroids(centroids)
 
     # mask_ci = mask_lt(data_labels, centroids, bk_thr= orig_est * 1.5) # 1.2 previously - this parameter is important - it may need to be a hyperparameter
-    mask_ext = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+    mask_ext = mask_lt(data_labels, centroids, bk_thr=orig_est * m_est)
 
     # dt = distance_transform_edt(1 - mask_ext)
 
     mask_orig = W < orig_est
     W[mask_orig] = 0
-    mask_orig = mask_orig.astype('uint8')
+    mask_orig = mask_orig.astype("uint8")
 
     # mask_diff = mask_ext - mask_orig
 
     if pg or ng:
-        print('Calculating gradients')
+        print("Calculating gradients")
         Wgrad = gaussian_gradient_magnitude(W, sigma=1)
 
     if pg:
@@ -2589,66 +2746,74 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         Xpg[:, 3] += 2 * Wgrad.ravel()
         Ivol, Jvol, Kvol, Wpg = X_to_many_3D(Xpg, data.shape)
 
-        print('Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)')
+        print("Applying Berserker 2 on Xpg (i, j, k, 3w + 2gradW)")
         t = time()
-        data_labels_pg, centroids_pg = berserker2_to_3D_labels(Xpg, theta, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
+        data_labels_pg, centroids_pg = berserker2_to_3D_labels(
+            Xpg, theta, data_dims=data.shape, verbose=False
+        )
+        print("Duration ", time() - t)
         print()
 
         print_centroids(centroids_pg)
 
-        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr= orig_est * m_est)
+        mask_pg = mask_lt(data_labels_pg, centroids_pg, bk_thr=orig_est * m_est)
         dt_pg = distance_transform_edt(1 - mask_pg)
 
     if ng:
         Xng = X.copy()
         Xng[:, 3] -= 2 * Wgrad.ravel()
         Ivol, Jvol, Kvol, Wng = X_to_many_3D(Xng, data.shape)
-        print('Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)')
+        print("Applying Berserker 2 on Xng (i, j, k, 3w - 2gradW)")
         t = time()
-        data_labels_ng, centroids_ng = berserker2_to_3D_labels(Xng, theta, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
+        data_labels_ng, centroids_ng = berserker2_to_3D_labels(
+            Xng, theta, data_dims=data.shape, verbose=False
+        )
+        print("Duration ", time() - t)
         print()
 
         print_centroids(centroids_ng)
 
-        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr= orig_est * m_est)
+        mask_ng = mask_lt(data_labels_ng, centroids_ng, bk_thr=orig_est * m_est)
         dt_ng = distance_transform_edt(1 - mask_ng)
 
     lightsoff = False
     if lightsoff:
-        print('Calculating weights')
+        print("Calculating weights")
         weights = weighted_image(dt_pg, W)
-        print('Applying Berserker 2 on X (i, j, k, 3w)')
+        print("Applying Berserker 2 on X (i, j, k, 3w)")
         t = time()
-        data_labels, centroids = berserker2_to_3D_labels(X, theta, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
+        data_labels, centroids = berserker2_to_3D_labels(
+            X, theta, data_dims=data.shape, verbose=False
+        )
+        print("Duration ", time() - t)
         print()
 
         print_centroids(centroids)
 
-        mask = mask_lt(data_labels, centroids, bk_thr= orig_est * m_est)
+        mask = mask_lt(data_labels, centroids, bk_thr=orig_est * m_est)
         dt = distance_transform_edt(1 - mask)
 
         # TODO: this is useful needs cleaning
         Xw = X.copy()
         Xw[:, 3] = weights.ravel()
-        print('Applying Berserker 2 on Xw (re-weighted)')
+        print("Applying Berserker 2 on Xw (re-weighted)")
         t = time()
-        data_labels_w, centroids_w = berserker2_to_3D_labels(Xw, theta * 5, data_dims=data.shape, verbose=False)
-        print('Duration ', time() - t)
+        data_labels_w, centroids_w = berserker2_to_3D_labels(
+            Xw, theta * 5, data_dims=data.shape, verbose=False
+        )
+        print("Duration ", time() - t)
         print()
 
         print_centroids(centroids_w)
-        mask_w = mask_lt(data_labels_w, centroids_w, bk_thr= 5 * orig_est * m_est)
+        mask_w = mask_lt(data_labels_w, centroids_w, bk_thr=5 * orig_est * m_est)
         imask_w = 1 - mask_w
 
     auto_edt_rm = False
     if auto_edt_rm:
-        print('Starting cluster analysis of dl_pg ..')
+        print("Starting cluster analysis of dl_pg ..")
         total_pg, total_blur_pg = cluster_analysis(data_labels_pg, centroids_pg, 0.9)
 
-        print('Starting cluster analysis of dl ..')
+        print("Starting cluster analysis of dl ..")
         total, total_blur = cluster_analysis(data_labels, centroids, 0.9)
 
     centroids_im = centroid_images(data_labels, centroids)
@@ -2662,11 +2827,13 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
     masked_berserker = False
     if masked_berserker:
-        print('Applying Berserker 2 on X masked (i, j, k, 3w)')
+        print("Applying Berserker 2 on X masked (i, j, k, 3w)")
         t = time()
-        maskr = mask_orig.ravel().astype('bool')
-        data_labels_mask, centroids_mask = berserker2_to_3D_labels(X, theta / 2.0, data_dims=data.shape, verbose=False, mask=maskr)
-        print('Duration ', time() - t)
+        maskr = mask_orig.ravel().astype("bool")
+        data_labels_mask, centroids_mask = berserker2_to_3D_labels(
+            X, theta / 2.0, data_dims=data.shape, verbose=False, mask=maskr
+        )
+        print("Duration ", time() - t)
         print()
 
         # centroids_mask_im = centroid_images(data_labels_mask, centroids_mask)
@@ -2678,50 +2845,48 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     aff = np.eye(4)
     images = []
 
-    images.append((W, aff, 'W'))
-    images.append((data, aff, 'data'))
-    images.append((mask_orig.astype('f8'), aff, 'mask_orig'))
-    images.append((mask_ext, aff, 'mask_ext'))
+    images.append((W, aff, "W"))
+    images.append((data, aff, "data"))
+    images.append((mask_orig.astype("f8"), aff, "mask_orig"))
+    images.append((mask_ext, aff, "mask_ext"))
     # images.append((mask_diff, aff, 'mask_diff'))
-
 
     # images.append((mask_ci, aff, 'mask_ci'))
 
-
     if masked_berserker:
-        images.append((data_labels_mask, aff, 'dl_mask'))
+        images.append((data_labels_mask, aff, "dl_mask"))
 
         t = 2
     if auto_edt_rm:
-        images.append((total_pg, aff, 'total_pg'))
-        images.append((total_blur_pg, aff, 'total_blur_pg'))
-        images.append((total, aff, 'total'))
-        images.append((total_blur, aff, 'total_blur'))
+        images.append((total_pg, aff, "total_pg"))
+        images.append((total_blur_pg, aff, "total_blur_pg"))
+        images.append((total, aff, "total"))
+        images.append((total_blur, aff, "total_blur"))
     if pg:
-        images.append((mask_pg, aff, 'mask_pg'))
-        images.append((data_labels_pg, aff, 'dl_pg'))
-        images.append((Wpg, aff, 'Wpg'))
+        images.append((mask_pg, aff, "mask_pg"))
+        images.append((data_labels_pg, aff, "dl_pg"))
+        images.append((Wpg, aff, "Wpg"))
     if lightsoff:
-        images.append((weights, aff, 'weights'))
-        images.append((data_labels_w, aff, 'dl_w'))
-        images.append((imask_w, aff, 'imask_w'))
+        images.append((weights, aff, "weights"))
+        images.append((data_labels_w, aff, "dl_w"))
+        images.append((imask_w, aff, "imask_w"))
 
-    images.append((data_labels, aff, 'dl'))
+    images.append((data_labels, aff, "dl"))
 
     if pg or ng:
-        images.append((Wgrad, aff, 'Wgrad'))
+        images.append((Wgrad, aff, "Wgrad"))
 
     # images.append((sums_im, aff, 'sums_im'))
 
-    images.append((centroids_im, aff, 'centroids_im'))
-    images.append((centroids_median_im, aff, 'centroids_median_im'))
+    images.append((centroids_im, aff, "centroids_im"))
+    images.append((centroids_median_im, aff, "centroids_median_im"))
 
     if pg:
-        images.append((centroids_im_pg, aff, 'centroids_im_pg'))
+        images.append((centroids_im_pg, aff, "centroids_im_pg"))
     if ng:
-        images.append((centroids_im_ng, aff, 'centroids_im_ng'))
+        images.append((centroids_im_ng, aff, "centroids_im_ng"))
 
-    negone = False # requires masked berserker
+    negone = False  # requires masked berserker
     if negone:
         overshoot = np.zeros(data.shape)
         # combined_mask = (data_labels_mask > -1) & (centroids_mask_im < 0.5)
@@ -2737,18 +2902,23 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
 
         # close same labels that are not -1
         unql, cntsl = np.unique(data_labels_mask, return_counts=True)
-        print('Unique >-1 labels')
+        print("Unique >-1 labels")
         print(unql)
         print(cntsl)
 
-        together = np.zeros(data.shape, dtype='f8')
+        together = np.zeros(data.shape, dtype="f8")
         for l in unql:
             print(l)
             if l > -1:
-                together += binary_closing(data_labels_mask==l, structure=kernel, iterations=1, border_value=-2).astype('f8')
+                together += binary_closing(
+                    data_labels_mask == l,
+                    structure=kernel,
+                    iterations=1,
+                    border_value=-2,
+                ).astype("f8")
                 # TODO: the closing above should be applied to a padded input otherwise a border is drawn
 
-        blacky = together==0
+        blacky = together == 0
 
         # provides the largest object (second largest after background) in a binary image
         final = detect_largest_object(blacky, structure=np.ones((3, 3, 3)))
@@ -2760,14 +2930,14 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
         # final[data_labels_t == dl_final] = 1.
 
         # images.append((overshoot, aff, 'overshoot'))
-        images.append((together, aff, 'together'))
-        images.append((blacky.astype('f8'), aff, 'blacky'))
+        images.append((together, aff, "together"))
+        images.append((blacky.astype("f8"), aff, "blacky"))
         # images.append((data_labels_t, aff, 'dl_t'))
-        images.append((final, aff, 'final'))
+        images.append((final, aff, "final"))
 
     # mask2 = mask_lt(data_labels, centroids, bk_thr=orig_est * 1.8)
     mask2 = mask_orig.copy()
-    mask2 = mask2.astype('f8')
+    mask2 = mask2.astype("f8")
 
     # images.append((mask2, aff, 'mask2'))
 
@@ -2775,7 +2945,7 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     tbl0 = throwing_planets(mask2, W=W, radius=28, samples=20000, perc=2)
     tbl0 = tbl0 / tbl0.max()
 
-    images.append((tbl0, aff, 'tbl0'))
+    images.append((tbl0, aff, "tbl0"))
 
     mask3 = mask2.copy()
     # mask3 = mask_ext.copy()
@@ -2785,32 +2955,34 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     potential_focus = tbl0 > 0.2
     # find largest object (after bk)
     focus = detect_largest_object(potential_focus, None)
-    images.append((focus, aff, 'focus'))
+    images.append((focus, aff, "focus"))
 
     # calculate center of mass
     ci, cj, ck = np.round(center_of_mass(focus), 0).astype(int)
-    print('Nicer center ...', ci, cj, ck)
+    print("Nicer center ...", ci, cj, ck)
 
     c = np.array([[ci, cj, ck]])
     c_w = np.dot(affine[:3, :3], c.T) + affine[:3, 3][:, None]
     c_w = np.array([c_w.T[0]])
 
     # make mask3 zero in the focus areas to remove errors from large ventricles etc.
-    mask3[focus.astype('bool')] = 0
-    images.append((mask3, aff, 'mask3'))
+    mask3[focus.astype("bool")] = 0
+    images.append((mask3, aff, "mask3"))
 
     # use opening to increase mask3 (cleared original mask)
     kernel = ball(2)
-    mask3_bo = binary_opening(mask3, structure=kernel, iterations=1, border_value=1) # check borders
+    mask3_bo = binary_opening(
+        mask3, structure=kernel, iterations=1, border_value=1
+    )  # check borders
 
     # getting the actual background (assuming it is the largest object) TODO: add a secondary method for detecting bk
     bk = detect_largest_object(mask3_bo, structure=None, actually=True)
-    images.append((bk, aff, 'bk'))
+    images.append((bk, aff, "bk"))
 
     kernel = ball(8)
     bk2 = binary_dilation(bk, structure=kernel, iterations=1)
 
-    images.append((bk2.astype('f8'), aff, 'bk2'))
+    images.append((bk2.astype("f8"), aff, "bk2"))
 
     # remove actual background.
     mask_nobk = mask3.copy()
@@ -2820,21 +2992,23 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     mask_nobk[:2, :, :] = 0
     mask_nobk[-2:, :, :] = 0
     mask_nobk[:, :2, :] = 0
-    mask_nobk[:,-2:, :] = 0
+    mask_nobk[:, -2:, :] = 0
     mask_nobk[:, :, :2] = 0
     mask_nobk[:, :, -2:] = 0
 
-    images.append((mask_nobk, aff, 'mask_nobk'))
+    images.append((mask_nobk, aff, "mask_nobk"))
 
-    print('Applying Berserker 2 on X with nobk mask')
+    print("Applying Berserker 2 on X with nobk mask")
     t = time()
-    maskr = mask_nobk.ravel().astype('bool')
-    data_labels_nobk, centroids_nobk = berserker2_to_3D_labels(X, theta / 4.0, data_dims=data.shape, verbose=False, mask=maskr)
-    print('Duration ', time() - t)
+    maskr = mask_nobk.ravel().astype("bool")
+    data_labels_nobk, centroids_nobk = berserker2_to_3D_labels(
+        X, theta / 4.0, data_dims=data.shape, verbose=False, mask=maskr
+    )
+    print("Duration ", time() - t)
     print()
 
     centroids_im_nobk = centroid_images(data_labels_nobk, centroids_nobk)
-    images.append((data_labels_nobk, aff, 'data_labels_nobk'))
+    images.append((data_labels_nobk, aff, "data_labels_nobk"))
 
     poi = centroids_nobk[:, :3]
     # this is kind of repeated (but not the )
@@ -2851,236 +3025,259 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     centroids_nobk2 = centroids_nobk.copy()
     for i, d in enumerate(poi2center):
         if d < 120:
-            centroids_nobk2[i, 3] = 1.
+            centroids_nobk2[i, 3] = 1.0
 
     mask_reduced_nobk2 = centroid_images(data_labels_nobk, centroids_nobk2)
-    images.append((mask_reduced_nobk2, aff, 'mask_reduced_nobk2'))
+    images.append((mask_reduced_nobk2, aff, "mask_reduced_nobk2"))
 
-
-    centroids_median_im_rnd  = np.round(centroids_median_im, 0).astype('i8')
+    centroids_median_im_rnd = np.round(centroids_median_im, 0).astype("i8")
     vals, counts = np.unique(centroids_median_im_rnd, return_counts=True)
 
     # images.append((centroids_median_im_rnd, aff, 'centroids_median_im_rnd'))
 
-
     X_median = X.copy()
-    X_median[:, 3] = centroids_median_im_rnd.ravel().astype('f8')
+    X_median[:, 3] = centroids_median_im_rnd.ravel().astype("f8")
 
-    ggm_focus = gaussian_gradient_magnitude(focus.astype('f8'), sigma=1)
-    images.append((ggm_focus, aff, 'ggm_focus'))
+    ggm_focus = gaussian_gradient_magnitude(focus.astype("f8"), sigma=1)
+    images.append((ggm_focus, aff, "ggm_focus"))
 
-    print('Applying Berserker 2 on X_coords with inverted focus mask')
+    print("Applying Berserker 2 on X_coords with inverted focus mask")
     t = time()
     ggm_focus_hard = ggm_focus > 0.1
     maskr_ggm_focus = ggm_focus_hard.ravel()
     X_coords = np.ascontiguousarray(X[:, :3].copy())
-    data_labels_ggm_focus, centroids_ggm_focus = berserker2_to_3D_labels(X_coords, theta / 8.0, data_dims=data.shape, verbose=False, mask=maskr_ggm_focus)
-    print('Duration ', time() - t)
+    data_labels_ggm_focus, centroids_ggm_focus = berserker2_to_3D_labels(
+        X_coords, theta / 8.0, data_dims=data.shape, verbose=False, mask=maskr_ggm_focus
+    )
+    print("Duration ", time() - t)
     print()
 
-    images.append((data_labels_ggm_focus, aff, 'dl_ggm_focus'))\
-
-
-
-
-
-    print('Trigonometry - Phase A') # p
+    images.append((data_labels_ggm_focus, aff, "dl_ggm_focus"))
+    print("Trigonometry - Phase A")  # p
     t = time()
     c_nobk2 = np.ascontiguousarray(centroids_nobk2[:, :3])
-    nobk2_mat = distance_matrix(c_nobk2, c_w, 'euclidean')
+    nobk2_mat = distance_matrix(c_nobk2, c_w, "euclidean")
     nobk2_dists_from_center = np.squeeze(nobk2_mat)
-    print('Nobk2 to center', nobk2_mat.shape)
-    print('Duration ', time() - t)
+    print("Nobk2 to center", nobk2_mat.shape)
+    print("Duration ", time() - t)
     print()
 
-    print('Trigonometry - Phase A0') #
+    print("Trigonometry - Phase A0")  #
     t = time()
-    ggm_focus_to_nobk2 = distance_matrix(centroids_ggm_focus, c_nobk2, 'euclidean') # c_nobk2 should change to nobk2 points
-    print('ggm_focus to nobk2', ggm_focus_to_nobk2.shape)
-    print('Duration ', time() - t)
+    ggm_focus_to_nobk2 = distance_matrix(
+        centroids_ggm_focus, c_nobk2, "euclidean"
+    )  # c_nobk2 should change to nobk2 points
+    print("ggm_focus to nobk2", ggm_focus_to_nobk2.shape)
+    print("Duration ", time() - t)
     print()
 
     ggm_focus_to_nobk2_a = ggm_focus_to_nobk2.argmin(axis=1)
 
-
-    print('Trigonometry - Phase B') # OA
+    print("Trigonometry - Phase B")  # OA
     t = time()
-    coords_to_center_dists = distance_matrix(X_coords, c_w, 'euclidean')
+    coords_to_center_dists = distance_matrix(X_coords, c_w, "euclidean")
     coords_to_center_dists = np.squeeze(coords_to_center_dists)
-    print('World coordinates to center', coords_to_center_dists.shape)
-    print('Duration ', time() - t)
+    print("World coordinates to center", coords_to_center_dists.shape)
+    print("Duration ", time() - t)
     print()
 
     t = 1
 
-    print('Trigonometry - Phase C') # Ap
+    print("Trigonometry - Phase C")  # Ap
     t = time()
-    coords_to_nobk2 = distance_matrix(X_coords, c_nobk2, 'euclidean')
-    print('World coordinates to nobk2', coords_to_nobk2.shape)
-    print('Duration ', time() - t)
+    coords_to_nobk2 = distance_matrix(X_coords, c_nobk2, "euclidean")
+    print("World coordinates to nobk2", coords_to_nobk2.shape)
+    print("Duration ", time() - t)
     print()
-
-
 
     use_more = True
     n_close = 30
     if not use_more:
-        coords_to_nobk2_m = coords_to_nobk2.min(axis=1) # update it to get 3 closest values
-        coords_to_nobk2_a = coords_to_nobk2.argmin(axis=1) # update it to get 3 closest values
+        coords_to_nobk2_m = coords_to_nobk2.min(
+            axis=1
+        )  # update it to get 3 closest values
+        coords_to_nobk2_a = coords_to_nobk2.argmin(
+            axis=1
+        )  # update it to get 3 closest values
 
     if use_more:
-        coords_to_nobk2_m5 = np.sort(coords_to_nobk2, axis=1)[:, :n_close] # update it to get 5 closest values
-        coords_to_nobk2_a5 = np.argsort(coords_to_nobk2, axis=1)[:, :n_close] # update it to get 5 closest values
+        coords_to_nobk2_m5 = np.sort(coords_to_nobk2, axis=1)[
+            :, :n_close
+        ]  # update it to get 5 closest values
+        coords_to_nobk2_a5 = np.argsort(coords_to_nobk2, axis=1)[
+            :, :n_close
+        ]  # update it to get 5 closest values
 
-    print('Trigonometry - Phase D') # OAp
+    print("Trigonometry - Phase D")  # OAp
 
     if not use_more:
         corr_center_to_nobk2_dists = nobk2_dists_from_center[coords_to_nobk2_a].copy()
 
     if use_more:
-
-        corr_center_to_nobk2_dists = nobk2_dists_from_center[coords_to_nobk2_a5[:, 0]].copy()
+        corr_center_to_nobk2_dists = nobk2_dists_from_center[
+            coords_to_nobk2_a5[:, 0]
+        ].copy()
         for i in range(1, n_close):
-            corr_center_to_nobk2_dists += nobk2_dists_from_center[coords_to_nobk2_a5[:, i]].copy()
+            corr_center_to_nobk2_dists += nobk2_dists_from_center[
+                coords_to_nobk2_a5[:, i]
+            ].copy()
 
         corr_center_to_nobk2_dists /= n_close
 
     res = coords_to_center_dists < corr_center_to_nobk2_dists
 
-
     # images.append((res.reshape(data.shape).astype('f8'), aff, 'res'))
-
 
     breaking_puzzle = True
     if breaking_puzzle:
-        print('Breaking phase ... with Berserker 2 ...')
+        print("Breaking phase ... with Berserker 2 ...")
         t = time()
 
-        theta_value_small = theta / 8.
-        relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt = breaking_phase(data, affine, (ci, cj, ck),
-                                                                                        vals, orig_est, poi, centroids_median_im_rnd,
-                                                                                        X_median, theta_value_small)
+        theta_value_small = theta / 8.0
+        relabel_breaking, all_puzz_centroids, puzz_mask, puzz_mask_cnt = breaking_phase(
+            data,
+            affine,
+            (ci, cj, ck),
+            vals,
+            orig_est,
+            poi,
+            centroids_median_im_rnd,
+            X_median,
+            theta_value_small,
+        )
 
-        print('Duration ', time() - t)
+        print("Duration ", time() - t)
         print()
 
         images2 = []
-        images2.append((W, aff, 'W'))
-        images2.append((W ** 2, aff, 'W**2'))
-        images2.append((W ** 4, aff, 'W**4'))
-        images2.append((W ** 6, aff, 'W**6'))
+        images2.append((W, aff, "W"))
+        images2.append((W**2, aff, "W**2"))
+        images2.append((W**4, aff, "W**4"))
+        images2.append((W**6, aff, "W**6"))
 
-        W4_1D = (W ** 4).ravel()
+        W4_1D = (W**4).ravel()
         W_tmp = np.interp(W4_1D, (W4_1D.min(), W4_1D.max()), (0, 1))
         W_tmp = W_tmp.reshape(W.shape)
-        images2.append((W_tmp, aff, 'W_tmp'))
+        images2.append((W_tmp, aff, "W_tmp"))
 
-        images2.append((mask_reduced_nobk2.astype('f8'), aff, 'mask_reduced_nobk2'))
-        images2.append((relabel_breaking.astype('f8'), aff, 'relabel_breaking'))
-        images2.append((puzz_mask, aff, 'puzz_mask'))
-        images2.append((puzz_mask_cnt, aff, 'puzz_mask_cnt'))
-
+        images2.append((mask_reduced_nobk2.astype("f8"), aff, "mask_reduced_nobk2"))
+        images2.append((relabel_breaking.astype("f8"), aff, "relabel_breaking"))
+        images2.append((puzz_mask, aff, "puzz_mask"))
+        images2.append((puzz_mask_cnt, aff, "puzz_mask_cnt"))
 
         # Remove obvious things from puzz_mask_cnt
         puzz_mask_cnt2 = puzz_mask_cnt.copy()
         puzz_mask_cnt2[bk2 == 1] = 0
         puzz_mask_cnt2[mask_nobk == 1] = 0
-        images2.append((puzz_mask_cnt2, aff, 'puzz_mask_cnt2'))
+        images2.append((puzz_mask_cnt2, aff, "puzz_mask_cnt2"))
 
         puzz_mask2 = np.zeros(data.shape)
 
         # images2.append((mask_puzz_mask_cnt2.astype('f8'), aff, 'mask_puzz_mask_cnt2'))
 
         puzz_mask2[puzz_mask_cnt2 > 0] = 1
-        images2.append((puzz_mask2.astype('f8'), aff, 'puzz_mask2'))
+        images2.append((puzz_mask2.astype("f8"), aff, "puzz_mask2"))
 
-        puzz_mask_smooth = gaussian_filter(10 * puzz_mask2.astype('f8'), sigma=4)
-        images2.append((puzz_mask_smooth.astype('f8'), aff, 'puzz_mask_smooth'))
+        puzz_mask_smooth = gaussian_filter(10 * puzz_mask2.astype("f8"), sigma=4)
+        images2.append((puzz_mask_smooth.astype("f8"), aff, "puzz_mask_smooth"))
 
-        boundary = ((puzz_mask_smooth > 0.2) & (puzz_mask_smooth < 1.2)).astype('f8')
-        images2.append((boundary.astype('f8'), aff, 'boundary'))
+        boundary = ((puzz_mask_smooth > 0.2) & (puzz_mask_smooth < 1.2)).astype("f8")
+        images2.append((boundary.astype("f8"), aff, "boundary"))
 
         t = 5
 
-        print('Applying Berserker 2 on X with internal bk mask')
+        print("Applying Berserker 2 on X with internal bk mask")
         t = time()
-        data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(X, theta / 8.0, data_dims=data.shape, verbose=False, mask=maskr)
-        print('Duration ', time() - t)
+        data_labels_intbk, centroids_intbk = berserker2_to_3D_labels(
+            X, theta / 8.0, data_dims=data.shape, verbose=False, mask=maskr
+        )
+        print("Duration ", time() - t)
         print()
 
-        images2.append((data_labels_intbk.astype('f8'), aff, 'data_labels_intbk'))
+        images2.append((data_labels_intbk.astype("f8"), aff, "data_labels_intbk"))
 
-
-        print('Applying Berserker 2 on X external boundary')
+        print("Applying Berserker 2 on X external boundary")
         t = time()
-        maskr3 = boundary.ravel().astype('bool')
-        data_labels_boundary, centroids_boundary = berserker2_to_3D_labels(X, theta / 4.0, data_dims=data.shape, verbose=False, mask=maskr3)
-        print('Duration ', time() - t)
+        maskr3 = boundary.ravel().astype("bool")
+        data_labels_boundary, centroids_boundary = berserker2_to_3D_labels(
+            X, theta / 4.0, data_dims=data.shape, verbose=False, mask=maskr3
+        )
+        print("Duration ", time() - t)
         print()
 
-        images2.append((data_labels_boundary.astype('f8'), aff, 'data_labels_boundary'))
+        images2.append((data_labels_boundary.astype("f8"), aff, "data_labels_boundary"))
 
-
-        print('Using geometry to separate internal from external ... ')
+        print("Using geometry to separate internal from external ... ")
 
         all_puzz_centroids = np.ascontiguousarray(all_puzz_centroids)
 
         tmp_cintbk = np.ascontiguousarray(centroids_intbk[:, :3])
 
-
-        allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, tmp_cintbk, 'euclidean')
-        print('Puzz2intbk Matrix shape', all_puzz_centroids.shape)
+        allpuzz2intbk_mat = distance_matrix(all_puzz_centroids, tmp_cintbk, "euclidean")
+        print("Puzz2intbk Matrix shape", all_puzz_centroids.shape)
 
         tmp_cboundary = np.ascontiguousarray(centroids_boundary[:, :3])
-        allpuzz2bound_mat = distance_matrix(all_puzz_centroids, tmp_cboundary, 'euclidean')
-        print('Puzz2bound Matrix shape', allpuzz2bound_mat.shape)
+        allpuzz2bound_mat = distance_matrix(
+            all_puzz_centroids, tmp_cboundary, "euclidean"
+        )
+        print("Puzz2bound Matrix shape", allpuzz2bound_mat.shape)
 
         mins_int2bk = np.min(allpuzz2intbk_mat, axis=-1)
         argmins_int2bk = np.argmin(allpuzz2intbk_mat, axis=-1)
 
         all_puzz_centroids_from_fcw = all_puzz_centroids - fc_w
-        dist_puzz_centroids_from_center = np.sqrt(np.sum(all_puzz_centroids_from_fcw ** 2, axis=-1))
+        dist_puzz_centroids_from_center = np.sqrt(
+            np.sum(all_puzz_centroids_from_fcw**2, axis=-1)
+        )
 
         corresponding_int2bk = np.ascontiguousarray(tmp_cintbk[argmins_int2bk])
         corresponding_int2bk_from_fcw = corresponding_int2bk - fc_w
-        dist_corresponding_from_center = np.sqrt(np.sum(corresponding_int2bk_from_fcw ** 2, axis=-1))
+        dist_corresponding_from_center = np.sqrt(
+            np.sum(corresponding_int2bk_from_fcw**2, axis=-1)
+        )
 
         mins_bound = np.min(allpuzz2bound_mat, axis=-1)
         argmins_bound = np.argmin(allpuzz2bound_mat, axis=-1)
         corresponding_bound = np.ascontiguousarray(tmp_cboundary[argmins_bound])
         corresponding_bound_from_fcw = corresponding_bound - fc_w
-        dist_bound_from_center = np.sqrt(np.sum(corresponding_bound_from_fcw ** 2, axis=-1))
+        dist_bound_from_center = np.sqrt(
+            np.sum(corresponding_bound_from_fcw**2, axis=-1)
+        )
 
         between_region = np.zeros(data.shape)
         enum_range = range(int(relabel_breaking.max()))
 
-        for i, dpc, dcc, dbc in zip(enum_range, dist_puzz_centroids_from_center, dist_corresponding_from_center, dist_bound_from_center):
-
+        for i, dpc, dcc, dbc in zip(
+            enum_range,
+            dist_puzz_centroids_from_center,
+            dist_corresponding_from_center,
+            dist_bound_from_center,
+        ):
             if dpc < 100:
                 if dpc < dbc:
                     if dpc < dcc:
                         between_region[relabel_breaking == i + 1] = 1
 
-
         # TODO: this is only temporary for debugging purposes
         between_region[ci, cj, ck] = 2
-        images2.append((between_region.astype('f8'), aff, 'between_region'))
+        images2.append((between_region.astype("f8"), aff, "between_region"))
 
         t = 1
 
     show_points = False
     if show_points:
         from fury import actor, colormap, window
+
         scene = window.Scene()
 
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
         # points_ = actor.point(np.array([fc_w]), (1, 1, 1), point_radius=2.)
         # points2_ = actor.point(poi, colors, point_radius=2.)
         # colors = colormap.create_colormap(poi2center, name='plasma', auto=True)
-        center_ = actor.point(np.array([fc_w]), (1, 0, 0), point_radius=4.)
-        points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.)
+        center_ = actor.point(np.array([fc_w]), (1, 0, 0), point_radius=4.0)
+        points_ = actor.point(tmp_cintbk, (0, 1, 0), point_radius=2.0)
         # points2_ = actor.point(tmp_cboundary, (1, 0, 0), point_radius=2.)
-        points3 = actor.point(all_puzz_centroids, (0, 0, 1), point_radius=1.)
+        points3 = actor.point(all_puzz_centroids, (0, 0, 1), point_radius=1.0)
         scene.add(actor.axes())
         scene.add(center_)
         scene.add(points_)
@@ -3091,7 +3288,6 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     t = 2
 
     return images, images2
-
 
     """
     print('Opening and detecting largest object ... ')
@@ -3157,28 +3353,46 @@ def berserker2_brain_seg(data, affine, return_all=False, orig_est=100, m_est=3, 
     return images
     """
 
-def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=30, patch_size=(3,3,3), individual_labels=False, verbose=True):
 
-    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
+def cluster_merge(
+    data,
+    affine,
+    theta=80,
+    threshold=10,
+    max_intensity_threshold=30,
+    patch_size=(3, 3, 3),
+    individual_labels=False,
+    verbose=True,
+):
+
+    X = prepare_data_3d(data, affine, perc=(0, 98), mult=300.0, enh=3.0)
     Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
-    W = np.ascontiguousarray(W, dtype='f8')
+    W = np.ascontiguousarray(W, dtype="f8")
 
-    data_labels_init, centroids_init, centroids_im_init, centroids_median_im_init = berserker2_to_3D_plus_extra(X, W, theta)
+    data_labels_init, centroids_init, centroids_im_init, centroids_median_im_init = (
+        berserker2_to_3D_plus_extra(X, W, theta)
+    )
     # data_labels_init = median_filter(data_labels_init, size=3)
     # data_labels_init = minimum_filter(data_labels_init, size=3)
-    label_patches = np.ascontiguousarray(patchify(data_labels_init, patch_size), dtype=np.int64)
+    label_patches = np.ascontiguousarray(
+        patchify(data_labels_init, patch_size), dtype=np.int64
+    )
     data_patches = np.ascontiguousarray(patchify(W, patch_size), dtype=np.float64)
 
     labels_i64 = np.ascontiguousarray(data_labels_init, dtype=np.int64)
     W_f64 = np.ascontiguousarray(W, dtype=np.float64)
     n_labels = int(labels_i64.max()) + 1
 
-    cluster_intensities_arr, cluster_sizes_arr = compute_cluster_stats(labels_i64, W_f64, n_labels)
+    cluster_intensities_arr, cluster_sizes_arr = compute_cluster_stats(
+        labels_i64, W_f64, n_labels
+    )
 
     unique_labels = np.unique(labels_i64)
 
     if unique_labels[0] < 0:
-        raise ValueError('Labels must be non-negative for this remap_labels implementation.')
+        raise ValueError(
+            "Labels must be non-negative for this remap_labels implementation."
+        )
     centroid_intensities_arr = np.zeros(n_labels, dtype=np.float64)
     for i, lab in enumerate(unique_labels):
         centroid_intensities_arr[lab] = centroids_init[i, 3]
@@ -3188,41 +3402,61 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
 
     if verbose:
         total = n0 * n1 * n2
-        print(f'Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}')
+        print(
+            f"Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}"
+        )
 
     merge_candidates = []
     for a, b in sorted(neighbor_pairs):
         diff = abs(cluster_intensities_arr[a] - cluster_intensities_arr[b])
         if diff < threshold:
-            merge_candidates.append((a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff))
+            merge_candidates.append(
+                (a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff)
+            )
 
     if verbose:
         print(f"Total neighbor pairs: {len(neighbor_pairs)}")
-        print(f"Merge candidates (diff < {threshold}): "
-              f"{len(merge_candidates)}\n")
-        print(f"{'Cluster A':>10} {'Cluster B':>10} "
-              f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}")
+        print(f"Merge candidates (diff < {threshold}): {len(merge_candidates)}\n")
+        print(
+            f"{'Cluster A':>10} {'Cluster B':>10} "
+            f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}"
+        )
         for a, b, ma, mb, d in merge_candidates:
             print(f"{a:10d} {b:10d} {ma:10.2f} {mb:10.2f} {d:10.2f}")
 
-    merge_candidates.sort(key=lambda x: min(centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]))
+    merge_candidates.sort(
+        key=lambda x: min(
+            centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]
+        )
+    )
 
     if max_intensity_threshold is None:
         max_intensity_threshold = -1.0
     else:
         max_intensity_threshold = float(max_intensity_threshold)
 
-    uf = UnionFind(n_labels, np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64))
+    uf = UnionFind(
+        n_labels,
+        np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),
+        np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64),
+    )
 
     rejected = 0
     for a, b, _, _, _ in merge_candidates:
-        if not uf.union(int(a), int(b), float(centroid_intensities_arr[a]), float(centroid_intensities_arr[b]), max_intensity_threshold):
+        if not uf.union(
+            int(a),
+            int(b),
+            float(centroid_intensities_arr[a]),
+            float(centroid_intensities_arr[b]),
+            max_intensity_threshold,
+        ):
             rejected += 1
 
     if verbose:
-        print(f"Merges rejected (would exceed "
-              f"max_intensity_threshold={max_intensity_threshold}): {rejected}")
-
+        print(
+            f"Merges rejected (would exceed "
+            f"max_intensity_threshold={max_intensity_threshold}): {rejected}"
+        )
 
     roots = np.empty(len(unique_labels), dtype=np.int64)
     for idx, lab in enumerate(unique_labels):
@@ -3261,7 +3495,9 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
 
         centroids_merged[new_label, 3] = np.mean(W[mask])
 
-        print(f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}")
+        print(
+            f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}"
+        )
 
     centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)
     centroids_im_median_merged = median_filter(centroids_im_merged, size=3)
@@ -3285,13 +3521,20 @@ def cluster_merge(data, affine, theta=80, threshold=10, max_intensity_threshold=
     if individual_labels:
         for i in range(n_after):
             label_individual = (data_labels_merged == i).astype(np.int64)
-            images += [(label_individual, affine, f'label_{i}')]
-
+            images += [(label_individual, affine, f"label_{i}")]
 
     return images
 
 
-def welder(W, data_labels_init, centroids_init, threshold=10, max_intensity_threshold=30, patch_size=(3,3,3), verbose=True):
+def welder(
+    W,
+    data_labels_init,
+    centroids_init,
+    threshold=10,
+    max_intensity_threshold=30,
+    patch_size=(3, 3, 3),
+    verbose=True,
+):
 
     # X = prepare_data_3d(data, affine, perc=(0, 98), mult=300., enh=3.)
     # Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
@@ -3300,19 +3543,25 @@ def welder(W, data_labels_init, centroids_init, threshold=10, max_intensity_thre
     # data_labels_init, centroids_init, centroids_im_init, centroids_median_im_init = berserker2_to_3D_plus_extra(X, W, theta)
     # data_labels_init = median_filter(data_labels_init, size=3)
     # data_labels_init = minimum_filter(data_labels_init, size=3)
-    label_patches = np.ascontiguousarray(patchify(data_labels_init, patch_size), dtype=np.int64)
+    label_patches = np.ascontiguousarray(
+        patchify(data_labels_init, patch_size), dtype=np.int64
+    )
     data_patches = np.ascontiguousarray(patchify(W, patch_size), dtype=np.float64)
 
     labels_i64 = np.ascontiguousarray(data_labels_init, dtype=np.int64)
     W_f64 = np.ascontiguousarray(W, dtype=np.float64)
     n_labels = int(labels_i64.max()) + 1
 
-    cluster_intensities_arr, cluster_sizes_arr = compute_cluster_stats(labels_i64, W_f64, n_labels)
+    cluster_intensities_arr, cluster_sizes_arr = compute_cluster_stats(
+        labels_i64, W_f64, n_labels
+    )
 
     unique_labels = np.unique(labels_i64)
 
     if unique_labels[0] < 0:
-        raise ValueError('Labels must be non-negative for this remap_labels implementation.')
+        raise ValueError(
+            "Labels must be non-negative for this remap_labels implementation."
+        )
     centroid_intensities_arr = np.zeros(n_labels, dtype=np.float64)
     for i, lab in enumerate(unique_labels):
         centroid_intensities_arr[lab] = centroids_init[i, 3]
@@ -3322,41 +3571,61 @@ def welder(W, data_labels_init, centroids_init, threshold=10, max_intensity_thre
 
     if verbose:
         total = n0 * n1 * n2
-        print(f'Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}')
+        print(
+            f"Total patches: {total}, skipped: {skipped}, Processed: {total - skipped}"
+        )
 
     merge_candidates = []
     for a, b in sorted(neighbor_pairs):
         diff = abs(cluster_intensities_arr[a] - cluster_intensities_arr[b])
         if diff < threshold:
-            merge_candidates.append((a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff))
+            merge_candidates.append(
+                (a, b, cluster_intensities_arr[a], cluster_intensities_arr[b], diff)
+            )
 
     if verbose:
         print(f"Total neighbor pairs: {len(neighbor_pairs)}")
-        print(f"Merge candidates (diff < {threshold}): "
-              f"{len(merge_candidates)}\n")
-        print(f"{'Cluster A':>10} {'Cluster B':>10} "
-              f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}")
+        print(f"Merge candidates (diff < {threshold}): {len(merge_candidates)}\n")
+        print(
+            f"{'Cluster A':>10} {'Cluster B':>10} "
+            f"{'Mean A':>10} {'Mean B':>10} {'Diff':>10}"
+        )
         for a, b, ma, mb, d in merge_candidates:
             print(f"{a:10d} {b:10d} {ma:10.2f} {mb:10.2f} {d:10.2f}")
 
-    merge_candidates.sort(key=lambda x: min(centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]))
+    merge_candidates.sort(
+        key=lambda x: min(
+            centroid_intensities_arr[x[0]], centroid_intensities_arr[x[1]]
+        )
+    )
 
     if max_intensity_threshold is None:
         max_intensity_threshold = -1.0
     else:
         max_intensity_threshold = float(max_intensity_threshold)
 
-    uf = UnionFind(n_labels, np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64))
+    uf = UnionFind(
+        n_labels,
+        np.ascontiguousarray(cluster_sizes_arr, dtype=np.int64),
+        np.ascontiguousarray(centroid_intensities_arr, dtype=np.float64),
+    )
 
     rejected = 0
     for a, b, _, _, _ in merge_candidates:
-        if not uf.union(int(a), int(b), float(centroid_intensities_arr[a]), float(centroid_intensities_arr[b]), max_intensity_threshold):
+        if not uf.union(
+            int(a),
+            int(b),
+            float(centroid_intensities_arr[a]),
+            float(centroid_intensities_arr[b]),
+            max_intensity_threshold,
+        ):
             rejected += 1
 
     if verbose:
-        print(f"Merges rejected (would exceed "
-              f"max_intensity_threshold={max_intensity_threshold}): {rejected}")
-
+        print(
+            f"Merges rejected (would exceed "
+            f"max_intensity_threshold={max_intensity_threshold}): {rejected}"
+        )
 
     roots = np.empty(len(unique_labels), dtype=np.int64)
     for idx, lab in enumerate(unique_labels):
@@ -3395,9 +3664,16 @@ def welder(W, data_labels_init, centroids_init, threshold=10, max_intensity_thre
 
         centroids_merged[new_label, 3] = np.mean(W[mask])
 
-        print(f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}")
+        print(
+            f"New label {new_label}: centroid intensity = {centroids_merged[new_label, 3]:.2f}"
+        )
 
     centroids_im_merged = centroid_images(data_labels_merged, centroids_merged)
     centroids_im_median_merged = median_filter(centroids_im_merged, size=3)
 
-    return data_labels_merged, centroids_merged, centroids_im_merged, centroids_im_median_merged
+    return (
+        data_labels_merged,
+        centroids_merged,
+        centroids_im_merged,
+        centroids_im_median_merged,
+    )

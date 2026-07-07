@@ -340,7 +340,8 @@ python_sources = [
   'accuracy.py',
   'patchify.py',
   'neighbors.py',
-  'binary_label_3d.py'
+  'binary_label_3d.py',
+  'completion.py',
 ]
 
 py3.install_sources(
