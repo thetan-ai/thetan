@@ -362,6 +362,7 @@ cython_sources = [
   'image',
   'metrics',
   'clobber',
+  'complete'
   ]
 
 cython_headers = [
