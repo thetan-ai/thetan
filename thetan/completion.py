@@ -1,17 +1,24 @@
 import numpy as np
-from scipy.ndimage import (
-    gaussian_filter,
-    gaussian_filter1d,
-    shift,
-    sobel,
+from scipy.fft import irfft, rfft
+from scipy.ndimage import gaussian_filter, sobel
+
+from thetan.complete import (
+    add_sparse_injection2d,
+    add_sparse_injection3d,
+    advect_2d_into,
+    advect_3d_into,
+    angular_filter2d_into,
+    angular_filter_phi_into,
+    angular_filter_theta_into,
+    antipodal_reduce2d,
+    antipodal_reduce3d,
 )
 
 
-# SCF 2D function
 def edges_from_mask(edge_mask, tensor_sigma=1.5):
     m = gaussian_filter(edge_mask.astype(float), tensor_sigma)
-    gy = sobel(m, axis=0)
-    gx = sobel(m, axis=1)
+    gy = sobel(m, axis = 0)
+    gx = sobel(m, axis = 1)
     Jxx = gaussian_filter(gx * gx, tensor_sigma)
     Jyy = gaussian_filter(gy * gy, tensor_sigma)
     Jxy = gaussian_filter(gx * gy, tensor_sigma)
@@ -19,45 +26,196 @@ def edges_from_mask(edge_mask, tensor_sigma=1.5):
     theta_tangent = theta_grad + np.pi / 2.0
     return np.mod(theta_tangent, np.pi)
 
+def make_advection_plan_2d(shape, thetas, dt):
+    height, width = shape
+    channels = thetas.shape[0]
+    shifts = np.ascontiguousarray(np.column_stack((dt * np.sin(thetas), dt * np.cos(thetas))),
+        dtype=np.float64)
 
-def _inject_field(points_rc, thetas_pt, weights, shape, thetas_grid):
-    H, W = shape
-    K = len(thetas_grid)
-    field = np.zeros((H, W, K), dtype=np.float64)
-    dtheta = thetas_grid[1] - thetas_grid[0]
-    for (r, c), th, w in zip(points_rc, thetas_pt, weights):
-        for direction in (th, th + np.pi):
-            k = int(np.round((direction % (2 * np.pi)) / dtheta)) % K
-            field[r, c, k] += w
+    source_delta = -shifts
+    lower = np.floor(source_delta).astype(np.intp)
+    fraction = source_delta - lower
+    offsets = np.empty((channels, 4), dtype=np.intp)
+    interpolation_weights = np.empty((channels, 4), dtype=np.float64)
 
-    return field
+    corner = 0
+    for br in (0,1):
+        wr = fraction[:, 0] if br else 1.0 - fraction[:, 0]
+        for bc in (0,1):
+            wc = fraction[:, 1] if bc else 1.0 - fraction[:, 1]
+            spatial_offset = (lower[:, 0] + br) * width + lower[:, 1] + bc
+            offsets[:, corner] = spatial_offset * channels
+            interpolation_weights[:, corner] = wr * wc
+            corner += 1
 
+    margins = np.ceil(np.max(np.abs(shifts), axis = 0)).astype(np.intp) + 1
+    bounds = []
+    for size, margin in zip(shape, margins):
+        start = min(int(margin), size)
+        stop = max(start, size - int(margin))
+        bounds.extend((start, stop))
 
-def _advect(field, thetas, dt):
-    out = np.empty_like(field)
-    for k, th in enumerate(thetas):
-        dr = dt * np.sin(th)
-        dc = dt * np.cos(th)
-        out[:, :, k] = shift(
-            field[:, :, k], (dr, dc), order=1, mode="constant", cval=0.0
+    return (
+        np.ascontiguousarray(offsets),
+        np.ascontiguousarray(interpolation_weights),
+        shifts,
+        np.ascontiguousarray(bounds, dtype=np.intp),
+    )
+
+def make_angular_plan_2d(n_theta, sigma_channels):
+    kernel, offsets = gaussian_kernel_1d(sigma_channels)
+    lookup = np.mod(
+        np.arange(n_theta, dtype=np.intp)[:, None] + offsets[None, :],
+        n_theta,
+    )
+    return kernel, np.ascontiguousarray(lookup, dtype=np.intp)
+
+def prepare_sparse_injection_2d(coords, thetas_pt, weights, shape, n_theta):
+    _, width = shape
+    dtheta = 2.0 * np.pi / n_theta
+    rr, cc = coords
+
+    spatial = np.ascontiguousarray(rr, dtype=np.intp).copy()
+    spatial *= width
+    spatial += cc
+    channel0 = np.ascontiguousarray(
+        np.mod(np.round(thetas_pt / dtheta).astype(np.intp), n_theta),
+        dtype = np.intp,
+    )
+    channel1 = np.ascontiguousarray(
+        np.mod(
+            np.round(np.mod(thetas_pt + np.pi, 2.0 * np.pi) / dtheta).astype(
+                np.intp
+            ),
+            n_theta,
+        ),
+        dtype=np.intp,
+    )
+
+    return (
+        spatial,
+        channel0,
+        channel1,
+        np.ascontiguousarray(weights, dtype=np.float64),
+    )
+
+def advect_2d(field, thetas, dt, num_threads=0):
+    if num_threads < 0:
+        raise ValueError('num_threads must be non-negative')
+
+    field = np.ascontiguousarray(field, dtype=np.float64)
+    thetas = np.ascontiguousarray(thetas, dtype=np.float64)
+    output = np.empty_like(field)
+    offsets, interpolation_weights, shifts, bounds = make_advection_plan_2d(
+        field.shape[:2], thetas, dt
+    )
+    advect_2d_into(
+        field.reshape(-1),
+        output.reshape(-1),
+        offsets,
+        interpolation_weights,
+        shifts,
+        bounds,
+        field.shape[0],
+        field.shape[1],
+        num_threads,
+    )
+
+    return output
+
+def angular_gaussian_fft_response(n_channels, sigma_channels, dtype):
+    kernel, offsets = gaussian_kernel_1d(sigma_channels)
+    circular_kernel = np.zeros(n_channels, dtype=dtype)
+    np.add.at(circular_kernel, np.mod(offsets, n_channels), kernel)
+    return rfft(circular_kernel)
+
+def propagate_2d(
+    shape,
+    sparse_injection,
+    thetas,
+    sigma,
+    tau,
+    dt,
+    n_steps,
+    num_threads=0,
+):
+    if num_threads < 0:
+        raise ValueError("num_threads must be non-negative")
+
+    height, width = shape
+    n_theta = thetas.shape[0]
+    n_spatial = height * width
+    current = np.zeros((height, width, n_theta), dtype=np.float64)
+    if n_steps <= 0:
+        return current
+    scratch = np.empty_like(current)
+
+    offsets, interpolation_weights, shifts, bounds = make_advection_plan_2d(shape, thetas, dt)
+    dtheta = 2.0 * np.pi / n_theta
+    sigma_channels = sigma * np.sqrt(dt) / dtheta
+    decay = float(np.exp(-dt / tau))
+    spatial, channel0, channel1, values = sparse_injection
+
+    use_fft = int(4.0 * sigma_channels + 0.5) >= 16
+    if use_fft:
+        angular_response = angular_gaussian_fft_response(
+            n_theta, sigma_channels, current.dtype
         )
-    return out
+        angular_response *= decay
+        fft_workers = num_threads if num_threads > 0 else - 1
+    else:
+        angular_kernel, angular_lookup = make_angular_plan_2d(
+            n_theta, sigma_channels
+        )
 
-
-def _propagate(inject, thetas, sigma, tau, dt, n_steps):
-    K = len(thetas)
-    dtheta = 2 * np.pi / K
-    sig_ch = sigma * np.sqrt(dt) / dtheta
-    decay = np.exp(-dt / tau)
-
-    P = np.zeros_like(inject)
     for _ in range(n_steps):
-        P += inject
-        P = _advect(P, thetas, dt)
-        P = gaussian_filter1d(P, sig_ch, axis=2, mode="wrap")
-        P *= decay
-    return P
-
+        current_flat = current.reshape(-1)
+        scratch_flat = scratch.reshape(-1)
+        add_sparse_injection2d(
+            current_flat,
+            spatial,
+            channel0,
+            channel1,
+            values,
+            n_theta,
+            num_threads,
+        )
+        advect_2d_into(
+            current_flat,
+            scratch_flat,
+            offsets,
+            interpolation_weights,
+            shifts,
+            bounds,
+            height,
+            width,
+            num_threads,
+        )
+        if use_fft:
+            spectrum = rfft(
+                scratch, axis=2, workers=fft_workers, overwrite_x = True
+            )
+            spectrum *= angular_response
+            current = irfft(
+                spectrum,
+                n=n_theta,
+                axis=2,
+                workers=fft_workers,
+                overwrite_x=True,
+            )
+            np.maximum(current, 0.0, out=current)
+        else:
+            angular_filter2d_into(
+                scratch_flat,
+                current_flat,
+                angular_kernel,
+                angular_lookup,
+                n_spatial,
+                n_theta,
+                decay,
+                num_threads,
+            )
+    return current
 
 def scf_2d(
     edge_mask,
@@ -68,44 +226,78 @@ def scf_2d(
     n_steps=None,
     tensor_sigma=1.5,
     return_orientation=False,
+    num_threads=0,
 ):
     edge_mask = np.asarray(edge_mask)
+    if edge_mask.ndim != 2:
+        raise ValueError("edge_mask must be a 2D image (H,W)")
+    if not isinstance(n_theta, (int, np.integer)) or n_theta <= 0 or n_theta % 2:
+        raise ValueError("n_theta must be a positive even integer")
+    if sigma < 0 or tau <= 0 or dt <= 0:
+        raise ValueError("sigma must be non-negative and tau/dt must be positive")
+    if num_threads < 0:
+        raise ValueError("num_threads must be non-negative")
+
     H, W = edge_mask.shape
     if n_steps is None:
         n_steps = int(np.ceil(4 * tau / dt))
+    if not isinstance(n_steps, (int, np.integer)) or n_steps < 0:
+        raise ValueError("n_steps must be a non-negative integer")
 
-    thetas = np.arange(n_theta) * (2 * np.pi / n_theta)
+    thetas = np.ascontiguousarray(
+        np.arange(n_theta) * (2.0 * np.pi / n_theta), dtype=np.float64
+    )
     rr, cc = np.nonzero(edge_mask)
 
     if len(rr) == 0:
-        C = np.zeros((H, W))
-        return (C, np.zeros((H, W))) if return_orientation else C
+       zero = np.zeros((H, W), dtype=np.float64)
+       return (zero, zero.copy()) if return_orientation else zero
 
     theta_pix = edges_from_mask(edge_mask, tensor_sigma)
-    points_rc = list(zip(rr, cc))
     thetas_pt = theta_pix[rr, cc]
-    weights = edge_mask[rr, cc].astype(float)
+    weights = edge_mask[rr, cc].astype(np.float64)
 
-    inject = _inject_field(points_rc, thetas_pt, weights, (H, W), thetas)
-    P = _propagate(inject, thetas, sigma, tau, dt, n_steps)
+    sparse_injection = prepare_sparse_injection_2d(
+        (rr,cc), thetas_pt, weights, (H, W), n_theta
+    )
 
-    half = n_theta // 2
-    P_opp = np.roll(P, half, axis=2)
-    c = P * P_opp
+    del rr, cc, theta_pix, thetas_pt, weights
+    field = propagate_2d(
+        (H,W),
+        sparse_injection,
+        thetas,
+        sigma,
+        tau,
+        dt,
+        n_steps,
+        num_threads=num_threads,
+    )
 
-    C = c.sum(axis=2)
-    m = C.max()
-    if m > 0:
-        C /= m
+    reduced = antipodal_reduce2d(
+        field.reshape(-1),
+        H * W,
+        n_theta,
+        return_orientation,
+        num_threads,
+    )
 
     if return_orientation:
-        k_star = np.argmax(c, axis=2)
-        theta_map = np.mod(thetas[k_star], np.pi)
-        return C, theta_map
-    return C
+        completion_flat, best_theta_flat = reduced
+        completion = completion_flat.reshape(H, W)
+        best_theta = best_theta_flat.reshape(H, W)
+    else:
+        completion = reduced.reshape(H, W)
+
+    maximum = float(completion.max())
+    if maximum > 0.0:
+        completion /= maximum
+
+    if return_orientation:
+        theta_map = np.mod(thetas[best_theta], np.pi)
+        return completion, theta_map
+    return completion
 
 
-# SCF 3D function
 def edges_from_mask_3d(edge_mask, coords, tensor_sigma=1.5):
     m = gaussian_filter(edge_mask.astype(np.float64), tensor_sigma)
 
@@ -142,64 +334,235 @@ def edges_from_mask_3d(edge_mask, coords, tensor_sigma=1.5):
     return theta, phi
 
 
-def _inject_field_3d(coords, thetas_pt, phis_pt, weights, shape, thetas, phis):
+def make_advection_plan_3d(shape, thetas, phis, dt):
     h, w, d = shape
     n_theta = thetas.shape[0]
     n_phi = phis.shape[0]
+    channels = n_theta * n_phi
+
+    sin_t = np.sin(thetas)[:, None]
+    cos_t = np.cos(thetas)[:, None]
+    sin_p = np.sin(phis)[None, :]
+    cos_p = np.cos(phis)[None, :]
+    dr = (dt * sin_t * sin_p).reshape(-1)
+    dc = (dt * cos_t * sin_p).reshape(-1)
+    dz = np.broadcast_to(dt * cos_p, (n_theta, n_phi)).reshape(-1)
+    shifts = np.ascontiguousarray(np.column_stack((dr, dc, dz)), dtype=np.float64)
+
+    source_delta = -shifts
+    lower = np.floor(source_delta).astype(np.intp)
+    fraction = source_delta - lower
+    offsets = np.empty((channels, 8), dtype=np.intp)
+    interpolation_weights = np.empty((channels, 8), dtype=np.float64)
+
+    corner = 0
+    for br in (0, 1):
+        wr = fraction[:, 0] if br else 1.0 - fraction[:, 0]
+        for bc in (0, 1):
+            wc = fraction[:, 1] if bc else 1.0 - fraction[:, 1]
+            for bz in (0, 1):
+                wz = fraction[:, 2] if bz else 1.0 - fraction[:, 2]
+                spatial_offset = (
+                    (lower[:, 0] + br) * w * d
+                    + (lower[:, 1] + bc) * d
+                    + lower[:, 2]
+                    + bz
+                )
+                offsets[:, corner] = spatial_offset * channels
+                interpolation_weights[:, corner] = wr * wc * wz
+                corner += 1
+
+    margins = np.ceil(np.max(np.abs(shifts), axis=0)).astype(np.intp) + 1
+    bounds = []
+    for size, margin in zip(shape, margins):
+        start = min(int(margin), size)
+        stop = max(start, size - int(margin))
+        bounds.extend((start, stop))
+
+    return (
+        np.ascontiguousarray(offsets),
+        np.ascontiguousarray(interpolation_weights),
+        shifts,
+        np.ascontiguousarray(bounds, dtype=np.intp),
+    )
+
+def gaussian_kernel_1d(sigma_channels):
+    if sigma_channels < 0:
+        raise ValueError("Gaussian sigma must be non-negative")
+    radius = int(4.0 * sigma_channels + 0.5)
+    if radius == 0:
+        return np.ones(1, dtype=np.float64), np.zeros(1, dtype=np.intp)
+    offsets = np.arange(-radius, radius + 1, dtype=np.intp)
+    kernel = np.exp(-0.5 * (offsets / sigma_channels) ** 2)
+    kernel /= kernel.sum()
+    return np.ascontiguousarray(kernel), offsets
+
+def make_angular_plan_3d(n_theta, n_phi, sig_t, sig_p):
+    theta_kernel, theta_offsets = gaussian_kernel_1d(sig_t)
+    phi_kernel, phi_offsets = gaussian_kernel_1d(sig_p)
+
+    theta_lookup = np.mod(
+        np.arange(n_theta, dtype=np.intp)[:, None] + theta_offsets[None, :],
+        n_theta,
+    )
+
+    if n_phi == 1:
+        phi_lookup = np.zeros((1, phi_offsets.size), dtype=np.intp)
+    else:
+        period = 2 * n_phi - 2
+        reflected = np.mod(
+            np.arange(n_phi, dtype=np.intp)[:, None] + phi_offsets[None, :],
+            period,
+        )
+        phi_lookup = np.where(reflected < n_phi, reflected, period - reflected)
+
+    return (
+        theta_kernel,
+        np.ascontiguousarray(theta_lookup, dtype=np.intp),
+        phi_kernel,
+        np.ascontiguousarray(phi_lookup, dtype=np.intp),
+    )
+
+def prepare_sparse_injection_3d(
+    coords, thetas_pt, phis_pt, weights, shape, n_theta, n_phi
+):
+    h, w, d = shape
     dtheta = 2.0 * np.pi / n_theta
     dphi = np.pi / n_phi
-
-    field = np.zeros((h, w, d, n_theta, n_phi), dtype=np.float32)
-
     rr, cc, zz = coords
+
+    spatial = np.ascontiguousarray(rr, dtype=np.intp).copy()
+    spatial *= w
+    spatial += cc
+    spatial *= d
+    spatial += zz
 
     kt = np.mod(np.round(thetas_pt / dtheta).astype(np.intp), n_theta)
     kp = np.clip(np.floor(phis_pt / dphi).astype(np.intp), 0, n_phi - 1)
+    channel0 = np.ascontiguousarray(kt * n_phi + kp, dtype=np.intp)
+    channel1 = np.ascontiguousarray(
+        np.mod(kt + n_theta // 2, n_theta) * n_phi + (n_phi - 1 - kp),
+        dtype=np.intp,
+    )
+    return (
+        spatial,
+        channel0,
+        channel1,
+        np.ascontiguousarray(weights, dtype=np.float32),
+    )
 
-    kt_opp = np.mod(kt + n_theta // 2, n_theta)
-    kp_opp = n_phi - 1 - kp
+def advect_3d(field, thetas, phis, dt, num_threads=0):
+    if num_threads < 0:
+        raise ValueError("num_threads must be non-negative")
 
-    w32 = np.asarray(weights, dtype=np.float32)
-    np.add.at(field, (rr, cc, zz, kt, kp), w32)
-    np.add.at(field, (rr, cc, zz, kt_opp, kp_opp), w32)
-    return field
+    field = np.ascontiguousarray(field, dtype=np.float32)
+    thetas = np.ascontiguousarray(thetas, dtype=np.float64)
+    phis = np.ascontiguousarray(phis, dtype=np.float64)
+    output = np.empty_like(field)
+    offsets, interpolation_weights, shifts, bounds = make_advection_plan_3d(
+        field.shape[:3], thetas, phis, dt
+    )
+    advect_3d_into(
+        field.reshape(-1),
+        output.reshape(-1),
+        offsets,
+        interpolation_weights,
+        shifts,
+        bounds,
+        field.shape[0],
+        field.shape[1],
+        field.shape[2],
+        num_threads,
+    )
+    return output
 
+def propagate_3d(
+    shape,
+    sparse_injection,
+    thetas,
+    phis,
+    sigma,
+    tau,
+    dt,
+    n_steps,
+    num_threads=0,
+):
 
-def _advect_3d(field, thetas, phis, dt):
-    out = np.empty_like(field)
-    sin_t, cos_t = np.sin(thetas), np.cos(thetas)
-    sin_p, cos_p = np.sin(phis), np.cos(phis)
+    if num_threads < 0:
+        raise ValueError("num_threads must be non-negative")
 
-    for it in range(thetas.shape[0]):
-        st, ct = sin_t[it], cos_t[it]
-        for ip in range(phis.shape[0]):
-            dr = dt * sin_p[ip] * st
-            dc = dt * sin_p[ip] * ct
-            dz = dt * cos_p[ip]
-            out[:, :, :, it, ip] = shift(
-                field[:, :, :, it, ip], (dr, dc, dz), order=1, mode="constant", cval=0.0
-            )
-
-    return out
-
-
-def _propagate_3d(inject, thetas, phis, sigma, tau, dt, n_steps):
+    h, w, d = shape
     n_theta = thetas.shape[0]
-    dtheta = 2.0 * np.pi / n_theta
-    dphi = np.pi / phis.shape[0]
+    n_phi = phis.shape[0]
+    channels = n_theta * n_phi
+    n_spatial = h * w * d
+    field_shape = (h, w, d, n_theta, n_phi)
+    current = np.zeros(field_shape, dtype=np.float32)
+    if n_steps <= 0:
+        return current
+    scratch = np.empty_like(current)
 
+    offsets, interpolation_weights, shifts, bounds = make_advection_plan_3d(
+        shape, thetas, phis, dt
+    )
+    dtheta = 2.0 * np.pi / n_theta
+    dphi = np.pi / n_phi
     sig_t = sigma * np.sqrt(dt) / dtheta
     sig_p = sigma * np.sqrt(dt) / dphi
     decay = float(np.exp(-dt / tau))
+    theta_kernel, theta_lookup, phi_kernel, phi_lookup = make_angular_plan_3d(
+        n_theta, n_phi, sig_t, sig_p
+    )
+    spatial, channel0, channel1, values = sparse_injection
 
-    field = np.zeros_like(inject)
     for _ in range(n_steps):
-        field += inject
-        field = _advect_3d(field, thetas, phis, dt)
-        field = gaussian_filter1d(field, sig_t, axis=3, mode="wrap")
-        field = gaussian_filter1d(field, sig_p, axis=4, mode="mirror")
-        field *= decay
-    return field
+        current_flat = current.reshape(-1)
+        scratch_flat = scratch.reshape(-1)
+        add_sparse_injection3d(
+            current_flat,
+            spatial,
+            channel0,
+            channel1,
+            values,
+            channels,
+            num_threads,
+        )
+        advect_3d_into(
+            current_flat,
+            scratch_flat,
+            offsets,
+            interpolation_weights,
+            shifts,
+            bounds,
+            h,
+            w,
+            d,
+            num_threads,
+        )
+        angular_filter_theta_into(
+            scratch_flat,
+            current_flat,
+            theta_kernel,
+            theta_lookup,
+            n_spatial,
+            n_theta,
+            n_phi,
+            num_threads,
+        )
+        angular_filter_phi_into(
+            current_flat,
+            scratch_flat,
+            phi_kernel,
+            phi_lookup,
+            n_spatial,
+            n_theta,
+            n_phi,
+            decay,
+            num_threads,
+        )
+        current, scratch = scratch, current
+
+    return current
 
 
 def scf_3d(
@@ -212,19 +575,30 @@ def scf_3d(
     n_steps=None,
     tensor_sigma=1.5,
     return_orientation=False,
+    num_threads=0,
 ):
     edge_mask = np.asarray(edge_mask)
     if edge_mask.ndim != 3:
         raise ValueError("edge_mask must be a 3D volume (H, W, D)")
-    if n_theta % 2 != 0:
-        raise ValueError("n_theta must be even for the antipodal azimuth roll")
+    if not isinstance(n_theta, (int, np.integer)) or n_theta <= 0 or n_theta % 2:
+        raise ValueError("n_theta must be a positive even integer")
+    if not isinstance(n_phi, (int, np.integer)) or n_phi <= 0:
+        raise ValueError("n_phi must be a positive integer")
+    if sigma < 0 or tau <= 0 or dt <= 0:
+        raise ValueError("sigma must be non-negative and tau/dt must be positive")
+    if num_threads < 0:
+        raise ValueError("num_threads must be non-negative")
 
     h, w, d = edge_mask.shape
     if n_steps is None:
         n_steps = int(np.ceil(4.0 * tau / dt))
 
-    thetas = np.arange(n_theta) * (2.0 * np.pi / n_theta)
-    phis = (np.arange(n_phi) + 0.5) * (np.pi / n_phi)
+    thetas = np.ascontiguousarray(
+        np.arange(n_theta) * (2.0 * np.pi / n_theta), dtype=np.float64
+    )
+    phis = np.ascontiguousarray(
+        (np.arange(n_phi) + 0.5) * (np.pi / n_phi), dtype=np.float64
+    )
 
     coords = np.nonzero(edge_mask)
     if coords[0].size == 0:
@@ -236,29 +610,44 @@ def scf_3d(
     theta_pt, phi_pt = edges_from_mask_3d(edge_mask, coords, tensor_sigma)
     weights = edge_mask[coords].astype(np.float32)
 
-    inject = _inject_field_3d(
-        coords, theta_pt, phi_pt, weights, (h, w, d), thetas, phis
+    sparse_injection = prepare_sparse_injection_3d(
+        coords,
+        theta_pt,
+        phi_pt,
+        weights,
+        (h, w, d),
+        n_theta,
+        n_phi,
     )
-    field = _propagate_3d(inject, thetas, phis, sigma, tau, dt, n_steps)
-
-    half = n_theta // 2
-    c_field = np.zeros((h, w, d), dtype=np.float32)
+    # These full-size coordinate/angle arrays are no longer needed once the
+    # compact sparse plan has been created.
+    del coords, theta_pt, phi_pt, weights
+    field = propagate_3d(
+        (h, w, d),
+        sparse_injection,
+        thetas,
+        phis,
+        sigma,
+        tau,
+        dt,
+        n_steps,
+        num_threads=num_threads,
+    )
+    reduced = antipodal_reduce3d(
+        field.reshape(-1),
+        h * w * d,
+        n_theta,
+        n_phi,
+        return_orientation,
+        num_threads,
+    )
     if return_orientation:
-        best = np.full((h, w, d), -np.inf, dtype=np.float32)
-        best_t = np.zeros((h, w, d), dtype=np.intp)
-        best_p = np.zeros((h, w, d), dtype=np.intp)
-
-    for ip in range(n_phi):
-        opp = np.roll(field[:, :, :, :, n_phi - 1 - ip], half, axis=3)
-        prod = field[:, :, :, :, ip] * opp
-        c_field += prod.sum(axis=3)
-        if return_orientation:
-            local_k = np.argmax(prod, axis=3)
-            local_max = np.take_along_axis(prod, local_k[..., None], axis=3)[..., 0]
-            better = local_max > best
-            best = np.where(better, local_max, best)
-            best_t = np.where(better, local_k, best_t)
-            best_p = np.where(better, ip, best_p)
+        c_flat, best_t_flat, best_p_flat = reduced
+        c_field = c_flat.reshape(h, w, d)
+        best_t = best_t_flat.reshape(h, w, d)
+        best_p = best_p_flat.reshape(h, w, d)
+    else:
+        c_field = reduced.reshape(h, w, d)
 
     peak = float(c_field.max())
     if peak > 0.0:
