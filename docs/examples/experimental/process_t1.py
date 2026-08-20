@@ -33,7 +33,7 @@ from thetan.berserker import (
 # fname = '/home/elef/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST17_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220509080452_8.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST18_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20220518080919_8.nii.gz'
-fname = '/home/elef/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
+# fname = '/home/elef/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/ST26_T1w_MPRAGE_FreeSurfer_0.8iso_2_9_T1w_MPRAGE_FreeSurfer_0.8iso_20230321092955_9.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/TE_S07_MPRAGESAGITTALTIME_9_50_2_MPRAGE_SAGITTAL_TIME_9_50_20150409085358_2.nii.gz'
 # fname = '/home/elef/Data/T1_from_Jasmine/TE-S34_t1_mprage_SAG_2_t1_mprage_SAG_20180911091132_2.nii.gz'
@@ -57,7 +57,7 @@ fname = '/home/elef/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1
 # fname = 'C:/Users/Eleftherios/Data/For_Jasmine_Mirdama/T1/T1_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_9.nii.gz'
 # fname = 'C:/Users/Eleftherios/.dipy/stanford_hardi/t1.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/S06_T1w_MPRAGE_FreeSurfer_0.8iso_7_T1w_MPRAGE_FreeSurfer_0.8iso_20191021131954_7.nii.gz'
-# fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
+fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz'
 # fname = 'C:/Users/Eleftherios/Data/T1_from_Jasmine/ST10_T1_T1w_MPRAGE_FreeSurfer_0.8iso_20211216095629_9.nii.gz'
 
 
@@ -107,8 +107,20 @@ t = time()
 
 images = enkefalos(data, affine, theta=50., bk=80., diff=30, max_diff=80)
 
+
+from thetan import scf_2d, scf_3d
+W_cv_mask = images[-5][0]
+
+C_3d = scf_3d(W_cv_mask, n_theta=16, n_phi=8, sigma=0.25,tau=12, dt=1)
+print(C_3d.shape, C_3d.max(), C_3d.min())
+
+images+=[(C_3d, affine, 'SCF 3D')]
+
+
 print('Total duration ', time() - t)
 print()
+
+tmp = 1
 
 skyline(images=images)
 print('Done')
