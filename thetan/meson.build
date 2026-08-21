@@ -342,6 +342,7 @@ python_sources = [
   'neighbors.py',
   'binary_label_3d.py',
   'completion.py',
+  'otsu.py',
 ]
 
 py3.install_sources(
