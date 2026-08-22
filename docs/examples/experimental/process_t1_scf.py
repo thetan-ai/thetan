@@ -3,84 +3,44 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 from dipy.io.image import load_nifti
-from dipy.viz import skyline
-from scipy.ndimage import gaussian_filter
 
-from thetan import scf_2d, scf_3d
-from thetan.berserker import X_to_many_3D, horizon_support, prepare_data_3d
-from thetan.patchify import patchify
+from thetan import scf_2d
+from thetan.berserker import enkefalos
+from thetan.viz import plot_scf
 
 fname = r"C:\Users\ipraj\Desktop\brain_seg\ST24_T1w_MPRAGE_FreeSurfer_0.8iso_10_T1w_MPRAGE_FreeSurfer_0.8iso_20230126125555_10.nii.gz"
 
 data, affine, vxs = load_nifti(fname, return_voxsize=True)
 data = np.ascontiguousarray(data, dtype="f8")
 
-print("Preparing data")
-perc_min = 0
-perc_max = 98
-X = prepare_data_3d(data, affine, perc=(perc_min, perc_max), mult=300.0, enh=3.0)
-Ivol, Jvol, Kvol, W = X_to_many_3D(X, data.shape)
-aff = affine.copy()
+print('Starting Thetan Berserker 2 for Brain Segmentation ...')
+t = time()
+images = enkefalos(data, affine, theta=50., bk=80., diff=30, max_diff=80)
 
-W = np.ascontiguousarray(W, dtype='f8')
-images = horizon_support(aff, (W, "W"))
+W_cv_mask = images[-5][0]
+print(images[-5][2])
 
-W_min = W.min()
-W_max = W.max()
+C_2d_to_3d = np.zeros_like(W_cv_mask)
 
-W_patches = patchify(W, (3,3,3), step=1)
-W_patches_mean = W_patches.mean(axis=(3,4,5))
-W_patches_var = W_patches.var(axis=(3,4,5))
-images += horizon_support(
-    aff, (W_patches_mean, "W_patches_mean"), (W_patches_var, "W_patches_var")
-)
+for sli in range(W_cv_mask.shape[2]):
+    C_2d = scf_2d(W_cv_mask[..., sli], n_theta=64, sigma=0.5, tau=12, dt=1, tensor_sigma=0.1)
+    C_2d_to_3d[..., sli] = C_2d
 
-W_patches_cv = W_patches_var / (W_patches_mean + 1e-12)
-images += horizon_support(aff, (W_patches_cv, "W_patches_cv"))
+print(C_2d_to_3d.shape, C_2d_to_3d.max(), C_2d_to_3d.min())
+images += [(C_2d_to_3d, affine, 'SCF 2D to 3D')]
 
-W_patches_cv_blur = gaussian_filter(W_patches_cv, sigma=1)
-images += horizon_support(aff, (W_patches_cv_blur, "W_patches_cv_blur"))
+print('Total duration ', time() - t)
+print()
 
-pad_width = 1
-W_patches_cv_blur = np.pad(W_patches_cv_blur, pad_width=1, mode='constant', constant_values=0)
-
-W_cv_blur = W / (W_patches_cv_blur + 1e-12)
-images += horizon_support(aff, (W_cv_blur, "W_cv_blur"))
-W_cv_blur_mask = W_cv_blur < 6 # THis is the current threshold that i am checking with
-W_cv_blur_mask = np.ascontiguousarray(
-    W_cv_blur_mask,
-    dtype=np.float32,
-)
-images += horizon_support(aff, (W_cv_blur_mask, "W_cv_blur_mask"))
-
-# 2D version:
-z = 140
-sl = W_cv_blur_mask[:, :, z].astype(float)
-t1 = time()
-C = scf_2d(sl, n_theta=256, sigma=0.25, tau=30.0, dt=2.0)
-print(f'SCF2d done in {time() - t1:.1f}s')
-
-bk = 0.052
-C_mask = C > bk
-
-fig, ax = plt.subplots(1, 3, figsize=(14, 5.5))
-ax[0].imshow(data[:, : ,z].T, cmap="gray", origin="lower")
-ax[0].set_title("Original Slice")
-ax[1].imshow((sl.T), cmap = 'gray', origin='lower')
-ax[1].set_title('CV_blur_mask')
-ax[2].imshow((C.T) ** 0.4, cmap="magma", origin="lower")
-ax[2].set_title("SCF completion field")
-
-for a in ax:
-    a.axis("off")
-plt.tight_layout()
+# For plotting:
+slice_numbers = [140, 160]
+fig = plot_scf(data, W_cv_mask, C_2d_to_3d, slice_numbers=slice_numbers, threshold_value=0.052)
 plt.show()
 
-
 # 3D version:
-t1 = time()
-C_3d = scf_3d(W_cv_blur_mask, n_theta=16, n_phi=8, sigma=0.25,tau=12, dt=1)
-print(f'SCF3d done in {time() - t1:.1f}s')
+# t1 = time()
+# C_3d = scf_3d(W_cv_blur_mask, n_theta=16, n_phi=8, sigma=0.25,tau=12, dt=1)
+# print(f'SCF3d done in {time() - t1:.1f}s')
 
-images += horizon_support(aff, (C_3d, "SCF_3D"))
-skyline(images=images)
+# images += horizon_support(aff, (C_3d, "SCF_3D"))
+# skyline(images=images)

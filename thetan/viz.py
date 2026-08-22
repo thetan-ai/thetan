@@ -1,7 +1,9 @@
-import numpy as np
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-from scipy.stats import norm
+import numpy as np
 from sklearn.decomposition import PCA
+
 
 def plot_centroids_clusters(data, centroids, labels=None, title=None, exp_type=None, gt_centroids=None,
                             uncertain_data=None, final_counts=None, final_nearc_value=None,
@@ -71,8 +73,8 @@ def plot_centroids_colormap_by_counts(data, centroids, centroid_counts, labels=N
     but color centroids using a colormap according to `centroid_counts`.
 
     """
-    import matplotlib.cm as cm
     import matplotlib.colors as mcolors
+    from matplotlib import cm
 
     new_colors = np.zeros((len(data), 3))
 
@@ -143,7 +145,7 @@ def project_to_2d(data):
 
 def visualize_separation(data, centroids, labels, result, save_path=None, show=True):
     """
-    Visualize the separation (discs with bridge in between) results for n-dimensional data. 
+    Visualize the separation (discs with bridge in between) results for n-dimensional data.
     Automatically projects to 2D if data has more than 2 dimensions.
 
     Parameters:
@@ -171,7 +173,7 @@ def visualize_separation(data, centroids, labels, result, save_path=None, show=T
         filtered_data_2d = result['filtered_data']
         filtered_centroids_2d = result['filtered_centroids']
         removed_data_2d = result['removed_data'] if len(result['removed_data']) > 0 else np.array([]).reshape(0,2)
-    
+
     counts = result['counts']
     sparse_indices = result['sparse_indices']
     removed_mask = result['removed_mask']
@@ -191,7 +193,7 @@ def visualize_separation(data, centroids, labels, result, save_path=None, show=T
         sparse_centroids_2d = centroids_2d[sparse_indices]
         ax.scatter(sparse_centroids_2d[:,0], sparse_centroids_2d[:,1],facecolors='none',edgecolors='red',s=250,linewidths=3)
     plt.colorbar(scatter, ax=ax, label='Neighbor Count')
-    ax.set_title(f'Centroid Neighbor Counts \n(Red Circles = Sparse Centroids, to remove)')
+    ax.set_title('Centroid Neighbor Counts \n(Red Circles = Sparse Centroids, to remove)')
     ax.set_aspect('equal')
 
     ax = axes[1,0]
@@ -223,8 +225,74 @@ def visualize_separation(data, centroids, labels, result, save_path=None, show=T
         plt.close()
 
 
+def plot_scf(data, mask, scf_result, slice_numbers, threshold_value, overlay_perc=40, save_fig=False):
+    data = np.asarray(data)
+    mask = np.asarray(mask)
+    scf_result = np.asarray(scf_result)
+
+    if data.ndim != 3:
+        raise ValueError("data, mask and scf_result must be a 3D array")
+    if data.shape != mask.shape or data.shape != scf_result.shape:
+        raise ValueError("data, mask, and scf_result must have the same shape")
+
+    if isinstance(slice_numbers, (int, np.integer)):
+        slice_numbers = [int(slice_numbers)]
+    else:
+        slice_numbers = list(slice_numbers)
+
+    if not slice_numbers:
+        raise ValueError("At least one slice number must be supplied")
+
+    if not 0 <= overlay_perc <= 100:
+        raise ValueError("overlay_perc must be between 0 and 100")
+
+    for z in slice_numbers:
+        if not isinstance(z, (int, np.integer)):
+            raise ValueError("slice numbers must be integers")
+        if not 0 <= z < data.shape[2]:
+            raise ValueError(f'Slice {z} is outside the valid range 0 to {data.shape[2] - 1}')
+
+    number_of_slices = len(slice_numbers)
+    fig, axes = plt.subplots(number_of_slices, 5, figsize = (18, 4 * number_of_slices), squeeze=False)
+
+    overlay_alpha = overlay_perc / 100
+
+    for row, z in enumerate(slice_numbers):
+        data_slice = data[:, : ,z]
+        mask_slice = mask[:, :, z]
+        scf_slice = scf_result[:, :, z]
+
+        thresholded_scf = scf_slice > threshold_value
+
+        axes[row, 0].imshow(data_slice.T, cmap='gray', origin='lower')
+        axes[row, 0].set_title(f'Original data: slice {z}')
+
+        axes[row, 1].imshow(mask_slice.T, cmap='gray', origin='lower')
+        axes[row, 1].set_title('Mask')
+
+        axes[row, 2].imshow(scf_slice.T, cmap='magma', origin='lower')
+        axes[row, 2].set_title('SCF result')
+
+        axes[row, 3].imshow(thresholded_scf.T, cmap='gray', origin='lower', vmin=0, vmax=1)
+        axes[row, 3].set_title(f'SCF > {threshold_value:g}')
+
+        axes[row, 4].imshow(data_slice.T, cmap='gray', origin='lower')
+        overlay = np.ma.masked_where(~thresholded_scf.T, thresholded_scf.T)
+
+        axes[row, 4].imshow(overlay, cmap='Reds', origin='lower', alpha= overlay_alpha, vmin=0, vmax=1)
+        axes[row, 4].set_title(f'SCF overlay: {overlay_perc:g}%')
+
+        for axis in axes[row]:
+            axis.axis('off')
+    fig.tight_layout()
+
+    if save_fig:
+        output_path = (Path('scf_plot.png') if save_fig is True else Path(save_fig))
+        fig.savefig(output_path, dpi=200, bbox_inches="tight")
+        print(f'Saved_figure: {output_path.resolve()}')
+
+    return fig
 if __name__ == '__main__':
 
     # plot_stacked_dists()
     pass
-
