@@ -7,6 +7,7 @@ from dipy.io.image import load_nifti, save_nifti
 from dipy.viz import skyline
 from skimage.data import brain
 from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 
 from thetan.berserker import (
     berserker2_brain_seg,
@@ -15,6 +16,7 @@ from thetan.berserker import (
     exponentiation_normalization,
     plot_exp_norm,
 )
+from thetan.viz import plot_scf
 
 # T1 dataset
 
@@ -116,12 +118,15 @@ print(images[-5][2])
 C_2d_to_3d = np.zeros_like(W_cv_mask)
 
 for sli in range(W_cv_mask.shape[2]):
-    C_2d = scf_2d(W_cv_mask[..., sli], n_theta=64, sigma=0.5, tau=12, dt=1, tensor_sigma=0.1)
+    C_2d = scf_2d(W_cv_mask[..., sli], n_theta=64, sigma=0.2, tau=12, dt=1, tensor_sigma=0.1)
     C_2d_to_3d[..., sli] = C_2d
 
 print(C_2d_to_3d.shape, C_2d_to_3d.max(), C_2d_to_3d.min())
 images += [(C_2d_to_3d, affine, 'SCF 2D to 3D')]
 
+slice_numbers = [140, 160]
+fig = plot_scf(data, W_cv_mask, C_2d_to_3d, slice_numbers=slice_numbers, threshold_value=0.052)
+plt.show()
 # C_3d = scf_3d(W_cv_mask, n_theta=16, n_phi=8, sigma=0.1, tau=12, dt=6)
 # print(C_3d.shape, C_3d.max(), C_3d.min())
 
@@ -133,7 +138,7 @@ print()
 
 tmp = 1
 
-skyline(images=images)
+# skyline(images=images)
 print('Done')
 
 t = 1
