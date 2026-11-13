@@ -1,6 +1,6 @@
 import numpy as np
 from time import time
-from thetan.berserker import berserker2_clean as tb
+from thetan.berserker import berserker as tb
 from thetan.berserker import tbscan_half, tb_of_tb, tbward_half, ward
 from thetan.theta import assign, distance_matrix
 

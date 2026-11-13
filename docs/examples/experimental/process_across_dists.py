@@ -8,7 +8,7 @@ from sklearn.cluster import HDBSCAN, KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score
 from sklearn.cluster import MeanShift
 from thetan.theta import distance_matrix as tdm
-from thetan.theta import theta_g1 as tgs
+from thetan import sequential as tgs
 import matplotlib.pyplot as plt
 import pickle
 

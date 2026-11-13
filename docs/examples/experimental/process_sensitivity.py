@@ -16,7 +16,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score, adjusted_rand_score
 # from theta_machines_tests import theta_g1, theta_g2, theta_g2x, labels_to_centroids
-from thetan.berserker import berserker2_clean
+from thetan.berserker import berserker
 import seaborn as sns
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -161,7 +161,7 @@ number_of_clusters = []
 
 for theta_t in theta_range:
     t1 = time()
-    centroids, labels = berserker2_clean(points, theta_t)
+    centroids, labels = berserker(points, theta_t)
 
     t2 = time()
 

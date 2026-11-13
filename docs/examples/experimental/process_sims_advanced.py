@@ -4,7 +4,7 @@ import tracemalloc
 import numpy as np
 import pylab as pl
 import pandas as pd
-from thetan.berserker import berserker2, tsg_randomized, berserker2_clean
+from thetan.berserker import berserker2, tsg_randomized, berserker
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans, OPTICS
 from sklearn.metrics import normalized_mutual_info_score, silhouette_score, fowlkes_mallows_score, adjusted_rand_score
@@ -12,7 +12,7 @@ from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN, affinity_p
 from sklearn.cluster import BisectingKMeans, MeanShift
 from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
-from thetan.theta import theta_g1 as tgs
+from thetan import sequential as tgs
 from thetan.theta import wcss
 from pyclustering.cluster.birch import birch
 from pyclustering.cluster.bsas import bsas
@@ -535,7 +535,7 @@ if run_experiments:
 
             t = time()
             tracemalloc.start()
-            centroids, labels = berserker2_clean(X, theta_value)
+            centroids, labels = berserker(X, theta_value)
             amem, peakmem = tracemalloc.get_traced_memory()
             peakmem = peakmem // (1024**2)
             tracemalloc.stop()
@@ -1446,7 +1446,7 @@ if generate_plots:
 
     summary = pd.read_excel(dpath + "summary.xlsx")
 
-    # Correction (berserker2_clean) should be used for memory studies
+    # Correction (berserker) should be used for memory studies
     summary.loc[10, 'Memory'] = 8
     print(summary)
 

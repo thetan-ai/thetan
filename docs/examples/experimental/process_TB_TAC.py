@@ -3,7 +3,7 @@ import faiss
 import warnings
 import numpy as np
 import torch.nn.functional as F
-from thetan.berserker import berserker2_clean
+from thetan.berserker import berserker
 from thetan.theta import assign
 import numpy as np
 from sklearn import metrics
@@ -81,7 +81,7 @@ def tb(X, cluster_num, theta_value, metric):
     print('Perform thetan clustering...')
     d = X.shape[1]
     X = np.ascontiguousarray(X, dtype='f8')
-    centroids, data_labels = berserker2_clean(X, theta_value=theta_value, metric = metric)
+    centroids, data_labels = berserker(X, theta=theta_value, metric = metric)
     print('Number of clusters:', len(centroids))
     uniq, sizes = np.unique(data_labels, return_counts=True)
     niceK = cluster_num

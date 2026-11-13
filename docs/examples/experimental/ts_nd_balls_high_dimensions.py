@@ -4,7 +4,7 @@ from scipy.spatial.distance import cdist
 from sklearn.neighbors import NearestNeighbors
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
-from thetan.berserker import theta_g1 as ts
+from thetan import sequential as ts
 from time import time
 
 # Parameters

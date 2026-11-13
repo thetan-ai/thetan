@@ -1,11 +1,12 @@
 from time import time
 import numpy as np
-from thetan.berserker import berserker2, berserker2_clean, random_walk_auto
+from thetan.berserker import berserker2, berserker, random_walk_auto
 import pylab as pl
 import tracemalloc
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
-from thetan.theta import assign, centroids_from_labels, theta_g1
+from thetan.theta import assign, centroids_from_labels
+from thetan import sequential
 from thetan.theta import distance_matrix as tdm
 
 # from genieclust.compare_partitions import normalized_clustering_accuracy
@@ -358,7 +359,7 @@ if __name__ == '__main__':
 
             t = time()
             tracemalloc.start()
-            centroids, labels = berserker2_clean(points, theta_value)
+            centroids, labels = berserker(points, theta_value)
             amem, peakmem = tracemalloc.get_traced_memory()
             peakmem1 = peakmem // (1024**2)
             tracemalloc.stop()
@@ -383,7 +384,7 @@ if __name__ == '__main__':
 
             # t = time()
             # tracemalloc.start()
-            # centroids, labels = theta_g1(points, theta_value)
+            # centroids, labels = sequential(points, theta_value)
             # amem, peakmem = tracemalloc.get_traced_memory()
             # peakmem1 = peakmem // (1024**2)
             # tracemalloc.stop()

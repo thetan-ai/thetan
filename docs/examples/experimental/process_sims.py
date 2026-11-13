@@ -11,7 +11,7 @@ from sklearn.cluster import AgglomerativeClustering, DBSCAN, HDBSCAN, affinity_p
 from sklearn.cluster import BisectingKMeans, MeanShift
 from sklearn.cluster import Birch
 from thetan.theta import distance_matrix as tdm
-from thetan.theta import theta_g1 as tgs
+from thetan import sequential as tgs
 from pyclustering.cluster.birch import birch
 from pyclustering.cluster.bsas import bsas
 from pyclustering.cluster.mbsas import mbsas
@@ -1283,7 +1283,7 @@ if generate_plots:
 
     summary = pd.read_excel(dpath + "summary.xlsx")
 
-    # Correction (berserker2_clean) should be used for memory studies
+    # Correction (berserker) should be used for memory studies
     summary.loc[10, 'Memory'] = 8
     print(summary)
 

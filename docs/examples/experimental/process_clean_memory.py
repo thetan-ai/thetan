@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-from thetan.berserker import berserker2, berserker2_clean
+from thetan.berserker import berserker2, berserker
 import pylab as pl
 import tracemalloc
 
@@ -190,7 +190,7 @@ if __name__ == '__main__':
 
     t = time()
     tracemalloc.start()
-    centroids, labels = berserker2_clean(X, theta_value)
+    centroids, labels = berserker(X, theta_value)
     amem, peakmem = tracemalloc.get_traced_memory()
     peakmem = peakmem // (1024**2)
     tracemalloc.stop()

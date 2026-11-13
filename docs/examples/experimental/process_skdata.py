@@ -10,7 +10,7 @@ from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
 
-from thetan.berserker import berserker2_clean
+from thetan.berserker import berserker
 from thetan.viz import plot_centroids_clusters
 
 
@@ -28,7 +28,7 @@ def dbscan(X, eps=0.5, min_samples=1):
 
 def tbscan(X, theta_value, eps=0.5, min_samples=1):
 
-    initial_centroids, initial_labels = berserker2_clean(X, theta_value)
+    initial_centroids, initial_labels = berserker(X, theta_value)
 
     t = time()
     model = DBSCAN(eps=eps, min_samples=min_samples)
@@ -166,7 +166,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     print(X.min(), X.max())
 
     t0 = time()
-    centroids, labels = berserker2_clean(X, 0.5)
+    centroids, labels = berserker(X, 0.5)
     t1 = time()
 
     plot_centroids_clusters(X, None, labels, 'TB ', show=False, savefn=dpath+'tb.png')

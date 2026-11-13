@@ -18,7 +18,7 @@ from sklearn import datasets, manifold
 from sklearn.cluster import HDBSCAN, DBSCAN, AgglomerativeClustering
 from sklearn.metrics import pair_confusion_matrix
 from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
-from thetan.berserker import berserker2, berserker2_clean
+from thetan.berserker import berserker2, berserker
 from thetan.theta import centroids_from_labels, assign
 
 
@@ -109,7 +109,7 @@ def tbscan(X, theta_value, eps=2., min_samples=1, return_interm=False):
     # eps = 2.
     # min_samples = 1
 
-    initial_centroids, initial_labels = berserker2_clean(X, theta_value)
+    initial_centroids, initial_labels = berserker(X, theta_value)
 
     model = DBSCAN(eps=eps, min_samples=min_samples)
     model.fit(initial_centroids)
@@ -601,7 +601,7 @@ def analysis_with_tb(theta_value = 0.00112, ndims=2):
 
     # theta_value = 0.00112
     t_start = time.perf_counter()
-    tb_centroids, tb_labels = berserker2_clean(X_red,
+    tb_centroids, tb_labels = berserker(X_red,
                                                theta_value)
     duration = time.perf_counter() - t_start
     print('Duration ', duration)
