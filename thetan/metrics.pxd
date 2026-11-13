@@ -5,4 +5,4 @@ cimport numpy as cnp
 ctypedef double (*metricp)(double*, double*, cnp.npy_intp) noexcept nogil
 
 # Declare the cdef function signature
-cdef metricp get_metric_func(str metric) except NULL
+cdef metricp get_metric_func(object metric) except NULL
