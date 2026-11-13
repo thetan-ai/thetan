@@ -112,11 +112,7 @@ if __name__ == '__main__':
     X, L, gt_centroids = simulate_data('gaussian', blob_dis=4.8, cluster_x=x, cluster_y=y)
 
     print('Number of features ', X.shape[0])
-    print('Number of GT centroids ', gt_centroids.shape[0])
     print('Size in Bytes', X.nbytes / 1024 ** 2)
-
-    n_clusters = gt_centroids.shape[0]
-
 
     print('\n >> Starting Thetan Sequential ...')
 
@@ -136,5 +132,9 @@ if __name__ == '__main__':
 
     if verbose:
         plot_centroids_clusters(X, tb_centroids, tb_labels, 'Thetan Berserker (TB)', exp_type='', initial_centroids=gt_centroids, show=True, dpath=None)
+
+    print('Number of GT centroids ', gt_centroids.shape[0])
+    print('Estimated TS centroids ', ts_centroids.shape[0])
+    print('Estimated TB centroids ', tb_centroids.shape[0])
 
 t = 1
