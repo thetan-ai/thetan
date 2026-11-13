@@ -254,14 +254,14 @@ def correct_connectivity(Py_ssize_t[:, :, ::1] segments,
 
 
 # Union-Find data structure for label merging
-cdef inline long find_root(long *labels, long x):
+cdef inline cnp.npy_intp find_root(cnp.npy_intp *labels, cnp.npy_intp x):
     """Find root of label x using path compression."""
     while labels[x] != x:
         labels[x] = labels[labels[x]]  # Path compression
         x = labels[x]
     return x
 
-cdef inline void union_labels(long *labels, long a, long b):
+cdef inline void union_labels(cnp.npy_intp *labels, cnp.npy_intp a, cnp.npy_intp b):
     """Union two labels into the same component."""
     rootA = find_root(labels, a)
     rootB = find_root(labels, b)
@@ -278,18 +278,18 @@ def connected_components(double [:, :, ::1] image, double delta=0.0):
         delta (float): Intensity difference threshold for merging components.
 
     Returns:
-        labels (3D np.ndarray[int32]): Labeled image with unique components.
+        labels (3D np.ndarray[intp]): Labeled image with unique components.
         num_components (int): Total number of connected components.
     """
-    cdef long depth = image.shape[0]
-    cdef long height = image.shape[1]
-    cdef long width = image.shape[2]
+    cdef cnp.npy_intp depth = image.shape[0]
+    cdef cnp.npy_intp height = image.shape[1]
+    cdef cnp.npy_intp width = image.shape[2]
 
     # Output labels array
-    cdef long [:, :, ::1] labels = np.zeros((depth, height, width), dtype=np.int64)
+    cdef cnp.npy_intp [:, :, ::1] labels = np.zeros((depth, height, width), dtype=np.intp)
 
     # Define the 26-connected neighborhood in 3D
-    cdef long[26][3] neighbors = [
+    cdef cnp.npy_intp[26][3] neighbors = [
         (-1, -1, -1), (-1, -1, 0), (-1, -1, 1), (-1, 0, -1), (-1, 0, 0), (-1, 0, 1),
         (-1, 1, -1), (-1, 1, 0), (-1, 1, 1), (0, -1, -1), (0, -1, 0), (0, -1, 1),
         (0, 0, -1),  (0, 0, 1), (0, 1, -1), (0, 1, 0), (0, 1, 1), (1, -1, -1),
@@ -298,8 +298,8 @@ def connected_components(double [:, :, ::1] image, double delta=0.0):
 
 
     # Allocate Union-Find structure
-    cdef long max_labels = depth * height * width
-    cdef long *uf_labels = <long*>malloc(max_labels * sizeof(long))
+    cdef cnp.npy_intp max_labels = depth * height * width + 1  # labels start at 1
+    cdef cnp.npy_intp *uf_labels = <cnp.npy_intp*>malloc(max_labels * sizeof(cnp.npy_intp))
     if not uf_labels:
         raise MemoryError("Failed to allocate memory for Union-Find labels")
 
@@ -307,8 +307,8 @@ def connected_components(double [:, :, ::1] image, double delta=0.0):
     for i in range(max_labels):
         uf_labels[i] = i
 
-    cdef long label_count = 1  # Start labeling from 1
-    cdef long z, y, x, nz, ny, nx, current_label, neighbor_label
+    cdef cnp.npy_intp label_count = 1  # Start labeling from 1
+    cdef cnp.npy_intp z, y, x, nz, ny, nx, current_label, neighbor_label
 
     # First Pass: Assign provisional labels and track equivalences
     for z in range(depth):

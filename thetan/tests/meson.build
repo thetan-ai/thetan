@@ -6,6 +6,7 @@ python_sources = [
   'test_dbscan.py',
   'test_distance_metrics.py',
   'test_accuracy.py',
+  'test_image.py',
   ]
 
 
