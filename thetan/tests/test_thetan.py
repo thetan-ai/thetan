@@ -4,11 +4,6 @@ import numpy.testing as npt
 from thetan import berserker, sequential
 from thetan import centroids_from_labels
 from thetan.viz import plot_centroids_clusters
-import matplotlib
-matplotlib.use('Agg', force=True)
-import os
-os.environ.setdefault("MPLBACKEND", "Agg")
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 def points_on_triangle(v, n):

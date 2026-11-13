@@ -236,17 +236,17 @@ def make_spiral_benchmark(
     return X[idx], y[idx]
 
 def main():
-    X = make_big_dataset()
-    # X, y = make_spiral_benchmark(
-    # n_total=30_000,
-    # arms=3,
-    # rotations=3.2,
-    # radius=(0.4, 6.0),
-    # noise=0.0,
-    # noise_frac=0.0,
-    # density='radial_decay',
-    # seed=2025
-    # )
+    # X = make_big_dataset()
+    X, y = make_spiral_benchmark(
+    n_total=30_000,
+    arms=3,
+    rotations=3.2,
+    radius=(0.4, 6.0),
+    noise=0.0,
+    noise_frac=0.0,
+    density='radial_decay',
+    seed=2025
+    )
     eps = 0.50
     min_pts = 1
 
