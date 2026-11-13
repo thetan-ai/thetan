@@ -313,19 +313,25 @@ thetan_dir = py3.get_install_dir() / 'thetan'
 # Custom Meson Command line tools
 # ------------------------------------------------------------------------
 
-cython_args = ['-3', '--fast-fail', '--warning-errors', '@EXTRA_ARGS@',
-               '--output-file', '@OUTPUT@', '--include-dir', incdir_local,
-               '@INPUT@']
+# With --depfile Cython writes '<output>.dep' next to each generated file,
+# listing every .pxd it read. The generators pass that file to ninja, so a
+# change to a .pxd (for example metrics.pxd) also rebuilds the extensions
+# that cimport from it (core).
+cython_args = ['-3', '--fast-fail', '--warning-errors', '--depfile',
+               '@EXTRA_ARGS@', '--output-file', '@OUTPUT@',
+               '--include-dir', incdir_local, '@INPUT@']
 cython_cplus_args = ['--cplus'] + cython_args
 
 cython_gen = generator(cython,
   arguments : cython_args,
   output : '@BASENAME@.c',
+  depfile : '@BASENAME@.c.dep',
   depends : _cython_tree)
 
 cython_gen_cpp = generator(cython,
   arguments : cython_cplus_args,
   output : '@BASENAME@.cpp',
+  depfile : '@BASENAME@.cpp.dep',
   depends : [_cython_tree])
 
 # ------------------------------------------------------------------------
@@ -334,15 +340,9 @@ cython_gen_cpp = generator(cython,
 python_sources = [
   '__init__.py',
   'berserker.py',
-  'chaining.py',
   'viz.py',
-  'experimental.py',
   'accuracy.py',
   'patchify.py',
-  'neighbors.py',
-  'binary_label_3d.py',
-  'completion.py',
-  'otsu.py',
 ]
 
 py3.install_sources(
@@ -357,13 +357,10 @@ py3.install_sources(
 
 cython_sources = [
   'cythonutils',
-  'theta',
   'core',
   'dbscan',
   'image',
   'metrics',
-  'clobber',
-  'complete'
   ]
 
 cython_headers = [
@@ -373,9 +370,6 @@ cython_headers = [
 
 foreach ext: cython_sources
   extra_args = []
-#   if fs.exists(ext + '.pxd')
-#     extra_args += ['--depfile', meson.current_source_dir() +'/'+ ext + '.pxd', ]
-#   endif
   py3.extension_module(ext,
     cython_gen.process(ext + '.pyx', extra_args: extra_args),
     c_args: cython_c_args,
@@ -385,16 +379,6 @@ foreach ext: cython_sources
     subdir: 'thetan'
   )
 endforeach
-
-# Build hashing extension that links with the xxhash library
-py3.extension_module('hashing',
-  cython_gen.process('hashing.pyx'),
-  c_args: cython_c_args,
-  include_directories: [incdir_numpy, inc_local],
-  dependencies: [xxhash_dep],  # Use the dependency declared in vendors/xxhash/meson.build
-  install: true,
-  subdir: 'thetan'
-)
 
 # ------------------------------------------------------------------------
 # Add subfolders
