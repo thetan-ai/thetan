@@ -1,17 +1,11 @@
 python_sources = [
   '__init__.py',
-  'distance_exps.ipynb',
   'test_thetan.py',
   'test_patchify.py',
-  'test_xxhash.py',
   'test_core.py',
   'test_dbscan.py',
   'test_distance_metrics.py',
-  'test_neighbors.py',
-  'test_centroids_from_labels.py',
-  'test_clobber.py',
-  'test_scf2d.py',
-  'test_scf3d.py',
+  'test_accuracy.py',
   ]
 
 
