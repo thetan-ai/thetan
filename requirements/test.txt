@@ -3,6 +3,9 @@
 codecov
 coverage
 flake8
-# nosetests for numpy.testing<=1.15
-nose
 pytest
+# The tests also exercise the optional modules (see optional.txt)
+scipy>=1.8
+scikit-learn
+scikit-image
+matplotlib>=2.0.0

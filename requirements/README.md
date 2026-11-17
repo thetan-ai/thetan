@@ -2,7 +2,7 @@
 
 ## Index
 
-- [build.txt](default.txt) requirements for building the package
+- [build.txt](build.txt) requirements for building the package
 - [default.txt](default.txt) Default requirements
 - [docs.txt](docs.txt) Documentation requirements
 - [optional.txt](optional.txt) Optional requirements

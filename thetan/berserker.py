@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.cluster import DBSCAN
 
 from thetan.core import (
     candidate_labels_c,
@@ -141,6 +140,8 @@ def tbscan(X, theta, eps=2.0, min_samples=1):
         whose TB centroid DBSCAN marks as noise get -1; noise centroids
         are not included in centroids.
     """
+    from sklearn.cluster import DBSCAN
+
     initial_centroids, initial_labels = berserker(X, theta)
 
     model = DBSCAN(eps=eps, min_samples=min_samples)
