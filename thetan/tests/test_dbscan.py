@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.testing as npt
 
 from sklearn.datasets import make_blobs
 from sklearn.cluster import DBSCAN as SK_DBSCAN
@@ -46,7 +45,7 @@ def test_dbscan_output_contract_and_determinism():
     assert np.all(labels1 >= -1), "Invalid negative labels other than -1 (noise)"
     assert K1 == np.unique(labels1[labels1 >= 0]).size
 
-    npt.assert_array_equal(labels1, labels2)
+    assert np.array_equal(labels1, labels2)
     assert int(K1) == int(K2)
 
 def test_dbscan_matches_sklearn_on_simple_blobs():
@@ -79,30 +78,30 @@ def test_dbscan_matches_sklearn_with_noise_points():
         core[sk.core_sample_indices_] = True
 
         # same noise points and the same number of clusters
-        npt.assert_array_equal(labels == -1, sk.labels_ == -1, err_msg=f'eps={eps}, min_pts={min_pts}')
-        npt.assert_equal(K, np.unique(sk.labels_[sk.labels_ >= 0]).size)
+        assert np.array_equal(labels == -1, sk.labels_ == -1), f'eps={eps}, min_pts={min_pts}'
+        assert K == np.unique(sk.labels_[sk.labels_ >= 0]).size
         # core points are grouped the same way. A border point between two
         # clusters may go to either one, so those are left out.
-        npt.assert_equal(adjusted_rand_score(sk.labels_[core], labels[core]), 1.0)
+        assert adjusted_rand_score(sk.labels_[core], labels[core]) == 1.0
 
 def test_dbscan_counts_points_exactly_eps_away_as_neighbours():
     # six points in a row, each exactly 1 from the next
     X = np.column_stack([np.arange(6.0), np.zeros(6)])
     labels, K = dbscan(X, eps=1.0, min_pts=2)
-    npt.assert_equal(K, 1)
-    npt.assert_array_equal(labels, 0)
-    npt.assert_array_equal(labels, SK_DBSCAN(eps=1.0, min_samples=2).fit(X).labels_)
+    assert K == 1
+    assert (labels == 0).all()
+    assert np.array_equal(labels, SK_DBSCAN(eps=1.0, min_samples=2).fit(X).labels_)
 
 def test_dbscan_point_with_exactly_min_pts_neighbours_is_core():
     # the first three points are within eps of each other, so each has
     # exactly 3 neighbours counting itself
     X = np.array([[0.0, 0.0], [0.5, 0.0], [0.0, 0.5], [10.0, 10.0]])
     labels, K = dbscan(X, eps=1.0, min_pts=3)
-    npt.assert_array_equal(labels, [0, 0, 0, -1])
-    npt.assert_equal(K, 1)
+    assert np.array_equal(labels, [0, 0, 0, -1])
+    assert K == 1
     labels, K = dbscan(X, eps=1.0, min_pts=4)
-    npt.assert_array_equal(labels, [-1, -1, -1, -1])
-    npt.assert_equal(K, 0)
+    assert np.array_equal(labels, [-1, -1, -1, -1])
+    assert K == 0
 
 def test_dbscan_border_point_seen_first_still_joins_the_cluster():
     # the first point has only one neighbour, so it is not a core point and
@@ -110,6 +109,6 @@ def test_dbscan_border_point_seen_first_still_joins_the_cluster():
     # core point, so the cluster must claim it afterwards.
     X = np.array([[0.75, 0.0], [0.0, 0.0], [0.3, 0.0], [0.0, 0.3], [0.3, 0.3]])
     labels, K = dbscan(X, eps=0.5, min_pts=4)
-    npt.assert_array_equal(labels, [0, 0, 0, 0, 0])
-    npt.assert_equal(K, 1)
-    npt.assert_array_equal(labels, SK_DBSCAN(eps=0.5, min_samples=4).fit(X).labels_)
+    assert np.array_equal(labels, [0, 0, 0, 0, 0])
+    assert K == 1
+    assert np.array_equal(labels, SK_DBSCAN(eps=0.5, min_samples=4).fit(X).labels_)
