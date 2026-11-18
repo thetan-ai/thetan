@@ -33,23 +33,16 @@ classifiers = [
 ]
 dynamic = ['version']
 dependencies = [
-    "numpy>=1.22.4",
-    "scipy>=1.8",
-    "dipy",
-    "fury",
-    "opencv-python",
-    "scikit-learn",
-    "scikit-image",
-    "pandas",
-    "wfdb",
-    "matplotlib"
+    "numpy>=1.22.4"
 ]
 
 [project.optional-dependencies]
-all = ["thetan[dev,doc,style,test, viz, ml]"]
+all = ["thetan[dev,doc,style,test, viz, ml, optional]"]
+# Needed only by some modules; mirrors requirements/optional.txt
+optional = ["scipy>=1.8", "scikit-learn", "scikit-image", "matplotlib>=2.0.0"]
 style = ["flake8", "isort"]
 viz = ["fury>=0.10.0", "matplotlib"]
-test = ["pytest", "coverage", "coveralls", "codecov", "asv"]
+test = ["thetan[optional]", "pytest", "coverage", "coveralls", "codecov", "asv"]
 ml = ["scikit_learn", "tensorflow"]
 dev = [
     # Also update [build-system] -> requires

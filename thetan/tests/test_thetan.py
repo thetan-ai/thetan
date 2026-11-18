@@ -1,6 +1,6 @@
 from time import time
 import numpy as np
-import numpy.testing as npt
+import pytest
 from thetan import berserker, sequential
 from thetan import centroids_from_labels
 from thetan.viz import plot_centroids_clusters
@@ -35,7 +35,7 @@ def test_two_triangles(verbose=False):
     if verbose:
         plot_centroids_clusters(points, even_centroids_ex2, updated_labels_ex2, title='ecx2' + str(even_centroids_ex2.shape), show=True)
 
-    npt.assert_almost_equal(even_centroids_ex2.shape[0], 2)
+    assert even_centroids_ex2.shape[0] == 2
 
 def _centroids_from_labels(points, labels):
 
@@ -81,10 +81,5 @@ def test_centroids_from_labels():
     # plot_centroids_clusters(points, _centroids, labels1, title='Yo before', show=False)
     # plot_centroids_clusters(points, centroids2, labels1, title='Yo after', show=True)
 
-    npt.assert_array_almost_equal(centroids2, centroids1)
-    npt.assert_array_almost_equal(centroids2, _centroids)
-
-if __name__ == '__main__':
-    test_two_triangles()
-    test_centroids_from_labels()
-    print('Tests passed!')
+    assert centroids2 == pytest.approx(centroids1, abs=1.5e-6)
+    assert centroids2 == pytest.approx(_centroids, abs=1.5e-6)

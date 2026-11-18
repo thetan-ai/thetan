@@ -1,5 +1,4 @@
 import numpy as np
-import numpy.testing as npt
 
 from scipy import ndimage
 
@@ -22,14 +21,14 @@ def test_connected_components_output_contract():
 
     labels, n = connected_components(img)
 
-    npt.assert_equal(n, 2)
-    npt.assert_equal(labels.shape, img.shape)
-    npt.assert_equal(labels.dtype, np.dtype(np.intp))
-    npt.assert_(labels[0, 0, 0] > 0)
-    npt.assert_(labels[3, 4, 5] > 0)
-    npt.assert_(labels[0, 0, 0] != labels[3, 4, 5])
+    assert n == 2
+    assert labels.shape == img.shape
+    assert labels.dtype == np.dtype(np.intp)
+    assert labels[0, 0, 0] > 0
+    assert labels[3, 4, 5] > 0
+    assert labels[0, 0, 0] != labels[3, 4, 5]
     # background stays 0
-    npt.assert_equal(labels[img == 0], 0)
+    assert (labels[img == 0] == 0).all()
 
 
 def test_connected_components_diagonal_neighbours_join():
@@ -39,8 +38,8 @@ def test_connected_components_diagonal_neighbours_join():
 
     labels, n = connected_components(img)
 
-    npt.assert_equal(n, 1)
-    npt.assert_equal(len(np.unique(labels[img > 0])), 1)
+    assert n == 1
+    assert len(np.unique(labels[img > 0])) == 1
 
 
 def test_connected_components_matches_scipy_label():
@@ -53,8 +52,8 @@ def test_connected_components_matches_scipy_label():
         labels, n = connected_components(img)
         ref, n_ref = ndimage.label(img, structure=full)
 
-        npt.assert_equal(n, n_ref)
-        npt.assert_(same_partition(labels, ref))
+        assert n == n_ref
+        assert same_partition(labels, ref)
 
 
 def test_connected_components_delta():
@@ -63,16 +62,16 @@ def test_connected_components_delta():
     img[:, :, :2] = 1.0
     img[:, :, 2:] = 5.0
 
-    npt.assert_equal(connected_components(img)[1], 2)
-    npt.assert_equal(connected_components(img, delta=3.9)[1], 2)
-    npt.assert_equal(connected_components(img, delta=4.0)[1], 1)
+    assert connected_components(img)[1] == 2
+    assert connected_components(img, delta=3.9)[1] == 2
+    assert connected_components(img, delta=4.0)[1] == 1
 
 
 def test_connected_components_no_foreground():
     labels, n = connected_components(np.zeros((3, 4, 5)))
 
-    npt.assert_equal(n, 0)
-    npt.assert_equal(labels, 0)
+    assert n == 0
+    assert (labels == 0).all()
 
 
 def test_connected_components_every_voxel_separate():
@@ -81,5 +80,5 @@ def test_connected_components_every_voxel_separate():
 
     labels, n = connected_components(img)
 
-    npt.assert_equal(n, img.size)
-    npt.assert_equal(len(np.unique(labels)), img.size)
+    assert n == img.size
+    assert len(np.unique(labels)) == img.size

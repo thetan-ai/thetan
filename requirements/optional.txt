@@ -1,1 +1,9 @@
+# Needed only by some modules. `import thetan` works without them.
+# thetan.accuracy
+scipy>=1.8
+# thetan.tbscan, thetan.accuracy, thetan.viz
+scikit-learn
+# thetan.patchify
+scikit-image
+# thetan.viz
 matplotlib>=2.0.0

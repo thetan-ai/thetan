@@ -1,5 +1,5 @@
 import numpy as np
-import numpy.testing as npt
+import pytest
 from thetan import sequential, sequential_prelim, berserker, tbscan
 from thetan import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
 
@@ -60,7 +60,7 @@ def test_sequential_dot_prod_groups_similar_vectors():
     # [1, 0] and [1, 0.1] point the same way, [0, 1] is at a right angle
     X = np.array([[1.0, 0.0], [1.0, 0.1], [0.0, 1.0]])
     _, labels = sequential(X, -0.5, metric='dot_prod')
-    npt.assert_array_equal(labels, [0, 0, 1])
+    assert np.array_equal(labels, [0, 0, 1])
 
 def test_sequential_zero_rows_share_one_cluster():
     # zero rows have no direction: they form one cluster of their own
@@ -68,8 +68,8 @@ def test_sequential_zero_rows_share_one_cluster():
     X = np.array([[1.0, 0.0], [0.0, 0.0], [1.0, 0.1], [0.0, 0.0], [0.0, 0.0]])
     for metric, theta in [('cosine', 0.3), ('arccos', 0.8)]:
         cents, labels = sequential(X, theta, metric=metric)
-        npt.assert_array_equal(labels, [0, 1, 0, 1, 1])
-        npt.assert_array_equal(cents[1], [0.0, 0.0])
+        assert np.array_equal(labels, [0, 1, 0, 1, 1])
+        assert np.array_equal(cents[1], [0.0, 0.0])
 
 def test_tb_recovers_right_K_on_simple_grid():
     X, Ctrue, _ = make_grid_gaussians(A=3, B=2, l=6.0, sigma=1.0, n_per=60)
@@ -85,9 +85,9 @@ def test_candidate_labels_python_vs_cython():
     Cc, Lc = sequential(C0, theta, metric='euclidean', all_out=False)
     nice_py, cand_py, _cl_py, upd_py = candidate_labels_reference(Cc, Lc, L0)
     nice_c, cand_c, _cl_c, upd_c = candidate_labels_c(Cc, Lc, L0)
-    npt.assert_array_equal(nice_c, nice_py)
-    npt.assert_array_equal(np.sort(cand_c), np.sort(np.asarray(cand_py)))
-    npt.assert_array_equal(upd_c, upd_py)
+    assert np.array_equal(nice_c, nice_py)
+    assert np.array_equal(np.sort(cand_c), np.sort(np.asarray(cand_py)))
+    assert np.array_equal(upd_c, upd_py)
 
 def test_reassign_uncertain_has_no_negative_after():
     X, _, _ = make_grid_gaussians(A=2, B=2, l=4.0, n_per=10)
@@ -142,15 +142,15 @@ def test_berseker_gaussian_grid_recovery():
     np.random.seed(0)
     pred_centroids, pred_labels = berserker(X, theta_value, metric='euclidean')
 
-    npt.assert_equal(pred_labels.shape[0], X.shape[0])
-    npt.assert_equal(pred_centroids.shape[1], X.shape[1])
+    assert pred_labels.shape[0] == X.shape[0]
+    assert pred_centroids.shape[1] == X.shape[1]
 
-    npt.assert_equal(pred_centroids.shape[0], K_true)
+    assert pred_centroids.shape[0] == K_true
 
     D = distance_matrix(np.ascontiguousarray(pred_centroids, dtype=np.float64), gt_centroids, metric='euclidean')
     closest = np.min(D, axis=1)
 
-    npt.assert_array_less(closest, 1.0)
+    assert (closest < 1.0).all()
 
 
 def test_tbscan_merges_tb_centroids():
@@ -162,7 +162,7 @@ def test_tbscan_merges_tb_centroids():
     np.random.seed(0)
     centroids, labels = tbscan(X, 3.6, eps=2.0, min_samples=1)
 
-    npt.assert_equal(labels.shape[0], X.shape[0])
+    assert labels.shape[0] == X.shape[0]
     assert labels.min() >= 0
     assert labels.max() == centroids.shape[0] - 1
     assert centroids.shape[0] <= tb_centroids.shape[0]
@@ -173,9 +173,9 @@ def test_sequential_point_exactly_theta_away_starts_a_new_cluster():
     # when its distance is strictly less than theta.
     X = np.array([[0.0, 0.0], [3.0, 4.0]])
     _, labels = sequential(X, 5.0)
-    npt.assert_array_equal(labels, [0, 1])
+    assert np.array_equal(labels, [0, 1])
     _, labels = sequential(X, 5.0 + 1e-9)
-    npt.assert_array_equal(labels, [0, 0])
+    assert np.array_equal(labels, [0, 0])
 
 def test_sequential_all_out_sums_and_sizes():
     local_rng = np.random.default_rng(0)
@@ -184,13 +184,13 @@ def test_sequential_all_out_sums_and_sizes():
     X = X[local_rng.permutation(len(X))]
     cents, labels, sums, sizes = sequential(X, 3.6, all_out=True)
     K = cents.shape[0]
-    npt.assert_array_equal(sizes, np.bincount(labels, minlength=K))
-    npt.assert_allclose(sums, [X[labels == k].sum(axis=0) for k in range(K)])
-    npt.assert_allclose(cents, sums / sizes[:, None])
+    assert np.array_equal(sizes, np.bincount(labels, minlength=K))
+    assert sums == pytest.approx(np.array([X[labels == k].sum(axis=0) for k in range(K)]), rel=1e-7, abs=0)
+    assert cents == pytest.approx(sums / sizes[:, None], rel=1e-7, abs=0)
     # the extra outputs do not change the clustering
     cents2, labels2 = sequential(X, 3.6)
-    npt.assert_array_equal(labels2, labels)
-    npt.assert_array_equal(cents2, cents)
+    assert np.array_equal(labels2, labels)
+    assert np.array_equal(cents2, cents)
 
 def test_reassign_uncertain_picks_the_nearest_centroid():
     centroids = np.array([[0.0, 0.0], [10.0, 0.0], [0.0, 10.0]])
@@ -201,7 +201,7 @@ def test_reassign_uncertain_picks_the_nearest_centroid():
     labels = np.array([-1, -1, -4, 0, 2], dtype=np.intp)
     nice = np.ones(len(X), dtype=np.intp)
     reassigned = reassign_uncertain_update_labels(X, centroids, labels, nice)
-    npt.assert_array_equal(reassigned, [1, 2, 0, 0, 2])
+    assert np.array_equal(reassigned, [1, 2, 0, 0, 2])
 
 def test_reassign_uncertain_uses_the_metric():
     # [3, 1] is closest to [0, 1] in distance and to [10, 0] in direction
@@ -209,8 +209,8 @@ def test_reassign_uncertain_uses_the_metric():
     X = np.array([[3.0, 1.0]])
     labels = np.array([-1], dtype=np.intp)
     nice = np.ones(1, dtype=np.intp)
-    npt.assert_array_equal(reassign_uncertain_update_labels(X, centroids, labels, nice), [1])
-    npt.assert_array_equal(reassign_uncertain_update_labels(X, centroids, labels, nice, metric='cosine'), [0])
+    assert np.array_equal(reassign_uncertain_update_labels(X, centroids, labels, nice), [1])
+    assert np.array_equal(reassign_uncertain_update_labels(X, centroids, labels, nice, metric='cosine'), [0])
 
 def test_sequential_prelim_hand_computed():
     # theta = 1.5. The prior centroids [0, 0] and [1, 0] are 1 apart, so
@@ -221,23 +221,23 @@ def test_sequential_prelim_hand_computed():
     X = np.array([[0.5, 0.0], [10.0, 1.0], [20.0, 0.0]])
     cents, labels, sums, sizes = sequential_prelim(X, means_prev, 1.5, all_out=True)
     # only the points in X get a label, the prior centroids do not
-    npt.assert_array_equal(labels, [0, 1, 2])
+    assert np.array_equal(labels, [0, 1, 2])
     # each prior centroid counts as one member of its cluster
-    npt.assert_array_equal(sizes, [3, 2, 1])
-    npt.assert_allclose(sums, [[1.5, 0.0], [20.0, 1.0], [20.0, 0.0]])
-    npt.assert_allclose(cents, [[0.5, 0.0], [10.0, 0.5], [20.0, 0.0]])
+    assert np.array_equal(sizes, [3, 2, 1])
+    assert sums == pytest.approx(np.array([[1.5, 0.0], [20.0, 1.0], [20.0, 0.0]]), rel=1e-7, abs=0)
+    assert cents == pytest.approx(np.array([[0.5, 0.0], [10.0, 0.5], [20.0, 0.0]]), rel=1e-7, abs=0)
     cents2, labels2 = sequential_prelim(X, means_prev, 1.5)
-    npt.assert_array_equal(labels2, labels)
-    npt.assert_allclose(cents2, cents)
+    assert np.array_equal(labels2, labels)
+    assert cents2 == pytest.approx(cents, rel=1e-7, abs=0)
 
 def test_sequential_prelim_uses_the_metric():
     # [3, 1] is closest to [0, 1] in distance and to [10, 0] in direction
     means_prev = np.array([[10.0, 0.0], [0.0, 1.0]])
     X = np.array([[3.0, 1.0]])
     _, labels = sequential_prelim(X, means_prev, 3.5)
-    npt.assert_array_equal(labels, [1])
+    assert np.array_equal(labels, [1])
     _, labels = sequential_prelim(X, means_prev, 0.3, metric='cosine')
-    npt.assert_array_equal(labels, [0])
+    assert np.array_equal(labels, [0])
 
 def test_berserker_output_contract():
     local_rng = np.random.default_rng(0)
@@ -247,12 +247,12 @@ def test_berserker_output_contract():
     np.random.seed(0)
     cents, labels = berserker(X, 3.6)
     K = cents.shape[0]
-    npt.assert_equal(K, 4)
-    npt.assert_equal(labels.shape, (X.shape[0],))
+    assert K == 4
+    assert labels.shape == (X.shape[0],)
     # labels run from 0 to K - 1 and every one of them is used
-    npt.assert_array_equal(np.unique(labels), np.arange(K))
+    assert np.array_equal(np.unique(labels), np.arange(K))
     # each centroid is the mean of the points with its label
-    npt.assert_allclose(cents, [X[labels == k].mean(axis=0) for k in range(K)])
+    assert cents == pytest.approx(np.array([X[labels == k].mean(axis=0) for k in range(K)]), rel=1e-7, abs=0)
 
 def test_berserker_with_cosine_groups_by_direction():
     local_rng = np.random.default_rng(0)
@@ -263,9 +263,9 @@ def test_berserker_with_cosine_groups_by_direction():
     direction = np.repeat(np.arange(3), 100)
     np.random.seed(0)
     cents, labels = berserker(X, 0.3, metric='cosine')
-    npt.assert_equal(cents.shape[0], 3)
+    assert cents.shape[0] == 3
     for g in range(3):
-        npt.assert_equal(len(np.unique(labels[direction == g])), 1)
+        assert len(np.unique(labels[direction == g])) == 1
 
 def _rows_of_blobs(sizes=(30, 60, 90), seed=0):
     # two rows of three tight blobs. Blobs in a row are 3 apart and the
@@ -282,26 +282,26 @@ def test_tbscan_merges_centroids_closer_than_eps():
     X, row = _rows_of_blobs()
     np.random.seed(0)
     tb_centroids, tb_labels = berserker(X, 1.5)
-    npt.assert_equal(tb_centroids.shape[0], 6)
+    assert tb_centroids.shape[0] == 6
 
     # the three blobs of a row are 3 apart, so eps = 4 chains them together
     np.random.seed(0)
     centroids, labels = tbscan(X, 1.5, eps=4.0)
-    npt.assert_equal(centroids.shape[0], 2)
+    assert centroids.shape[0] == 2
     for r in range(2):
-        npt.assert_equal(len(np.unique(labels[row == r])), 1)
+        assert len(np.unique(labels[row == r])) == 1
     assert labels[row == 0][0] != labels[row == 1][0]
     # each centroid is the plain mean of the three TB centroids it merged,
     # not the mean of the points (the blobs have different sizes)
     for g in range(2):
         merged = np.unique(tb_labels[labels == g])
-        npt.assert_equal(len(merged), 3)
-        npt.assert_allclose(centroids[g], tb_centroids[merged].mean(axis=0))
+        assert len(merged) == 3
+        assert centroids[g] == pytest.approx(tb_centroids[merged].mean(axis=0), rel=1e-7, abs=0)
 
     # with eps below the spacing nothing is merged
     np.random.seed(0)
     centroids, labels = tbscan(X, 1.5, eps=2.0)
-    npt.assert_equal(centroids.shape[0], 6)
+    assert centroids.shape[0] == 6
 
 def test_tbscan_min_samples_turns_isolated_centroids_into_noise():
     X, row = _rows_of_blobs()
@@ -312,15 +312,11 @@ def test_tbscan_min_samples_turns_isolated_centroids_into_noise():
     # the far blob's centroid has no other centroid within eps
     np.random.seed(0)
     centroids, labels = tbscan(X, 1.5, eps=4.0, min_samples=2)
-    npt.assert_equal(centroids.shape[0], 2)
-    npt.assert_array_equal(labels[is_far], -1)
+    assert centroids.shape[0] == 2
+    assert (labels[is_far] == -1).all()
     assert labels[~is_far].min() >= 0
 
     np.random.seed(0)
     centroids, labels = tbscan(X, 1.5, eps=4.0, min_samples=1)
-    npt.assert_equal(centroids.shape[0], 3)
+    assert centroids.shape[0] == 3
     assert labels.min() >= 0
-
-
-if __name__ == "__main__":
-    test_berseker_gaussian_grid_recovery()

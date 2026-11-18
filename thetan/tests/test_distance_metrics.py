@@ -1,5 +1,5 @@
 import numpy as np
-import numpy.testing as npt
+import pytest
 
 from thetan.metrics import distance_matrix
 
@@ -75,8 +75,8 @@ def test_distance_matrix():
         for metric in ground_metrics:
             expected = ground_distance_matrix(X1, X2, metric)
             actual = distance_matrix(X1, X2, metric)
-            npt.assert_equal(actual.shape, (5, 7))
-            npt.assert_allclose(actual, expected, err_msg=f'{metric}, {n_cols} columns')
+            assert actual.shape == (5, 7)
+            assert actual == pytest.approx(expected, rel=1e-7, abs=0), f'{metric}, {n_cols} columns'
 
 def test_known_values():
     # worked out by hand: x - y = [-3, -4, 0], x.y = 25, |x|^2 = 14, |y|^2 = 61
@@ -87,7 +87,7 @@ def test_known_values():
                 'cosine': 1 - 25 / np.sqrt(14 * 61), 'arccos': np.arccos(25 / np.sqrt(14 * 61))}
     assert set(expected) == set(ground_metrics)
     for metric, value in expected.items():
-        npt.assert_allclose(distance_matrix(x, y, metric)[0, 0], value, rtol=1e-14, err_msg=metric)
+        assert distance_matrix(x, y, metric)[0, 0] == pytest.approx(value, rel=1e-14, abs=0), metric
     # vectors more than a right angle apart: x - y = [2, -1], x.y = -1
     x = np.array([[1.0, 0.0]])
     y = np.array([[-1.0, 1.0]])
@@ -95,18 +95,18 @@ def test_known_values():
                 'dot_prod': 1.0, 'l1_norm': 3.0, 'inf_norm': 2.0,
                 'cosine': 1 + 1 / np.sqrt(2), 'arccos': 3 * np.pi / 4}
     for metric, value in expected.items():
-        npt.assert_allclose(distance_matrix(x, y, metric)[0, 0], value, rtol=1e-14, err_msg=metric)
+        assert distance_matrix(x, y, metric)[0, 0] == pytest.approx(value, rel=1e-14, abs=0), metric
 
 def test_default_metric_is_norm_ssd():
     rng = np.random.default_rng(0)
     X1 = rng.normal(size=(4,6))
     X2 = rng.normal(size=(3,6))
-    npt.assert_array_equal(distance_matrix(X1, X2), distance_matrix(X1, X2, 'norm_ssd'))
+    assert np.array_equal(distance_matrix(X1, X2), distance_matrix(X1, X2, 'norm_ssd'))
 
 def test_inf_norm_identical_vectors_is_zero():
     rng = np.random.default_rng(0)
     X = rng.random((5,10)).astype(np.float64)
-    npt.assert_equal(np.diag(distance_matrix(X, X, 'inf_norm')), 0.0)
+    assert (np.diag(distance_matrix(X, X, 'inf_norm')) == 0.0).all()
 
 def test_nan_gives_nan_for_every_metric():
     x = np.array([[np.nan, 1.0, 5.0]])
@@ -127,37 +127,37 @@ def test_cosine_and_arccos_with_zero_vectors():
     for metric in ['cosine', 'arccos']:
         expected = ground_distance_matrix(X, X, metric)
         actual = distance_matrix(X, X, metric)
-        npt.assert_allclose(actual[:2], expected[:2])
-        npt.assert_allclose(actual[:, :2], expected[:, :2])
-    npt.assert_equal(distance_matrix(X[:1], X[2:], 'cosine'), 1.0)
-    npt.assert_equal(distance_matrix(X[:1], X[2:], 'arccos'), np.pi / 2)
+        assert actual[:2] == pytest.approx(expected[:2], rel=1e-7, abs=0)
+        assert actual[:, :2] == pytest.approx(expected[:, :2], rel=1e-7, abs=0)
+    assert (distance_matrix(X[:1], X[2:], 'cosine') == 1.0).all()
+    assert (distance_matrix(X[:1], X[2:], 'arccos') == np.pi / 2).all()
     # two zero vectors are exactly 0 apart
     for metric in ['cosine', 'arccos']:
-        npt.assert_equal(distance_matrix(X[:2], X[:2], metric), 0.0)
+        assert (distance_matrix(X[:2], X[:2], metric) == 0.0).all()
 
 def test_arccos_identical_opposite_and_small_angles():
     rng = np.random.default_rng(0)
     X = rng.normal(size=(200,13)) * rng.uniform(0.1, 100, (200,1))
     # identical vectors are exactly 0 apart, opposite vectors exactly pi
-    npt.assert_equal(np.diag(distance_matrix(X, X, 'arccos')), 0.0)
-    npt.assert_equal(np.diag(distance_matrix(X, -X, 'arccos')), np.pi)
+    assert (np.diag(distance_matrix(X, X, 'arccos')) == 0.0).all()
+    assert (np.diag(distance_matrix(X, -X, 'arccos')) == np.pi).all()
     # small angles keep their accuracy
     for angle in [1e-3, 1e-6, 1e-9]:
         a = np.array([[1.0, 0.0, 0.0]])
         b = np.array([[np.cos(angle), np.sin(angle), 0.0]])
-        npt.assert_allclose(distance_matrix(a, b, 'arccos')[0, 0], angle, rtol=1e-6)
+        assert distance_matrix(a, b, 'arccos')[0, 0] == pytest.approx(angle, rel=1e-6, abs=0)
 
 def test_cosine_identical_opposite_and_small_angles():
     rng = np.random.default_rng(0)
     X = rng.normal(size=(200,13)) * rng.uniform(0.1, 100, (200,1))
     # identical vectors are exactly 0 apart, opposite vectors 2 apart
-    npt.assert_equal(np.diag(distance_matrix(X, X, 'cosine')), 0.0)
-    npt.assert_allclose(np.diag(distance_matrix(X, -X, 'cosine')), 2.0, rtol=1e-15)
+    assert (np.diag(distance_matrix(X, X, 'cosine')) == 0.0).all()
+    assert np.diag(distance_matrix(X, -X, 'cosine')) == pytest.approx(2.0, rel=1e-15, abs=0)
     # small angles keep their accuracy: 1 - cos(angle) = 2 * sin(angle / 2)**2
     for angle in [1e-3, 1e-6, 1e-9]:
         a = np.array([[1.0, 0.0, 0.0]])
         b = np.array([[np.cos(angle), np.sin(angle), 0.0]])
-        npt.assert_allclose(distance_matrix(a, b, 'cosine')[0, 0], 2 * np.sin(angle / 2)**2, rtol=1e-6)
+        assert distance_matrix(a, b, 'cosine')[0, 0] == pytest.approx(2 * np.sin(angle / 2)**2, rel=1e-6, abs=0)
 
 def test_cosine_and_arccos_do_not_depend_on_vector_length():
     a = np.array([[1.0, 2.0, 3.0]])
@@ -168,11 +168,11 @@ def test_cosine_and_arccos_do_not_depend_on_vector_length():
         # squaring these values overflows or underflows
         for scale in [1e-300, 1e-170, 1e-160, 1e150, 1e200, 1e300]:
             A, B = a * scale, b * scale
-            npt.assert_allclose(distance_matrix(A, B, metric)[0, 0], expected, rtol=1e-12)
-            npt.assert_allclose(distance_matrix(A, b, metric)[0, 0], expected, rtol=1e-12)
-            npt.assert_allclose(distance_matrix(a, B, metric)[0, 0], expected, rtol=1e-12)
-            npt.assert_allclose(distance_matrix(A, -A, metric)[0, 0], opposite, rtol=1e-12)
-            npt.assert_equal(distance_matrix(A, A, metric)[0, 0], 0.0)
+            assert distance_matrix(A, B, metric)[0, 0] == pytest.approx(expected, rel=1e-12, abs=0)
+            assert distance_matrix(A, b, metric)[0, 0] == pytest.approx(expected, rel=1e-12, abs=0)
+            assert distance_matrix(a, B, metric)[0, 0] == pytest.approx(expected, rel=1e-12, abs=0)
+            assert distance_matrix(A, -A, metric)[0, 0] == pytest.approx(opposite, rel=1e-12, abs=0)
+            assert distance_matrix(A, A, metric)[0, 0] == 0.0
         # NaN and infinite values give NaN, also against a zero vector
         for bad in [np.nan, np.inf]:
             x = np.array([[bad, 1.0, 5.0]])
@@ -206,7 +206,7 @@ def test_metric_name_can_be_any_kind_of_str():
     expected = distance_matrix(X, X, 'euclidean')
     names = np.array(['euclidean', 'cosine'])
     for metric in [names[0], Name('euclidean'), Metric.EUCLIDEAN]:
-        npt.assert_array_equal(distance_matrix(X, X, metric), expected)
+        assert np.array_equal(distance_matrix(X, X, metric), expected)
     # anything that is not a str is a TypeError that names the argument
     for metric in [None, b'euclidean', 3]:
         try:
@@ -219,20 +219,7 @@ def test_metric_name_can_be_any_kind_of_str():
 def test_distance_matrix_rejects_different_column_counts():
     X1 = np.ones((2,4))
     X2 = np.ones((2,2))
-    npt.assert_raises(ValueError, distance_matrix, X1, X2, 'euclidean')
-    npt.assert_raises(ValueError, distance_matrix, X2, X1, 'euclidean')
-
-if __name__ == '__main__':
-    test_distance_matrix()
-    test_known_values()
-    test_default_metric_is_norm_ssd()
-    test_inf_norm_identical_vectors_is_zero()
-    test_nan_gives_nan_for_every_metric()
-    test_cosine_and_arccos_with_zero_vectors()
-    test_arccos_identical_opposite_and_small_angles()
-    test_cosine_identical_opposite_and_small_angles()
-    test_cosine_and_arccos_do_not_depend_on_vector_length()
-    test_unknown_metric_message_names_it()
-    test_metric_name_can_be_any_kind_of_str()
-    test_distance_matrix_rejects_different_column_counts()
-    print('Tests passed!')
+    with pytest.raises(ValueError):
+        distance_matrix(X1, X2, 'euclidean')
+    with pytest.raises(ValueError):
+        distance_matrix(X2, X1, 'euclidean')
