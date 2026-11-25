@@ -146,6 +146,10 @@ def docs(ctx, *, clean, plot, serve, port, open_browser, build, build_dir):
     _set_pythonpath(build_dir)
 
     html_dir = DOCS_BUILD / "html"
+    # Incremental Sphinx >= 8 builds skip copying static files, so an edited
+    # docs/_static/thetan.css would never reach the site. The examples are not
+    # run again: sphinx-gallery keeps its cache in docs/gallery.
+    shutil.rmtree(html_dir, ignore_errors=True)
     cmd = [sys.executable, "-m", "sphinx", "-b", "dirhtml", "-W", "--keep-going",
            "-j", "auto", ".", str(html_dir.relative_to(DOCS_DIR))]
     if not plot:

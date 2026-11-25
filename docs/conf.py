@@ -110,4 +110,4 @@ html_theme_options = {
     "pygments_light_style": "default",
     "pygments_dark_style": "github-dark",
 }
-html_sidebars = {"index": [], "citing": []}
+html_sidebars = {"**": ["sidebar-globaltoc"]}

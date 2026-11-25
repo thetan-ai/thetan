@@ -15,6 +15,9 @@ html {
 }
 
 html[data-theme="light"] {
+  --th-ink-3: #6a7082;
+  --sg-tooltip-background: rgba(246, 245, 241, 0.94);
+  --sg-tooltip-foreground: #0f1119;
   --th-accent: #c2470f;
   --th-accent-soft: rgba(194, 71, 15, 0.1);
   --th-line: rgba(15, 17, 26, 0.16);
@@ -41,6 +44,9 @@ html[data-theme="light"] {
 }
 
 html[data-theme="dark"] {
+  --th-ink-3: #6e7589;
+  --sg-tooltip-background: rgba(11, 13, 22, 0.94);
+  --sg-tooltip-foreground: #eef0f6;
   --th-accent: #ff7a3d;
   --th-accent-soft: rgba(255, 122, 61, 0.14);
   --th-line: rgba(255, 255, 255, 0.14);
@@ -106,6 +112,84 @@ html[data-theme="dark"] {
   color: var(--th-accent) !important;
 }
 
+/* ---------- sidebar: the whole site, styled like the landing page ---------- */
+
+.bd-sidebar-primary {
+  border-right: 1px solid var(--th-line);
+  background: transparent;
+}
+
+.th-globaltoc .th-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--pst-font-family-monospace);
+  font-size: 11px !important;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--th-accent) !important;
+  margin: 0.4rem 0 1rem;
+}
+
+.th-globaltoc .th-kicker::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--th-accent);
+  box-shadow: 0 0 12px var(--th-accent);
+}
+
+.th-globaltoc .bd-sidenav li > a {
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem !important;
+  transition: color 0.15s ease, background 0.15s ease;
+  text-decoration: none;
+}
+
+.th-globaltoc .bd-sidenav > li.toctree-l1 {
+  margin-top: 0.15rem;
+}
+
+.th-globaltoc .bd-sidenav > li.toctree-l1 > a {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--pst-color-heading-color);
+}
+
+.th-globaltoc .bd-sidenav li.toctree-l2 > a {
+  font-size: 0.88rem;
+  color: var(--pst-color-text-muted);
+}
+
+.th-globaltoc .bd-sidenav li ul {
+  margin: 0.15rem 0 0.5rem 0.75rem;
+  padding-left: 0.5rem !important;
+  border-left: 1px solid var(--th-line);
+}
+
+.th-globaltoc .bd-sidenav li > a:hover {
+  color: var(--th-accent) !important;
+  background: var(--th-accent-soft);
+}
+
+.th-globaltoc .bd-sidenav li.current > a {
+  color: var(--th-accent) !important;
+  box-shadow: none;
+}
+
+.th-globaltoc .bd-sidenav li > a.current {
+  background: var(--th-accent-soft);
+  box-shadow: inset 2px 0 0 var(--th-accent);
+  border-radius: 0 8px 8px 0;
+  font-weight: 500;
+}
+
+.th-globaltoc .toctree-toggle {
+  color: var(--th-ink-3);
+}
+
 /* ---------- content ---------- */
 
 .sd-card {
@@ -149,6 +233,8 @@ dl.py > dt {
 
 /* Gallery: thumbnails and figures are drawn by matplotlib on white. */
 .sphx-glr-thumbcontainer {
+  /* Clip the hover tooltip (a square ::before/::after) to the rounded card. */
+  overflow: hidden;
   border-radius: 14px !important;
   border: 1px solid var(--th-line) !important;
   background: var(--pst-color-on-background) !important;
@@ -157,6 +243,13 @@ dl.py > dt {
 
 .sphx-glr-thumbcontainer:hover {
   border-color: var(--th-accent) !important;
+}
+
+.sphx-glr-thumbcontainer[tooltip]:hover::after {
+  font-family: var(--pst-font-family-base);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  padding: 14px 14px 10px;
 }
 
 .sphx-glr-thumbcontainer img,
