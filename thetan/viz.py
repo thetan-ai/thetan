@@ -210,7 +210,7 @@ def visualize_separation(data, centroids, labels, result, save_path=None, show=T
     ax = axes[1,1]
     ax.scatter(filtered_data_2d[:,0],filtered_data_2d[:,1],c=result['filtered_labels'],cmap='tab20',s=1,alpha=0.5)
     ax.scatter(filtered_centroids_2d[:,0], filtered_centroids_2d[:,1],c='red', marker='x', s=50, linewidths=2)
-    ax.set_title(f'Separated Regions \n({len(result['filtered_centroids'])} centroids, {len(result['filtered_data'])} points)')
+    ax.set_title(f'Separated Regions \n({len(result["filtered_centroids"])} centroids, {len(result["filtered_data"])} points)')
     ax.set_aspect('equal')
 
     plt.tight_layout()
