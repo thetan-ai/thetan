@@ -59,16 +59,18 @@ dev = [
 ]
 
 doc = [
-    "numpydoc",
-    "sphinx ~= 5.3",
-    "texext",
-    "tomli; python_version < \"3.11\"",
-    "sphinxcontrib-bibtex",
-    "sphinx_design",
-    "sphinx-gallery>=0.10.0",
-    "tomli>=2.0.1",
-    "grg-sphinx-theme>=0.2.0",
-    "Jinja2"
+    # Mirrors requirements/docs.txt
+    "sphinx>=7.2",
+    "myst-parser>=3.0",
+    "pydata-sphinx-theme>=0.15",
+    "sphinx-design>=0.6",
+    "sphinx-copybutton>=0.5",
+    "numpydoc>=1.6",
+    "sphinx-gallery>=0.17",
+    "matplotlib>=3.5",
+    "scikit-learn",
+    "scikit-image",
+    "scipy>=1.8",
 ]
 
 
@@ -113,15 +115,7 @@ Environments = [
     "spin.python"
 ]
 
-"Documentation" = [
-    "spin.cmds.meson.docs",
-    # ".spin/cmds.py:docs"
-]
-Metrics = [
-    ".spin/cmds.py:bench",
-    # ".spin/cmds.py:coverage
-]
-# TODO: Add custom commands
+Documentation = [".spin/cmds.py:docs"]
 
 [tool.pytest.ini_options]
 addopts = "--ignore-glob='bench*.py' --ignore-glob=**/benchmarks/*"

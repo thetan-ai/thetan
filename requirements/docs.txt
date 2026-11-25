@@ -1,9 +1,17 @@
-# These are dependencies of various sphinx extensions for documentation.
-sphinx
-ipython
-matplotlib
-numpydoc
-sphinx-copybutton
-sphinx-gallery
-pillow
-sphinx_rtd_theme
+# Website and documentation, built with `spin docs`. Pure Python.
+sphinx>=7.2
+# MyST markdown pages
+myst-parser>=3.0
+pydata-sphinx-theme>=0.15
+sphinx-design>=0.6
+sphinx-copybutton>=0.5
+# API reference from the numpydoc docstrings
+numpydoc>=1.6
+# Example gallery, and what the examples and documented modules import
+sphinx-gallery>=0.17
+matplotlib>=3.5
+scikit-learn
+scikit-image
+scipy>=1.8
+# spin drives the build
+spin>=0.5

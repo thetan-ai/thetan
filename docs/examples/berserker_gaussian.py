@@ -1,140 +1,82 @@
+"""
+Thetan Sequential vs Thetan Berserker on a grid of Gaussians
+============================================================
+
+Cluster 200 Gaussian blobs laid out on a 20 x 10 grid with one distance
+threshold, θ, and compare one pass of Thetan Sequential (TS) with the
+two self-correcting passes of Thetan Berserker (TB). Neither method is
+told how many clusters there are.
+"""
+
+import matplotlib.pyplot as plt
 import numpy as np
-import pylab as pl
-from thetan import TS as ts
-from thetan import TB as tb
 
+from thetan import TB, TS
 
-def gaussian_clusters(n_local_samples, blob_dis=10, cluster_x=10, cluster_y=10):
+# %%
+# Simulate the data
+# -----------------
+#
+# Each blob is a unit Gaussian with 200 points. The centres are 4.8 apart,
+# so a threshold of θ = 3.6 is larger than a typical cluster and smaller
+# than the gap between two neighbours.
 
-    xx = np.arange(-1*blob_dis*cluster_x//2, blob_dis*cluster_x//2, blob_dis)
-    yy = np.arange(-1*blob_dis*cluster_y//2, blob_dis*cluster_y//2, blob_dis)
+rng = np.random.default_rng(42)
+np.random.seed(42)
 
-    xx, yy = np.meshgrid(xx, yy)
-    n_centres = np.hstack((np.ravel(xx)[:, np.newaxis],
-                           np.ravel(yy)[:, np.newaxis]))
+spacing = 4.8
+n_x, n_y = 20, 10
+n_per_cluster = 200
 
-    gt_centroids = []
-    X = np.zeros((n_local_samples * n_centres.shape[0], 2))
-    y = np.zeros((n_local_samples * n_centres.shape[0]), dtype=np.int16)
-    for i in range(n_centres.shape[0]):
-        cpos = n_centres[i]
+gx, gy = np.meshgrid(np.arange(n_x) * spacing, np.arange(n_y) * spacing)
+centres = np.column_stack([gx.ravel(), gy.ravel()])
+X = np.vstack([c + rng.standard_normal((n_per_cluster, 2)) for c in centres])
+X = X[rng.permutation(len(X))]
+X = np.ascontiguousarray(X, dtype=np.float64)
 
-        local_X = cpos + np.random.normal(0, 1, (n_local_samples, 2))
-        X[i * n_local_samples: (i + 1) * n_local_samples] = local_X
-        y[i * n_local_samples: (i + 1) * n_local_samples] = i
-        gt_centroids.append(local_X.mean(axis=0))
+print(f"{X.shape[0]} points, {X.nbytes / 1024**2:.1f} MB, {len(centres)} true clusters")
 
-    return X, y, gt_centroids
+# %%
+# One pass: Thetan Sequential
+# ---------------------------
+#
+# TS visits each point once. A point joins its nearest centroid when it is
+# closer than θ; otherwise it opens a new cluster. It is fast, but a point
+# seen early can open a cluster between two true groups.
 
+theta = 3.6
+ts_centroids, ts_labels = TS(X, theta)
+print(f"TS found {len(ts_centroids)} clusters")
 
-def plot_centroids_clusters(data, centroids, labels, title, exp_type, initial_centroids=None,
-                            uncertain_data=None, final_counts=None, final_nearc_value=None,
-                            merged_centroids=None, show=True, dpath=None):
+# %%
+# Two passes: Thetan Berserker
+# ----------------------------
+#
+# TB removes the duplicate centroids of the first pass, then runs a second
+# pass with the cleaned centroids placed in front of a new shuffle of the
+# data.
 
-    new_colors = np.zeros((len(data), 3))
-    no_clusters = len(centroids)
-    cluster_colors = np.random.rand(no_clusters, 3)
+tb_centroids, tb_labels = TB(X, theta)
+print(f"TB found {len(tb_centroids)} clusters")
 
-    for ind in range(data.shape[0]):
-        new_colors[ind] = cluster_colors[labels[ind]]
+# %%
+# Compare the centroids with the true centres
+# -------------------------------------------
+#
+# Red crosses are the centroids each method returns and black circles the
+# true centres. The extra centroids of TS sit between blobs; TB's land on
+# the centres.
 
-    fig = pl.figure(figsize=(30, 15))
-
-
-    if initial_centroids is not None:
-        pl.plot(initial_centroids[:, 0], initial_centroids[:, 1], 'bo')
-
-    pl.title(title)
-    pl.axis('equal')
-    pl.scatter(data[:, 0], data[:, 1], c=new_colors, alpha=0.2)
-    pl.plot(centroids[:, 0], centroids[:, 1], 'rx')
-
-    # for c in range(centroids.shape[0]):
-    #    pl.text(centroids[c, 0], centroids[c, 1], str(c), fontsize=8)
-
-    if uncertain_data is not None:
-        pl.plot(uncertain_data[:, 0], uncertain_data[:, 1], 'g.')
-
-    cnt = 0
-    if final_counts is not None:
-        for i in range(final_counts.shape[0]):
-            prev = cnt
-            cnt += final_counts[i]
-            if final_counts[i] > 1:
-                pl.text(data[i, 0], data[i, 1], str(final_nearc_value[prev: cnt]) + ' ' + str(labels[i]), fontsize=8)
-
-    if merged_centroids is not None:
-        pl.plot(merged_centroids[:, 0], merged_centroids[:, 1], 'mo')
-
-    if show:
-        pl.show()
-
-    pl.close(fig)
-
-
-def simulate_data(dist_type='gaussian', blob_dis=10, cluster_x=10, cluster_y=10, n_local_samples=500, scale=1):
-
-    print('Simulating data')
-
-    if dist_type == 'gaussian':
-        X, y, gt_centroids = gaussian_clusters(n_local_samples=n_local_samples, blob_dis=blob_dis, cluster_x=cluster_x, cluster_y=cluster_y)
-
-    gt_centroids = np.array(gt_centroids)
-
-    points = X
-    labels = y
-    # sz = len(n_centres)
-
-    centroids = gt_centroids
-
-    points_idx = np.arange(np.shape(points)[0])
-    np.random.shuffle(points_idx)
-    new_points = np.zeros(np.shape(points))
-    new_labels = np.zeros(np.shape(labels))
-    for i, idx in zip(range(np.shape(points)[0]), points_idx):
-        new_points[i] = points[idx]
-        new_labels[i] = labels[idx]
-
-    points = new_points
-    labels = new_labels
-
-    return points, labels, gt_centroids
-
-
-if __name__ == '__main__':
-
-    verbose = True
-    theta_value = 3.6
-    x = 20
-    y = 10
-
-
-    X, L, gt_centroids = simulate_data('gaussian', blob_dis=4.8, cluster_x=x, cluster_y=y)
-
-    print('Number of features ', X.shape[0])
-    print('Size in Bytes', X.nbytes / 1024 ** 2)
-
-    print('\n >> Starting Thetan Sequential ...')
-
-    ts_centroids, ts_labels = ts(X, theta_value, all_out=False)
-
-    print('Done!')
-
-    if verbose:
-        plot_centroids_clusters(X, ts_centroids, ts_labels, 'Thetan Sequential (TS)', exp_type='', initial_centroids=gt_centroids, show=True, dpath=None)
-
-
-    print('\n >> Starting Thetan Berserker ...')
-
-    tb_centroids, tb_labels = tb(X, theta_value)
-
-    print('Done!')
-
-    if verbose:
-        plot_centroids_clusters(X, tb_centroids, tb_labels, 'Thetan Berserker (TB)', exp_type='', initial_centroids=gt_centroids, show=True, dpath=None)
-
-    print('Number of GT centroids ', gt_centroids.shape[0])
-    print('Estimated TS centroids ', ts_centroids.shape[0])
-    print('Estimated TB centroids ', tb_centroids.shape[0])
-
-t = 1
+fig, axes = plt.subplots(1, 2, figsize=(14, 4), sharey=True)
+for ax, centroids, name in ((axes[0], ts_centroids, "Thetan Sequential (TS)"),
+                            (axes[1], tb_centroids, "Thetan Berserker (TB)")):
+    ax.scatter(X[:, 0], X[:, 1], s=1, c="0.75", rasterized=True)
+    ax.scatter(centres[:, 0], centres[:, 1], s=30, facecolors="none",
+               edgecolors="k", linewidths=0.8, label="true centre")
+    ax.scatter(centroids[:, 0], centroids[:, 1], s=18, c="tab:red",
+               marker="x", label="centroid")
+    ax.set_title(f"{name}: {len(centroids)} clusters")
+    ax.set_aspect("equal")
+axes[0].legend(loc="upper right", fontsize=8)
+fig.tight_layout()
+plt.show()

@@ -1,0 +1,18 @@
+{# The whole site tree on every page. pydata's own sidebar-nav-bs only shows
+   the children of the current top-level section, so it is empty on pages
+   without children. #}
+<nav class="bd-docs-nav bd-links th-globaltoc" aria-label="{{ _('Documentation') }}">
+  <p class="bd-links__title th-kicker" role="heading" aria-level="1">{{ _("Documentation") }}</p>
+  <div class="bd-toc-item navbar-nav">
+    {{- generate_toctree_html(
+      "sidebar",
+      startdepth=0,
+      show_nav_level=2,
+      maxdepth=2,
+      collapse=False,
+      includehidden=True,
+      titles_only=True
+      )
+    -}}
+  </div>
+</nav>

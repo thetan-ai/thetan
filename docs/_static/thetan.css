@@ -1,0 +1,260 @@
+/* Thetan theme for pydata-sphinx-theme.
+   Colours and fonts mirror the landing page (docs/_landing/css/style.css):
+   the berserker ember accent on a near-black stage in dark mode, and a warm
+   paper background in light mode. The theme's own switcher toggles
+   html[data-theme]. */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap");
+
+html {
+  --th-serif: "Instrument Serif", Georgia, serif;
+  --pst-font-family-base: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --pst-font-family-heading: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --pst-font-family-monospace: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --pst-font-weight-heading: 500;
+}
+
+html[data-theme="light"] {
+  --th-ink-3: #6a7082;
+  --sg-tooltip-background: rgba(246, 245, 241, 0.94);
+  --sg-tooltip-foreground: #0f1119;
+  --th-accent: #c2470f;
+  --th-accent-soft: rgba(194, 71, 15, 0.1);
+  --th-line: rgba(15, 17, 26, 0.16);
+
+  --pst-color-primary: #c2470f;
+  --pst-color-primary-bg: rgba(194, 71, 15, 0.1);
+  --pst-color-secondary: #9a370a;
+  --pst-color-secondary-bg: rgba(154, 55, 10, 0.1);
+  --pst-color-accent: #c2470f;
+  --pst-color-link: #c2470f;
+  --pst-color-link-hover: #9a370a;
+  --pst-color-inline-code: #9a370a;
+  --pst-color-inline-code-links: #c2470f;
+  --pst-color-target: rgba(194, 71, 15, 0.12);
+  --pst-color-background: #f6f5f1;
+  --pst-color-on-background: #ffffff;
+  --pst-color-surface: #efeee9;
+  --pst-color-on-surface: #0f1119;
+  --pst-color-text-base: #2b2f3b;
+  --pst-color-text-muted: #4a5062;
+  --pst-color-heading-color: #0f1119;
+  --pst-color-border: var(--th-line);
+  --pst-color-shadow: transparent;
+}
+
+html[data-theme="dark"] {
+  --th-ink-3: #6e7589;
+  --sg-tooltip-background: rgba(11, 13, 22, 0.94);
+  --sg-tooltip-foreground: #eef0f6;
+  --th-accent: #ff7a3d;
+  --th-accent-soft: rgba(255, 122, 61, 0.14);
+  --th-line: rgba(255, 255, 255, 0.14);
+
+  --pst-color-primary: #ff7a3d;
+  --pst-color-primary-bg: rgba(255, 122, 61, 0.14);
+  --pst-color-secondary: #ffa070;
+  --pst-color-secondary-bg: rgba(255, 160, 112, 0.12);
+  --pst-color-accent: #ff7a3d;
+  --pst-color-link: #ff7a3d;
+  --pst-color-link-hover: #ffa070;
+  --pst-color-inline-code: #ffa070;
+  --pst-color-inline-code-links: #ff7a3d;
+  --pst-color-target: rgba(255, 122, 61, 0.16);
+  --pst-color-background: #04050a;
+  --pst-color-on-background: #090b13;
+  --pst-color-surface: #0b0d16;
+  --pst-color-on-surface: #eef0f6;
+  --pst-color-text-base: #c9cdd9;
+  --pst-color-text-muted: #a9afc1;
+  --pst-color-heading-color: #eef0f6;
+  --pst-color-border: var(--th-line);
+  --pst-color-shadow: transparent;
+}
+
+/* ---------- type ---------- */
+
+.bd-content h1 {
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.bd-content h2,
+.bd-content h3 {
+  letter-spacing: -0.02em;
+}
+
+.bd-content p.subtitle {
+  font-family: var(--th-serif);
+  font-style: italic;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  color: var(--th-accent);
+  margin-top: -0.4rem;
+}
+
+.navbar-brand .logo__title {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- chrome ---------- */
+
+.bd-header {
+  background: color-mix(in srgb, var(--pst-color-background) 82%, transparent) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--th-line);
+  box-shadow: none !important;
+}
+
+.bd-header .navbar-nav .nav-link.active,
+.bd-sidebar-primary .current > a {
+  color: var(--th-accent) !important;
+}
+
+/* ---------- sidebar: the whole site, styled like the landing page ---------- */
+
+.bd-sidebar-primary {
+  border-right: 1px solid var(--th-line);
+  background: transparent;
+}
+
+.th-globaltoc .th-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--pst-font-family-monospace);
+  font-size: 11px !important;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--th-accent) !important;
+  margin: 0.4rem 0 1rem;
+}
+
+.th-globaltoc .th-kicker::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--th-accent);
+  box-shadow: 0 0 12px var(--th-accent);
+}
+
+.th-globaltoc .bd-sidenav li > a {
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem !important;
+  transition: color 0.15s ease, background 0.15s ease;
+  text-decoration: none;
+}
+
+.th-globaltoc .bd-sidenav > li.toctree-l1 {
+  margin-top: 0.15rem;
+}
+
+.th-globaltoc .bd-sidenav > li.toctree-l1 > a {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--pst-color-heading-color);
+}
+
+.th-globaltoc .bd-sidenav li.toctree-l2 > a {
+  font-size: 0.88rem;
+  color: var(--pst-color-text-muted);
+}
+
+.th-globaltoc .bd-sidenav li ul {
+  margin: 0.15rem 0 0.5rem 0.75rem;
+  padding-left: 0.5rem !important;
+  border-left: 1px solid var(--th-line);
+}
+
+.th-globaltoc .bd-sidenav li > a:hover {
+  color: var(--th-accent) !important;
+  background: var(--th-accent-soft);
+}
+
+.th-globaltoc .bd-sidenav li.current > a {
+  color: var(--th-accent) !important;
+  box-shadow: none;
+}
+
+.th-globaltoc .bd-sidenav li > a.current {
+  background: var(--th-accent-soft);
+  box-shadow: inset 2px 0 0 var(--th-accent);
+  border-radius: 0 8px 8px 0;
+  font-weight: 500;
+}
+
+.th-globaltoc .toctree-toggle {
+  color: var(--th-ink-3);
+}
+
+/* ---------- content ---------- */
+
+.sd-card {
+  border-radius: 16px !important;
+  border: 1px solid var(--th-line) !important;
+  background: var(--pst-color-on-background) !important;
+  box-shadow: none !important;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.sd-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--th-accent) !important;
+}
+
+.sd-card-title {
+  font-weight: 500 !important;
+}
+
+div.highlight,
+.highlight pre {
+  border-radius: 10px;
+}
+
+.bd-content table {
+  font-size: 0.92em;
+}
+
+.bd-content dl:not(.py) dt code {
+  color: var(--th-accent);
+  font-weight: 500;
+}
+
+/* API entries */
+dl.py > dt {
+  border-left: 3px solid var(--th-accent);
+  background: var(--th-accent-soft);
+  border-radius: 0 8px 8px 0;
+  padding: 0.35rem 0.6rem;
+}
+
+/* Gallery: thumbnails and figures are drawn by matplotlib on white. */
+.sphx-glr-thumbcontainer {
+  /* Clip the hover tooltip (a square ::before/::after) to the rounded card. */
+  overflow: hidden;
+  border-radius: 14px !important;
+  border: 1px solid var(--th-line) !important;
+  background: var(--pst-color-on-background) !important;
+  box-shadow: none !important;
+}
+
+.sphx-glr-thumbcontainer:hover {
+  border-color: var(--th-accent) !important;
+}
+
+.sphx-glr-thumbcontainer[tooltip]:hover::after {
+  font-family: var(--pst-font-family-base);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  padding: 14px 14px 10px;
+}
+
+.sphx-glr-thumbcontainer img,
+img.sphx-glr-single-img,
+img.sphx-glr-multi-img {
+  border-radius: 10px;
+  background: #fff;
+}

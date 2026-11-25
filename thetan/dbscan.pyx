@@ -195,7 +195,51 @@ cdef int _dbscan_core(const double* X, int n_points, int dim, double eps, int mi
 
 # Python Facing API
 def dbscan(X, double eps, int min_pts = 5):
-    # Ensuring contiguous float64 array
+    """Cluster data with DBSCAN.
+
+    A point is a core point when at least min_pts points, itself
+    included, lie within Euclidean distance eps of it. Clusters grow from
+    core points through their neighbourhoods; points reached by no core
+    point are noise.
+
+    Parameters
+    ----------
+    X : array_like, shape (n_samples, n_features)
+        Data to cluster. It is converted to a C-contiguous float64 array.
+    eps : float
+        Neighbourhood radius. Two points are neighbours when their
+        Euclidean distance is at most eps.
+    min_pts : int, optional
+        Number of points a neighbourhood needs for its centre to be a
+        core point. Values below 1 are treated as 1.
+
+    Returns
+    -------
+    labels : ndarray of int32, shape (n_samples,)
+        Cluster index of each point, from 0 to n_clusters - 1, or
+        DBSCAN_NOISE (-1) for noise.
+    n_clusters : int
+        Number of clusters found.
+
+    Raises
+    ------
+    MemoryError
+        If the label buffer cannot be allocated.
+
+    Notes
+    -----
+    Neighbourhoods are found by brute force, so the cost is O(n^2 d).
+    If eps is not positive, every point is labelled as noise.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from thetan.dbscan import dbscan
+    >>> X = np.array([[0.0, 0.0], [0.1, 0.0], [5.0, 5.0], [5.1, 5.0]])
+    >>> labels, n_clusters = dbscan(X, eps=0.5, min_pts=2)
+    >>> n_clusters
+    2
+    """
     cdef cnp.ndarray[DTYPE_t, ndim=2, mode='c'] Xc = np.ascontiguousarray(X, dtype=np.float64)
     cdef Py_ssize_t n_points = Xc.shape[0]
     cdef Py_ssize_t dim = Xc.shape[1]

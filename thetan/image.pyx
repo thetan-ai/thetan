@@ -35,6 +35,19 @@ from libc.stdlib cimport srand, rand
 
 
 def img2d_to_ijv_features(double[:, ::1] img2d):
+    """Turn a grayscale image into one (i, j, value) row per pixel.
+
+    Parameters
+    ----------
+    img2d : ndarray of float64, shape (I, J)
+        C-contiguous grayscale image.
+
+    Returns
+    -------
+    features : ndarray of float64, shape (I * J, 3)
+        Row index, column index and intensity of each pixel, in row-major
+        order.
+    """
 
     cdef:
         cnp.npy_intp i=0, j=0
@@ -59,6 +72,20 @@ def img2d_to_ijv_features(double[:, ::1] img2d):
     return np.asarray(features_np)
 
 def img2d_to_ijv_color(double[:, :, ::1] img2d):
+    """Turn a colour image into one (i, j, c0, c1, c2) row per pixel.
+
+    Parameters
+    ----------
+    img2d : ndarray of float64, shape (I, J, C)
+        C-contiguous image with at least three channels. Only the first
+        three channels are used.
+
+    Returns
+    -------
+    features : ndarray of float64, shape (I * J, 5)
+        Row index, column index and the three channel values of each
+        pixel, in row-major order.
+    """
 
     cdef:
         cnp.npy_intp i=0, j=0
@@ -84,6 +111,19 @@ def img2d_to_ijv_color(double[:, :, ::1] img2d):
     return np.asarray(features_np)
 
 def img3d_to_ijkv_features(double[:, :, ::1] img3d):
+    """Turn a volume into one (i, j, k, value) row per voxel.
+
+    Parameters
+    ----------
+    img3d : ndarray of float64, shape (I, J, K)
+        C-contiguous volume.
+
+    Returns
+    -------
+    features : ndarray of float64, shape (I * J * K, 4)
+        The three voxel indices and the intensity of each voxel, in
+        row-major order.
+    """
 
     cdef:
         cnp.npy_intp i=0, j=0, k=0
@@ -119,6 +159,31 @@ def img3d_to_ijkv_features(double[:, :, ::1] img3d):
 
 
 def img3d_integrals(double[:, :, ::1] img3d, double[:, :, ::1] out, cnp.npy_intp radius=20):
+    """Sum a volume over a cubic window around each voxel.
+
+    For each voxel at least radius voxels away from every border, adds
+    the sum of img3d over the cube of side 2 * radius + 1 centred on it
+    to out. Voxels closer to a border are left untouched.
+
+    Parameters
+    ----------
+    img3d : ndarray of float64, shape (I, J, K)
+        C-contiguous input volume.
+    out : ndarray of float64, shape (I, J, K)
+        C-contiguous output volume, updated in place. The sums are added
+        to its values, so pass an array of zeros to get the sums alone.
+    radius : int, optional
+        Half side of the cubic window, in voxels.
+
+    Returns
+    -------
+    int
+        Always 1. The result is written to out.
+
+    Notes
+    -----
+    The window is summed directly, so the cost is O(I J K radius^3).
+    """
 
     cdef:
         cnp.npy_intp i=0, j=0, k=0, l=0, m=0, n=0
