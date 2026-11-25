@@ -69,6 +69,7 @@ doc = [
     "sphinx-gallery>=0.17",
     "matplotlib>=3.5",
     "scikit-learn",
+    "scikit-image",
     "scipy>=1.8",
 ]
 
