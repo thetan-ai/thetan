@@ -1,0 +1,254 @@
+/* Thetan theme for the MyST book-theme.
+   Colours and fonts mirror the landing page (docs/_landing/css/style.css):
+   the berserker ember accent on a near-black stage in dark mode, and a warm
+   paper background in light mode. */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap");
+
+:root {
+  --th-serif: "Instrument Serif", Georgia, serif;
+  --th-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --th-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --th-accent: #c2470f;
+  --th-accent-soft: rgba(194, 71, 15, 0.1);
+  --th-ink: #0f1119;
+  --th-ink-2: #4a5062;
+  --th-ink-3: #6a7082;
+  --th-line: rgba(15, 17, 26, 0.09);
+  --th-line-2: rgba(15, 17, 26, 0.16);
+  --th-code-bg: #ffffff;
+  --th-syn-str: #2f7d32;
+  --th-syn-fn: #8a5a00;
+  --th-cool: #1f6fb2;
+
+  --myst-color-bg: #f6f5f1;
+  --myst-color-bg-secondary: #efeee9;
+  --myst-color-surface: #efeee9;
+  --myst-color-surface-hover: #e6e4dd;
+  --myst-color-text: var(--th-ink);
+  --myst-color-text-secondary: var(--th-ink-2);
+  --myst-color-text-tertiary: var(--th-ink-3);
+  --myst-color-prose-body: #2b2f3b;
+  --myst-color-border: var(--th-line-2);
+  --myst-color-border-strong: rgba(15, 17, 26, 0.24);
+  --myst-color-link: var(--th-accent);
+  --myst-color-link-hover: #9a370a;
+  --myst-color-link-underline: rgba(194, 71, 15, 0.45);
+  --myst-color-active: var(--th-accent);
+  --myst-color-active-bg: var(--th-accent-soft);
+  --myst-color-active-surface: var(--th-accent-soft);
+  --myst-color-primary: var(--th-accent);
+  --myst-color-primary-hover: #9a370a;
+  --myst-color-focus-ring: var(--th-accent);
+  --myst-color-focus-outline: rgba(194, 71, 15, 0.4);
+  --myst-color-code: #9a370a;
+  --myst-color-tip: var(--th-accent);
+  --myst-color-tip-bg: var(--th-accent-soft);
+  --myst-color-tip-text: #9a370a;
+}
+
+.dark {
+  --th-accent: #ff7a3d;
+  --th-accent-soft: rgba(255, 122, 61, 0.14);
+  --th-ink: #eef0f6;
+  --th-ink-2: #a9afc1;
+  --th-ink-3: #6e7589;
+  --th-line: rgba(255, 255, 255, 0.08);
+  --th-line-2: rgba(255, 255, 255, 0.14);
+  --th-code-bg: #070910;
+  --th-syn-str: #9be29b;
+  --th-syn-fn: #e7c37b;
+  --th-cool: #7cc7ff;
+
+  --myst-color-bg: #04050a;
+  --myst-color-bg-secondary: #090b13;
+  --myst-color-surface: #0b0d16;
+  --myst-color-surface-hover: #10131f;
+  --myst-color-text: var(--th-ink);
+  --myst-color-text-secondary: var(--th-ink-2);
+  --myst-color-text-tertiary: var(--th-ink-3);
+  --myst-color-prose-body: #c9cdd9;
+  --myst-color-border: var(--th-line-2);
+  --myst-color-border-strong: rgba(255, 255, 255, 0.22);
+  --myst-color-link: var(--th-accent);
+  --myst-color-link-hover: #ffa070;
+  --myst-color-link-underline: rgba(255, 122, 61, 0.45);
+  --myst-color-active: var(--th-accent);
+  --myst-color-active-bg: var(--th-accent-soft);
+  --myst-color-active-surface: var(--th-accent-soft);
+  --myst-color-primary: var(--th-accent);
+  --myst-color-primary-hover: #ffa070;
+  --myst-color-focus-ring: var(--th-accent);
+  --myst-color-focus-outline: rgba(255, 122, 61, 0.45);
+  --myst-color-code: #ffa070;
+  --myst-color-tip: var(--th-accent);
+  --myst-color-tip-bg: var(--th-accent-soft);
+  --myst-color-tip-text: #ffa070;
+}
+
+/* ---------- type ---------- */
+
+body,
+.article,
+.myst-top-nav,
+.myst-primary-sidebar {
+  font-family: var(--th-sans);
+}
+
+.myst-fm-block-title,
+.article h1 {
+  font-family: var(--th-sans);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.myst-fm-block-subtitle {
+  font-family: var(--th-serif);
+  font-style: italic;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  color: var(--th-accent);
+}
+
+.article h2,
+.article h3 {
+  font-family: var(--th-sans);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.article h2 em,
+.article h3 em {
+  font-family: var(--th-serif);
+  font-weight: 400;
+  color: var(--th-accent);
+}
+
+code,
+kbd,
+pre,
+.hljs {
+  font-family: var(--th-mono) !important;
+}
+
+/* ---------- chrome ---------- */
+
+.myst-top-nav {
+  background: color-mix(in srgb, var(--myst-color-bg) 78%, transparent) !important;
+  border-bottom: 1px solid var(--th-line);
+  box-shadow: none !important;
+}
+
+.myst-home-link span,
+.myst-home-link-logo + span {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.myst-toc-item.active,
+.myst-toc-item[aria-current="page"] {
+  color: var(--th-accent);
+  background: var(--th-accent-soft);
+}
+
+.myst-search-bar {
+  border-radius: 999px !important;
+}
+
+/* ---------- content ---------- */
+
+.myst-card {
+  border-radius: 16px !important;
+  border-color: var(--th-line-2) !important;
+  background: var(--myst-color-bg-secondary);
+  box-shadow: none !important;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.myst-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--th-accent) !important;
+}
+
+.myst-card-title {
+  font-weight: 500 !important;
+}
+
+.myst-card img {
+  border-radius: 10px;
+  background: #fff;
+}
+
+.myst-code {
+  border-radius: 10px;
+  border: 1px solid var(--th-line-2);
+  background: var(--th-code-bg) !important;
+  box-shadow: none !important;
+}
+
+.myst-code .hljs,
+.dark .myst-code .hljs {
+  background: var(--th-code-bg) !important;
+  color: var(--th-ink) !important;
+}
+
+.hljs-keyword,
+.hljs-built_in,
+.hljs-literal,
+.dark .hljs-keyword,
+.dark .hljs-built_in,
+.dark .hljs-literal {
+  color: var(--th-accent) !important;
+}
+
+.hljs-string,
+.dark .hljs-string {
+  color: var(--th-syn-str) !important;
+}
+
+.hljs-title,
+.hljs-title.function_,
+.dark .hljs-title,
+.dark .hljs-title.function_ {
+  color: var(--th-syn-fn) !important;
+}
+
+.hljs-number,
+.dark .hljs-number {
+  color: var(--th-cool) !important;
+}
+
+.hljs-comment,
+.hljs-meta,
+.dark .hljs-comment,
+.dark .hljs-meta {
+  color: var(--th-ink-3) !important;
+  font-style: italic;
+}
+
+.article table {
+  font-size: 0.92em;
+}
+
+.article th {
+  font-weight: 500;
+  color: var(--myst-color-text);
+}
+
+.article td,
+.article th {
+  border-color: var(--th-line-2) !important;
+}
+
+.article dt code {
+  color: var(--th-accent);
+  font-weight: 500;
+}
+
+/* Gallery figures are rendered on white by matplotlib. */
+.article img[src*="gallery"],
+.article figure img {
+  border-radius: 10px;
+}

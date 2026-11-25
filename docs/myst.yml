@@ -1,0 +1,64 @@
+# MyST project for the thetan website. Build it with `spin docs`, which
+# generates api/ and gallery/ first and puts the landing page (_landing/)
+# at the root of the site. `spin docs` also writes _build/site-url.yml,
+# which points the logo at the landing page: the book-theme only accepts
+# an absolute URL there, and that URL depends on where the site is served.
+version: 1
+extends: _build/site-url.yml
+project:
+  id: d76bc7ad-f66f-4c74-a96e-652f63809d2e
+  title: Thetan
+  description: >-
+    Thetan Berserker (TB): a two-pass, self-correcting clustering algorithm
+    that infers the number of clusters from a single distance threshold θ.
+  keywords: [clustering, machine learning, cython, berserker]
+  github: https://github.com/thetan-ai/thetan
+  license: BSD-3-Clause
+  exclude:
+    - examples/**
+    - _landing/**
+    - _build/**
+    - README.md
+  toc:
+    - file: index.md
+    - file: getting-started.md
+    - title: User guide
+      children:
+        - file: guide/ts-to-tb.md
+        - file: guide/choosing-theta.md
+        - file: guide/metrics.md
+        - file: guide/tbscan.md
+    - file: theory.md
+    - file: gallery/index.md
+      children:
+        - pattern: gallery/*.md
+    - file: api/index.md
+      children:
+        - file: api/thetan.berserker.md
+        - file: api/thetan.core.md
+        - file: api/thetan.metrics.md
+        - file: api/thetan.dbscan.md
+        - file: api/thetan.image.md
+        - file: api/thetan.accuracy.md
+        - file: api/thetan.patchify.md
+        - file: api/thetan.viz.md
+    - file: development.md
+    - file: citing.md
+site:
+  template: book-theme
+  title: Thetan
+  options:
+    logo: _static/logo.svg
+    logo_dark: _static/logo-dark.svg
+    logo_text: thetan
+    favicon: _static/favicon.svg
+    style: _static/thetan.css
+    folders: true
+    hide_footer_links: false
+  nav:
+    - title: Guide
+      url: /getting-started
+    - title: Gallery
+      url: /gallery
+    - title: API
+      url: /api

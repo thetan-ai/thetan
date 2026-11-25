@@ -25,10 +25,24 @@ scikit-learn, scikit-image and matplotlib. To install them, use
 
     pip install -r requirements/optional.txt
 
-To run the example please go to thetan/docs/examples
+Examples live in ``docs/examples``. Run one with
 
 .. code-block::
 
-    python example.py
+    python docs/examples/berserker_gaussian.py
+
+Website
+=======
+
+The website (landing page, guides, API reference and example gallery) is a
+`MyST <https://mystmd.org>`_ project in ``docs/``. It needs Node.js 18 or
+later. Build and serve it with
+
+.. code-block::
+
+    pip install -r requirements/docs.txt
+    spin docs --serve
+
+then open http://127.0.0.1:8000/.
 
 

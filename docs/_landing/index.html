@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Thetan — Berserker Clustering</title>
+  <meta name="description" content="Thetan Berserker (TB): a two-pass, self-correcting clustering algorithm that infers the number of clusters from a single distance threshold θ." />
+  <meta name="theme-color" content="#04050a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%2304050a' stroke='%23ff7a3d' stroke-width='3'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-style='italic' font-size='38' text-anchor='middle' fill='%23eef0f6'%3E%CE%B8%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script>
+    // apply a saved theme before first paint; otherwise the system setting decides
+    try {
+      const t = localStorage.getItem('thetan-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="universe" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="Thetan home">
+      <span class="brand-mark">θ</span>
+      <span class="brand-word">thetan</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#how">Algorithm</a>
+      <a href="#ordering">Ordering</a>
+      <a href="#theta">θ</a>
+      <a href="#guarantees">Guarantees</a>
+      <a href="#performance">Performance</a>
+      <a href="docs/">Docs</a>
+      <a href="docs/gallery/">Gallery</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="search-pill" href="docs/" data-search>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" /></svg>
+        <span>Search docs</span><kbd>Ctrl K</kbd>
+      </a>
+      <button class="theme-toggle" type="button" aria-label="Switch theme" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6" /><path d="M10 1.8v2.2M10 16v2.2M1.8 10H4M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6" /></svg>
+        <svg class="moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 12.3A7 7 0 0 1 7.7 3.5a7 7 0 1 0 8.8 8.8z" /></svg>
+      </button>
+      <a class="btn btn-ghost" href="https://github.com/thetan-ai/thetan">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section id="top" class="hero" data-scene="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot"></span> Open-source clustering · Thetan Berserker (TB)</p>
+        <h1 class="display">
+          One distance in.<br /><em>Every cluster</em> out.
+        </h1>
+        <p class="lede">
+          Thetan Berserker reads your data twice, corrects its own mistakes, and tells you how many
+          clusters there are. You set a distance, <span class="theta">θ</span>. It finds <span class="k">K</span>,
+          with no gradients and no GPU.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#how">See it work <span aria-hidden="true">↓</span></a>
+          <a class="btn btn-ghost" href="#quickstart">Quickstart</a>
+          <a class="btn btn-link" href="docs/getting-started/">Read the docs →</a>
+        </div>
+        <dl class="hero-facts">
+          <div><dt>Hyperparameters</dt><dd>1 <span class="unit">θ</span></dd></div>
+          <div><dt>Passes over the data</dt><dd>2</dd></div>
+          <div><dt>Peak memory</dt><dd>O(n + Kd)</dd></div>
+        </dl>
+      </div>
+      <p class="stream-tag" aria-hidden="true">
+        <span class="live"></span>Reading a live stream · <b data-stream-k>7</b> clusters found
+      </p>
+    </section>
+
+    <!-- ============ HOW IT WORKS (scrollytelling) ============ -->
+    <section id="how" class="how" data-scene="story">
+      <header class="section-head">
+        <p class="kicker">01 · The algorithm</p>
+        <h2>Two passes. One idea:<br /><em>let the centroids arrive first.</em></h2>
+        <p class="section-lede">
+          The figure follows one real run of TB, computed in your browser on 150 points drawn from
+          5 Gaussians, with θ = 3.6. Scroll, and each step of Algorithm 2 plays as a short loop.
+        </p>
+      </header>
+
+      <div class="how-grid">
+        <div class="steps">
+          <article class="step" data-step="1">
+            <p class="step-num">Step 01 <span>Alg. 2 · lines 3–5</span></p>
+            <h3>Pass 1 · Thetan Sequential</h3>
+            <p>
+              Shuffle the data, then visit each point exactly once. A point joins the nearest centroid
+              if it is closer than θ, and that centroid's running mean moves toward it. Otherwise
+              the point opens a new cluster.
+            </p>
+            <pre class="rule"><code><span class="kw">for</span> x <span class="kw">in</span> shuffle(X):
+    μ ← nearest centroid
+    <span class="kw">if</span> ‖x − μ‖ &lt; θ:  join μ, update its mean
+    <span class="kw">else</span>:            open a new cluster at x</code></pre>
+            <p class="muted">
+              Fast and online, but order-sensitive: centroids are still moving, so an early point can open
+              a cluster <em>between</em> two true groups.
+            </p>
+          </article>
+
+          <article class="step" data-step="2">
+            <p class="step-num">Step 02 <span>Alg. 2 · lines 6–7</span></p>
+            <h3>Cleanup · TS on the centroids</h3>
+            <p>
+              Run the very same TS on the centroids alone. Centroids within θ of each other land in one group.
+              The oldest is kept, and the rest are flagged as <span class="spur">spurious</span> (ζ₁).
+            </p>
+            <p class="muted">
+              No new machinery: TB reuses TS on the data, on the centroids, and on both together.
+            </p>
+          </article>
+
+          <article class="step" data-step="3">
+            <p class="step-num">Step 03 <span>Alg. 2 · lines 8–10</span></p>
+            <h3>Delete &amp; reassign</h3>
+            <p>
+              Spurious centroids are deleted. Their points move to the nearest surviving centroid, and
+              centroids are recomputed from the labels (M⋆₂).
+            </p>
+            <p class="muted">
+              This removes duplicates, but it cannot undo early assignments. Hence a second pass.
+            </p>
+          </article>
+
+          <article class="step" data-step="4">
+            <p class="step-num">Step 04 <span>Alg. 2 · lines 11–13</span></p>
+            <h3>Pass 2 · Prepend, then re-shuffle</h3>
+            <p>
+              The key move. The cleaned centroids are placed <em>in front of</em> a fresh permutation of the
+              data, M⋆₂ ∪ X₂. Every berserker claims its territory before the first data point arrives.
+            </p>
+            <p class="muted">
+              Each point is now compared with near-final centroids instead of whichever points happened to come first.
+            </p>
+          </article>
+
+          <article class="step" data-step="5">
+            <p class="step-num">Step 05 <span>Alg. 2 · lines 14–19</span></p>
+            <h3>Second cleanup · a fixed point</h3>
+            <p>
+              A last cleanup removes the few spurious centroids that outliers create in pass 2, and the
+              permutation is inverted. TB returns centroids M⋆ and labels λ⋆.
+            </p>
+            <p class="muted">
+              Two passes suffice. Running up to 14 iterations gives no further gain in NMI (paper, Fig. 8B).
+            </p>
+          </article>
+        </div>
+
+        <aside class="fig" aria-label="One run of Thetan Berserker, step by step">
+          <div class="fig-card">
+            <ol class="fig-steps">
+              <li><button type="button" data-go="1"><span>1</span>Pass 1</button></li>
+              <li><button type="button" data-go="2"><span>2</span>Find duplicates</button></li>
+              <li><button type="button" data-go="3"><span>3</span>Merge</button></li>
+              <li><button type="button" data-go="4"><span>4</span>Pass 2</button></li>
+              <li><button type="button" data-go="5"><span>5</span>Final</button></li>
+            </ol>
+            <div class="fig-stage"><canvas data-explainer></canvas></div>
+            <p class="fig-caption" data-fig="caption" aria-live="polite"></p>
+            <p class="fig-stats" data-fig="stats"></p>
+            <div class="fig-algo">
+              <p class="algo-title"><span>Algorithm 2</span> lines in this step</p>
+              <ol class="algo-lines">
+                <li data-l="1"><b>Input:</b> data X ∈ ℝ<sup>n×d</sup>, parameter θ &gt; 0</li>
+                <li data-l="2"><b>Output:</b> clustering C⋆ = {M⋆, λ⋆}</li>
+                <li data-l="3">π₁ ∼ Unif(S<sub>n</sub>)<i>draw permutation</i></li>
+                <li data-l="4">X₁ ← X[π₁]<i>permute data</i></li>
+                <li data-l="5">{M₁, λ₁} ← <b>TS</b>(X₁, θ)<i>first pass</i></li>
+                <li data-l="6">{M̂₁, λ̂₁} ← <b>TS</b>(M₁, θ)<i>cluster centroids</i></li>
+                <li data-l="7">{ζ₁, λ₁} ← candidates(M₁, λ̂₁, λ₁)<i>find errors</i></li>
+                <li data-l="8">M₂ ← M₁ \ ζ₁<i>delete spurious</i></li>
+                <li data-l="9">λ₂ ← reassign(X₁, M₂, λ₁)</li>
+                <li data-l="10">M⋆₂ ← centroids(X₁, λ₂)</li>
+                <li data-l="11">π₂ ∼ Unif(S<sub>n</sub>)<i>new permutation</i></li>
+                <li data-l="12">X₂ ← X[π₂]</li>
+                <li data-l="13">{M₃, λ₃} ← <b>TS</b>(M⋆₂ ∪ X₂, θ)<i>second pass</i></li>
+                <li data-l="14">{M̂₃, λ̂₃} ← <b>TS</b>(M₃, θ)</li>
+                <li data-l="15">{ζ₂, λ₃} ← candidates(M₃, λ̂₃, λ₃)</li>
+                <li data-l="16">M′₃ ← M₃ \ ζ₂</li>
+                <li data-l="17">λ′₃ ← reassign(X₂, M′₃, λ₃)</li>
+                <li data-l="18">λ⋆ ← λ′₃[π₂⁻¹]<i>invert permutation</i></li>
+                <li data-l="19">M⋆ ← centroids(X, λ⋆)</li>
+              </ol>
+              <button class="fig-more" type="button" aria-expanded="false" data-algo-toggle>Show all 19 lines</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ ORDERING PROBLEM ============ -->
+    <section id="ordering" class="panel-section" data-scene="ambient">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="kicker">02 · The ordering problem</p>
+          <h2>Same data. New order.<br /><em>Same answer.</em></h2>
+          <p class="section-lede">
+            Sequential clustering is fast, but shuffle the input and the partition changes. Below, both methods
+            read the paper's simulation (a 10 × 10 grid of unit Gaussians, ℓ = 5, θ = 3.6) in a fresh random order
+            every few seconds. Both are computed live.
+          </p>
+        </header>
+
+        <div class="duel" data-duel>
+          <figure class="duel-panel" data-method="ts">
+            <figcaption>
+              <span class="tag">TS</span> Thetan Sequential <span class="sub">one pass</span>
+            </figcaption>
+            <div class="duel-canvas"><canvas></canvas></div>
+            <dl class="duel-stats">
+              <div><dt>Clusters found</dt><dd><b data-k>–</b> <span>/ 100</span></dd></div>
+              <div><dt>Off-centre centroids</dt><dd data-off>–</dd></div>
+              <div><dt>Agreement with last order</dt><dd data-agree>–</dd></div>
+            </dl>
+          </figure>
+          <figure class="duel-panel is-tb" data-method="tb">
+            <figcaption>
+              <span class="tag">TB</span> Thetan Berserker <span class="sub">two passes</span>
+            </figcaption>
+            <div class="duel-canvas"><canvas></canvas></div>
+            <dl class="duel-stats">
+              <div><dt>Clusters found</dt><dd><b data-k>–</b> <span>/ 100</span></dd></div>
+              <div><dt>Off-centre centroids</dt><dd data-off>–</dd></div>
+              <div><dt>Agreement with last order</dt><dd data-agree>–</dd></div>
+            </dl>
+          </figure>
+        </div>
+        <div class="duel-bar">
+          <button class="btn btn-ghost" type="button" data-duel-shuffle>Shuffle order</button>
+          <button class="btn btn-ghost" type="button" data-duel-pause aria-pressed="false">Pause</button>
+          <p class="duel-legend">
+            <span class="lg lg-off"></span>off-centre: more than 1 unit from every true centre ·
+            agreement: adjusted Rand index between consecutive shuffles ·
+            shuffle <b data-duel-count>0</b>
+          </p>
+        </div>
+        <p class="footnote">
+          Paper, 30 × 10 grid over 20 orders: two orders agreed with a mean ARI of 0.956 after one pass and 0.990 after TB,
+          removing about 77% of the order-induced disagreement.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ THETA PLAYGROUND ============ -->
+    <section id="theta" class="playground" data-scene="ambient">
+      <figure class="play-map" data-map>
+        <div class="play-map-canvas"><canvas role="img" aria-label="Clusters found at the chosen θ"></canvas></div>
+        <figcaption class="play-legend">
+          <span><i class="lg-dot"></i>centroid</span>
+          <span><i class="lg-ring"></i>θ around it, to scale</span>
+          <span><i class="lg-hollow"></i>outlier cluster, fewer than 8 points</span>
+        </figcaption>
+      </figure>
+      <div class="play-panel">
+        <p class="kicker">03 · One parameter</p>
+        <h2><em>θ</em> is the only knob.</h2>
+        <p>
+          Theorem 1 gives the rule: choose θ above the widest cluster and below the narrowest gap, and a single pass recovers
+          every cluster with no splits and no merges. In practice, set θ to the largest expected cluster diameter.
+          When unsure, err small.
+        </p>
+
+        <div class="control">
+          <label for="theta-slider">θ <output id="theta-out">3.8</output></label>
+          <input id="theta-slider" type="range" min="1.5" max="9" step="0.1" value="3.8" />
+        </div>
+
+        <div class="seg" role="radiogroup" aria-label="Method">
+          <button type="button" role="radio" aria-checked="false" data-method="ts">TS · one pass</button>
+          <button type="button" role="radio" aria-checked="true" data-method="tb">TB · two passes</button>
+        </div>
+
+        <dl class="readout">
+          <div><dt>Clusters inferred</dt><dd><b data-play="k">–</b></dd></div>
+          <div><dt>True clusters</dt><dd data-play="truek">12</dd></div>
+          <div><dt>ARI vs truth</dt><dd data-play="ari">–</dd></div>
+          <div><dt>Runtime</dt><dd data-play="ms">–</dd></div>
+        </dl>
+        <p class="play-note" data-play="outliers"></p>
+
+        <div class="sweep">
+          <div class="sweep-head">
+            <p>Clusters inferred across θ</p>
+            <p class="sweep-legend"><span class="sw sw-tb"></span>TB <span class="sw sw-ts"></span>TS <span class="sw sw-true"></span>true K</p>
+          </div>
+          <div class="sweep-chart" data-sweep><p class="sweep-wait">Sweeping θ…</p></div>
+        </div>
+
+        <div class="play-actions">
+          <button class="btn btn-ghost" type="button" data-play-action="shuffle">Reshuffle order</button>
+          <button class="btn btn-ghost" type="button" data-play-action="data">New data</button>
+        </div>
+        <p class="footnote">Twelve unit Gaussians, computed live in your browser on a single thread.</p>
+      </div>
+    </section>
+
+    <!-- ============ GUARANTEES ============ -->
+    <section id="guarantees" class="panel-section" data-scene="ambient">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="kicker">04 · Theory</p>
+          <h2>Guarantees, <em>not heuristics.</em></h2>
+          <p class="section-lede">
+            The proofs use uniform samples in d-dimensional balls under the ℓ₂ norm, with extensions to Gaussians in the appendix.
+            Each step of TB rests on one of them.
+          </p>
+        </header>
+
+        <div class="theorems">
+          <article class="thm">
+            <p class="thm-id">Lemma 1</p>
+            <h3>Separation is preserved</h3>
+            <p>If every pair of points from different clusters is at least θ apart, TS never merges two clusters, whatever the order.</p>
+            <p class="math">‖x<sub>i</sub> − x<sub>j</sub>‖ ≥ θ ⇒ no cross-cluster merge</p>
+          </article>
+          <article class="thm">
+            <p class="thm-id">Theorem 1</p>
+            <h3>One-to-one recovery</h3>
+            <p>When θ exceeds every cluster diameter and stays below every gap, a single TS pass returns exactly K clusters: no merges, no splits.</p>
+            <p class="math">max<sub>k</sub> D<sub>k</sub> &lt; θ ≤ ω</p>
+          </article>
+          <article class="thm thm-wide">
+            <div>
+              <p class="thm-id">Propositions 1 &amp; 2</p>
+              <h3>Short edges vanish with dimension</h3>
+              <p>
+                For two balls of radius θ/2 whose centres are 3θ/2 apart, the chance that a cross-ball pair lies within θ decays
+                exponentially in d. Order mistakes become rarer as dimension grows.
+              </p>
+              <p class="math">p<sub>θ</sub> ≈ 0.217 · e<sup>−0.594 d</sup></p>
+            </div>
+            <div class="chart" data-chart="ptheta" aria-label="Probability of a short inter-ball edge by dimension"></div>
+          </article>
+          <article class="thm">
+            <p class="thm-id">Lemma 2 · Theorem 2</p>
+            <h3>Self-correction in two passes</h3>
+            <p>A centroid born from a spurious cross-cluster merge lies within θ of a true centre, so the second pass absorbs it.</p>
+            <p class="math">‖μ<sub>m</sub> − ν<sub>1</sub>‖ ≤ ½‖y − x‖ + θ/2 &lt; θ</p>
+          </article>
+          <article class="thm">
+            <p class="thm-id">Theorems 3 · 4</p>
+            <h3>Order independence</h3>
+            <p>For balls of radius r whose centres are more than 4r apart, the cleanup and the prepended second pass give the same result for every order.</p>
+            <p class="math">2r &lt; θ &lt; ℓ − 2ε</p>
+          </article>
+          <article class="thm">
+            <p class="thm-id">Theorems 5 · 6</p>
+            <h3>Explicit cost bounds</h3>
+            <p>Time is linear when there is one cluster and quadratic only when every point is its own cluster. Memory stays linear, with in-place permutations.</p>
+            <p class="math">O(nd) … O(n²d) time · O(n + Kd) memory</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PERFORMANCE ============ -->
+    <section id="performance" class="panel-section" data-scene="ambient">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="kicker">05 · Performance</p>
+          <h2>A million points. <em>2.7 seconds.</em></h2>
+          <p class="section-lede">
+            300 Gaussian clusters, 1,000,000 points, a single CPU thread (paper, Fig. 14). The KMeans variants were given the
+            true K = 300. TB inferred it, returning 300.4 clusters on average, with the highest NMI (0.975) and ARI (0.954).
+          </p>
+        </header>
+
+        <div class="perf-grid">
+          <figure class="chart-card">
+            <figcaption>
+              <p class="chart-title">Runtime at n = 1,000,000</p>
+              <p class="chart-sub">seconds, log scale · lower is better</p>
+            </figcaption>
+            <div class="chart" data-chart="runtime"></div>
+          </figure>
+          <figure class="chart-card">
+            <figcaption>
+              <p class="chart-title">Peak memory at n = 1,000,000</p>
+              <p class="chart-sub">megabytes, log scale · lower is better</p>
+            </figcaption>
+            <div class="chart" data-chart="memory"></div>
+          </figure>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <p class="stat-label">Missed centroids</p>
+            <p class="stat-value">40.3 <span class="arrow">→</span> <b>0.8</b></p>
+            <p class="stat-note">one pass vs full TB, 300 true clusters, 20 orders</p>
+          </div>
+          <div class="stat">
+            <p class="stat-label">Clusters returned</p>
+            <p class="stat-value">321.3 <span class="arrow">→</span> <b>300.8</b></p>
+            <p class="stat-note">for 300 true clusters, without being told K</p>
+          </div>
+          <div class="stat">
+            <p class="stat-label">Runtime growth</p>
+            <p class="stat-value"><b>1.04</b> <span class="vs">vs 2.02</span></p>
+            <p class="stat-note">log-log slope in n: TB is linear, HDBSCAN quadratic</p>
+          </div>
+          <div class="stat">
+            <p class="stat-label">Robust to θ</p>
+            <p class="stat-value"><b>2.8 – 3.9</b></p>
+            <p class="stat-note">θ range where NMI and ARI stay within 2% of their peak</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAMILY ============ -->
+    <section id="family" class="panel-section" data-scene="ambient">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="kicker">06 · The Thetan family</p>
+          <h2>One primitive, <em>five algorithms.</em></h2>
+          <p class="section-lede">Thetan Sequential is the core primitive. Everything else is built from it.</p>
+        </header>
+        <div class="family">
+          <article class="fam">
+            <p class="fam-code">TS</p>
+            <h3>Thetan Sequential</h3>
+            <p>One pass, one θ. Online and streaming-friendly. The building block.</p>
+          </article>
+          <article class="fam fam-main">
+            <p class="fam-code">TB</p>
+            <h3>Thetan Berserker</h3>
+            <p>Two passes with self-correction. Order-robust, and K is inferred. The primary method.</p>
+          </article>
+          <article class="fam">
+            <p class="fam-code">TSR</p>
+            <h3>TS Randomized</h3>
+            <p>Runs TS over several shuffles (default 10), re-clusters all centroids, and reassigns.</p>
+          </article>
+          <article class="fam">
+            <p class="fam-code">TBK</p>
+            <h3>TB → KMeans</h3>
+            <p>Seeds KMeans with the centroids of TB's K largest clusters.</p>
+          </article>
+          <article class="fam">
+            <p class="fam-code">TBSCAN</p>
+            <h3>TB → DBSCAN</h3>
+            <p>Density-based linking of TB centroids for non-linear shapes. Up to 5,000× faster than DBSCAN on 375k-point spirals.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ QUICKSTART ============ -->
+    <section id="quickstart" class="panel-section" data-scene="ambient">
+      <div class="wrap quick">
+        <header class="section-head">
+          <p class="kicker">07 · Quickstart</p>
+          <h2>Three lines <em>to a clustering.</em></h2>
+          <p class="section-lede">
+            The Thetan kernels are written in Cython and called from Python. Nine <a href="docs/guide/metrics/">distance metrics</a> ship with them,
+            including euclidean, cosine, L1 and arccos.
+          </p>
+        </header>
+        <div class="code-card">
+          <div class="tabs" role="tablist">
+            <button role="tab" aria-selected="true" data-tab="install">Install</button>
+            <button role="tab" aria-selected="false" data-tab="cluster">Cluster</button>
+            <button role="tab" aria-selected="false" data-tab="compare">TS vs TB</button>
+            <button class="copy" type="button" data-copy>Copy</button>
+          </div>
+          <pre data-panel="install"><code>git clone https://github.com/thetan-ai/thetan.git
+cd thetan
+pip install -r requirements/build.txt
+pip install --no-build-isolation .</code></pre>
+          <pre data-panel="cluster" hidden><code><span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> thetan <span class="kw">import</span> TB
+
+X = np.ascontiguousarray(points, dtype=np.float64)   <span class="c"># (n, d)</span>
+centroids, labels = TB(X, theta=<span class="n">3.6</span>)                  <span class="c"># K is inferred</span>
+<span class="fn">print</span>(<span class="s">f"</span>{<span class="fn">len</span>(centroids)}<span class="s"> clusters"</span>)</code></pre>
+          <pre data-panel="compare" hidden><code><span class="kw">from</span> thetan <span class="kw">import</span> TS, TB
+
+<span class="c"># one pass: fast, but the partition depends on the order of X</span>
+c1, l1 = TS(X, theta=<span class="n">3.6</span>)
+
+<span class="c"># two passes: self-correcting and order-robust, same complexity</span>
+c2, l2 = TB(X, theta=<span class="n">3.6</span>, metric=<span class="s">"euclidean"</span>)</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DOCS ============ -->
+    <section id="docs" class="panel-section" data-scene="ambient">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="kicker">08 · Learn</p>
+          <h2>Docs &amp; <em>tutorials.</em></h2>
+          <p class="section-lede">Guides, tutorials, a <a href="docs/gallery/">gallery of examples</a> and the full API reference.</p>
+        </header>
+        <div class="docs">
+          <a class="doc" href="docs/getting-started/">
+            <span class="doc-kind">Guide</span>
+            <h3>Getting started</h3>
+            <p>Build from source, cluster your first array, read centroids and labels.</p>
+          </a>
+          <a class="doc" href="docs/guide/choosing-theta/">
+            <span class="doc-kind">Tutorial</span>
+            <h3>Choosing θ</h3>
+            <p>The Theorem 1 rule of thumb, and a sweep that shows how the clusters found change with θ.</p>
+          </a>
+          <a class="doc" href="docs/guide/ts-to-tb/">
+            <span class="doc-kind">Tutorial</span>
+            <h3>From TS to TB</h3>
+            <p>Reproduce the ordering problem and watch the two-pass correction fix it, step by step.</p>
+          </a>
+          <a class="doc" href="docs/api/">
+            <span class="doc-kind">Reference</span>
+            <h3>API</h3>
+            <p>TS, TB and TBSCAN, plus DBSCAN, metrics and helpers, from their numpydoc docstrings.</p>
+          </a>
+          <a class="doc" href="docs/theory/">
+            <span class="doc-kind">Theory</span>
+            <h3>Proofs &amp; guarantees</h3>
+            <p>Every lemma and theorem behind the steps of TB, stated in one place.</p>
+          </a>
+          <a class="doc" href="#" data-soon="Benchmark reproduction guide coming soon.">
+            <span class="doc-kind">Benchmarks</span>
+            <h3>Reproduce the paper</h3>
+            <p>Scripts for the ablation, sensitivity, scalability and order studies.</p>
+            <span class="soon">Soon</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CITE ============ -->
+    <section id="cite" class="panel-section" data-scene="ambient">
+      <div class="wrap cite">
+        <div>
+          <p class="kicker">Cite</p>
+          <h2>Thetan Berserker <em>Clustering</em></h2>
+          <p class="authors">Eleftherios Garyfallidis, Serge Koudoro, Jong Sung Park, Sai Prajwal Reddy</p>
+          <p class="muted">Indiana University Bloomington · University of Michigan</p>
+        </div>
+        <div class="code-card">
+          <div class="tabs"><span class="tab-static">BibTeX</span><button class="copy" type="button" data-copy>Copy</button></div>
+          <pre><code>@article{garyfallidis2025thetan,
+  title   = {Thetan Berserker Clustering},
+  author  = {Garyfallidis, Eleftherios and Koudoro, Serge
+             and Park, Jong Sung and Reddy, Sai Prajwal},
+  journal = {IEEE Transactions on Pattern Analysis
+             and Machine Intelligence},
+  year    = {2025}
+}</code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <a class="brand" href="#top"><span class="brand-mark">θ</span><span class="brand-word">thetan</span></a>
+      <p>Open source under the BSD license. Built with the algorithm it describes.</p>
+      <nav aria-label="Footer">
+        <a href="#how">Algorithm</a><a href="docs/">Docs</a><a href="docs/citing/">Cite</a><a href="https://github.com/thetan-ai/thetan">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+
+  <div class="toast" role="status" aria-live="polite"></div>
+  <div class="tooltip" role="tooltip"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

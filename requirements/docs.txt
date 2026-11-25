@@ -1,9 +1,11 @@
-# These are dependencies of various sphinx extensions for documentation.
-sphinx
-ipython
-matplotlib
-numpydoc
-sphinx-copybutton
-sphinx-gallery
-pillow
-sphinx_rtd_theme
+# Website and documentation, built with `spin docs`.
+# mystmd builds the site; it needs Node.js >= 18 on the PATH.
+mystmd>=1.3
+# Parses the numpydoc docstrings for the API pages
+numpydoc>=1.6
+# Needed to run the gallery examples
+matplotlib>=3.5
+scikit-learn
+scipy>=1.8
+# spin drives the build
+spin>=0.5
