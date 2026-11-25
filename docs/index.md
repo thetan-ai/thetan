@@ -1,7 +1,7 @@
----
-title: Thetan documentation
-subtitle: One distance in. Every cluster out.
----
+# Thetan documentation
+
+{.subtitle}
+One distance in. Every cluster out.
 
 Thetan is a family of clustering algorithms built around a single distance
 threshold, θ. Its main method, **Thetan Berserker (TB)**, reads the data
@@ -20,38 +20,63 @@ print(f"{len(centroids)} clusters")
 The kernels are written in Cython, run on a single CPU thread and need
 only NumPy at runtime.
 
-::::{grid} 1 2 2 2
+::::{grid} 1 2 2 3
+:gutter: 3
 
-:::{card} Getting started
-:link: ./getting-started.md
+:::{grid-item-card} Getting started
+:link: getting-started
+:link-type: doc
+
 Build thetan from source and cluster your first array.
 :::
 
-:::{card} From TS to TB
-:link: ./guide/ts-to-tb.md
+:::{grid-item-card} From TS to TB
+:link: guide/ts-to-tb
+:link-type: doc
+
 How one sequential pass works, why it depends on the order of the data,
 and how the second pass fixes it.
 :::
 
-:::{card} Choosing θ
-:link: ./guide/choosing-theta.md
+:::{grid-item-card} Choosing θ
+:link: guide/choosing-theta
+:link-type: doc
+
 The rule for picking the only parameter, and what happens when it is too
 small or too large.
 :::
 
-:::{card} Gallery
-:link: ./gallery/index.md
+:::{grid-item-card} Gallery
+:link: gallery/index
+:link-type: doc
+
 Worked examples with their code, output and figures.
 :::
 
-:::{card} API reference
-:link: ./api/index.md
+:::{grid-item-card} API reference
+:link: api/index
+:link-type: doc
+
 Every public function, from its numpydoc docstring.
 :::
 
-:::{card} Theory
-:link: ./theory.md
+:::{grid-item-card} Theory
+:link: theory
+:link-type: doc
+
 The guarantees behind each step of TB.
 :::
 
 ::::
+
+```{toctree}
+:hidden:
+
+getting-started
+User guide <guide/index>
+theory
+gallery/index
+api/index
+development
+citing
+```

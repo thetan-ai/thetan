@@ -1,7 +1,7 @@
----
-title: Theory
-subtitle: Guarantees, not heuristics.
----
+# Theory
+
+{.subtitle}
+Guarantees, not heuristics.
 
 The results below are proved in the Thetan Berserker paper
 (see [](./citing.md)). The proofs use uniform samples in d-dimensional

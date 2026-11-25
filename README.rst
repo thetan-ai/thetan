@@ -35,8 +35,8 @@ Website
 =======
 
 The website (landing page, guides, API reference and example gallery) is a
-`MyST <https://mystmd.org>`_ project in ``docs/``. It needs Node.js 18 or
-later. Build and serve it with
+`Sphinx <https://www.sphinx-doc.org>`_ project in ``docs/``, written in MyST
+markdown. Build and serve it with
 
 .. code-block::
 

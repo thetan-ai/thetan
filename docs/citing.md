@@ -1,6 +1,4 @@
----
-title: Citing Thetan
----
+# Citing Thetan
 
 If Thetan helps your research, please cite the paper:
 

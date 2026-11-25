@@ -1,6 +1,4 @@
----
-title: Development
----
+# Development
 
 ## Build and test
 
@@ -22,34 +20,35 @@ build. New Python modules or test files must be listed in
 
 ## Build the website
 
-The website is a [MyST](https://mystmd.org) project in `docs/`. mystmd
-needs Node.js 18 or later on the `PATH`.
+The website is a [Sphinx](https://www.sphinx-doc.org) project in `docs/`.
+Pages are MyST markdown, read by
+[myst-parser](https://myst-parser.readthedocs.io). Every tool is a Python
+package; nothing else is needed.
 
 ```bash
 pip install -r requirements/docs.txt
-spin docs                 # build thetan, the API pages, the gallery and the site
+spin docs                 # build thetan, then the API pages, the gallery and the site
 spin docs --serve         # same, then serve it on http://127.0.0.1:8000
-spin docs --no-plot       # skip running the gallery examples
+spin docs --no-plot       # do not run the gallery examples
 spin docs --clean         # start from scratch
 ```
 
-The site lands in `docs/_build/site`: the landing page at its root, the
-MyST docs under `docs/`. Pass `--base-url /thetan` when it is served from
-a subpath, as on GitHub Pages.
+The site lands in `docs/_build/site`: the landing page (`docs/_landing`)
+at its root, the Sphinx docs under `docs/`. Links are relative, so the
+folder can be served from any URL path, as on GitHub Pages. Warnings fail
+the build.
 
-`spin docs` runs two generators before `myst build`:
+The API reference
+: Each page in `docs/api/` documents one module with `automodule`. The
+  docstrings are parsed by [numpydoc](https://numpydoc.readthedocs.io).
+  To document a new module, add a page there and list it in
+  `docs/api/index.md`.
 
-`tools/docs/build_api.py`
-: Imports each module of the built package and writes one page per module
-  to `docs/api/`, parsing the docstrings with numpydoc. Add a module to
-  its `MODULES` list to document it.
-
-`tools/docs/build_gallery.py`
-: Runs every script in `docs/examples/` and writes its page, output and
-  figures to `docs/gallery/`. Outputs are cached by the hash of the script,
-  so unchanged examples are not run again.
-
-Both output folders are generated; do not edit them by hand.
+The gallery
+: [sphinx-gallery](https://sphinx-gallery.github.io) runs every script in
+  `docs/examples/` and writes its page, output and figures to
+  `docs/gallery/`, which is generated: do not edit it by hand. Scripts
+  are run again only when they change.
 
 ## Write an example
 
@@ -71,7 +70,8 @@ import numpy as np
 # A section title
 # ---------------
 #
-# Comment lines at the top of a cell are rendered as markdown.
+# Comment lines at the top of a cell are rendered as reStructuredText:
+# ``code``, *emphasis*, lists and links.
 
 x = np.arange(3)
 print(x)

@@ -1,7 +1,7 @@
----
-title: Non-convex clusters
-subtitle: TBSCAN and DBSCAN
----
+# Non-convex clusters
+
+{.subtitle}
+TBSCAN and DBSCAN
 
 TB returns compact clusters: every point is within about θ of its
 centroid. Rings, moons and spirals are not compact, so TB tiles them with
@@ -9,7 +9,7 @@ many small clusters.
 
 ## TBSCAN
 
-[`tbscan`](#api-thetan-berserker-tbscan) links those tiles. It runs TB with
+{func}`tbscan <thetan.berserker.tbscan>` links those tiles. It runs TB with
 a small θ, then DBSCAN on the TB centroids instead of on every point, and
 gives each point the DBSCAN label of its centroid.
 
@@ -51,6 +51,6 @@ such as the centroids of TB.
 
 ## See it
 
-- [](../gallery/tbscan_shapes.md) runs TB and TBSCAN on moons and circles.
-- [](../gallery/tbscan_spiral_blobs.md) compares DBSCAN on 30,000 spiral
+- {ref}`sphx_glr_gallery_tbscan_shapes.py` runs TB and TBSCAN on moons and circles.
+- {ref}`sphx_glr_gallery_tbscan_spiral_blobs.py` compares DBSCAN on 30,000 spiral
   points with a density-aware TBSCAN.

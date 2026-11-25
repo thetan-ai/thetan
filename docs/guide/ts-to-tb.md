@@ -1,7 +1,7 @@
----
-title: From TS to TB
-subtitle: Two passes. One idea, let the centroids arrive first.
----
+# From TS to TB
+
+{.subtitle}
+Two passes. One idea, let the centroids arrive first.
 
 ## Thetan Sequential (TS)
 
@@ -53,15 +53,15 @@ from thetan import TB
 centroids, labels = TB(X, theta=3.6)
 ```
 
-Steps 2 and 3 are [`candidate_labels_c`](#api-thetan-core-candidate_labels_c),
-[`reassign_uncertain_update_labels`](#api-thetan-core-reassign_uncertain_update_labels)
-and [`centroids_from_labels`](#api-thetan-core-centroids_from_labels).
-Step 4 is [`sequential_prelim`](#api-thetan-core-sequential_prelim). You
+Steps 2 and 3 are {func}`candidate_labels_c <thetan.core.candidate_labels_c>`,
+{func}`reassign_uncertain_update_labels <thetan.core.reassign_uncertain_update_labels>`
+and {func}`centroids_from_labels <thetan.core.centroids_from_labels>`.
+Step 4 is {func}`sequential_prelim <thetan.core.sequential_prelim>`. You
 can call them yourself to build variants.
 
 ## See it
 
-- [](../gallery/berserker_gaussian.md) compares the centroids of TS and TB
+- {ref}`sphx_glr_gallery_berserker_gaussian.py` compares the centroids of TS and TB
   on 200 Gaussian clusters.
-- [](../gallery/order_robustness.md) clusters the same data in twenty orders
+- {ref}`sphx_glr_gallery_order_robustness.py` clusters the same data in twenty orders
   and measures how much the partitions agree.

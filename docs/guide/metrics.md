@@ -1,6 +1,4 @@
----
-title: Distance metrics
----
+# Distance metrics
 
 Every Thetan function that takes a `metric` accepts the same names. They
 are implemented in C in `thetan.metrics` and oriented so that **a smaller
@@ -28,7 +26,7 @@ the cosine similarity.
 
 ## Computing distances directly
 
-[`distance_matrix`](#api-thetan-metrics-distance_matrix) evaluates any of
+{func}`distance_matrix <thetan.metrics.distance_matrix>` evaluates any of
 these metrics between every row of two arrays:
 
 ```python
@@ -42,5 +40,5 @@ D = distance_matrix(A, B, metric="cosine")   # shape (5, 4)
 
 ## See it
 
-[](../gallery/distance_metrics.md) clusters 3D directions with the
+{ref}`sphx_glr_gallery_distance_metrics.py` clusters 3D directions with the
 angular metrics and shows why the Euclidean metric fails on them.

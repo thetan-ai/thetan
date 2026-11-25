@@ -1,6 +1,4 @@
----
-title: Getting started
----
+# Getting started
 
 ## Install
 
@@ -66,11 +64,11 @@ TB shuffles the data internally with NumPy's global random state. Call
 
 | Name | Alias | What it does |
 | --- | --- | --- |
-| [`berserker`](#api-thetan-berserker-berserker) | `TB` | Two self-correcting passes. The method to use by default. |
-| [`sequential`](#api-thetan-core-sequential) | `TS` | One pass. Fast and online, but depends on the order of the data. |
-| [`sequential_prelim`](#api-thetan-core-sequential_prelim) | `TP` | One pass seeded with prior centroids. |
-| [`tbscan`](#api-thetan-berserker-tbscan) | | TB followed by DBSCAN on the centroids, for non-convex clusters. |
-| [`distance_matrix`](#api-thetan-metrics-distance_matrix) | | Any of the metrics between every pair of rows of two arrays. |
+| {func}`berserker <thetan.berserker.berserker>` | `TB` | Two self-correcting passes. The method to use by default. |
+| {func}`sequential <thetan.core.sequential>` | `TS` | One pass. Fast and online, but depends on the order of the data. |
+| {func}`sequential_prelim <thetan.core.sequential_prelim>` | `TP` | One pass seeded with prior centroids. |
+| {func}`tbscan <thetan.berserker.tbscan>` | | TB followed by DBSCAN on the centroids, for non-convex clusters. |
+| {func}`distance_matrix <thetan.metrics.distance_matrix>` | | Any of the metrics between every pair of rows of two arrays. |
 
 All of them are importable from the top-level package:
 
@@ -82,4 +80,4 @@ from thetan import TB, TS, tbscan, distance_matrix
 
 - [](./guide/ts-to-tb.md) explains what the two passes do.
 - [](./guide/choosing-theta.md) shows how to pick θ.
-- The [gallery](./gallery/index.md) has complete, runnable examples.
+- The {doc}`gallery <gallery/index>` has complete, runnable examples.

@@ -22,7 +22,7 @@ from thetan.dbscan import DBSCAN_NOISE, dbscan
 # Helpers
 # -------
 #
-# `tbscan_density_aware` weights each TB centroid by the number of points
+# ``tbscan_density_aware`` weights each TB centroid by the number of points
 # it holds and estimates its density from its RMS radius. Weak centroids
 # can be pruned, and the DBSCAN parameters on the centroid graph can be
 # derived from a target point density.

@@ -1,9 +1,14 @@
-# Website and documentation, built with `spin docs`.
-# mystmd builds the site; it needs Node.js >= 18 on the PATH.
-mystmd>=1.3
-# Parses the numpydoc docstrings for the API pages
+# Website and documentation, built with `spin docs`. Pure Python.
+sphinx>=7.2
+# MyST markdown pages
+myst-parser>=3.0
+pydata-sphinx-theme>=0.15
+sphinx-design>=0.6
+sphinx-copybutton>=0.5
+# API reference from the numpydoc docstrings
 numpydoc>=1.6
-# Needed to run the gallery examples
+# Example gallery, and what the examples import
+sphinx-gallery>=0.17
 matplotlib>=3.5
 scikit-learn
 scipy>=1.8

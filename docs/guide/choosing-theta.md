@@ -1,7 +1,7 @@
----
-title: Choosing θ
-subtitle: θ is the only knob.
----
+# Choosing θ
+
+{.subtitle}
+θ is the only knob.
 
 ## The rule
 
@@ -13,7 +13,7 @@ which two points count as being in the same cluster:
   neighbours merge.
 
 When both hold, a single pass recovers every cluster with no splits and
-no merges ([Theorem 1](./../theory.md#one-to-one-recovery)). In practice,
+no merges ({ref}`Theorem 1 <one-to-one-recovery>`). In practice,
 set θ to the largest diameter you expect a cluster to have.
 
 ## When unsure, err small
@@ -41,5 +41,5 @@ See [](./metrics.md) for the full list.
 
 ## See it
 
-[](../gallery/choosing_theta.md) sweeps θ over twelve Gaussian clusters
+{ref}`sphx_glr_gallery_choosing_theta.py` sweeps θ over twelve Gaussian clusters
 and plots the plateau where TB returns the true number of clusters.

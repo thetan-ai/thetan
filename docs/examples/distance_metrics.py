@@ -3,7 +3,7 @@ Clustering directions with angular metrics
 ==========================================
 
 Thetan works with any metric accepted by
-`thetan.distance_matrix`. For data where only the direction of a vector
+``thetan.distance_matrix``. For data where only the direction of a vector
 matters, such as normalised embeddings, the cosine, arccos and negative
 dot product metrics give θ a natural meaning: an angle, or a minimum
 similarity.
@@ -43,9 +43,9 @@ print("Smallest angle between two mean directions: "
 #
 # The same partition can be asked for in the units of each metric:
 #
-# - `arccos`: θ is an angle in radians.
-# - `cosine`: θ is `1 - cos(angle)`.
-# - `dot_prod`: the negative dot product, so θ is negative. On unit
+# - ``arccos``: θ is an angle in radians.
+# - ``cosine``: θ is ``1 - cos(angle)``.
+# - ``dot_prod``: the negative dot product, so θ is negative. On unit
 #   vectors, θ = -0.94 means "join a centroid when the cosine similarity is
 #   above 0.94", about 20 degrees. It needs normalised rows, because the
 #   dot product grows with vector length.
