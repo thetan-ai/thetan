@@ -1,201 +1,147 @@
 """
-Density-aware TBSCAN on spirals
+TB and TBSCAN on a 3-arm spiral
 ===============================
 
-Compare three ways of finding the arms of a 30,000-point spiral: DBSCAN
-from thetan on every point, scikit-learn's DBSCAN on every point, and a
-density-aware TBSCAN that runs DBSCAN on the centroids of Thetan
-Berserker only.
+Thetan Berserker (TB) tiles each arm of a spiral with many small, compact
+clusters. TBSCAN, also called TB-DBSCAN, runs DBSCAN on the TB centroids
+only and joins those tiles back into the three arms. This example runs TB,
+TBSCAN, DBSCAN, HDBSCAN and TB-HDBSCAN on the spiral in
+``data/SpiralData_Clean_Spread.csv`` and times DBSCAN against TBSCAN.
 """
 
-import time
+import os
+from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.special import gamma
-from sklearn.cluster import DBSCAN as SKDBSCAN
+from sklearn.cluster import DBSCAN, HDBSCAN
+from sklearn.metrics import adjusted_rand_score
 
-from thetan import berserker
-from thetan.dbscan import DBSCAN_NOISE, dbscan
+from thetan.berserker import berserker
+from thetan.viz import plot_centroids_clusters
 
-# %%
-# Helpers
-# -------
-#
-# ``tbscan_density_aware`` weights each TB centroid by the number of points
-# it holds and estimates its density from its RMS radius. Weak centroids
-# can be pruned, and the DBSCAN parameters on the centroid graph can be
-# derived from a target point density.
-
-
-def ball_volume(r, d):
-    """Volume of a d-dimensional ball of radius r."""
-    return (np.pi ** (d / 2) / gamma(d / 2 + 1)) * (r ** d)
-
-
-def tbscan_density_aware(X, initial_centroids, initial_labels, theta, eps=None,
-                         min_samples=None, prune_quantile=0.05,
-                         use_weight_replication=False, max_replicas=50000):
-    """Run DBSCAN on TB centroids, using the points they hold as weights."""
-    X = np.ascontiguousarray(X, dtype=np.float64)
-    initial_centroids = np.ascontiguousarray(initial_centroids, dtype=np.float64)
-    initial_labels = np.asarray(initial_labels, dtype=np.int64)
-    N, d = X.shape
-    M = initial_centroids.shape[0]
-
-    valid = initial_labels >= 0
-    weights = np.bincount(initial_labels[valid], minlength=M).astype(np.float64)
-
-    r = np.full(M, 0.5 * float(theta), dtype=np.float64)
-    for label in range(M):
-        idx = np.flatnonzero(initial_labels == label)
-        if idx.size:
-            diffs = X[idx] - initial_centroids[label]
-            r[label] = np.sqrt((diffs ** 2).sum(axis=1).mean())
-
-    rho = np.divide(weights, ball_volume(r, d), out=np.zeros_like(weights), where=r > 0)
-
-    keep_w = weights > 0
-    keep_rh = rho > 0
-    thr_w = np.quantile(weights[keep_w], prune_quantile) if np.any(keep_w) else 0.0
-    thr_r = np.quantile(rho[keep_rh], prune_quantile) if np.any(keep_rh) else 0.0
-    keep = (weights >= thr_w) & (rho >= thr_r)
-    if not np.any(keep):
-        keep = weights > 0
-        if not np.any(keep):
-            keep = np.ones(M, dtype=bool)
-
-    C = initial_centroids[keep]
-    w = weights[keep]
-    remap = np.full(M, -1, dtype=int)
-    remap[np.flatnonzero(keep)] = np.arange(C.shape[0])
-    M2 = C.shape[0]
-
-    if eps is None:
-        eps = 1.6 * float(theta)
-
-    if min_samples is None:
-        rho_keep = rho[keep]
-        rho_star = np.median(rho_keep[rho_keep > 0]) if np.any(rho_keep > 0) else 0.0
-        if use_weight_replication:
-            scale = max(1.0, w.sum() / float(max_replicas))
-            min_samples = max(1, int(np.round(rho_star * ball_volume(eps, d) / scale)))
-        else:
-            typical_w = np.median(w[w > 0]) if np.any(w > 0) else 1.0
-            ms = rho_star * ball_volume(eps, d) / typical_w
-            min_samples = int(np.clip(np.round(ms), 1, 5))
-
-    if use_weight_replication:
-        scale = max(1.0, w.sum() / float(max_replicas))
-        reps = np.maximum(1, np.round(w / scale).astype(int))
-        C_rep = C[np.repeat(np.arange(M2, dtype=int), reps)]
-        dbl_rep, _ = dbscan(np.ascontiguousarray(C_rep), eps=float(eps),
-                            min_pts=int(min_samples))
-        dbl_rep = np.asarray(dbl_rep, dtype=np.int64)
-        starts = np.concatenate([[0], np.cumsum(reps)[:-1]])
-        dbl = dbl_rep[starts]
-    else:
-        dbl, _ = dbscan(np.ascontiguousarray(C), eps=float(eps), min_pts=int(min_samples))
-        dbl = np.asarray(dbl, dtype=np.int64)
-
-    final_labels = np.full(N, DBSCAN_NOISE, dtype=np.int64)
-    m = (initial_labels >= 0) & (remap[initial_labels] >= 0)
-    final_labels[m] = dbl[remap[initial_labels[m]]]
-
-    cluster_ids = np.unique(final_labels[final_labels != DBSCAN_NOISE])
-    info = dict(eps=float(eps), min_samples=int(min_samples), kept=int(M2),
-                pruned=int(M - M2), n_clusters=int(cluster_ids.size),
-                noise=int(np.sum(final_labels == DBSCAN_NOISE)))
-    return final_labels, info
-
-
-def make_spiral(n_total, arms, rotations, radius, seed):
-    """Sample points along a multi-arm spiral, denser near the centre."""
-    rng = np.random.default_rng(seed)
-    per_arm = n_total // arms
-    parts = []
-    for k in range(arms):
-        t = rng.beta(0.6, 1.2, size=per_arm)
-        r = radius[0] + t * (radius[1] - radius[0])
-        angle = rotations * 2 * np.pi * t + 2 * np.pi * k / arms
-        parts.append(np.column_stack([r * np.cos(angle), r * np.sin(angle)]))
-    X = np.vstack(parts)
-    return np.ascontiguousarray(X[rng.permutation(len(X))])
-
-
-def summarize(labels):
-    """Count clusters and noise points in a label array."""
-    labels = np.asarray(labels)
-    return len(set(labels[labels != DBSCAN_NOISE].tolist())), int(np.sum(labels == DBSCAN_NOISE))
-
-
-def plot_clusters(ax, X, labels, title):
-    """Scatter points coloured by cluster, with noise as crosses."""
-    labels = np.asarray(labels)
-    clustered = labels != DBSCAN_NOISE
-    ax.scatter(X[clustered, 0], X[clustered, 1], c=labels[clustered] % 10,
-               cmap="tab10", s=2, vmin=0, vmax=9)
-    if np.any(~clustered):
-        ax.scatter(X[~clustered, 0], X[~clustered, 1], s=6, marker="x", c="k")
-    ax.set_title(title)
-    ax.set_aspect("equal")
-
+# sphinx_gallery_thumbnail_number = 4
 
 # %%
 # The spiral
 # ----------
 #
-# Three arms, 3.2 turns, 30,000 points.
+# The CSV holds 7,500 points, 2,500 per arm, in three columns: Chem1, Chem2
+# and Clnum. Clnum is the arm each point belongs to, so only the two
+# coordinates are clustered and Clnum is kept to score the results.
+#
+# Stacking copies of the points makes the cost of each method visible.
+# ``n_repeats = 10`` gives 75,000 points and runs in a few seconds.
+# ``n_repeats = 50`` (375,000 points) is the size of the original TB vs
+# TBSCAN figure, but then DBSCAN on every point needs several GB of memory.
 
-np.random.seed(2025)
-X = make_spiral(n_total=30_000, arms=3, rotations=3.2, radius=(0.4, 6.0), seed=2025)
-eps, min_pts = 0.5, 1
+n_repeats = 10
+
+try:
+    examples_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:  # sphinx-gallery runs examples from docs/examples, without __file__
+    examples_dir = os.getcwd()
+fname = os.path.join(examples_dir, "..", "..", "data", "SpiralData_Clean_Spread.csv")
+
+spiral = np.genfromtxt(fname, delimiter=",", skip_header=1)
+X = np.ascontiguousarray(np.tile(spiral[:, :2], (n_repeats, 1)))
+y = np.tile(spiral[:, 2].astype(int), n_repeats)
+print(f"{X.shape[0]:,} points")
+
+np.random.seed(0)
+times = {}
+
+
+def report(name, labels):
+    """Print the number of clusters and their agreement with the true arms."""
+    n_clusters = len(np.unique(labels[labels >= 0]))
+    print(f"{name}: {n_clusters} clusters, ARI = {adjusted_rand_score(y, labels):.2f}")
+
+
+# %%
+# TB
+# --
+#
+# With θ = 1.0, TB cuts each arm into short, compact pieces, about 100
+# clusters in all.
+
+theta = 1.0
+
+t = time()
+initial_centroids, initial_labels = berserker(X, theta)
+times["TB"] = time() - t
+
+report("TB", initial_labels)
+plot_centroids_clusters(X, None, initial_labels, title="TB", show=False)
 
 # %%
 # DBSCAN on every point
 # ---------------------
 
-t0 = time.perf_counter()
-labels_thetan, _ = dbscan(X, eps=eps, min_pts=min_pts)
-dt_thetan = time.perf_counter() - t0
+t = time()
+dbscan_labels = DBSCAN(eps=0.5, min_samples=1).fit(X).labels_
+times["DBSCAN"] = time() - t
 
-t0 = time.perf_counter()
-labels_sklearn = SKDBSCAN(eps=eps, min_samples=min_pts).fit_predict(X)
-dt_sklearn = time.perf_counter() - t0
-
-print(f"thetan.dbscan : {summarize(labels_thetan)[0]} clusters in {dt_thetan:.2f} s")
-print(f"sklearn DBSCAN: {summarize(labels_sklearn)[0]} clusters in {dt_sklearn:.2f} s")
+report("DBSCAN", dbscan_labels)
+plot_centroids_clusters(X, None, labels=dbscan_labels, title="DBSCAN", show=False)
 
 # %%
 # TBSCAN: DBSCAN on the TB centroids only
 # ---------------------------------------
 #
-# TB with θ = 0.1 reduces the 30,000 points to about 1,300 centroids.
-# DBSCAN then only has to link those, with the same eps as above.
+# DBSCAN now only has to link the TB centroids, and each point then takes
+# the label of its centroid. On the two coordinates, eps = 1.9 recovers the
+# three arms. The working range is narrow: 1.85 can split an arm and 1.95
+# can merge two. :func:`thetan.berserker.tbscan` runs TB and this step in
+# one call.
 
-theta = 0.1
-t0 = time.perf_counter()
-centroids, tb_labels = berserker(X, theta)
-dt_tb = time.perf_counter() - t0
+t = time()
+centroid_labels = DBSCAN(eps=1.9, min_samples=1).fit(initial_centroids).labels_
+tbscan_labels = centroid_labels[initial_labels]
+times["TBSCAN"] = time() - t
 
-t0 = time.perf_counter()
-labels_tbscan, info = tbscan_density_aware(
-    X, centroids, tb_labels, theta, eps=0.5, min_samples=1,
-    prune_quantile=0.0, use_weight_replication=False,
-)
-dt_link = time.perf_counter() - t0
-print(f"TB: {len(centroids)} centroids in {dt_tb:.2f} s")
-print(f"TBSCAN: {info['n_clusters']} clusters, linking took {dt_link:.2f} s")
+report("TBSCAN", tbscan_labels)
+plot_centroids_clusters(initial_centroids, None, labels=centroid_labels,
+                        title="TBSCAN on the TB centroids", show=False)
+plot_centroids_clusters(X, None, labels=tbscan_labels, title="TBSCAN", show=False)
 
 # %%
-# Results
-# -------
+# HDBSCAN, on every point and on the TB centroids
+# -----------------------------------------------
+#
+# With ``min_samples=1``, HDBSCAN on every point treats each group of
+# stacked identical copies as a cluster of its own, so it returns one
+# cluster per original point. On the TB centroids there are no duplicates,
+# and it finds the three arms.
 
-fig, axes = plt.subplots(1, 3, figsize=(15, 5), constrained_layout=True)
-plot_clusters(axes[0], X, labels_thetan,
-              f"thetan.dbscan: {summarize(labels_thetan)[0]} clusters, {dt_thetan:.2f} s")
-plot_clusters(axes[1], X, labels_sklearn,
-              f"sklearn DBSCAN: {summarize(labels_sklearn)[0]} clusters, {dt_sklearn:.2f} s")
-plot_clusters(axes[2], X, labels_tbscan,
-              f"TBSCAN: {info['n_clusters']} clusters, {dt_tb + dt_link:.2f} s")
+t = time()
+hdbscan_labels = HDBSCAN(min_samples=1, copy=True).fit(X).labels_
+times["HDBSCAN"] = time() - t
+
+report("HDBSCAN", hdbscan_labels)
+plot_centroids_clusters(X, None, labels=hdbscan_labels, title="HDBSCAN", show=False)
+
+t = time()
+centroid_hlabels = HDBSCAN(min_samples=1, copy=True).fit(initial_centroids).labels_
+tb_hdbscan_labels = centroid_hlabels[initial_labels]
+times["TB-HDBSCAN"] = time() - t
+
+report("TB-HDBSCAN", tb_hdbscan_labels)
+plot_centroids_clusters(initial_centroids, None, labels=centroid_hlabels,
+                        title="TB-HDBSCAN on the TB centroids", show=False)
+plot_centroids_clusters(X, None, labels=tb_hdbscan_labels, title="TB-HDBSCAN", show=False)
+
+# %%
+# Timings
+# -------
+#
+# TBSCAN's linking step is fast because DBSCAN sees about 100 centroids
+# instead of every point. The end-to-end ratio also counts the TB step.
+
+for name, seconds in times.items():
+    print(f"{name:>10}: {seconds:7.3f} s")
+
+print(f"DBSCAN / TBSCAN linking step: {times['DBSCAN'] / times['TBSCAN']:.0f}x")
+print(f"DBSCAN / (TB + TBSCAN), end to end: {times['DBSCAN'] / (times['TB'] + times['TBSCAN']):.1f}x")
+
 plt.show()
