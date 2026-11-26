@@ -52,5 +52,5 @@ such as the centroids of TB.
 ## See it
 
 - {ref}`sphx_glr_gallery_tbscan_shapes.py` runs TB and TBSCAN on moons and circles.
-- {ref}`sphx_glr_gallery_tbscan_spiral_blobs.py` compares DBSCAN on 30,000 spiral
-  points with a density-aware TBSCAN.
+- {ref}`sphx_glr_gallery_tbscan_spiral_blobs.py` runs TB, TBSCAN, DBSCAN and
+  HDBSCAN on a 3-arm spiral and times DBSCAN against TBSCAN.

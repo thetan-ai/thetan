@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from thetan import sequential, sequential_prelim, berserker, tbscan
 from thetan import centroids_from_labels, candidate_labels_c, reassign_uncertain_update_labels, distance_matrix
+from thetan.berserker import tbk
 
 
 rng = np.random.default_rng(42)
@@ -320,3 +321,48 @@ def test_tbscan_min_samples_turns_isolated_centroids_into_noise():
     centroids, labels = tbscan(X, 1.5, eps=4.0, min_samples=1)
     assert centroids.shape[0] == 3
     assert labels.min() >= 0
+
+def _four_blobs_with_strays():
+    # four tight blobs of 60 points, 10 apart, and three single points far
+    # from the blobs and from each other
+    local_rng = np.random.default_rng(0)
+    centers = np.array([[0.0, 0.0], [10.0, 0.0], [0.0, 10.0], [10.0, 10.0]])
+    blobs = np.vstack([c + local_rng.normal(scale=0.5, size=(60, 2)) for c in centers])
+    strays = np.array([[30.0, 30.0], [-30.0, 30.0], [30.0, -30.0]])
+    blob = np.concatenate([np.repeat(np.arange(4), 60), np.full(3, -1)])
+    return np.vstack([blobs, strays]), blob
+
+def test_tbk_seeds_kmeans_with_the_largest_tb_clusters():
+    X, blob = _four_blobs_with_strays()
+    # TB makes a cluster of each blob and of each stray point. With this
+    # seed it numbers a stray point before the last blob, so seeding K-means
+    # from the first four TB clusters would not pass this test.
+    np.random.seed(1)
+    tb_centroids, tb_labels = berserker(X, 3.6)
+    assert tb_centroids.shape[0] == 7
+    assert np.bincount(tb_labels)[:4].min() == 1
+
+    # only the four blob clusters seed K-means. A stray point as a seed would
+    # leave a cluster to itself and force two blobs into one cluster.
+    np.random.seed(1)
+    centroids, labels = tbk(X, 3.6, 4)
+    assert centroids.shape == (4, 2)
+    assert labels.shape == (X.shape[0],)
+    for b in range(4):
+        assert len(np.unique(labels[blob == b])) == 1
+    assert len(np.unique(labels[blob >= 0])) == 4
+
+def test_tbk_raises_when_tb_finds_fewer_clusters_than_requested():
+    X, _ = _four_blobs_with_strays()
+    np.random.seed(0)
+    with pytest.raises(ValueError, match="TB found 7 clusters, fewer than n_clusters=8"):
+        tbk(X, 3.6, 8)
+
+def test_tbk_accepts_float32_and_fortran_order_input():
+    X, _ = _four_blobs_with_strays()
+    X32 = X.astype(np.float32)
+    np.random.seed(0)
+    _, expected = tbk(X32.astype(np.float64), 3.6, 4)
+    np.random.seed(0)
+    _, labels = tbk(np.asfortranarray(X32), 3.6, 4)
+    assert np.array_equal(labels, expected)
