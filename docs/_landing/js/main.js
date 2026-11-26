@@ -1,4 +1,3 @@
-import { Universe } from './universe.js';
 import { mountExplainer } from './explainer.js';
 import { mountDuel } from './ordering.js';
 import { mountPlayground } from './playground.js';
@@ -9,23 +8,8 @@ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-// ---------- 3D stream behind the hero ----------
-
-let universe = null;
-try {
-  universe = new Universe($('#universe'), { reducedMotion: reduced });
-} catch (err) {
-  console.error('WebGL unavailable', err);
-  document.body.classList.add('no-webgl');
-}
-
-// ?debug exposes the scene so frames can be stepped from the console
+// ?debug exposes the figure so frames can be stepped from the console
 const debug = new URLSearchParams(location.search).has('debug');
-if (universe && debug) window.__universe = universe;
-
-// the hero's live count of clusters the stream has opened
-const streamK = $('[data-stream-k]');
-if (universe) setInterval(() => { streamK.textContent = universe.clustersFound; }, 250);
 
 // ---------- the step-by-step figure ----------
 
@@ -50,12 +34,6 @@ const algoLines = $$('.algo-lines li');
 const STEP_LINES = { 1: [3, 4, 5], 2: [6, 7], 3: [8, 9, 10], 4: [11, 12, 13], 5: [14, 15, 16, 17, 18, 19] };
 const navLinks = $$('.nav-links a');
 
-// where the stream's clusters sit: right of the headline, centred on phones
-function heroShift() {
-  const w = window.innerWidth;
-  return w < 680 ? 0 : w < 900 ? 0.08 : 0.27;
-}
-
 function onScroll() {
   const mid = window.innerHeight * 0.5;
   // on narrow screens the figure pins to the top, so steps are read lower down
@@ -79,8 +57,6 @@ function onScroll() {
       const d = Math.abs(r.top + r.height / 2 - stepLine);
       if (d < best) { best = d; step = +s.dataset.step; }
     }
-    // the section head sits above step 1: keep the hero stream until step 1 arrives
-    if (steps[0].getBoundingClientRect().top > window.innerHeight * 0.75) mode = 'hero';
   }
   steps.forEach((s) => s.classList.toggle('active', +s.dataset.step === step));
   figSteps.forEach((b) => (+b.dataset.go === step ? b.setAttribute('aria-current', 'step') : b.removeAttribute('aria-current')));
@@ -88,17 +64,7 @@ function onScroll() {
   algoLines.forEach((li) => li.classList.toggle('on', on.has(+li.dataset.l)));
   explainer.setStep(step);
 
-  document.documentElement.style.setProperty('--scene-dim', mode === 'hero' ? '0' : '1');
   document.body.dataset.mode = mode;
-  if (!universe) return;
-  universe.setMode(mode);
-  const w = window.innerWidth, phone = w < 680;
-  universe.setCamera({
-    r: (w < 1180 ? 104 : 96) * (phone ? 1.1 : 1),
-    el: 0.14,
-    shift: heroShift(),
-    lift: phone ? 0.26 : 0,
-  });
 }
 
 let scrollQueued = false;
@@ -110,7 +76,7 @@ const queueScroll = () => {
 window.addEventListener('scroll', queueScroll, { passive: true });
 window.addEventListener('resize', queueScroll);
 onScroll();
-if (window.__universe) window.__sync = onScroll;
+if (debug) window.__sync = onScroll;
 
 // ---------- ordering duel ----------
 
@@ -130,7 +96,6 @@ themeBtn.addEventListener('click', toggleTheme);
 labelThemeButton(currentTheme());
 onThemeChange((theme) => {
   labelThemeButton(theme);
-  if (universe) universe.setTheme(theme);
   explainer.setTheme(theme);
   duel.redraw();
   playground.redraw();

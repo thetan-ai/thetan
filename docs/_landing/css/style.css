@@ -39,7 +39,6 @@
   --serif: "Instrument Serif", Georgia, serif;
   --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --scene-dim: 0;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -137,27 +136,6 @@ h1, h2, h3 { margin: 0; font-weight: 500; letter-spacing: -0.02em; }
 p { margin: 0; }
 code, pre, kbd { font-family: var(--mono); }
 
-/* ---------- 3D canvas ---------- */
-#universe {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  display: block;
-  z-index: 0;
-  transition: opacity 0.8s ease, filter 0.8s ease;
-  opacity: calc(1 - var(--scene-dim) * 0.62);
-  filter: saturate(calc(1 - var(--scene-dim) * 0.35));
-}
-.vignette {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(var(--bg-rgb), 0.85) 100%),
-    linear-gradient(180deg, rgba(var(--bg-rgb), 0.55) 0%, transparent 18%, transparent 80%, rgba(var(--bg-rgb), 0.5) 100%);
-}
 main, .footer { position: relative; z-index: 2; }
 
 /* ---------- nav ---------- */
@@ -266,15 +244,16 @@ main, .footer { position: relative; z-index: 2; }
   position: relative;
   min-height: 100vh;
   min-height: 100svh;
-  display: flex; align-items: flex-end;
+  display: flex; align-items: center; justify-content: center;
   padding: 120px var(--gutter) 9vh;
+  text-align: center;
 }
-/* a soft scrim keeps the copy legible where the dust drifts behind it */
-.hero::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.72) 0%, rgba(var(--bg-rgb), 0.5) 34%, rgba(var(--bg-rgb), 0) 58%);
-}
-.hero-copy { position: relative; max-width: 640px; }
+.hero-copy { max-width: 920px; }
+/* inline, so the dot stays beside the text when the eyebrow wraps on phones */
+.hero .eyebrow { display: inline-block; }
+.hero .eyebrow .dot { display: inline-block; vertical-align: 0.12em; margin-right: 10px; }
+.hero .lede { margin-left: auto; margin-right: auto; }
+.hero .cta-row, .hero .hero-facts { justify-content: center; }
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-2); margin-bottom: 26px; }
 .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
 .display {
@@ -293,15 +272,6 @@ main, .footer { position: relative; z-index: 2; }
 .hero-facts dt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .hero-facts dd { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
 .hero-facts .unit { font-family: var(--serif); font-style: italic; color: var(--accent); }
-.stream-tag {
-  position: absolute; right: var(--gutter); bottom: 9vh;
-  display: flex; align-items: center; gap: 9px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--ink-3);
-}
-.stream-tag b { color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
-.live { width: 7px; height: 7px; border-radius: 50%; background: #48e08b; box-shadow: 0 0 10px #48e08b; animation: pulse 1.6s infinite; }
-@keyframes pulse { 50% { opacity: 0.35; } }
 
 /* ---------- how (scrollytelling) ---------- */
 .how { position: relative; padding: 18vh var(--gutter) 10vh; }
@@ -729,14 +699,8 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
   .theorems, .docs, .family, .stats { grid-template-columns: 1fr; }
   .thm-wide { grid-column: auto; grid-template-columns: 1fr; }
   .readout { grid-template-columns: repeat(2, 1fr); }
-  .hero { padding-top: 46vh; padding-bottom: 150px; }
-  .hero::before {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(0deg, rgba(var(--bg-rgb), 0.92) 0%, rgba(var(--bg-rgb), 0.82) 52%, rgba(var(--bg-rgb), 0) 78%);
-  }
-  .hero-copy { position: relative; }
+  .hero { padding-top: 104px; padding-bottom: 64px; }
   .hero-facts { gap: 22px; }
-  .stream-tag { display: none; }
   .nav .btn-ghost { display: none; }
   .duel-bar { gap: 8px; }
   .duel-legend { margin-left: 0; }
@@ -746,5 +710,4 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
   html { scroll-behavior: auto; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .duel-panel, .duel-panel.is-tb { transform: none; }
-  .live { animation: none; }
 }
