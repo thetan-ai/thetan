@@ -168,3 +168,62 @@ def tbscan(X, theta, eps=2.0, min_samples=1):
 
     return centroids, labels
 
+
+def tbk(X, theta, n_clusters, max_iter=300, tol=1e-4):
+    """Cluster data with TBK (Thetan Berserker followed by K-means).
+
+    TB first clusters the data with a single distance threshold. The
+    centroids of its ``n_clusters`` largest clusters then seed K-means,
+    which runs once on all of X. Unlike TB, TBK needs the number of
+    clusters, and like K-means it finds compact, roughly spherical
+    clusters.
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_samples, n_features)
+        Data to cluster. It is converted to a C-contiguous float64 array
+        if needed.
+    theta : float
+        Distance threshold passed to berserker. It must be small enough
+        for TB to find at least ``n_clusters`` clusters. TB always uses
+        the Euclidean metric here.
+    n_clusters : int
+        Number of clusters K-means returns.
+    max_iter : int, optional
+        Maximum number of K-means iterations. Default is 300.
+    tol : float, optional
+        K-means convergence tolerance. Default is 1e-4.
+
+    Returns
+    -------
+    centroids : ndarray, shape (n_clusters, n_features)
+        K-means cluster centres.
+    labels : ndarray, shape (n_samples,)
+        Cluster index of each point, in the original order of X.
+
+    Raises
+    ------
+    ValueError
+        If TB finds fewer than ``n_clusters`` clusters.
+    """
+    from sklearn.cluster import KMeans
+
+    X = np.ascontiguousarray(X, dtype=np.float64)
+    tb_centroids, tb_labels = berserker(X, theta)
+
+    if len(tb_centroids) < n_clusters:
+        raise ValueError(
+            f"TB found {len(tb_centroids)} clusters, fewer than "
+            f"n_clusters={n_clusters}. Use a smaller theta."
+        )
+
+    # Seed K-means with the centroids of the n_clusters largest TB clusters.
+    sizes = np.bincount(tb_labels, minlength=len(tb_centroids))
+    biggest = np.argsort(sizes)[-n_clusters:]
+    init = np.ascontiguousarray(tb_centroids[biggest])
+
+    kmeans = KMeans(n_clusters=n_clusters, init=init, n_init=1,
+                    max_iter=max_iter, tol=tol).fit(X)
+
+    return kmeans.cluster_centers_, kmeans.labels_
+
